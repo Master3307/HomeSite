@@ -7,7 +7,7 @@
   --bg-secondary: #291d4f;
   --text-primary: #ffffff;
   --text-secondary: #c0bfe6;
-  --accent: #6c5ce7; /* indigo-purple */
+  --accent: #3d29d4; /* indigo-purple */
   --accent-hover: #5a4bd6;
   --border: #47405b;
 }
@@ -62,18 +62,26 @@ a:hover {
 }
 
 button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   background-color: var(--accent);
   color: var(--text-primary);
   border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: 12px 22px;
+  border-radius: 18px;
   cursor: pointer;
   font-size: 1rem;
+  transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 button:hover {
   background-color: var(--accent-hover);
+  transform: translateY(-1px);
 }
+
+
 
 /* subtle focus outlines using indigo tint */
 a:focus,
@@ -83,18 +91,34 @@ button:focus {
 }
 
 body {
+  position: relative;
+  z-index: 0;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
     Cantarell, sans-serif;
   line-height: 1.6;
+  min-height: 100vh;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: url("cdn/city.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: saturate(2) brightness(0.38);
+  pointer-events: none;
 }
 
 .card {
   width: 90%;
   max-width: 740px;
-  margin: 32px auto;
+  margin: 42px auto;
   padding: 28px 26px;
   background: #291d4f81;
   border-radius: 20px;
@@ -107,6 +131,29 @@ body {
   transition: transform 0.5s ease-out;
 }
 
+.close-icon {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  font-size: 34px !important;
+  line-height: 1;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 64;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.close-icon:hover {
+  color: red;
+  transform: scale(1.1);
+}
+
 .pfp {
   width: 120px;
   height: 120px;
@@ -114,10 +161,12 @@ body {
   margin-bottom: 16px;
   border: 4px solid var(--border);
   transform: scale(1);
-  transition: border-color 0.3s ease, transform 0.25s ease;
+  box-shadow: 0 0 0 rgba(108, 92, 231, 0);
+  transition: border-color 0.3s ease, transform 0.25s ease, box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .pfp:hover {
   border-color: var(--accent);
   transform: scale(1.05);
+  box-shadow: 0 0 48px rgba(0, 0, 0, 0.18), 0 0 0 4px rgba(108, 92, 231, 0.14);
 }

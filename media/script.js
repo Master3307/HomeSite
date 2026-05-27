@@ -24,7 +24,6 @@ function resetCard(event) {
   card.style.transform = "perspective(1000px) rotateX(0deg) rotateY(0deg)";
 }
 
-
 // allow multiple overlapping clown audio instances
 const playingClownAudios = new Set();
 
@@ -66,7 +65,8 @@ async function clown() {
       audio.addEventListener("error", removeAudio);
 
       const p = audio.play();
-      if (p && typeof p.catch === "function") p.catch((err) => console.warn("clown play blocked:", err));
+      if (p && typeof p.catch === "function")
+        p.catch((err) => console.warn("clown play blocked:", err));
       return; // success
     } catch (err) {
       console.warn("Playback failed for", src, err);
