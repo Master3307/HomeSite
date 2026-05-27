@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Oi&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Oi&display=swap");
 
 /* Color Presets */
 :root {
   /* Dark Theme (Default) */
   --bg-primary: #1a1a1a;
-  --bg-secondary: #291D4F;
+  --bg-secondary: #291d4f;
   --text-primary: #ffffff;
   --text-secondary: #c0bfe6;
   --accent: #6c5ce7; /* indigo-purple */
@@ -34,15 +34,6 @@
   box-sizing: border-box;
 }
 
-body {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
-    Cantarell, sans-serif;
-  line-height: 1.6;
-}
-
 a {
   color: var(--accent);
   text-decoration: none;
@@ -60,7 +51,6 @@ h3 {
   justify-content: center;
   align-items: center;
   text-align: center;
-
 }
 
 .head {
@@ -90,4 +80,29 @@ a:focus,
 button:focus {
   outline: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
   outline-offset: 2px;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
+  line-height: 1.6;
+}
+
+.card {
+  width: 40%;
+  max-width: 740px;
+  margin: 32px auto;
+  padding: 28px 26px;
+  background: #291d4f81;
+  border-radius: 20px;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition: transform 0.14s ease-out;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.5s;
+  transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
 }
