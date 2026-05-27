@@ -100,9 +100,24 @@ body {
   border-radius: 20px;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  transition: transform 0.14s ease-out;
+  text-align: center;
   position: relative;
   overflow: hidden;
-  transition: transform 0.5s;
   transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
+  transition: transform 0.5s ease-out;
+}
+
+.pfp {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  margin-bottom: 16px;
+  border: 4px solid var(--border);
+  transform: scale(1);
+  transition: border-color 0.3s ease, transform 0.25s ease;
+}
+
+.pfp:hover {
+  border-color: var(--accent);
+  transform: scale(1.05);
 }
