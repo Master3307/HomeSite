@@ -1,0 +1,90 @@
+/* Color Presets */
+:root {
+  /* Dark Theme (Default) */
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #291D4F;
+  --text-primary: #ffffff;
+  --text-secondary: #c0bfe6;
+  --accent: #6c5ce7; /* indigo-purple */
+  --accent-hover: #5a4bd6;
+  --border: #47405b;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    /* Light Theme */
+    --bg-primary: #ffffff;
+    --bg-secondary: #fbf8ff;
+    --text-primary: #111018;
+    --text-secondary: #5b5478;
+    --accent: #5f4ee6; /* lighter indigo */
+    --accent-hover: #4638c9;
+    --border: #e6e0f6;
+  }
+}
+
+/* Base Styles */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
+  line-height: 1.6;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--text-primary);
+}
+
+.tit {
+  /* center content */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+
+}
+
+.head {
+  background-color: var(--bg-secondary);
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+button {
+  background-color: var(--accent);
+  color: var(--text-primary);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+button:hover {
+  background-color: var(--accent-hover);
+}
+
+/* subtle focus outlines using indigo tint */
+a:focus,
+button:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  outline-offset: 2px;
+}
