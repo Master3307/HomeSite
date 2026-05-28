@@ -145,6 +145,10 @@ body::before {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 64;
   color: var(--text-secondary);
   cursor: pointer;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
   transition: color 0.2s ease, transform 0.2s ease;
 }
@@ -163,6 +167,12 @@ body::before {
   transform: scale(1);
   box-shadow: 0 0 0 rgba(108, 92, 231, 0);
   transition: border-color 0.3s ease, transform 0.25s ease, box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .pfp:hover {
