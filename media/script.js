@@ -159,3 +159,39 @@ async function confused() {
 
   console.warn("All playback attempts failed for confused audio.");
 }
+
+// language selector
+function switchLanguage(lang) {
+  const path = window.location.pathname;
+  const search = window.location.search;
+  const hash = window.location.hash;
+
+  let newPath;
+
+  if (path.startsWith("/de/")) {
+    newPath = path.replace("/de/", `/${lang}/`);
+  } else if (path === "/de") {
+    newPath = `/${lang}`;
+  } else if (path.startsWith("/en/")) {
+    newPath = path.replace("/en/", `/${lang}/`);
+  } else if (path === "/en") {
+    newPath = `/${lang}`;
+  } else {
+    newPath = `/${lang}${path.startsWith("/") ? path : "/" + path}`;
+  }
+
+  window.location.href = newPath + search + hash;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const select = document.getElementById("language-select");
+  if (!select) return;
+
+  const path = window.location.pathname;
+
+  if (path.startsWith("/de/") || path === "/de") {
+    select.value = "de";
+  } else if (path.startsWith("/en/") || path === "/en") {
+    select.value = "en";
+  }
+});

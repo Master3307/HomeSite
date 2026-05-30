@@ -15,8 +15,9 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Oi&display=swap"
         rel="stylesheet" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" />
-        <script src="/media/script.js"></script>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" />
+    <script src="/media/script.js"></script>
 </head>
 
 
@@ -28,19 +29,30 @@
         <span class="material-symbols-outlined close-icon" onclick="window.location.href='../'">close</span>
         <h2>Personal User Card</h2>
         <br>
-        <img class="pfp" src="/media/cdn/pfp/MrKoby4purple.png" alt="Profile Picture" draggable="false" ondragstart="return false" onclick="clown()">
+        <img class="pfp" src="/media/cdn/pfp/MrKoby4purple.png" alt="Profile Picture" draggable="false"
+            ondragstart="return false" onclick="clown()">
         <p>Hi there! :D</p>
         <br>
         <p>My name is Korbi and I'm a developer and I like to try different computer things.</p>
         <p>I learn pretty consistently and I find joy in finding and fixing small Problems.</p>
-        
+
         <br>
         <h3>Buttons</h3>
 
         <!-- add more info here -->
     </div>
+    <div class="language-picker">
+        <label for="language-select">
+            <span class="material-symbols-outlined">language</span>
+        </label>
 
-  </body>
+        <select id="language-select" onchange="switchLanguage(this.value)">
+            <option value="en">English</option>
+            <option value="de">Deutsch</option>
+        </select>
+    </div>
+</body>
+
 </html>
 
 <!-- hii there! :D  -->

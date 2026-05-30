@@ -208,3 +208,27 @@ body::before {
   gap: 69px;
   flex-wrap: wrap;
 }
+
+
+.language-picker {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000;
+}
+
+.language-picker .material-symbols-outlined {
+  font-size: 22px;
+  color: var(--text-primary);
+}
+
+.language-picker select {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
