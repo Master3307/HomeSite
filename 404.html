@@ -5,10 +5,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>404 – MrKoby07</title>
-    <link rel="stylesheet" href="../media/style.css" />
-    <link rel="icon" href="../media/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/media/style.css" />
+    <link rel="icon" href="/media/favicon.svg" type="image/svg+xml" />
     <!-- please fucking change this, it's ugly as shit. -->
-    <script src="../media/script.js"></script>
+    <script src="/media/script.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,38 +17,12 @@
         rel="stylesheet" />
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0&icon_names=id_card" />
-    <script>
-                    function tiltCard(event) {
-            const card = document.getElementById("card");
-            if (!card) return;
-
-            const cardRect = card.getBoundingClientRect();
-
-            const cardCenterX = cardRect.left + cardRect.width / 2;
-            const cardCenterY = cardRect.top + cardRect.height / 2;
-
-            const mouseX = event.clientX;
-            const mouseY = event.clientY;
-
-            const rotateX = (mouseY - cardCenterY) / 50;
-            const rotateY = (mouseX - cardCenterX) / 50;
-
-            card.style.transition = "transform 0.05s ease";
-            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${-rotateY}deg)`;
-            }
-
-            function resetCard(event) {
-            const card = document.getElementById("card");
-            if (!card) return;
-            card.style.transition = "transform 0.5s ease";
-            card.style.transform = "perspective(1000px) rotateX(0deg) rotateY(0deg)";
-            }
-
-    </script>
+    <script src="/media/script.js"></script>
     <style>
         :root {
             --bg-secondary: #970000 !important;
             --accent: #b60b0b !important;
+            --accent-hover: #610000 !important;
         }
     </style>
 </head>
@@ -60,13 +34,13 @@
     <div id="card" class="card">
         <h2>Oh no!</h2>
         <p>It seems like you've found a page that doesn't exist – Not Found.</p>
+        <img class="uhh" src="/media/cdn/uhh.png" alt="uhh" onclick="confused()">
         <br>
-        <!-- I know this is insanely ugly but I am too damn lazy. Talk with your Therapist tho, seems you need it. -->
-        <button onclick="window.history.back()">Go Back</button> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        <button onclick="window.location.href='../'">Go Home</button> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        <button onclick="window.location.reload()">Reload</button>
-    </div>
-    <img class="uhh" src="media/cdn/uhh.png" alt="uhh">
+        <div class="error-buttons">
+            <button type="button" onclick="window.history.back()">Go Back</button>
+            <button type="button" onclick="window.location.href='/'">Go Home</button>
+            <button type="button" onclick="window.location.reload()">Reload</button>
+        </div>
 </body>
 
 </html>
