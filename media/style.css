@@ -1,30 +1,55 @@
 @import url("https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Oi&display=swap");
 
 /* Color Presets */
+/* Dark Theme (Default) */
 :root {
-  /* Dark Theme (Default) */
-  --bg-primary: #1a1a1a;
+  --bg-primary: #000000;
   --bg-secondary: #291d4f;
   --text-primary: #ffffff;
   --text-secondary: #c0bfe6;
-  --accent: #3d29d4; /* indigo-purple */
+  --text-thirdary: #dfdfdf;
+  --accent: #3d29d4;
   --accent-hover: #5a4bd6;
   --border: #47405b;
 }
 
+/* Optional system fallback for users with no manual selection */
 @media (prefers-color-scheme: light) {
-  :root {
-    /* Light Theme */
+  :root:not([data-theme]) {
     --bg-primary: #ffffff;
-    --bg-secondary: #fbf8ff;
-    --text-primary: #111018;
-    --text-secondary: #5b5478;
-    --accent: #5f4ee6; /* lighter indigo */
+    --bg-secondary: #8859c6;
+    --text-primary: #ffffff;
+    --text-secondary: #c1bdce;
+    --text-thirdary: #000000;
+    --accent: #5f4ee6;
     --accent-hover: #4638c9;
     --border: #e6e0f6;
   }
 }
 
+/* Manual override: dark */
+:root[data-theme="dark"] {
+  --bg-primary: #000000;
+  --bg-secondary: #291d4f;
+  --text-primary: #ffffff;
+  --text-secondary: #c0bfe6;
+  --text-thirdary: #ffffff;
+  --accent: #3d29d4;
+  --accent-hover: #5a4bd6;
+  --border: #47405b;
+}
+
+/* Manual override: light */
+:root[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #8859c6;
+  --text-primary: #ffffff;
+  --text-secondary: #c1bdce;
+  --text-thirdary: #000000;
+  --accent: #5f4ee6;
+  --accent-hover: #4638c9;
+  --border: #e6e0f6;
+}
 /* Base Styles */
 
 * {
@@ -107,7 +132,7 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background-image: linear-gradient(var(--bg-secondary), rgb(0, 0, 0));
+  background-image: linear-gradient(var(--bg-secondary), var(--bg-primary));
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -222,10 +247,34 @@ body::before {
 
 .language-picker .material-symbols-outlined {
   font-size: 22px;
-  color: var(--text-primary);
+  color: var(--text-thirdary);
 }
 
 .language-picker select {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+
+.theme-picker {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000;
+}
+
+.theme-picker .material-symbols-outlined {
+  font-size: 22px;
+  color: var(--text-thirdary);
+}
+
+.theme-picker select {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 10px;

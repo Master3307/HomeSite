@@ -160,38 +160,78 @@ async function confused() {
   console.warn("All playback attempts failed for confused audio.");
 }
 
+
 // language selector
+const LANGUAGE_KEY = "preferredLanguage";
+
+function getPathLanguage(path) {
+  if (path.startsWith("/de/") || path === "/de") return "de";
+  if (path.startsWith("/en/") || path === "/en") return "en";
+  return null;
+}
+
+function buildLanguagePath(path, lang) {
+  if (path.startsWith("/de/")) return path.replace("/de/", `/${lang}/`);
+  if (path === "/de") return `/${lang}`;
+  if (path.startsWith("/en/")) return path.replace("/en/", `/${lang}/`);
+  if (path === "/en") return `/${lang}`;
+  return `/${lang}${path.startsWith("/") ? path : "/" + path}`;
+}
+
 function switchLanguage(lang) {
-  const path = window.location.pathname;
-  const search = window.location.search;
-  const hash = window.location.hash;
+  localStorage.setItem(LANGUAGE_KEY, lang);
 
-  let newPath;
-
-  if (path.startsWith("/de/")) {
-    newPath = path.replace("/de/", `/${lang}/`);
-  } else if (path === "/de") {
-    newPath = `/${lang}`;
-  } else if (path.startsWith("/en/")) {
-    newPath = path.replace("/en/", `/${lang}/`);
-  } else if (path === "/en") {
-    newPath = `/${lang}`;
-  } else {
-    newPath = `/${lang}${path.startsWith("/") ? path : "/" + path}`;
-  }
-
-  window.location.href = newPath + search + hash;
+  const newPath = buildLanguagePath(window.location.pathname, lang);
+  window.location.href = newPath + window.location.search + window.location.hash;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   const select = document.getElementById("language-select");
-  if (!select) return;
-
   const path = window.location.pathname;
 
-  if (path.startsWith("/de/") || path === "/de") {
-    select.value = "de";
-  } else if (path.startsWith("/en/") || path === "/en") {
-    select.value = "en";
+  const currentLang = getPathLanguage(path);
+  const savedLang = localStorage.getItem(LANGUAGE_KEY);
+
+  if (select) {
+    select.value = currentLang || savedLang || "en";
+
+    select.addEventListener("change", (e) => {
+      switchLanguage(e.target.value);
+    });
+  }
+
+  // Redirect only if URL has no language yet and a preference exists
+  if (!currentLang && (savedLang === "de" || savedLang === "en")) {
+    const newPath = buildLanguagePath(path, savedLang);
+    window.location.href = newPath + window.location.search + window.location.hash;
+  }
+});
+
+
+// theme picker
+const THEME_KEY = "preferredTheme";
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+}
+
+function switchTheme(theme) {
+  localStorage.setItem(THEME_KEY, theme);
+  applyTheme(theme);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const select = document.getElementById("theme-select");
+  const savedTheme = localStorage.getItem(THEME_KEY);
+
+  const theme =
+    savedTheme === "light" || savedTheme === "dark"
+      ? savedTheme
+      : "dark";
+
+  applyTheme(theme);
+
+  if (select) {
+    select.value = theme;
   }
 });
