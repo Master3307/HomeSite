@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Card – MrKoby07</title>
-    <link rel="stylesheet" href="../media/style.css" />
-    <link rel="icon" href="../media/favicon.svg" type="image/svg+xml" />
+    <title>Karte – MrKoby07</title>
+    <link rel="stylesheet" href="../../media/style.css" />
+    <link rel="icon" href="../../media/favicon.svg" type="image/svg+xml" />
     <!-- please fucking change this, it's ugly as shit. -->
 
 
@@ -49,7 +49,7 @@
             const playingClownAudios = new Set();
 
             async function clown() {
-            const candidates = ["../media/cdn/clown.mp3", "../media/cdn/clown.mp3"];
+            const candidates = ["../../media/cdn/clown.mp3"];
             for (const src of candidates) {
                 try {
                 const audio = new Audio(src);
@@ -74,7 +74,6 @@
                     audio.addEventListener("error", onErr);
                 });
 
-                // set start position to ~2% of duration
                 const start = Math.max(0, audio.duration * 0.13 || 0);
                 // ensure we don't set currentTime to >= duration
                 audio.currentTime = Math.min(start, Math.max(0, audio.duration - 0.01));
@@ -103,18 +102,19 @@
 
 <body>
     <header class="head">
-        <h1 class="tit">Card of<b>&nbsp;MrKoby07</b></h1>
+        <h1 class="tit">Karte von<b>&nbsp;MrKoby07</b></h1>
     </header>
     <div id="card" class="card" onmousemove="tiltCard(event)" onmouseleave="resetCard(event)">
         <span class="material-symbols-outlined close-icon" onclick="window.location.href='../'">close</span>
-        <h2>Personal User Card</h2>
+        <h2>Persönliche Benutzerkarte</h2>
         <br>
-        <img class="pfp" src="../media/cdn/pfp/MrKoby4purple.png" alt="Profile Picture" draggable="false" ondragstart="return false" onclick="clown()">
-        <p>Hi there! :D</p>
+        <img class="pfp" src="../../media/cdn/pfp/MrKoby4purple.png" alt="Profile Picture" draggable="false" ondragstart="return false" onclick="clown()">
+        <p>Hey! :D</p>
         <br>
-        <p>My name is Korbi and I'm a developer and I like to try different computer things.</p>
+        <p>Mein Name ist Korbi und ich bin ein Entwickler. Ich mag es, verschiedene Computerdinge auszuprobieren.</p>
+        <p>Ich lerne ziemlich konsequent und finde Freude darin, kleine Probleme zu finden und zu beheben.</p>
         <br>
-        <h3>Buttons</h3>
+        <h3>Knöpfe</h3>
 
         <!-- add more info here -->
     </div>

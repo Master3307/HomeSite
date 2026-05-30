@@ -4,7 +4,7 @@
 :root {
   /* Dark Theme (Default) */
   --bg-primary: #1a1a1a;
-  --bg-secondary: #291d4f;
+  --bg-secondary: #291D4F;
   --text-primary: #ffffff;
   --text-secondary: #c0bfe6;
   --accent: #3d29d4; /* indigo-purple */
@@ -107,12 +107,12 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background-image: url("cdn/city.jpg");
+  background-image: linear-gradient(var(--bg-secondary), rgb(0, 0, 0));
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  filter: saturate(2) brightness(0.38);
   pointer-events: none;
+
 }
 
 .card {
@@ -179,4 +179,14 @@ body::before {
   border-color: var(--accent);
   transform: scale(1.05);
   box-shadow: 0 0 48px rgba(0, 0, 0, 0.18), 0 0 0 4px rgba(108, 92, 231, 0.14);
+}
+
+
+.uhh {
+  display: block;
+  width: 120px;
+  height: auto;
+  margin: 16px auto 0;
+  opacity: 0.8;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
