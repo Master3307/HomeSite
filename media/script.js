@@ -164,56 +164,100 @@ async function confused() {
 
 // language selector
 const LANGUAGE_KEY = "preferredLanguage";
+let AVAILABLE_LANGUAGES = [];
+
+function isValidLanguage(lang) {
+  return AVAILABLE_LANGUAGES.includes(lang);
+}
 
 function getPathLanguage(path) {
-  if (path.startsWith("/de/") || path === "/de") return "de";
-  if (path.startsWith("/en/") || path === "/en") return "en";
-  return null;
+  const parts = path.split("/").filter(Boolean);
+  const firstPart = parts[0];
+  return isValidLanguage(firstPart) ? firstPart : null;
 }
 
 function buildLanguagePath(path, lang) {
-  if (path.startsWith("/de/")) return path.replace("/de/", `/${lang}/`);
-  if (path === "/de") return `/${lang}`;
-  if (path.startsWith("/en/")) return path.replace("/en/", `/${lang}/`);
-  if (path === "/en") return `/${lang}`;
+  const parts = path.split("/").filter(Boolean);
+
+  if (parts.length > 0 && isValidLanguage(parts[0])) {
+    parts[0] = lang;
+    return "/" + parts.join("/");
+  }
+
   return `/${lang}${path.startsWith("/") ? path : "/" + path}`;
 }
 
 function switchLanguage(lang) {
+  if (!isValidLanguage(lang)) return;
+
   localStorage.setItem(LANGUAGE_KEY, lang);
 
   const newPath = buildLanguagePath(window.location.pathname, lang);
   window.location.href = newPath + window.location.search + window.location.hash;
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+async function initLanguagePicker() {
   const select = document.getElementById("language-select");
   const path = window.location.pathname;
-
-  const currentLang = getPathLanguage(path);
   const savedLang = localStorage.getItem(LANGUAGE_KEY);
 
-  if (select) {
-    select.value = currentLang || savedLang || "en";
+  try {
+    const response = await fetch("/media/languages.json");
+    const languages = await response.json();
 
-    select.addEventListener("change", (e) => {
-      switchLanguage(e.target.value);
-    });
-  }
+    AVAILABLE_LANGUAGES = languages.map(lang => lang.code);
 
-  // Redirect only if URL has no language yet and a preference exists
-  if (!currentLang && (savedLang === "de" || savedLang === "en")) {
-    const newPath = buildLanguagePath(path, savedLang);
-    window.location.href = newPath + window.location.search + window.location.hash;
+    if (select) {
+      select.innerHTML = "";
+
+      languages.forEach(({ code, label }) => {
+        const option = document.createElement("option");
+        option.value = code;
+        option.textContent = label;
+        select.add(option);
+      });
+    }
+
+    const currentLang = getPathLanguage(path);
+    const fallbackLang = isValidLanguage("en") ? "en" : AVAILABLE_LANGUAGES[0];
+    const activeLang =
+      currentLang ||
+      (isValidLanguage(savedLang) ? savedLang : null) ||
+      fallbackLang;
+
+    if (select) {
+      select.value = activeLang;
+
+      select.addEventListener("change", (e) => {
+        switchLanguage(e.target.value);
+      });
+    }
+
+    if (!currentLang && isValidLanguage(savedLang)) {
+      const newPath = buildLanguagePath(path, savedLang);
+      window.location.href = newPath + window.location.search + window.location.hash;
+    }
+  } catch (error) {
+    console.error("Failed to load language options:", error);
   }
-});
+}
+
+document.addEventListener("DOMContentLoaded", initLanguagePicker);
 
 
 // theme picker
 const THEME_KEY = "preferredTheme";
 
+function updateThemeIcon(theme) {
+  const icon = document.getElementById("theme-icon");
+  if (!icon) return;
+
+  icon.textContent = theme === "light" ? "light_mode" : "dark_mode";
+}
+
 function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
+  updateThemeIcon(theme);
 }
 
 function switchTheme(theme) {
@@ -224,11 +268,7 @@ function switchTheme(theme) {
 document.addEventListener("DOMContentLoaded", () => {
   const select = document.getElementById("theme-select");
   const savedTheme = localStorage.getItem(THEME_KEY);
-
-  const theme =
-    savedTheme === "light" || savedTheme === "dark"
-      ? savedTheme
-      : "dark";
+  const theme = savedTheme === "light" ? "light" : "dark";
 
   applyTheme(theme);
 
