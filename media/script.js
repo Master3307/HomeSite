@@ -1,4 +1,5 @@
 // card tilt. kinda stolen lol
+// check out https://stormxxboy.com/card/
 function tiltCard(event) {
   const card = document.getElementById("card");
   if (!card) return;
