@@ -3,8 +3,8 @@
 /* Color Presets */
 /* Dark Theme (Default) */
 :root {
-  --bg-primary: #000000;
-  --bg-secondary: #291d4f;
+  --bg-primary: #0d0714;
+  --bg-secondary: #63369e;
   --text-primary: #ffffff;
   --text-secondary: #c0bfe6;
   --text-thirdary: #dfdfdf;
@@ -17,7 +17,7 @@
 /* Optional system fallback for users with no manual selection */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
-    --bg-primary: #ffffff;
+    --bg-primary: #b28ee1;
     --bg-secondary: #8859c6;
     --text-primary: #ffffff;
     --text-secondary: #c1bdce;
@@ -31,7 +31,7 @@
 
 /* Manual override: dark */
 :root[data-theme="dark"] {
-  --bg-primary: #000000;
+  --bg-primary: #0d0714;
   --bg-secondary: #63369e;
   --text-primary: #ffffff;
   --text-secondary: #c0bfe6;
@@ -44,7 +44,7 @@
 
 /* Manual override: light */
 :root[data-theme="light"] {
-  --bg-primary: #ffffff;
+  --bg-primary: #b28ee1;
   --bg-secondary: #8859c6;
   --text-primary: #ffffff;
   --text-secondary: #c1bdce;
