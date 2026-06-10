@@ -7,8 +7,6 @@
     <title>Karte – MrKoby07</title>
     <link rel="stylesheet" href="/media/style.css" />
     <link rel="icon" href="/media/favicon.svg" type="image/svg+xml" />
-    <!-- please fucking change this, it's ugly as shit. -->
-
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -42,14 +40,13 @@
         <!-- add more info here -->
     </div>
     <div class="language-picker">
-        <label for="language-select">
-            <span class="material-symbols-outlined">language</span>
-        </label>
+      <label for="language-select">
+        <span class="material-symbols-outlined">language</span>
+      </label>
 
-        <select id="language-select" onchange="switchLanguage(this.value)">
-            <option value="en">English</option>
-            <option value="de">Deutsch</option>
-        </select>
+      <select id="language-select" onchange="switchLanguage(this.value)">
+        <!-- populated dynamically -->
+      </select>
     </div>
     <div class="theme-picker">
         <label for="theme-select">

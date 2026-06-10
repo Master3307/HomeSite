@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-
+<!-- TODO: make this the template and fill the rest out dynamically -->
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -42,6 +42,15 @@
             <button type="button" onclick="window.location.href='/'">Go Home</button>
             <button type="button" onclick="window.location.reload()">Reload</button>
         </div>
+    </div>
+    <div class="language-picker">
+      <label for="language-select">
+        <span class="material-symbols-outlined">language</span>
+      </label>
+
+      <select id="language-select" onchange="switchLanguage(this.value)">
+        <!-- populated dynamically -->
+      </select>
     </div>
     <div class="theme-picker">
         <label for="theme-select">
