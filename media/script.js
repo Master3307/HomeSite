@@ -164,27 +164,27 @@ async function confused() {
 
 // language selector
 const LANGUAGE_KEY = "preferredLanguage";
-let AVAILABLE_LANGUAGES = [];
+let availableLanguages = [];
 
 function isValidLanguage(lang) {
-  return AVAILABLE_LANGUAGES.includes(lang);
+  return availableLanguages.includes(lang);
 }
 
 function getPathLanguage(path) {
   const parts = path.split("/").filter(Boolean);
-  const firstPart = parts[0];
-  return isValidLanguage(firstPart) ? firstPart : null;
+  return parts.length && isValidLanguage(parts[0]) ? parts[0] : null;
 }
 
 function buildLanguagePath(path, lang) {
   const parts = path.split("/").filter(Boolean);
 
-  if (parts.length > 0 && isValidLanguage(parts[0])) {
+  if (parts.length && isValidLanguage(parts[0])) {
     parts[0] = lang;
-    return "/" + parts.join("/");
+  } else {
+    parts.unshift(lang);
   }
 
-  return `/${lang}${path.startsWith("/") ? path : "/" + path}`;
+  return "/" + parts.join("/");
 }
 
 function switchLanguage(lang) {
@@ -193,50 +193,59 @@ function switchLanguage(lang) {
   localStorage.setItem(LANGUAGE_KEY, lang);
 
   const newPath = buildLanguagePath(window.location.pathname, lang);
-  window.location.href = newPath + window.location.search + window.location.hash;
+  const target = newPath + window.location.search + window.location.hash;
+
+  if (target !== window.location.pathname + window.location.search + window.location.hash) {
+    window.location.href = target;
+  }
 }
 
 async function initLanguagePicker() {
   const select = document.getElementById("language-select");
+  if (!select) return;
+
   const path = window.location.pathname;
   const savedLang = localStorage.getItem(LANGUAGE_KEY);
 
   try {
-    const response = await fetch("/media/languages.json");
-    const languages = await response.json();
-
-    AVAILABLE_LANGUAGES = languages.map(lang => lang.code);
-
-    if (select) {
-      select.innerHTML = "";
-
-      languages.forEach(({ code, label }) => {
-        const option = document.createElement("option");
-        option.value = code;
-        option.textContent = label;
-        select.add(option);
-      });
+    const response = await fetch("/media/language.json");
+    if (!response.ok) {
+      throw new Error(`Failed to load languages: ${response.status}`);
     }
+
+    const languages = await response.json();
+    if (!Array.isArray(languages) || languages.length === 0) {
+      throw new Error("Language list is empty");
+    }
+
+    availableLanguages = languages.map(({ value: code }) => code);
+
+    select.innerHTML = "";
+
+    languages.forEach(({ value: code, label }) => {
+      const option = document.createElement("option");
+      option.value = code;
+      option.textContent = label;
+      select.add(option);
+    });
 
     const currentLang = getPathLanguage(path);
-    const fallbackLang = isValidLanguage("en") ? "en" : AVAILABLE_LANGUAGES[0];
+    const fallbackLang = isValidLanguage("en") ? "en" : availableLanguages[0];
     const activeLang =
       currentLang ||
-      (isValidLanguage(savedLang) ? savedLang : null) ||
+      (savedLang && isValidLanguage(savedLang) ? savedLang : null) ||
       fallbackLang;
 
-    if (select) {
-      select.value = activeLang;
-
-      select.addEventListener("change", (e) => {
-        switchLanguage(e.target.value);
-      });
+    if (!currentLang) {
+      const normalized = buildLanguagePath(path, activeLang) + window.location.search + window.location.hash;
+      window.location.replace(normalized);
+      return;
     }
 
-    if (!currentLang && isValidLanguage(savedLang)) {
-      const newPath = buildLanguagePath(path, savedLang);
-      window.location.href = newPath + window.location.search + window.location.hash;
-    }
+    select.value = activeLang;
+    select.addEventListener("change", (e) => {
+      switchLanguage(e.target.value);
+    });
   } catch (error) {
     console.error("Failed to load language options:", error);
   }
