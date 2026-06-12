@@ -41,3 +41,16 @@ yayyyy
 it's basically a follow-up to the previous note..
 and also because I wanna test some commit thing lol. you are out of power here hahaahah
 
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+alright so from recent commits, I plan to change the structure a lot.
+I already sorted all the files in assets nicely but I still need to rewrite all the code for it.
+also I want to make one file version for each language to use /locales to change that.
+
+that will need a lot of work too especially with the other thing I am doing now.
+I guess I read that it has worse SEO with that but I don't really care much.
+I want my site to work better for the individual user.
