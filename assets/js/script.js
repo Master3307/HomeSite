@@ -31,7 +31,7 @@ function resetCard(event) {
 const playingClownAudios = new Set();
 
 async function clown() {
-  const candidates = ["/media/cdn/clown.mp3"];
+  const candidates = ["/assets/audio/clown.mp3"];
   for (const src of candidates) {
     try {
       const audio = new Audio(src);
@@ -80,7 +80,7 @@ async function clown() {
 const playingConfusedAudios = new Set();
 
 async function confused() {
-  const candidates = ["../../media/cdn/confuse.mp3"];
+  const candidates = ["/assets/audio/confuse.mp3"];
 
   for (const src of candidates) {
     try {
@@ -208,7 +208,7 @@ async function initLanguagePicker() {
   const savedLang = localStorage.getItem(LANGUAGE_KEY);
 
   try {
-    const response = await fetch("/media/language.json");
+    const response = await fetch("/locales/lang-options.json");
     if (!response.ok) {
       throw new Error(`Failed to load languages: ${response.status}`);
     }
