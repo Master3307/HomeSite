@@ -79,3 +79,10 @@ I want my site to work better for the individual user.
 
 hey! It's the 29.06.026 and I am working on this again. will care about the migratin to my new file structure for now!
 that includes error pages and re-doing the entire translation system :D
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+fuck it, I'll convert this to some dynamic shit with JS and everything. no static, no more!
