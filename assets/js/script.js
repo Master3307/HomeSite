@@ -208,7 +208,7 @@ async function initLanguagePicker() {
   const savedLang = localStorage.getItem(LANGUAGE_KEY);
 
   try {
-    const response = await fetch("/locales/lang-options.json");
+    const response = await fetch("/assets/i18n/lang-options.json");
     if (!response.ok) {
       throw new Error(`Failed to load languages: ${response.status}`);
     }
