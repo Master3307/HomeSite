@@ -84,3 +84,6 @@ venv/
 .env.*
 
 
+# Personal #
+############
+assets/img/city.jpg
