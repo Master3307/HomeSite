@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - MrKoby07</title>
+    <script src="/media/script.js"></script>
+</head>
+
+<body>
+    <script>
+        // Supported languages - add or remove languages here
+        const SUPPORTED_LANGUAGES = ['en', 'de'];
+        const DEFAULT_LANGUAGE = 'en';
+
+        // Get user's browser language
+        const browserLang = navigator.language.split('-')[0]; // e.g., "en" from "en-US"
+
+        // Determine which language to use
+        let targetLang = SUPPORTED_LANGUAGES.includes(browserLang)
+            ? browserLang
+            : DEFAULT_LANGUAGE;
+
+        // Simple redirect to language directory
+        const redirectUrl = `./${targetLang}/`;
+
+        window.location.href = redirectUrl;
+    </script>
+</body>
+
+</html>
