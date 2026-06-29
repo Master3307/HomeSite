@@ -86,3 +86,45 @@ that includes error pages and re-doing the entire translation system :D
 
 
 fuck it, I'll convert this to some dynamic shit with JS and everything. no static, no more!
+
+plan:
+
+.
+├── public/
+│   ├── CNAME
+│   ├── favicon.png
+│   ├── audio/
+│   │   ├── clown.mp3
+│   │   └── confuse.mp3
+│   ├── i18n/
+│   │   ├── de.json
+│   │   ├── en.json
+│   │   └── lang-options.json
+│   └── img/
+│       ├── city.jpg
+│       ├── favicon.svg
+│       ├── uhh.png
+│       └── pfp/
+├── src/
+│   ├── assets/
+│   ├── components/
+│   │   ├── Header.jsx
+│   │   ├── LanguageSwitcher.jsx
+│   │   └── ErrorTemplate.jsx
+│   ├── pages/
+│   │   ├── Home.jsx
+│   │   ├── Card.jsx
+│   │   └── ErrorPage.jsx
+│   ├── styles/
+│   │   └── style.css
+│   ├── i18n/
+│   │   └── useI18n.js
+│   ├── App.jsx
+│   └── main.jsx
+├── index.html
+├── package.json
+└── vite.config.js
+
+
+I was recommended vite+react as easy but strong react based solution.
+will see lol. can't do it now. must do some other things. this will be fun for sure...
