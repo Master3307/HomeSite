@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router";
 
@@ -12,6 +13,7 @@ import { resetCard, tiltCard } from "../lib/tilt.js";
 import styles from "../styles/error.module.css";
 
 
+
 const ERROR_THEME = {
   "--bg-secondary": "#970000",
   "--accent": "#b60b0b",
@@ -24,6 +26,7 @@ export default function Error({ forcedCode }) {
   const params = new URLSearchParams(location.search);
   const code = String(forcedCode || params.get("code") || "template");
   const errorInfo = getErrorMessage(code);
+  const { t } = useTranslation();
 
   useEffect(() => {
     document.title = `${errorInfo.title} – MrKoby07`;
@@ -55,7 +58,7 @@ export default function Error({ forcedCode }) {
     <div className={styles.errorPage}>
       <header className="head">
         <h1 className="tit">
-          Error of<b>&nbsp;MrKoby07</b>
+          {t('error.title')} <b>&nbsp;MrKoby07</b>
         </h1>
       </header>
 
