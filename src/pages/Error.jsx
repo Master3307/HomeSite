@@ -4,8 +4,8 @@ import ThemeSwitch from "../components/ThemeSwitch.jsx";
 import { getErrorMessage } from "../lib/error.js";
 import styles from "../styles/error.module.css";
 import { tiltCard, resetCard } from "../lib/tilt.js";
-import { playAudio } from '../lib/play-audio.js'
-import LanguageSwitch from '../components/LanguageSwitch.jsx'
+import { playAudio } from "../lib/play-audio.js";
+import LanguageSwitch from "../components/LanguageSwitch.jsx";
 
 const ERROR_THEME = {
   "--bg-secondary": "#970000",
@@ -15,10 +15,10 @@ const ERROR_THEME = {
 };
 
 export default function Error({ forcedCode }) {
-  const location = useLocation()
-  const params = new URLSearchParams(location.search)
-  const code = String(forcedCode || params.get('code') || 'template')
-  const errorInfo = getErrorMessage(code)
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const code = String(forcedCode || params.get("code") || "template");
+  const errorInfo = getErrorMessage(code);
 
   useEffect(() => {
     document.title = `${errorInfo.title} – MrKoby07`;
@@ -62,8 +62,23 @@ export default function Error({ forcedCode }) {
         <h2>{errorInfo.title}</h2>
         <p>{errorInfo.message}</p>
 
-        <img className="uhh" src="/img/uhh.png" alt="uhh" onClick={() => playAudio('/audio/confuse.mp3', { fadeOut: true, fadeDuration: 0.6 })} />
-
+        <img
+          className="uhh"
+          src="/img/uhh-md.webp"
+          srcSet="
+    /img/uhh-sm.webp 320w,
+    /img/uhh-md.webp 640w,
+    /img/uhh-lg.webp 1024w
+  "
+          sizes="(max-width: 640px) 320px, (max-width: 1024px) 640px, 1024px"
+          alt="uhh"
+          onClick={() =>
+            playAudio("/audio/confuse.mp3", {
+              fadeOut: true,
+              fadeDuration: 0.6,
+            })
+          }
+        />
         <br />
 
         <div className={styles.errorButtons}>
