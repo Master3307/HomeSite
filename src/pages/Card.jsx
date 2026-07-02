@@ -34,14 +34,26 @@ export default function Card() {
         <h2>Personal User Card</h2>
         <br />
 
-        <img
-          className="pfp"
-          src="/img/pfp/MrKoby07animated.gif"
-          alt="Profile Picture"
-          draggable={false}
-          onDragStart={(e) => e.preventDefault()}
+        <div
+          className="pfp-wrap"
           onClick={() => playAudio('/audio/clown.mp3')}
-        />
+        >
+          <img
+            className="pfp"
+            src="/img/pfp/MrKoby07animated.gif"
+            alt="Profile Picture"
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+          />
+
+          <img
+            className="pfp-decoration"
+            src="https://cdn.discordapp.com/avatar-decoration-presets/a_8c18ac604dd50ec43d571f18af63c79f.png"
+            alt=""
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+          />
+        </div>
 
         <p>Hi there! :D</p>
         <br />
