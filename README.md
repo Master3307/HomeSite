@@ -15,3 +15,11 @@ It was so purely written with AI and so bloated, that it felt kind of unusable a
 Why I rewrote? It's much more fun to say my backend is Vite+React instead of "static".
 
 To that, I wanted more functionality and more dynamic stuff that wouldn't have been possible with a static page.
+
+## Translation
+
+Support in Translation is always Welcome!
+
+Status:
+
+[![Translation status](http://weblate.master3307.org/widget/homesite/multi-auto.svg)](http://weblate.master3307.org/engage/homesite/)
