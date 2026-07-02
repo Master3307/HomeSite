@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home – MrKoby07</title>
+    <link rel="stylesheet" href="/assets/css/style.css" />
+    <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Oi&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0"
+    />
+    <script src="/assets/js/script.js"></script>
+  </head>
+
+  <body>
+    <header class="head">
+      <h1 class="tit">Home of<b>&nbsp;MrKoby07</b></h1>
+    </header>
+    <div id="card" class="card">
+      <h2>Greetings!</h2>
+      <p>You must have found this Website!</p>
+      <br />
+      <p>That is very nice, you know. Feel free to look around!</p>
+      <br />
+      <p>View my User Info and see more Projects here:</p>
+      <button onclick="window.location.href = 'card/'">
+        View User Card <span class="material-symbols-outlined"> id_card </span>
+      </button>
+    </div>
+
+    <div class="card" style="margin-top: 32px">
+      <h2>About This Website</h2>
+      <p>
+        This is a personal website of mine, where I share some of my projects
+        and information about myself.
+      </p>
+    </div>
+<!--
+    <div class="language-picker">
+      <label for="language-select">
+        <span class="material-symbols-outlined">language</span>
+      </label>
+
+      <select id="language-select" onchange="switchLanguage(this.value)">
+      </select>
+    </div>
+-->
+
+    <div class="language-picker temp">
+        <p>Lang Select is Temporarily Disabled</p>
+    </div>
+
+    
+    <div class="theme-picker">
+      <label for="theme-select">
+        <span id="theme-icon" class="material-symbols-outlined">dark_mode</span>
+      </label>
+
+      <select id="theme-select" onchange="switchTheme(this.value)">
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+      </select>
+    </div>
+  </body>
+</html>
+
+<!-- hii there! :D  -->
+<!-- having fun looking through my code? :3 -->

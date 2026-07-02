@@ -83,6 +83,19 @@ venv/
 .env
 .env.*
 
+# Vite / React / pnpm #
+#######################
+node_modules/
+dist/
+dist-ssr/
+coverage/
+*.local
+pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+.oxlint
 
 # Personal #
 ############
