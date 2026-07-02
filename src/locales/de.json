@@ -23,5 +23,35 @@
     },
     "error": {
         "title": "Fehler von"
+    },
+    "errors": {
+        "template": {
+            "title": "Fehler",
+            "message": "Es scheint, dass du auf einen Fehler gestoßen bist."
+        },
+        "403": {
+            "title": "403",
+            "message": "Es scheint, dass du hier nicht Willkommen bist – Verboten."
+        },
+        "404": {
+            "title": "404",
+            "message": "Es scheint, als hättest du eine Seite gefunden, die es gar nicht gibt! – Nicht Gefunden."
+        },
+        "500": {
+            "title": "500",
+            "message": "Es scheint, als hätte der Server einen Fehler – Interner Server Fehler."
+        },
+        "502": {
+            "title": "502",
+            "message": "Es scheint, als hätte der Server einen Fehler – Ungültiges Gateway."
+        },
+        "503": {
+            "title": "503",
+            "message": "Es scheint, als hätte der Server einen Fehler – Dienst Untereichbar."
+        },
+        "504": {
+            "title": "504",
+            "message": "Es scheint, als hätte der Server einen Fehler – Gateway-Zeitüberschreitung."
+        }
     }
 }
