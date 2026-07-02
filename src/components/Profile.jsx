@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getRandomAvatarDecoration } from '../lib/avatar-decoration.js'
 import { playAudio } from '../lib/play-audio.js'
+import PfpGif from './Pfp.jsx'
 
 export default function ProfilePicture() {
   const [decorationSrc] = useState(() => getRandomAvatarDecoration())
@@ -10,13 +11,7 @@ export default function ProfilePicture() {
       className="pfp-wrap"
       onClick={() => playAudio('/audio/clown.mp3')}
     >
-      <img
-        className="pfp"
-        src="/img/pfp/MrKoby07animated.gif"
-        alt="Profile Picture"
-        draggable={false}
-        onDragStart={(e) => e.preventDefault()}
-      />
+      <PfpGif />
 
       <img
         className="pfp-decoration"

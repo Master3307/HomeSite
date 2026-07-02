@@ -1,12 +1,16 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router";
-import ThemeSwitch from "../components/ThemeSwitch.jsx";
-import { getErrorMessage } from "../lib/error.js";
-import styles from "../styles/error.module.css";
-import { tiltCard, resetCard } from "../lib/tilt.js";
-import { playAudio } from "../lib/play-audio.js";
-import LanguageSwitch from "../components/LanguageSwitch.jsx";
+
 import About from "../components/About.jsx";
+import LanguageSwitch from "../components/LanguageSwitch.jsx";
+import ThemeSwitch from "../components/ThemeSwitch.jsx";
+
+import { getErrorMessage } from "../lib/error.js";
+import { playAudio } from "../lib/play-audio.js";
+import { resetCard, tiltCard } from "../lib/tilt.js";
+
+import styles from "../styles/error.module.css";
+
 
 const ERROR_THEME = {
   "--bg-secondary": "#970000",
