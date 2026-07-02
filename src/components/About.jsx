@@ -1,10 +1,14 @@
+import { useTranslation } from 'react-i18next'
+
 export default function About() {
+  const { t } = useTranslation()
+
   return (
     <div className="card about-card">
-      <h2>About This Website</h2>
+      <h2>{t('about.header')}</h2>
       <p>
-        This is my personal website that I work on! <br />
-        Find most of myself on this site!
+        {t('about.description.line1')} <br />
+        {t('about.description.line2')}
       </p>
     </div>
   )

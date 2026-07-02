@@ -1,0 +1,23 @@
+{
+  "theme-switcher": {
+    "dark": "Dunkel",
+    "light": "Hell"
+  },
+  "greeting": {
+    "header": "Servus!",
+    "view-card": "Benutzerkarte ansehen"
+  },
+  "about": {
+    "header": "Über diese Website",
+    "description": {
+      "line1": "Dies ist meine persönliche Website, an der ich arbeite!",
+      "line2": "Finde die meisten Informationen über mich auf dieser Seite!"
+    }
+  },
+  "home": {
+    "title": "Home von MrKoby07"
+  },
+  "card": {
+    "title": "Karte von MrKoby07"
+  }
+}

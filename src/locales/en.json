@@ -1,0 +1,23 @@
+{
+  "theme-switcher": {
+    "dark": "Dark",
+    "light": "Light"
+  },
+  "greeting": {
+    "header": "Greetings!",
+    "view-card": "View User Card"
+  },
+  "about": {
+    "header": "About this Website",
+    "description": {
+      "line1": "This is my personal website that I work on!",
+      "line2": "Find most of myself on this site!"
+    }
+  },
+  "home": {
+    "title": "Home of MrKoby07"
+  },
+  "card": {
+    "title": "Card of MrKoby07"
+  }
+}

@@ -11,8 +11,10 @@
     "images": "node scripts/generate-images.mjs"
   },
   "dependencies": {
+    "i18next": "^26.3.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-i18next": "^17.0.8",
     "react-router": "^8.1.0"
   },
   "devDependencies": {

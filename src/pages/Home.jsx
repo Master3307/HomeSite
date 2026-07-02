@@ -8,6 +8,7 @@ export default function Home() {
 
   return (
     <>
+      <title>Home – MrKoby07</title>
       <header className="head">
         <h1 className="tit">
           Home of<b>&nbsp;MrKoby07</b>
