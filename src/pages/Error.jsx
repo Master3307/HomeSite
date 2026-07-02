@@ -6,6 +6,7 @@ import styles from "../styles/error.module.css";
 import { tiltCard, resetCard } from "../lib/tilt.js";
 import { playAudio } from "../lib/play-audio.js";
 import LanguageSwitch from "../components/LanguageSwitch.jsx";
+import About from "../components/About.jsx";
 
 const ERROR_THEME = {
   "--bg-secondary": "#970000",
@@ -95,6 +96,8 @@ export default function Error({ forcedCode }) {
           </button>
         </div>
       </div>
+
+      <About />
 
       <ThemeSwitch />
       <LanguageSwitch />
