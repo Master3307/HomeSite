@@ -239,6 +239,11 @@ body::before {
   z-index: 3;
   object-fit: contain;
   transition: transform 0.25s ease;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 .pfp-wrap:hover .pfp {
