@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from "react-router";
 import { tiltCard, resetCard } from "../lib/tilt.js";
 import ThemeSwitch from "../components/ThemeSwitch.jsx";
@@ -6,6 +7,7 @@ import Profile from "../components/Profile.jsx";
 import About from '../components/About.jsx'
 
 export default function Card() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
@@ -13,7 +15,7 @@ export default function Card() {
       <title>Card – MrKoby07</title>
       <header className="head">
         <h1 className="tit">
-          Card of<b>&nbsp;MrKoby07</b>
+          {t('card.title')} <b>&nbsp;MrKoby07</b>
         </h1>
       </header>
 
@@ -32,7 +34,7 @@ export default function Card() {
           close
         </span>
 
-        <h2>Personal User Card</h2>
+        <h2>{t('card.header')}</h2>
         <br />
 
         <Profile />

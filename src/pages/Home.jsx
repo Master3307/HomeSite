@@ -1,17 +1,18 @@
-import { useNavigate } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import ThemeSwitch from '../components/ThemeSwitch.jsx'
 import LanguageSwitch from '../components/LanguageSwitch.jsx'
 import About from '../components/About.jsx'
 import Greeting from '../components/Greeting.jsx'
-export default function Home() {
 
+export default function Home() {
+  const { t } = useTranslation()
 
   return (
     <>
       <title>Home – MrKoby07</title>
       <header className="head">
         <h1 className="tit">
-          Home of<b>&nbsp;MrKoby07</b>
+          {t('home.title')} <strong>&nbsp;MrKoby07</strong>
         </h1>
       </header>
 

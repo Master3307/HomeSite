@@ -15,9 +15,10 @@
     }
   },
   "home": {
-    "title": "Home of MrKoby07"
+    "title": "Home of"
   },
   "card": {
-    "title": "Card of MrKoby07"
+    "title": "Card of",
+    "header": "Personal User Card"
   }
 }
