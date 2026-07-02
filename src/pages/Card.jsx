@@ -1,75 +1,67 @@
-<!doctype html>
-<html lang="en">
+import { useNavigate } from "react-router";
+import { tiltCard, resetCard } from "../lib/tilt.js";
+import { playAudio } from '../lib/play-audio.js'
+import ThemeSwitch from "../components/ThemeSwitch.jsx";
+import LanguageSwitch from '../components/LanguageSwitch.jsx'
 
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Card – MrKoby07</title>
-    <link rel="stylesheet" href="/assets/css/style.css" />
-    <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml" />
-    <!-- please fucking change this, it's ugly as shit. -->
+export default function Card() {
+  const navigate = useNavigate();
 
+  return (
+    <>
+      <title>Card – MrKoby07</title>
+      <header className="head">
+        <h1 className="tit">
+          Card of<b>&nbsp;MrKoby07</b>
+        </h1>
+      </header>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Oi&display=swap"
-        rel="stylesheet" />
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" />
-    <script src="/assets/js/script.js"></script>
-</head>
+      <div
+        id="card"
+        className="card"
+        onMouseMove={tiltCard}
+        onMouseLeave={resetCard}
+      >
+        <span
+          className="material-symbols-outlined close-icon"
+          onClick={() => navigate("/")}
+          role="button"
+          tabIndex={0}
+        >
+          close
+        </span>
 
-
-<body>
-    <header class="head">
-        <h1 class="tit">Card of<b>&nbsp;MrKoby07</b></h1>
-    </header>
-    <div id="card" class="card" onmousemove="tiltCard(event)" onmouseleave="resetCard(event)">
-        <span class="material-symbols-outlined close-icon" onclick="window.location.href='../'">close</span>
         <h2>Personal User Card</h2>
-        <br>
-        <img class="pfp" src="/assets/img/pfp/MrKoby4purple.png" alt="Profile Picture" draggable="false"
-            ondragstart="return false" onclick="clown()">
-        <p>Hi there! :D</p>
-        <br>
-        <p>My name is Korbi and I'm a developer and I like to try different computer things.</p>
-        <p>I learn pretty consistently and I find joy in finding and fixing small Problems.</p>
+        <br />
 
-        <br>
+        <img
+          className="pfp"
+          src="/img/pfp/MrKoby07animated.gif"
+          alt="Profile Picture"
+          draggable={false}
+          onDragStart={(e) => e.preventDefault()}
+          onClick={() => playAudio('/audio/clown.mp3')}
+        />
+
+        <p>Hi there! :D</p>
+        <br />
+        <p>
+          My name is Korbi and I'm a developer and I like to try different
+          computer things.
+        </p>
+        <p>
+          I learn pretty consistently and I find joy in finding and fixing small
+          Problems.
+        </p>
+
+        <br />
         <h3>Buttons</h3>
 
-        <!-- add more info here -->
-    </div>
-<!--
-    <div class="language-picker">
-      <label for="language-select">
-        <span class="material-symbols-outlined">language</span>
-      </label>
+        {/* add more info here */}
+      </div>
 
-      <select id="language-select" onchange="switchLanguage(this.value)">
-      </select>
-    </div>
--->
-    <div class="language-picker temp">
-        <p>Lang Select is Temporarily Disabled</p>
-    </div>
-
-
-
-    <div class="theme-picker">
-        <label for="theme-select">
-            <span id="theme-icon" class="material-symbols-outlined">dark_mode</span>
-        </label>
-
-        <select id="theme-select" onchange="switchTheme(this.value)">
-            <option value="dark">Dark</option>
-            <option value="light">Light</option>
-        </select>
-    </div>
-</body>
-
-</html>
-
-<!-- hii there! :D  -->
-<!-- having fun looking through my code? :3 --></br>
+      <ThemeSwitch />
+      <LanguageSwitch />
+    </>
+  );
+}

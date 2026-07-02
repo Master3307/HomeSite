@@ -1,0 +1,15 @@
+.errorPage {
+  --bg-secondary: #970000 !important;
+  --accent: #b60b0b !important;
+  --accent-hover: #610000 !important;
+  --bg-primary: #320505 !important;
+
+}
+
+.errorButtons {
+  display: flex;
+  justify-content: center;
+  gap: 69px;
+  flex-wrap: wrap;
+}
+

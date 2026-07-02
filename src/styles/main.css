@@ -237,12 +237,6 @@ body::before {
     transform 0.3s ease;
 }
 
-.error-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 69px;
-  flex-wrap: wrap;
-}
 
 
 .language-picker {

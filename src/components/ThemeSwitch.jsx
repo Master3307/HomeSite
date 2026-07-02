@@ -1,44 +1,36 @@
-<div class="theme-picker">
-    <label for="theme-select">
-    <span id="theme-icon" class="material-symbols-outlined">dark_mode</span>
-    </label>
+import { useEffect, useState } from 'react'
 
-    <select id="theme-select" onchange="switchTheme(this.value)">
-    <option value="dark">Dark</option>
-    <option value="light">Light</option>
-    </select>
-</div>
+const THEME_KEY = 'preferredTheme'
 
+export default function ThemeSwitch() {
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem(THEME_KEY)
+    return savedTheme === 'light' ? 'light' : 'dark'
+  })
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem(THEME_KEY, theme)
+  }, [theme])
 
-// theme picker
-const THEME_KEY = "preferredTheme";
+  const icon = theme === 'light' ? 'light_mode' : 'dark_mode'
 
-function updateThemeIcon(theme) {
-  const icon = document.getElementById("theme-icon");
-  if (!icon) return;
+  return (
+    <div className="theme-picker">
+      <label htmlFor="theme-select">
+        <span id="theme-icon" className="material-symbols-outlined">
+          {icon}
+        </span>
+      </label>
 
-  icon.textContent = theme === "light" ? "light_mode" : "dark_mode";
+      <select
+        id="theme-select"
+        value={theme}
+        onChange={(e) => setTheme(e.target.value)}
+      >
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+      </select>
+    </div>
+  )
 }
-
-function applyTheme(theme) {
-  document.documentElement.setAttribute("data-theme", theme);
-  updateThemeIcon(theme);
-}
-
-function switchTheme(theme) {
-  localStorage.setItem(THEME_KEY, theme);
-  applyTheme(theme);
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const select = document.getElementById("theme-select");
-  const savedTheme = localStorage.getItem(THEME_KEY);
-  const theme = savedTheme === "light" ? "light" : "dark";
-
-  applyTheme(theme);
-
-  if (select) {
-    select.value = theme;
-  }
-});
