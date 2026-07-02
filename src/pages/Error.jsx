@@ -67,8 +67,8 @@ export default function Error({ forcedCode }) {
         onMouseMove={tiltCard}
         onMouseLeave={resetCard}
       >
-        <h2>{errorInfo.title}</h2>
-        <p>{errorInfo.message}</p>
+        <h2>{t(errorInfo.titleKey)}</h2>
+        <p>{t(errorInfo.messageKey)}</p>
 
         <img
           className="uhh"

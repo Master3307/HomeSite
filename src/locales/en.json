@@ -1,27 +1,58 @@
 {
-    "theme-switcher": {
-        "dark": "Dark",
-        "light": "Light"
-    },
-    "greeting": {
-        "header": "Greetings!",
-        "view-card": "View User Card"
-    },
-    "about": {
-        "header": "About this Website",
-        "description": {
-            "line1": "This is my personal website that I work on!",
-            "line2": "Find most of myself on this site!"
-        }
-    },
-    "home": {
-        "title": "Home of"
-    },
-    "card": {
-        "title": "Card of",
-        "header": "Personal User Card"
-    },
-    "error": {
-        "title": "Error of"
+  "theme-switcher": {
+    "dark": "Dark",
+    "light": "Light"
+  },
+  "greeting": {
+    "header": "Greetings!",
+    "view-card": "View User Card"
+  },
+  "about": {
+    "header": "About this Website",
+    "description": {
+      "line1": "This is my personal website that I work on!",
+      "line2": "Find most of myself on this site!"
     }
+  },
+  "home": {
+    "title": "Home of"
+  },
+  "card": {
+    "title": "Card of",
+    "header": "Personal User Card"
+  },
+  "error": {
+    "title": "Error of"
+  },
+  "errors": {
+    "template": {
+      "title": "Error",
+      "message": "It seems like you encountered an error."
+    },
+    "403": {
+      "title": "403",
+      "message": "It seems like you aren't allowed to access this page – Forbidden."
+    },
+    "404": {
+      "title": "404",
+      "message": "It seems like you've found a page that doesn't exist – Not Found."
+    },
+    "500": {
+      "title": "500",
+      "message": "It seems like there was an error on the server – Internal Server Error."
+    },
+    "502": {
+      "title": "502",
+      "message": "502",
+      "message": "It seems like there was an error on the server – Bad Gateway."
+    },
+    "503": {
+      "title": "503",
+      "message": "It seems like there was an error on the server – Service Unavailable."
+    },
+    "504": {
+      "title": "504",
+      "message": "It seems like there was an error on the server – Gateway Timeout."
+    }
+  }
 }

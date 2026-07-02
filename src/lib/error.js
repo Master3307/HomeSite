@@ -1,31 +1,31 @@
 const ERROR_MESSAGES = {
   template: {
-    title: 'Error',
-    message: 'It seems like you encountered an Error.',
+    titleKey: 'errors.template.title',
+    messageKey: 'errors.template.message',
   },
   403: {
-    title: '403',
-    message: "It seems like you aren't allowed to access this page – Forbidden.",
+    titleKey: 'errors.403.title',
+    messageKey: 'errors.403.message',
   },
   404: {
-    title: '404',
-    message: "It seems like you've found a page that doesn't exist – Not Found.",
+    titleKey: 'errors.404.title',
+    messageKey: 'errors.404.message',
   },
   500: {
-    title: '500',
-    message: 'It seems like there was an error on the server – Internal Server Error.',
+    titleKey: 'errors.500.title',
+    messageKey: 'errors.500.message',
   },
   502: {
-    title: '502',
-    message: 'It seems like there was an error on the server – Bad Gateway.',
+    titleKey: 'errors.502.title',
+    messageKey: 'errors.502.message',
   },
   503: {
-    title: '503',
-    message: 'It seems like there was an error on the server – Service Unavailable.',
+    titleKey: 'errors.503.title',
+    messageKey: 'errors.503.message',
   },
   504: {
-    title: '504',
-    message: 'It seems like there was an error on the server – Gateway Timeout.',
+    titleKey: 'errors.504.title',
+    messageKey: 'errors.504.message',
   },
 }
 
