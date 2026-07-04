@@ -29,7 +29,7 @@ export default function Error({ forcedCode }) {
   const { t } = useTranslation();
 
   useEffect(() => {
-    document.title = `${errorInfo.title} – MrKoby07`;
+    document.title = `${t(errorInfo.titleKey)} – MrKoby07`;
 
     const root = document.documentElement;
     const previous = {
@@ -52,13 +52,15 @@ export default function Error({ forcedCode }) {
         }
       });
     };
-  }, [errorInfo.title]);
+  }, [errorInfo.titleKey, t]);
 
   return (
+   <>
+
     <div className={styles.errorPage}>
       <header className="head">
         <h1 className="tit">
-          {t('error.title')} <b>&nbsp;MrKoby07</b>
+          {t('errorPage.titlePrefix')} <b>&nbsp;MrKoby07</b>
         </h1>
       </header>
 
@@ -109,5 +111,6 @@ export default function Error({ forcedCode }) {
       <ThemeSwitch />
       <LanguageSwitch />
     </div>
+    </>
   );
 }

@@ -31,8 +31,8 @@ export default function ThemeSwitch() {
         value={theme}
         onChange={(e) => setTheme(e.target.value)}
       >
-        <option value="dark">{t('theme-switcher.dark')}</option>
-        <option value="light">{t('theme-switcher.light')}</option>
+        <option value="dark">{t('themeSwitcher.darkLabel')}</option>
+        <option value="light">{t('themeSwitcher.lightLabel')}</option>
       </select>
     </div>
   )

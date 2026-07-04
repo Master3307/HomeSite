@@ -5,10 +5,10 @@ export default function About() {
 
   return (
     <div className="card about-card">
-      <h2>{t('about.header')}</h2>
+      <h2>{t('aboutPage.header')}</h2>
       <p>
-        {t('about.description.line1')} <br />
-        {t('about.description.line2')}
+        {t('aboutPage.introText')} <br />
+        {t('aboutPage.summaryText')}
       </p>
     </div>
   )

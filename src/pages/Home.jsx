@@ -12,7 +12,7 @@ export default function Home() {
       <title>Home – MrKoby07</title>
       <header className="head">
         <h1 className="tit">
-          {t('home.title')} <strong>&nbsp;MrKoby07</strong>
+          {t('home.titlePrefix')} <strong>&nbsp;MrKoby07</strong>
         </h1>
       </header>
 

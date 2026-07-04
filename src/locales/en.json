@@ -1,28 +1,28 @@
 {
-  "theme-switcher": {
-    "dark": "Dark",
-    "light": "Light"
-  },
-  "greeting": {
-    "header": "Greetings!",
-    "view-card": "View User Card"
-  },
-  "about": {
-    "header": "About this Website",
-    "description": {
-      "line1": "This is my personal website that I work on!",
-      "line2": "Find most of myself on this site!"
-    }
+  "themeSwitcher": {
+    "darkLabel": "Dark",
+    "lightLabel": "Light"
   },
   "home": {
-    "title": "Home of"
+    "greetingHeader": "Greetings!",
+    "viewCardButton": "View User Card",
+    "titlePrefix": "Home of"
   },
-  "card": {
-    "title": "Card of",
-    "header": "Personal User Card"
+  "aboutPage": {
+    "header": "About this Website",
+    "introText": "This is my personal website that I work on!",
+    "summaryText": "Find most of myself on this site!"
   },
-  "error": {
-    "title": "Error of"
+  "profileCard": {
+    "pageTitlePrefix": "Card of",
+    "cardHeader": "Personal User Card",
+    "greeting": "Hi there! :D",
+    "introName": "My name is Korbi and I'm a developer and I like to try different computer things.",
+    "introLearning": "I learn pretty consistently and I find joy in finding and fixing small problems.",
+    "buttonsHeader": "Buttons"
+  },
+  "errorPage": {
+    "titlePrefix": "Error of"
   },
   "errors": {
     "template": {
@@ -43,7 +43,6 @@
     },
     "502": {
       "title": "502",
-      "message": "502",
       "message": "It seems like there was an error on the server – Bad Gateway."
     },
     "503": {

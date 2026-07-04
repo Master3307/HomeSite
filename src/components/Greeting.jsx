@@ -7,9 +7,9 @@ export default function Greeting() {
 
   return (
     <div id="card" className="card">
-      <h2>{t('greeting.header')}</h2>
+      <h2>{t('home.greetingHeader')}</h2>
       <button onClick={() => navigate('/card')}>
-        {t('greeting.view-card')}
+        {t('home.viewCardButton')}
         <span className="material-symbols-outlined">id_card</span>
       </button>
     </div>
