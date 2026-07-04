@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { tiltCard, resetCard } from "../lib/tilt.js";
 
-export default function Card({ tiltCard, resetCard }) {
+export default function Card() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
