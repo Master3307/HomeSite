@@ -3,25 +3,34 @@ import { initReactI18next } from 'react-i18next'
 
 const LANGUAGE_KEY = 'preferredLanguage'
 
-const localeModules = import.meta.glob('../locales/*.json', {
+const localeModules = import.meta.glob('../locales/*/*.json', {
   eager: true,
   import: 'default',
 })
 
 const resources = Object.entries(localeModules).reduce((acc, [path, messages]) => {
-  const match = path.match(/\/([a-zA-Z-]+)\.json$/)
+  const match = path.match(/\/([a-zA-Z-]+)\/([a-zA-Z0-9-_]+)\.json$/)
   if (!match) return acc
 
-  const code = match[1]
+  const [, language, namespace] = match
 
-  acc[code] = {
-    translation: messages,
+  if (!acc[language]) {
+    acc[language] = {}
   }
 
+  acc[language][namespace] = messages
   return acc
 }, {})
 
 const supportedLngs = Object.keys(resources)
+
+const namespaces = Array.from(
+  new Set(
+    Object.values(resources).flatMap((languageResources) =>
+      Object.keys(languageResources)
+    )
+  )
+)
 
 function normalizeLanguage(code) {
   if (!code) return null
@@ -68,8 +77,9 @@ i18n
     lng: initialLanguage,
     fallbackLng: 'en',
     supportedLngs,
-    ns: ['translation'],
-    defaultNS: 'translation',
+    ns: namespaces,
+    defaultNS: 'common',
+    fallbackNS: 'common',
     resources,
     interpolation: {
       escapeValue: false,
@@ -83,5 +93,5 @@ i18n.on('languageChanged', (lng) => {
   localStorage.setItem(LANGUAGE_KEY, lng)
 })
 
-export { LANGUAGE_KEY, supportedLngs }
+export { LANGUAGE_KEY, supportedLngs, namespaces }
 export default i18n

@@ -5,7 +5,7 @@ import { tiltCard, resetCard } from "../lib/tilt.js";
 
 export default function Card() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t } = useTranslation('card');
 
   return (
     <div
@@ -28,18 +28,18 @@ export default function Card() {
         close
       </span>
 
-      <h2>{t("profileCard.cardHeader")}</h2>
+      <h2>{t("header")}</h2>
       <br />
 
       <Profile />
 
-      <p>{t("profileCard.greeting")}</p>
+      <p>{t("greeting")}</p>
       <br />
-      <p>{t("profileCard.introName")}</p>
-      <p>{t("profileCard.introLearning")}</p>
+      <p>{t("line1")}</p>
+      <p>{t("line2")}</p>
 
       <br />
-      <h3>{t("profileCard.buttonsHeader")}</h3>
+      <h3>{t("buttons")}</h3>
 
       {/* add more info here */}
     </div>

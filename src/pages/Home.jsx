@@ -5,14 +5,14 @@ import About from '../components/About.jsx'
 import Greeting from '../components/Greeting.jsx'
 
 export default function Home() {
-  const { t } = useTranslation()
+  const { t } = useTranslation('title')
 
   return (
     <>
       <title>Home – MrKoby07</title>
       <header className="head">
         <h1 className="tit">
-          {t('home.titlePrefix')} <strong>&nbsp;MrKoby07</strong>
+          {t('home')} <strong>&nbsp;MrKoby07</strong>
         </h1>
       </header>
 

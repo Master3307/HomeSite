@@ -7,7 +7,7 @@ import Cardbox from "../components/Card.jsx";
 import About from '../components/About.jsx'
 
 export default function Card() {
-  const { t } = useTranslation();
+  const { t } = useTranslation('title');
   const navigate = useNavigate();
 
   return (
@@ -15,7 +15,7 @@ export default function Card() {
       <title>Card – MrKoby07</title>
       <header className="head">
         <h1 className="tit">
-          {t('profileCard.pageTitlePrefix')} <b>&nbsp;MrKoby07</b>
+          {t('card')} <b>&nbsp;MrKoby07</b>
         </h1>
       </header>
 

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 const THEME_KEY = 'preferredTheme'
 
 export default function ThemeSwitch() {
-  const { t } = useTranslation()
+  const { t } = useTranslation('themeswitch')
 
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem(THEME_KEY)
@@ -31,8 +31,8 @@ export default function ThemeSwitch() {
         value={theme}
         onChange={(e) => setTheme(e.target.value)}
       >
-        <option value="dark">{t('themeSwitcher.darkLabel')}</option>
-        <option value="light">{t('themeSwitcher.lightLabel')}</option>
+        <option value="dark">{t('dark')}</option>
+        <option value="light">{t('light')}</option>
       </select>
     </div>
   )
