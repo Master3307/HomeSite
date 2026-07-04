@@ -1,0 +1,57 @@
+{
+  "themeSwitcher": {
+    "darkLabel": "Dunkel",
+    "lightLabel": "Hell"
+  },
+  "home": {
+    "greetingHeader": "Ja Servus!",
+    "viewCardButton": "Benutzerkarte ansehen",
+    "titlePrefix": "Home von"
+  },
+  "aboutPage": {
+    "header": "Über diese Website",
+    "introText": "Dies ist meine persönliche Website, an der ich arbeite!",
+    "summaryText": "Finde die meisten Informationen über mich auf dieser Seite!"
+  },
+  "profileCard": {
+    "pageTitlePrefix": "Karte von",
+    "cardHeader": "Persönliche Benutzerkarte",
+    "greeting": "Heyy! :D",
+    "introName": "Mein Name ist Korbi. Ich bin Entwickler und probiere unterschiedliche Computerdinge aus.",
+    "introLearning": "Ich lerne ziemlich gut und finde Freude daran, kleine Probleme zu finden und zu lösen.",
+    "buttonsHeader": "Buttons"
+  },
+  "errorPage": {
+    "titlePrefix": "Fehler von"
+  },
+  "errors": {
+    "template": {
+      "title": "Fehler",
+      "message": "Es scheint, dass du auf einen Fehler gestoßen bist."
+    },
+    "403": {
+      "title": "403",
+      "message": "Es scheint, dass du diese Seite nicht aufrufen darfst – Verboten."
+    },
+    "404": {
+      "title": "404",
+      "message": "Es scheint, als hättest du eine Seite gefunden, die nicht existiert – Nicht gefunden."
+    },
+    "500": {
+      "title": "500",
+      "message": "Es scheint, als wäre auf dem Server ein Fehler aufgetreten – Interner Serverfehler."
+    },
+    "502": {
+      "title": "502",
+      "message": "Es scheint, als wäre auf dem Server ein Fehler aufgetreten – Bad Gateway."
+    },
+    "503": {
+      "title": "503",
+      "message": "Es scheint, als wäre auf dem Server ein Fehler aufgetreten – Dienst nicht verfügbar."
+    },
+    "504": {
+      "title": "504",
+      "message": "Es scheint, als wäre auf dem Server ein Fehler aufgetreten – Gateway-Zeitüberschreitung."
+    }
+  }
+}

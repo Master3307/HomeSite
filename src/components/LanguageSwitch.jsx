@@ -5,6 +5,7 @@ const languageLabels = {
   ua: '🇺🇦 Українська',
   de: '🇩🇪 Deutsch',
   en: '🇬🇧 English',
+  bar: '🥨 Bayrisch', 
 }
 
 export default function LanguageSwitch() {
