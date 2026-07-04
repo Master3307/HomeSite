@@ -2,10 +2,10 @@ import { useTranslation } from 'react-i18next'
 import { supportedLngs } from '../lib/i18n'
 
 const languageLabels = {
-  ua: '🇺🇦 Українська',
+  bar: '🥨 Bayrisch', 
   de: '🇩🇪 Deutsch',
   en: '🇬🇧 English',
-  bar: '🥨 Bayrisch', 
+  ua: '🇺🇦 Українська',
 }
 
 export default function LanguageSwitch() {
