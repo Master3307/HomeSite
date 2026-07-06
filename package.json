@@ -15,7 +15,9 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-i18next": "^17.0.8",
-    "react-router": "^8.1.0"
+    "react-powerglitch": "^1.1.0",
+    "react-router": "^8.1.0",
+    "use-scramble": "^2.2.15"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

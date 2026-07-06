@@ -6,6 +6,8 @@ import { playAudio } from '../lib/play-audio.js'
 
 import styles from '../styles/error.module.css'
 
+
+
 export default function ErrorCard({ errorInfo }) {
   const navigate = useNavigate()
   const { t } = useTranslation('error')
@@ -36,6 +38,8 @@ export default function ErrorCard({ errorInfo }) {
           })
         }
       />
+
+      <br />
 
       <div className={styles.errorButtons}>
         <button type="button" onClick={() => navigate(-1)}>
