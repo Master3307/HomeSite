@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@mongez/sitemap':
+        specifier: ^1.0.2
+        version: 1.0.2
       i18next:
         specifier: ^26.3.4
         version: 26.3.4
@@ -225,6 +228,15 @@ packages:
     engines: {node: '>=20.9.0'}
     cpu: [x64]
     os: [win32]
+
+  '@mongez/fs@3.0.5':
+    resolution: {integrity: sha512-fxOltXo8yj33TEXlFbEvzTwj07pXzHjzJOIz0WaQ70BKhaAW0y/aaj7JGP3aQLsBOuQ5/9/TWNq8yrecGDRe0w==}
+
+  '@mongez/reinforcements@2.4.0':
+    resolution: {integrity: sha512-RkoVe7X3mfct2IHx44fICKhxqcFTWLeaKVEAx6bj9L6+dr+qtkQGCcRP8xv5m6IESCfO8C2RLPtdBeGETg0AYA==}
+
+  '@mongez/sitemap@1.0.2':
+    resolution: {integrity: sha512-4S/1fYAXy5sezvca0WYizFFiSbb3BX0HozIZyI1vRvxxt7BMwJKFnS+l+O4P1zvK0K/1CK9mTdJDRhAadCL6bQ==}
 
   '@napi-rs/wasm-runtime@1.1.6':
     resolution: {integrity: sha512-ZLv/JdUfkvOy9eCnnBaGfiO+XimbjebAeO+MRQqD/B+FR1tnRN0tpKSJHRbE8sFfS6aqsXZ67TQjfwfsxULVbg==}
@@ -878,6 +890,15 @@ snapshots:
 
   '@img/sharp-win32-x64@0.35.3':
     optional: true
+
+  '@mongez/fs@3.0.5': {}
+
+  '@mongez/reinforcements@2.4.0': {}
+
+  '@mongez/sitemap@1.0.2':
+    dependencies:
+      '@mongez/fs': 3.0.5
+      '@mongez/reinforcements': 2.4.0
 
   '@napi-rs/wasm-runtime@1.1.6(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)':
     dependencies:

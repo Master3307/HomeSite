@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && cp dist/index.html dist/404.html",
+    "sitemap": "node scripts/generate-sitemap.mjs",
+    "build": "pnpm run sitemap && vite build && cp dist/index.html dist/404.html",
     "lint": "oxlint",
     "preview": "vite preview",
     "images": "node scripts/generate-images.mjs"
   },
   "dependencies": {
+    "@mongez/sitemap": "^1.0.2",
     "i18next": "^26.3.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
