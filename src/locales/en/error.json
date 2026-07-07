@@ -7,7 +7,7 @@
     "502": "It seems like there was an error on the server – Bad Gateway.",
     "503": "It seems like there was an error on the server – Service Unavailable.",
     "504": "It seems like there was an error on the server – Gateway Timeout.",
-    "back": "◂ Go Back",
-    "home": "⌂ Go Home",
-    "reload": "↺ Reload Page"
+    "back": "Go Back",
+    "home": "Go Home",
+    "reload": "Reload Page"
   }
