@@ -4,11 +4,11 @@ export default function About() {
   const { t } = useTranslation('about')
 
   return (
-    <div className="card about-card">
-      <h2>{t('header')}</h2>
+    <div className="card">
+      <h2>{t('about.header')}</h2>
       <p>
-        {t('line1')} <br />
-        {t('line2')}
+        {t('about.card.line1')} <br />
+        {t('about.card.line2')}
       </p>
     </div>
   )

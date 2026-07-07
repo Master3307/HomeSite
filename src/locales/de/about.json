@@ -1,6 +1,10 @@
 {
-    "header": "Über diese Website",
-    "line1": "Dies ist meine persönliche Website, an der ich arbeite!",
-    "line2": "Finde die meisten Informationen über mich auf dieser Seite!"
+    "about": {
+        "header": "Über diese Website",
+        "card": {
+            "line1": "Dies ist meine persönliche Website, an der ich arbeite!",
+            "line2": "Finde die meisten Informationen über mich auf dieser Seite!"
+        }
+    }
 
 }

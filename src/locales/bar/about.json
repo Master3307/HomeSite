@@ -1,5 +1,9 @@
 {
-    "header": "Wos über de Seitn",
-    "line1": "Des is mei persönliche Seitn, an der i ständig weiter bastel!",
-    "line2": "Fast ois, wos mi ausmacht, findst auf dera Seitn!"
+    "about": {
+        "header": "Wos über de Seitn",
+        "card": {
+            "line1": "Des is mei persönliche Seitn, an der i ständig weiter bastel!",
+            "line2": "Fast ois, wos mi ausmacht, findst auf dera Seitn!"
+        }
+    }
 }
