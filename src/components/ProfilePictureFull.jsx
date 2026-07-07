@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { getRandomAvatarDecoration } from '../lib/avatar-decoration.js'
 import { playAudio } from '../lib/play-audio.js'
-import PfpGif from './Pfp.jsx'
+import PfpGif from './ProfilePicture.jsx'
 
 export default function ProfilePicture() {
   const [decorationSrc] = useState(() => getRandomAvatarDecoration())

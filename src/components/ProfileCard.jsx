@@ -1,4 +1,4 @@
-import Profile from "./Profile";
+import Profile from "./ProfilePictureFull.jsx";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { tiltCard, resetCard } from "../lib/tilt.js";

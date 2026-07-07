@@ -2,8 +2,8 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from "react-router";
 import ThemeSwitch from "../components/ThemeSwitch.jsx";
 import LanguageSwitch from '../components/LanguageSwitch.jsx'
-import Profile from "../components/Profile.jsx";
-import Cardbox from "../components/Card.jsx";
+import Profile from "../components/ProfilePictureFull.jsx";
+import Cardbox from "../components/ProfileCard.jsx";
 import About from '../components/AboutCard.jsx'
 
 export default function Card() {
