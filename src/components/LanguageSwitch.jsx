@@ -12,7 +12,7 @@ const languageLabels = {
 }
 
   return (
-    <div className="language-picker">
+    <div className="picker">
 
       <select
         id="language-select"

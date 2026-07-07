@@ -18,7 +18,7 @@ export default function ThemeSwitch() {
 
 
   return (
-    <div className="theme-picker">
+    <div className="picker" style={{ left: '16px'}}>
 
       <select
         id="theme-select"
