@@ -4,7 +4,7 @@ import ThemeSwitch from "../components/ThemeSwitch.jsx";
 import LanguageSwitch from '../components/LanguageSwitch.jsx'
 import Profile from "../components/Profile.jsx";
 import Cardbox from "../components/Card.jsx";
-import About from '../components/About.jsx'
+import About from '../components/AboutCard.jsx'
 
 export default function Card() {
   const { t } = useTranslation('title');

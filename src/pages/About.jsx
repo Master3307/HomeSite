@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import ThemeSwitch from '../components/ThemeSwitch.jsx'
 import LanguageSwitch from '../components/LanguageSwitch.jsx'
-import About from '../components/AboutCard.jsx'
+import AboutCard from '../components/AboutCard.jsx'
 import Greeting from '../components/Greeting.jsx'
 
 export default function Home() {
@@ -9,15 +9,15 @@ export default function Home() {
 
   return (
     <>
-      <title>Home – MrKoby07</title>
+      <title>About – MrKoby07</title>
       <header className="head">
         <h1 className="tit">
-          {t('home')} <strong>&nbsp;MrKoby07</strong>
+          {t('about')} <strong>&nbsp;MrKoby07</strong>
         </h1>
       </header>
 
-      <Greeting />
-      <About />
+
+      <AboutCard />
       
 
       <ThemeSwitch />

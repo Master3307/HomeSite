@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
 import { useLocation } from 'react-router'
 
-import About from '../components/About.jsx'
+import About from '../components/AboutCard.jsx'
 import LanguageSwitch from '../components/LanguageSwitch.jsx'
 import ThemeSwitch from '../components/ThemeSwitch.jsx'
 import ErrorCard from '../components/ErrorCard.jsx'
