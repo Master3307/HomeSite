@@ -88,9 +88,11 @@ h3 {
   text-align: center;
 }
 
+/***** background color for the header. I think it looks better transparent.
 .head {
   background-color: var(--bg-secondary);
 }
+*/
 
 a:hover {
   color: var(--accent-hover);
