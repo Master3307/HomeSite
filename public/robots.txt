@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://home.master3307.org/sitemap.xml
