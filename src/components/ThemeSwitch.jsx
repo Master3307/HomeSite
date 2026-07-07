@@ -19,11 +19,6 @@ export default function ThemeSwitch() {
 
   return (
     <div className="theme-picker">
-      <label htmlFor="theme-select">
-        <span id="theme-icon" className="material-symbols-outlined">
-          routine
-        </span>
-      </label>
 
       <select
         id="theme-select"
@@ -33,6 +28,13 @@ export default function ThemeSwitch() {
         <option value="dark">{t('dark')}</option>
         <option value="light">{t('light')}</option>
       </select>
+
+      <label htmlFor="theme-select">
+        <span id="theme-icon" className="material-symbols-outlined">
+          routine
+        </span>
+      </label>
+    
     </div>
   )
 }

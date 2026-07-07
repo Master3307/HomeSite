@@ -13,9 +13,6 @@ export default function LanguageSwitch() {
 
   return (
     <div className="language-picker">
-      <label htmlFor="language-select">
-        <span className="material-symbols-outlined">language</span>
-      </label>
 
       <select
         id="language-select"
@@ -28,6 +25,11 @@ export default function LanguageSwitch() {
           </option>
         ))}
       </select>
+
+      <label htmlFor="language-select">
+        <span className="material-symbols-outlined">language</span>
+      </label>
+      
     </div>
   )
 }

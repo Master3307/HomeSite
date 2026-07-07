@@ -105,7 +105,7 @@ button {
   color: var(--text-primary);
   border: none;
   padding: 12px 22px;
-  border-radius: 18px;
+  border-radius: 13px;
   cursor: pointer;
   font-size: 1rem;
   transition:
@@ -155,7 +155,7 @@ body::before {
   margin: 42px auto;
   padding: 28px 26px;
   background: #291d4f81;
-  border-radius: 20px;
+  border-radius: 13px;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   text-align: center;
@@ -283,13 +283,13 @@ body::before {
 
 .language-picker .material-symbols-outlined {
   font-size: 22px;
-  color: var(--text-thirdary);
+  color: var(--text-primary);
 }
 
 .language-picker select {
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 13px;
   background: var(--bg-secondary);
   color: var(--text-primary);
 }
@@ -313,7 +313,7 @@ body::before {
 .theme-picker select {
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 13px;
   background: var(--bg-secondary);
   color: var(--text-primary);
 }
