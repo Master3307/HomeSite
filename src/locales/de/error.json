@@ -7,7 +7,7 @@
     "502": "Es scheint, als wäre auf dem Server ein Fehler aufgetreten – Bad Gateway.",
     "503": "Es scheint, als wäre auf dem Server ein Fehler aufgetreten – Dienst nicht verfügbar.",
     "504": "Es scheint, als wäre auf dem Server ein Fehler aufgetreten – Gateway Timeout.",
-    "back": "◂ Zurück",
-    "home": "⌂ Zur Startseite",
-    "reload": "↺ Seite neu laden"
+    "back": "Zurück",
+    "home": "Zur Startseite",
+    "reload": "Seite neu laden"
 }
