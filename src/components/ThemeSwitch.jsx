@@ -31,7 +31,7 @@ export default function ThemeSwitch() {
 
       <label htmlFor="theme-select">
         <span id="theme-icon" className="material-symbols-outlined">
-          routine
+          palette
         </span>
       </label>
     
