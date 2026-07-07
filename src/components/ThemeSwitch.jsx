@@ -16,13 +16,12 @@ export default function ThemeSwitch() {
     localStorage.setItem(THEME_KEY, theme)
   }, [theme])
 
-  const icon = theme === 'light' ? 'light_mode' : 'dark_mode'
 
   return (
     <div className="theme-picker">
       <label htmlFor="theme-select">
         <span id="theme-icon" className="material-symbols-outlined">
-          {icon}
+          routine
         </span>
       </label>
 
