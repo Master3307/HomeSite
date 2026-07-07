@@ -2,7 +2,7 @@
     "template": "Es scheint, dass du auf einen Fehler gestoßen bist.",
     "templateTitle": "Fehler",
     "403": "Es scheint, dass du diese Seite nicht aufrufen darfst – Verboten.",
-    "404": "Es scheint, als hättest du eine Seite gefunden, die nicht existiert – Nicht gefunden.", 
+    "404": "Es scheint, als hättest du eine Seite gefunden, die nicht existiert – Nicht gefunden.",
     "500": "Es scheint, als wäre auf dem Server ein Fehler aufgetreten – Interner Serverfehler.",
     "502": "Es scheint, als wäre auf dem Server ein Fehler aufgetreten – Bad Gateway.",
     "503": "Es scheint, als wäre auf dem Server ein Fehler aufgetreten – Dienst nicht verfügbar.",
@@ -10,4 +10,4 @@
     "back": "◂ Zurück",
     "home": "⌂ Zur Startseite",
     "reload": "↺ Seite neu laden"
-  }
+}
