@@ -97,6 +97,11 @@ yarn-error.log*
 .eslintcache
 .oxlint
 
-# Personal #
+# Obsidian #
 ############
-assets/img/city.jpg
+*.obsidian/
+
+# MkDocs #
+##########
+/site
+.cache/
