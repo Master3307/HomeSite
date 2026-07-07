@@ -38,8 +38,9 @@ export default function Card() {
       <p>{t("line1")}</p>
       <p>{t("line2")}</p>
 
-      <br />
-      <h3>{t("buttons")}</h3>
+ 
+   {/*<br />
+      <h3>{t("buttons")}</h3>*/}
 
       {/* add more info here */}
     </div>
