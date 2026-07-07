@@ -1,1 +1,8 @@
-{}
+{
+    "languages": {
+        "bar": "🥨 Boarisch",
+        "de": "🇩🇪 Deitsch",
+        "en": "🇬🇧 Englisch",
+        "uk": "🇺🇦 Ukrainisch"
+    }
+}
