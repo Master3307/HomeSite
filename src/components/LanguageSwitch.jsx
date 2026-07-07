@@ -1,15 +1,15 @@
 import { useTranslation } from 'react-i18next'
 import { supportedLngs } from '../lib/i18n'
 
-const languageLabels = {
-  bar: '🥨 Bayrisch', 
-  de: '🇩🇪 Deutsch',
-  en: '🇬🇧 English',
-  uk: '🇺🇦 Українська',
-}
-
 export default function LanguageSwitch() {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation('language')
+
+const languageLabels = {
+  bar: t('languages.bar'), 
+  de: t('languages.de'),
+  en: t('languages.en'),
+  uk: t('languages.uk'),
+}
 
   return (
     <div className="language-picker">
