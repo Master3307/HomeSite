@@ -12,6 +12,7 @@
   --accent: #3d29d4;
   --accent-hover: #5a4bd6;
   --border: #47405b;
+  --link: #00d5ff;
 }
 
 /* Optional system fallback for users with no manual selection */
@@ -70,7 +71,7 @@
 }
 
 a {
-  color: var(--accent);
+  color: var(--link);
   text-decoration: none;
 }
 

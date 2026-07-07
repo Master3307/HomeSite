@@ -10,6 +10,8 @@ export default function About() {
         {t('about.card.line1')} <br />
         {t('about.card.line2')}
       </p>
+      <br />
+      <p dangerouslySetInnerHTML={{ __html: t('about.card.github') }} />
     </div>
   )
 }
