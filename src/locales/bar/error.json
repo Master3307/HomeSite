@@ -5,9 +5,9 @@
     "404": "De Seitn af der du zuagraifn woiltst gibts ned – Ned g'funna.",
     "500": "Do war a Fehler afn Server – Interna Serva Fehla.",
     "502": "Do war a Fehler afn Server – Schlecht's Gateway.",
-    "503": "It seems like there was an error on the server – Service Unavailable.",
-    "504": "It seems like there was an error on the server – Gateway Timeout.",
-    "back": "Go Back",
-    "home": "Go Home",
-    "reload": "Reload Page"
+    "503": "Schaut so aus, als hättst an Fehla dawischt. – Dienst ned Verfügbar.",
+    "504": "Schaut so aus, als hättst an Fehla dawischt – Gateway Timeout.",
+    "back": "Z'ruck",
+    "home": "Geh hoam",
+    "reload": "Nei Lodn"
 }
