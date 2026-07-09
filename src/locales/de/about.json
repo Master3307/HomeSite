@@ -3,8 +3,8 @@
         "header": "Über diese Website",
         "card": {
             "line1": "Dies ist meine persönliche Website, an der ich arbeite!",
-            "line2": "Finde die meisten Informationen über mich auf dieser Seite!"
+            "line2": "Finde die meisten Informationen über mich auf dieser Seite!",
+            "github": "View the source code on <strong><a href=\"https://github.com/Master3307/HomeSite\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a></strong>"
         }
     }
-
 }
