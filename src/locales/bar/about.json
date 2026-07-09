@@ -3,7 +3,8 @@
         "header": "Wos über de Seitn",
         "card": {
             "line1": "Des is mei persönliche Seitn, an der i ständig weiter bastel!",
-            "line2": "Fast ois, wos mi ausmacht, findst auf dera Seitn!"
+            "line2": "Fast ois, wos mi ausmacht, findst auf dera Seitn!",
+            "github": "View the source code on <strong><a href=\"https://github.com/Master3307/HomeSite\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a></strong>"
         }
     }
 }
