@@ -1,1 +1,13 @@
-{}
+{
+    "templateTitle": "Error",
+    "403": "It seems like you aren't allowed to access this page – Forbidden.",
+    "504": "It seems like there was an error on the server – Gateway Timeout.",
+    "template": "It seems like you encountered an error.",
+    "back": "Go Back",
+    "404": "It seems like you've found a page that doesn't exist – Not Found.",
+    "500": "It seems like there was an error on the server – Internal Server Error.",
+    "reload": "Reload Page",
+    "503": "It seems like there was an error on the server – Service Unavailable.",
+    "home": "Go Home",
+    "502": "It seems like there was an error on the server – Bad Gateway."
+}
