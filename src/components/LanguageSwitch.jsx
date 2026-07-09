@@ -8,6 +8,7 @@ const languageLabels = {
   bar: t('languages.bar'), 
   de: t('languages.de'),
   en: t('languages.en'),
+  fr: t('languages.fr'),
   hr: t('languages.hr'),
   uk: t('languages.uk'),
 }
