@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "node server/discord-profile.js",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "build": "pnpm run sitemap && vite build && cp dist/index.html dist/404.html",
     "lint": "oxlint",
@@ -13,6 +14,9 @@
   },
   "dependencies": {
     "@mongez/sitemap": "^1.0.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
     "i18next": "^26.3.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

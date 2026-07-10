@@ -1,92 +1,110 @@
-import { useEffect, useMemo, useState } from "react";
+// src/components/ProfilePicture.jsx
+import { useEffect, useMemo, useState } from 'react'
 
 function getConnectionProfile() {
   const connection =
     navigator.connection ||
     navigator.mozConnection ||
-    navigator.webkitConnection;
+    navigator.webkitConnection
 
-  if (!connection) return "unknown";
-  if (connection.saveData) return "save-data";
+  if (!connection) return 'unknown'
+  if (connection.saveData) return 'save-data'
 
   switch (connection.effectiveType) {
-    case "slow-2g":
-    case "2g":
-      return "slow";
-    case "3g":
-      return "medium";
-    case "4g":
-      return "fast";
+    case 'slow-2g':
+    case '2g':
+      return 'slow'
+    case '3g':
+      return 'medium'
+    case '4g':
+      return 'fast'
     default:
-      return "unknown";
+      return 'unknown'
   }
 }
 
-export default function ProfilePicture() {
-  const [gifReady, setGifReady] = useState(false);
-  const [showGif, setShowGif] = useState(false);
-  const [thumbFormat, setThumbFormat] = useState("webp");
-
-  const profile = useMemo(() => getConnectionProfile(), []);
+export default function ProfilePicture({
+  avatarSrc,
+  decorationSrc,
+  alt = 'Profile picture',
+  fallbackStaticSrc = '/img/pfp/MrKoby4purple-md.webp',
+  fallbackAnimatedSrc = '/img/pfp/MrKoby07animated.gif',
+}) {
+  const [gifReady, setGifReady] = useState(false)
+  const [showGif, setShowGif] = useState(false)
+  const [thumbFormat, setThumbFormat] = useState('webp')
+  const profile = useMemo(() => getConnectionProfile(), [])
 
   useEffect(() => {
-    if (profile === "save-data" || profile === "slow") return;
+    if (!fallbackAnimatedSrc) return
+    if (profile === 'save-data' || profile === 'slow') return
 
-    const gif = new Image();
-    gif.src = "/img/pfp/MrKoby07animated.gif";
+    const gif = new Image()
+    gif.src = fallbackAnimatedSrc
 
     const ready = () => {
-      setGifReady(true);
-      setShowGif(true);
-    };
+      setGifReady(true)
+      setShowGif(true)
+    }
 
     if (gif.decode) {
       gif.decode().then(ready).catch(() => {
-        gif.onload = ready;
-      });
+        gif.onload = ready
+      })
     } else {
-      gif.onload = ready;
+      gif.onload = ready
     }
-  }, [profile]);
+  }, [fallbackAnimatedSrc, profile])
 
-  const thumbSrc =
-    thumbFormat === "webp"
-      ? "/img/pfp/MrKoby4purple-md.webp"
-      : "/img/pfp/MrKoby4purple-md.jpg";
+  const fallbackThumb =
+    thumbFormat === 'webp'
+      ? fallbackStaticSrc
+      : fallbackStaticSrc.replace(/\.webp$/i, '.jpg')
 
-  const thumbSrcSet =
-    thumbFormat === "webp"
-      ? "/img/pfp/MrKoby4purple-sm.webp 320w, /img/pfp/MrKoby4purple-md.webp 640w"
-      : "/img/pfp/MrKoby4purple-sm.jpg 320w, /img/pfp/MrKoby4purple-md.jpg 640w";
+  const finalAvatarSrc = avatarSrc || (showGif && gifReady ? fallbackAnimatedSrc : fallbackThumb)
 
   return (
-    <img
-      className="pfp"
-      src={showGif && gifReady ? "/img/pfp/MrKoby07animated.gif" : thumbSrc}
-      srcSet={showGif && gifReady ? undefined : thumbSrcSet}
-      sizes={showGif && gifReady ? undefined : "120px"}
-      width={120}
-      height={120}
-      alt="Profile Picture"
-      draggable={false}
-      decoding="async"
-      onDragStart={(e) => e.preventDefault()}
-      onMouseEnter={() => {
-        if (gifReady) setShowGif(true);
-      }}
-      onError={(e) => {
-        if (!showGif && thumbFormat === "webp") {
-          setThumbFormat("jpg");
-          return;
-        }
+    <div className="pfp-wrap">
+      <img
+        className="pfp"
+        src={finalAvatarSrc}
+        width={120}
+        height={120}
+        alt={alt}
+        draggable={false}
+        decoding="async"
+        onDragStart={(e) => e.preventDefault()}
+        onMouseEnter={() => {
+          if (!avatarSrc && gifReady) setShowGif(true)
+        }}
+        onError={(e) => {
+          if (!avatarSrc && !showGif && thumbFormat === 'webp') {
+            setThumbFormat('jpg')
+            return
+          }
 
-        if (showGif) {
-          setShowGif(false);
-          setThumbFormat("jpg");
-        }
+          if (!avatarSrc && showGif) {
+            setShowGif(false)
+            setThumbFormat('jpg')
+          }
 
-        e.currentTarget.onerror = null;
-      }}
-    />
-  );
+          e.currentTarget.onerror = null
+        }}
+      />
+
+      {decorationSrc ? (
+        <img
+          className="pfp-decoration"
+          src={decorationSrc}
+          alt=""
+          draggable={false}
+          width={120}
+          height={120}
+          loading="lazy"
+          decoding="async"
+          onDragStart={(e) => e.preventDefault()}
+        />
+      ) : null}
+    </div>
+  )
 }

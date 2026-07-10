@@ -318,3 +318,101 @@ body {
   margin-top: auto;
   margin-bottom: 32px;
 }
+
+
+
+
+.discord-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 320px;
+  max-width: 380px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(111, 58, 122, 0.38), rgba(59, 27, 68, 0.58)),
+    rgba(20, 15, 28, 0.72);
+  box-shadow:
+    0 12px 30px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  backdrop-filter: blur(14px);
+}
+
+.discord-card__media {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.discord-card__status {
+  position: absolute;
+  left: 6px;
+  bottom: 4px;
+  width: 16px;
+  height: 16px;
+  border: 3px solid rgba(36, 22, 42, 0.95);
+  border-radius: 999px;
+  background: #23a55a;
+}
+
+.discord-card__body {
+  min-width: 0;
+}
+
+.discord-card__topline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.discord-card__name {
+  margin: 0;
+  color: #fff;
+  font-size: 1.2rem;
+  line-height: 1.1;
+}
+
+.discord-card__username {
+  margin: 4px 0 0;
+  color: rgba(255,255,255,0.68);
+  font-size: 0.92rem;
+}
+
+.discord-card__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.discord-card__tag {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: #ffb6ff;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.discord-card__guild-badge {
+  width: 18px;
+  height: 18px;
+}
+
+.discord-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.discord-badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.9);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
