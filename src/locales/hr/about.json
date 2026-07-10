@@ -4,7 +4,8 @@
         "card": {
             "line1": "Ovo je moja osobna veb stranica na kojoj radim!",
             "line2": "Ovdje možeš saznati više o meni!",
-            "github": "Pogledajte izvorni kod na <strong><a href=\"https://github.com/Master3307/HomeSite\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a></strong>"
+            "github": "Pogledajte izvorni kod na <strong><a href=\"https://github.com/Master3307/HomeSite\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a></strong>",
+            "line3": "View more…"
         }
     }
 }
