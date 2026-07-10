@@ -4,6 +4,7 @@
         "card": {
             "line1": "This is my personal website that I work on!",
             "line2": "Find most of myself on this site!",
+            "line3": "View more…",
             "github": "View the source code on <strong><a href=\"https://github.com/Master3307/HomeSite\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a></strong>"
         }
     }
