@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 
 export default function About() {
@@ -8,7 +9,8 @@ export default function About() {
       <h2>{t('about.header')}</h2>
       <p>
         {t('about.card.line1')} <br />
-        {t('about.card.line2')}
+        {t('about.card.line2')} <br />
+        <Link to='/about'>{t('about.card.line3')}</Link>
       </p>
     </div>
   )

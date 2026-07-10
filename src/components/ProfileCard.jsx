@@ -1,4 +1,5 @@
 import Profile from "./ProfilePictureFull.jsx";
+import CloseButton from "./CloseButton.jsx";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { tiltCard, resetCard } from "../lib/tilt.js";
@@ -14,19 +15,7 @@ export default function Card() {
       onMouseMove={tiltCard}
       onMouseLeave={resetCard}
     >
-      <span
-        className="material-symbols-outlined close-icon"
-        onClick={() => navigate("/")}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            navigate("/");
-          }
-        }}
-      >
-        close
-      </span>
+      <CloseButton />
 
       <h2>{t("header")}</h2>
       <br />
