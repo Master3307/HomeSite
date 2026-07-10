@@ -88,7 +88,7 @@ function guildBadgeUrl(user) {
   return `${CDN}/guild-tag-badges/${guildId}/${badge}.png`
 }
 
-app.get('/api/discord-profile/avatar', async (_req, res) => {
+app.get('/api/discord-profile', async (_req, res) => {
   try {
     const response = await fetch(`${DISCORD_API}/users/${DISCORD_USER_ID}`, {
       headers: {
@@ -97,33 +97,30 @@ app.get('/api/discord-profile/avatar', async (_req, res) => {
     })
 
     if (!response.ok) {
-      return res.status(response.status).send('Failed to fetch Discord user')
+      return res.status(response.status).json({ error: 'Failed to fetch Discord user' })
     }
 
     const user = await response.json()
 
-    if (!user.avatar) {
-      return res.status(404).send('No avatar')
-    }
-
-    const isGif = user.avatar.startsWith('a_')
-    const url = `${CDN}/avatars/${user.id}/${user.avatar}.${isGif ? 'gif' : 'png'}?size=256`
-
-    const imageRes = await fetch(url)
-    if (!imageRes.ok) {
-      return res.status(imageRes.status).send('Failed to fetch avatar image')
-    }
-
-    res.setHeader('Content-Type', imageRes.headers.get('content-type') || 'image/png')
-    res.setHeader('Cache-Control', 'public, max-age=300')
-
-    const arrayBuffer = await imageRes.arrayBuffer()
-    res.send(Buffer.from(arrayBuffer))
+    res.json({
+      id: user.id,
+      username: user.username,
+      global_name: user.global_name ?? null,
+      discriminator: user.discriminator,
+      avatar: avatarUrl(user),
+      banner: bannerUrl(user),
+      avatar_decoration: avatarDecorationUrl(user),
+      guild_badge: guildBadgeUrl(user),
+      badges: mapBadges(user.public_flags),
+      public_flags: user.public_flags,
+      primary_guild: user.primary_guild ?? null,
+      collectibles: user.collectibles ?? null,
+    })
   } catch (error) {
-    res.status(500).send(error instanceof Error ? error.message : 'Avatar proxy failed')
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' })
   }
 })
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`discord profile api listening on http://localhost:${PORT}`)
 })
