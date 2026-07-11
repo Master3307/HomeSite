@@ -88,7 +88,7 @@ function guildBadgeUrl(user) {
   return `${CDN}/guild-tag-badges/${guildId}/${badge}.png`
 }
 
-app.get('/api/discord-profile', async (_req, res) => {
+app.get('/', async (_req, res) => {
   try {
     const response = await fetch(`${DISCORD_API}/users/${DISCORD_USER_ID}`, {
       headers: {
