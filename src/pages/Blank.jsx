@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import ThemeSwitch from '../components/ThemeSwitch.jsx'
 import LanguageSwitch from '../components/LanguageSwitch.jsx'
-import Discord from '../components/DiscordDisplay.jsx'
+import Discord from '../components/DiscordCard.jsx'
 
 
 export default function Home() {

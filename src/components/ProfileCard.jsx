@@ -1,4 +1,4 @@
-import Profile from "./ProfilePictureFull.jsx";
+import Profile from "./DiscordCard.jsx";
 import CloseButton from "./CloseButton.jsx";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";

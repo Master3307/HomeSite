@@ -416,3 +416,13 @@ body {
   font-size: 0.72rem;
   white-space: nowrap;
 }
+
+.discord-card__status--online  { background: #23a559; }
+.discord-card__status--idle    { background: #f0b232; }
+.discord-card__status--dnd     { background: #f23f43; }
+.discord-card__status--offline { background: #80848e; }
+
+.discord-activity__progress-bar {
+  width: var(--progress, 0%);
+  /* your existing bar styles */
+}

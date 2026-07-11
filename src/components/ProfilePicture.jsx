@@ -1,5 +1,7 @@
 // src/components/ProfilePicture.jsx
 import { useEffect, useMemo, useState } from 'react'
+import { getRandomAvatarDecoration } from '../lib/avatar-decoration.js'
+import { playAudio } from '../lib/play-audio.js'
 
 function getConnectionProfile() {
   const connection =
@@ -29,10 +31,17 @@ export default function ProfilePicture({
   alt = 'Profile picture',
   fallbackStaticSrc = '/img/pfp/MrKoby4purple-md.webp',
   fallbackAnimatedSrc = '/img/pfp/MrKoby07animated.gif',
+  audioSrc = '/audio/clown.mp3',
+  enableAudio = true,
+  randomDecoration = false,
 }) {
   const [gifReady, setGifReady] = useState(false)
   const [showGif, setShowGif] = useState(false)
   const [thumbFormat, setThumbFormat] = useState('webp')
+  const [randomDecorationSrc] = useState(() =>
+    randomDecoration ? getRandomAvatarDecoration() : null
+  )
+
   const profile = useMemo(() => getConnectionProfile(), [])
 
   useEffect(() => {
@@ -61,10 +70,18 @@ export default function ProfilePicture({
       ? fallbackStaticSrc
       : fallbackStaticSrc.replace(/\.webp$/i, '.jpg')
 
-  const finalAvatarSrc = avatarSrc || (showGif && gifReady ? fallbackAnimatedSrc : fallbackThumb)
+  const finalAvatarSrc =
+    avatarSrc || (showGif && gifReady ? fallbackAnimatedSrc : fallbackThumb)
+
+  const finalDecorationSrc = decorationSrc || randomDecorationSrc
 
   return (
-    <div className="pfp-wrap">
+    <div
+      className="pfp-wrap"
+      onClick={() => {
+        if (enableAudio && audioSrc) playAudio(audioSrc)
+      }}
+    >
       <img
         className="pfp"
         src={finalAvatarSrc}
@@ -92,10 +109,10 @@ export default function ProfilePicture({
         }}
       />
 
-      {decorationSrc ? (
+      {finalDecorationSrc ? (
         <img
           className="pfp-decoration"
-          src={decorationSrc}
+          src={finalDecorationSrc}
           alt=""
           draggable={false}
           width={120}
