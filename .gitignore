@@ -105,3 +105,8 @@ yarn-error.log*
 ##########
 /site
 .cache/
+
+
+# Server #
+##########
+update.sh
