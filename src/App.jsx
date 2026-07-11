@@ -4,8 +4,6 @@ import Card from './pages/Card.jsx'
 import Error from './pages/Error.jsx'
 import About from './pages/About.jsx'
 
-import Discord from './pages/Blank.jsx'
-
 export default function App() {
   return (
     <Routes>
@@ -15,7 +13,6 @@ export default function App() {
       <Route path="/card" element={<Card />} />
       <Route path="/error" element={<Error />} />
       <Route path="/about" element={<About />} />
-      <Route path="/discord" element={<Discord />} />
       <Route path="*" element={<Error forcedCode={404} />} />
     </Routes>
   )
