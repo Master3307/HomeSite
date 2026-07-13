@@ -1,13 +1,13 @@
 {
-    "template": "It seems like you encountered an error.",
-    "templateTitle": "Error",
-    "403": "It seems like you aren't allowed to access this page – Forbidden.",
-    "404": "It seems like you've found a page that doesn't exist – Not Found.",
-    "500": "It seems like there was an error on the server – Internal Server Error.",
-    "502": "It seems like there was an error on the server – Bad Gateway.",
-    "503": "It seems like there was an error on the server – Service Unavailable.",
-    "504": "It seems like there was an error on the server – Gateway Timeout.",
-    "reload": "Reload Page",
-    "back": "Go Back",
+    "template": "Схоже, що сталася помилка.",
+    "templateTitle": "Помилка",
+    "403": "Схоже, вам не дозволено переглядати цю сторінку — доступ заборонено.",
+    "404": "Схоже, ви знайшли сторінку, якої не існує — сторінку не знайдено.",
+    "500": "Схоже, на сервері сталася помилка — внутрішня помилка сервера.",
+    "502": "Схоже, на сервері сталася помилка — помилковий шлюз.",
+    "503": "Схоже, на сервері сталася помилка — сервіс недоступний.",
+    "504": "Схоже, на сервері сталася помилка — вичерпано час очікування шлюзу.",
+    "reload": "Оновити сторінку",
+    "back": "Назад",
     "home": "Go Home"
 }
