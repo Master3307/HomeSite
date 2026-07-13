@@ -6,7 +6,7 @@ I use this not only to show my skills but also to learn a bit of WebDev.
 
 ## Idea
 
-I wanted to try and make a Website again. You can find the old one [here](https://master3307.netlify.app/).
+I wanted to try and make a Website again. You can find the old one [here](https://old.master3307.org/).
 
 It was so purely written with AI and so bloated, that it felt kind of unusable at times. Now I try to write it more myself and I want to use my newly gained knowledge in IT to make it pretty nice hopefully.
 
