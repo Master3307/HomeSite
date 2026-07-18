@@ -1,6 +1,6 @@
 {
     "discord": {
-        "listening": "Hört ",
+        "listening": "Hört sich {{title}} von {{artist}} an",
         "playing": "Spielt ein Spiel — ",
         "loading": "…",
         "failed": "Fehler beim laden des Profils",
