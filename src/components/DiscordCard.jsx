@@ -26,7 +26,7 @@ export default function DiscordProfileCard() {
   const [avatarState, setAvatarState] = useState('unknown')
   const { t } = useTranslation('discord')
 
-  const DISCORD_API_URL = import.meta.env.VITE_DISCORD_API_URL ?? 'http://localhost:3001'
+  const DISCORD_API_URL = import.meta.env.VITE_DISCORD_API_URL ?? 'https://discord-api.master3307.org/'
   const lastProfileSignatureRef = useRef('')
 
   const STATUS_LABELS = {
