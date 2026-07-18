@@ -85,8 +85,6 @@ function SpotifyActivity({ activity }) {
 
       <div className="discord-activity__info">
         <span className="discord-activity__label">{t('discord.listening')}</span>
-        <span className="discord-activity__title">{activity.details} - </span>
-        <span className="discord-activity__subtitle">{activity.state}</span>
 
         {duration ? (
           <div className="discord-activity__progress">

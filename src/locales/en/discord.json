@@ -4,7 +4,7 @@
             "failed": "Failed to load profile",
             "unavailable": "Discord profile unavailable:",
             "playing": "Playing a game — ",
-            "listening": "Listening to "
+            "listening": "Listening to {activity.details} by {activity.state}"
     }
 
 
