@@ -85,7 +85,7 @@ function SpotifyActivity({ activity }) {
 
       <div className="discord-activity__info">
         <span className="discord-activity__label">{t('discord.listening')}</span>
-        <span className="discord-activity__title">{activity.details} — </span>
+        <span className="discord-activity__title">{activity.details} - </span>
         <span className="discord-activity__subtitle">{activity.state}</span>
 
         {duration ? (
@@ -152,14 +152,14 @@ function Activity({ activities }) {
           setError('')
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load profile')
+        if (!cancelled) setError(err instanceof Error ? err.message : t('discord.failed'))
       } finally {
         if (!cancelled) setLoading(false)
       }
     }
 
     load()
-    const timer = setInterval(load, 30_000)
+    const timer = setInterval(load, 6_500)
     return () => {
       cancelled = true
       clearInterval(timer)
@@ -167,11 +167,11 @@ function Activity({ activities }) {
   }, [])
 
   if (loading && !profile) {
-    return <div className="discord-card discord-card--loading">Loading Discord profile…</div>
+    return <div className="discord-card discord-card--loading">…<br /><br /></div>
   }
 
   if (error && !profile) {
-    return <div className="discord-card discord-card--error">Discord profile unavailable: {error}</div>
+    return <div className="discord-card discord-card--error">{t('discord.unavailable')}<br />{error}<br /><br /></div>
   }
 
   const displayName = profile.global_name ?? profile.username
@@ -212,14 +212,6 @@ function Activity({ activities }) {
         </div>
 
         <p className="discord-card__username">@{profile.username}</p>
-
-        {profile.badges?.length ? (
-          <div className="discord-card__badges">
-            {profile.badges.map(badge => (
-              <Badge key={badge.key} badge={badge} />
-            ))}
-          </div>
-        ) : null}
 
         <Activity activities={profile.presence?.activities} />
       </div>
