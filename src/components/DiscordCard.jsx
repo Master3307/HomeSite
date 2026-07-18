@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import ProfilePicture from './ProfilePicture.jsx'
+import { useTranslation } from 'react-i18next'
+
+
+
+
+export default function DiscordProfileCard() {
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const { t } = useTranslation('discord')
 
 const DISCORD_API_URL = import.meta.env.VITE_DISCORD_API_URL ?? 'http://localhost:3001'
 
@@ -74,8 +84,8 @@ function SpotifyActivity({ activity }) {
       ) : null}
 
       <div className="discord-activity__info">
-        <span className="discord-activity__label">Listening to Spotify</span>
-        <span className="discord-activity__title">{activity.details}</span>
+        <span className="discord-activity__label">{t('discord.listening')}</span>
+        <span className="discord-activity__title">{activity.details} — </span>
         <span className="discord-activity__subtitle">{activity.state}</span>
 
         {duration ? (
@@ -89,8 +99,10 @@ function SpotifyActivity({ activity }) {
               aria-valuemax={100}
             />
             <div className="discord-activity__timestamps">
-              <span>{formatMs(elapsed)}</span>
-              <span>{formatMs(duration)}</span>
+              <span>— {formatMs(elapsed)} / </span>
+              <span>{formatMs(duration)} —</span>
+              <br />
+              <br />
             </div>
           </div>
         ) : null}
@@ -102,11 +114,13 @@ function SpotifyActivity({ activity }) {
 function GameActivity({ activity }) {
   return (
     <div className="discord-activity discord-activity--game">
-      <span className="discord-activity__label">Playing a game</span>
+      <span className="discord-activity__label">{t('discord.playing')}</span>
       <span className="discord-activity__title">{activity.name}</span>
       {activity.details ? <span className="discord-activity__subtitle">{activity.details}</span> : null}
       {activity.state ? <span className="discord-activity__subtitle">{activity.state}</span> : null}
-    </div>
+    <br />
+    <br />
+    </div>   
   )
 }
 
@@ -122,10 +136,7 @@ function Activity({ activities }) {
   return null
 }
 
-export default function DiscordProfileCard() {
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+
 
   useEffect(() => {
     let cancelled = false

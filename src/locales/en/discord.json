@@ -1,1 +1,9 @@
-{}
+{
+    "discord": {
+            "playing": "Playing a game — ",
+            "listening": "Listening to "
+    }
+
+
+
+}
