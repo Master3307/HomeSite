@@ -1,6 +1,6 @@
 {
     "discord": {
-        "listening": "Listening to ",
-        "playing": "Playing a game — "
+        "listening": "Hört ",
+        "playing": "Spielt ein Spiel — "
     }
 }
