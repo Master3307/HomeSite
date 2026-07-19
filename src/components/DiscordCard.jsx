@@ -233,8 +233,8 @@ export default function DiscordProfileCard() {
     )
   }
 
-  const displayName = profile?.global_name ?? profile?.username ?? 'Discord User'
-  const username = profile?.username ?? 'unknown'
+  const displayName = profile?.global_name ?? profile?.username ?? 'MrKoby07'
+  const username = profile?.username ?? 'master3307'
 
   return (
     <article className={`discord-card${refreshing ? ' discord-card--refreshing' : ''}`}>
