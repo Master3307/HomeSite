@@ -241,6 +241,14 @@ export default function DiscordProfileCard() {
       const totalTime = historyItem?.total_active_ms ?? 0
       const streak = historyItem?.streak ?? null
       const lastActiveAt = historyItem?.last_active_at ?? null
+      const gameStart = activity?.timestamps?.start
+        ? new Date(activity.timestamps.start).getTime()
+        : null
+
+      const elapsedGameTime = gameStart
+        ? Math.max(0, Date.now() - gameStart)
+        : 0
+
 
       return (
         <div className="discord-presence-card discord-presence-card--game">
@@ -260,7 +268,7 @@ export default function DiscordProfileCard() {
             </span>
 
             <span className="discord-presence__subtitle">
-              {subtitle || (totalTime > 0 ? `Total playtime: ${formatDuration(totalTime)}` : 'In game')}
+              {subtitle || (elapsedGameTime > 0 ? `${formatDuration(elapsedGameTime)}` : 'In game')}
             </span>
 
             <div className="discord-presence__meta-row">
@@ -434,6 +442,7 @@ export default function DiscordProfileCard() {
           <p className="discord-card__hint">{t('discord.unavailable')}</p>
         ) : null}
       </div>
+      <br />
     </article>
   )
 }
