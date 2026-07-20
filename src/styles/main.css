@@ -10,7 +10,7 @@
   --text-thirdary: #ffffff;
   --vier: #000000;
   --accent: #3d29d4;
-  --accent-hover: #5a4bd6;
+  --accent-hover: #594bd667;
   --border: #47405b;
   --link: #00d5ff;
 }
@@ -130,7 +130,6 @@ button {
 
 button:hover {
   background-color: var(--accent-hover);
-  transform: translateY(-1px);
 }
 
 /* Utilities */
