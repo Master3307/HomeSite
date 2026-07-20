@@ -165,7 +165,6 @@ export default function DiscordProfileCard() {
       />
     )
   }
-
   function PresenceCard({ activity }) {
     const historyItem = getHistoryItemForActivity(activity)
     const resolvedImage = getBestActivityImage(activity, historyItem)
@@ -181,33 +180,37 @@ export default function DiscordProfileCard() {
     const end = activity?.timestamps?.end ? new Date(activity.timestamps.end).getTime() : null
     const duration = start && end ? end - start : null
 
-    const signature = useMemo(() => {
-      return JSON.stringify({
-        key: getActivityKey(activity),
-        details: activity?.details ?? '',
-        state: activity?.state ?? '',
-        image_url: resolvedImage ?? '',
-        album: activity?.assets?.large_text ?? '',
-        song_url: activity?.song_url ?? '',
-        album_url: activity?.album_url ?? '',
-        artist_links: activity?.artist_links ?? [],
-        last_active_at: historyItem?.last_active_at ?? '',
-        total_active_ms: historyItem?.total_active_ms ?? 0,
-        streak: historyItem?.streak ?? null,
-      })
-    }, [
-      activity,
-      resolvedImage,
-      historyItem?.last_active_at,
-      historyItem?.total_active_ms,
-      historyItem?.streak,
-    ])
+    // Always merge live + history data for links and metadata
+    const resolvedSpotifyMeta = useMemo(() => {
+      const artistLinks = normalizeArtistLinks(activity)
+      const historyArtistLinks = normalizeArtistLinks(historyItem)
 
+      return {
+        songUrl: activity?.song_url
+          || historyItem?.song_url
+          || null,
+        albumUrl: activity?.album_url
+          || historyItem?.album_url
+          || null,
+        artistLinks: artistLinks.length
+          ? artistLinks
+          : historyArtistLinks,
+        albumLabel: activity?.assets?.large_text
+          || historyItem?.large_text
+          || '',
+        fallbackArtists: formatArtists(activity?.state || historyItem?.state),
+        streak: historyItem?.streak ?? null,
+        lastActiveAt: historyItem?.last_active_at ?? '',
+        totalActiveMs: historyItem?.total_active_ms ?? 0,
+      }
+    }, [activity, historyItem])
+
+    // Keep album art in sync when song changes
     useEffect(() => {
       if (resolvedImage && resolvedImage !== displayedArt) {
         setDisplayedArt(resolvedImage)
       }
-    }, [signature, resolvedImage, displayedArt])
+    }, [resolvedImage, displayedArt])
 
     useEffect(() => {
       if (!isSpotify || !start || !end) return
@@ -221,7 +224,9 @@ export default function DiscordProfileCard() {
       }
 
       rafRef.current = requestAnimationFrame(tick)
-      return () => cancelAnimationFrame(rafRef.current)
+      return () => {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      }
     }, [isSpotify, start, end])
 
     useEffect(() => {
@@ -239,17 +244,19 @@ export default function DiscordProfileCard() {
       : 0
 
     if (isSpotify) {
-      const artistLinks = normalizeArtistLinks(activity)
-      const fallbackArtists = formatArtists(activity?.state)
-      const albumLabel = activity?.assets?.large_text || ''
-      const songUrl = activity?.song_url || null
-      const albumUrl = activity?.album_url || null
+      const {
+        songUrl,
+        albumUrl,
+        artistLinks,
+        albumLabel,
+        fallbackArtists,
+      } = resolvedSpotifyMeta
 
       return (
         <div className="discord-presence-card discord-presence-card--music">
           <AlbumArt
             src={displayedArt}
-            alt={activity?.assets?.large_text || activity?.details || 'Album art'}
+            alt={albumLabel || activity?.details || 'Album art'}
             className="discord-presence__image discord-presence__image--music"
           />
 
@@ -268,7 +275,7 @@ export default function DiscordProfileCard() {
             </span>
 
             <span className="discord-presence__subtitle">
-              {artistLinks.length > 0 ? (
+              {artistLinks && artistLinks.length > 0 ? (
                 artistLinks.map((artist, index) => (
                   <span key={`${artist.id || artist.name}-${index}`}>
                     {index > 0 ? ', ' : ''}

@@ -72,6 +72,7 @@ const ACTIVITY_HEADERS = [
   'song_url',
   'album_url',
   'artist_links_json',
+  'last_sync_id',
 ]
 
 const SESSION_HEADERS = [
@@ -107,6 +108,7 @@ const SESSION_HEADERS = [
   'song_url',
   'album_url',
   'artist_links_json',
+  'last_sync_id',
 ]
 
 const USER_FLAGS = {
@@ -387,6 +389,7 @@ function toActivityRow(activity, existing = null, nowIso = new Date().toISOStrin
     song_url: existing?.song_url ?? null,
     album_url: existing?.album_url ?? null,
     artist_links_json: existing?.artist_links_json ?? '[]',
+    last_sync_id: existing?.last_sync_id ?? null,
   }
 }
 
@@ -426,6 +429,7 @@ function sessionFromSummary(summary, endedAtIso) {
     song_url: summary.song_url ?? null,
     album_url: summary.album_url ?? null,
     artist_links_json: summary.artist_links_json ?? '[]',
+    last_sync_id: summary.last_sync_id ?? null,
   }
 }
 
@@ -447,7 +451,7 @@ async function getSpotifyAccessToken() {
   const response = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${basic}`,
+      Authorization: `Basic ${basic}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: 'grant_type=client_credentials',
@@ -473,8 +477,8 @@ async function fetchSpotifyTrackMeta(trackId) {
   try {
     const response = await fetch(`https://api.spotify.com/v1/tracks/${encodeURIComponent(trackId)}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
       },
     })
 
@@ -500,21 +504,42 @@ async function fetchSpotifyTrackMeta(trackId) {
 
 async function enrichSpotifyActivityLinks(row) {
   const isSpotify = row.kind === 'music' || row.name === 'Spotify' || Number(row.type) === ActivityType.Listening
-  if (!isSpotify || !row.sync_id) return row
+  if (!isSpotify) return row
 
-  if (row.song_url && safeJsonParseArray(row.artist_links_json).length) return row
+  const currentSyncId = row.sync_id || null
+  const previousSyncId = row.last_sync_id || null
+  const trackChanged = !!currentSyncId && currentSyncId !== previousSyncId
 
-  const meta = await fetchSpotifyTrackMeta(row.sync_id)
-  if (!meta) {
-    row.song_url = row.song_url || `https://open.spotify.com/track/${row.sync_id}`
+  if (!currentSyncId) {
+    row.song_url = row.song_url || null
     row.album_url = row.album_url || null
     row.artist_links_json = row.artist_links_json || '[]'
+    row.last_sync_id = previousSyncId
     return row
   }
 
-  row.song_url = meta.song_url || row.song_url || `https://open.spotify.com/track/${row.sync_id}`
-  row.album_url = meta.album_url || row.album_url || null
+  const alreadyEnriched =
+    !trackChanged &&
+    row.song_url &&
+    safeJsonParseArray(row.artist_links_json).length > 0
+
+  if (alreadyEnriched) {
+    return row
+  }
+
+  const meta = await fetchSpotifyTrackMeta(currentSyncId)
+  if (!meta) {
+    row.song_url = `https://open.spotify.com/track/${currentSyncId}`
+    row.album_url = null
+    row.artist_links_json = '[]'
+    row.last_sync_id = currentSyncId
+    return row
+  }
+
+  row.song_url = meta.song_url || `https://open.spotify.com/track/${currentSyncId}`
+  row.album_url = meta.album_url || null
   row.artist_links_json = JSON.stringify(meta.artists || [])
+  row.last_sync_id = currentSyncId
   return row
 }
 
@@ -602,9 +627,9 @@ async function fetchIgdbGameIcon(gameName) {
     const response = await fetch('https://api.igdb.com/v4/games', {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Client-ID': IGDB_CLIENT_ID,
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'text/plain',
       },
       body,
@@ -636,8 +661,8 @@ async function sgdbRequest(endpoint, query = {}) {
 
   const response = await fetch(url, {
     headers: {
-      'Authorization': `Bearer ${STEAMGRIDDB_API_KEY}`,
-      'Accept': 'application/json',
+      Authorization: `Bearer ${STEAMGRIDDB_API_KEY}`,
+      Accept: 'application/json',
     },
   })
 
@@ -837,6 +862,7 @@ async function loadActivityStore() {
       streak: row.streak === '' ? null : Number(row.streak),
       is_active: row.is_active === 'true',
       active_session_started_at: row.is_active === 'true' ? row.last_started_at || null : null,
+      last_sync_id: row.last_sync_id || null,
     })
   }
 
@@ -935,11 +961,13 @@ async function getActivityHistory(limit = 100) {
     const beforeImage = row.small_image || row.large_image || ''
     const beforeSong = row.song_url || ''
     const beforeArtists = row.artist_links_json || ''
+    const beforeSync = row.last_sync_id || ''
     await enrichRow(row)
     if (
       beforeImage !== (row.small_image || row.large_image || '') ||
       beforeSong !== (row.song_url || '') ||
-      beforeArtists !== (row.artist_links_json || '')
+      beforeArtists !== (row.artist_links_json || '') ||
+      beforeSync !== (row.last_sync_id || '')
     ) {
       touched = true
     }
@@ -1002,7 +1030,8 @@ app.get('/', async (_req, res) => {
     const presence = formatPresence(cachedPresence) ?? { status: 'offline', activities: [] }
 
     for (const activity of presence.activities) {
-      const row = toActivityRow(activity, activityStore.get(activityKey(activity)))
+      const existing = activityStore.get(activityKey(activity))
+      const row = toActivityRow(activity, existing)
       row.kind = normalizeActivityKind(activity)
       await enrichSpotifyActivityLinks(row)
       activity.song_url = row.song_url || null
