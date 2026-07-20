@@ -18,6 +18,8 @@ const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID
 const IGDB_CLIENT_ID = process.env.IGDB_CLIENT_ID
 const IGDB_CLIENT_SECRET = process.env.IGDB_CLIENT_SECRET
 const STEAMGRIDDB_API_KEY = process.env.STEAMGRIDDB_API_KEY
+const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID
+const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET
 const PORT = process.env.PORT || 3001
 const ACTIVITY_POLL_INTERVAL_MS = Math.max(15000, Number(process.env.ACTIVITY_POLL_INTERVAL_MS || 30000))
 
@@ -67,6 +69,9 @@ const ACTIVITY_HEADERS = [
   'session_count',
   'streak',
   'is_active',
+  'song_url',
+  'album_url',
+  'artist_links_json',
 ]
 
 const SESSION_HEADERS = [
@@ -99,6 +104,9 @@ const SESSION_HEADERS = [
   'duration_ms',
   'duration_seconds',
   'duration_minutes',
+  'song_url',
+  'album_url',
+  'artist_links_json',
 ]
 
 const USER_FLAGS = {
@@ -329,6 +337,16 @@ function updateGameStreak(existing, nowIso) {
   return 1
 }
 
+function safeJsonParseArray(value) {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
 function toActivityRow(activity, existing = null, nowIso = new Date().toISOString()) {
   const kind = normalizeActivityKind(activity)
   return {
@@ -366,6 +384,9 @@ function toActivityRow(activity, existing = null, nowIso = new Date().toISOStrin
     streak: kind === 'game' ? Number(existing?.streak || 0) : null,
     is_active: true,
     active_session_started_at: existing?.active_session_started_at ?? activity.timestamps?.start ?? nowIso,
+    song_url: existing?.song_url ?? null,
+    album_url: existing?.album_url ?? null,
+    artist_links_json: existing?.artist_links_json ?? '[]',
   }
 }
 
@@ -402,7 +423,99 @@ function sessionFromSummary(summary, endedAtIso) {
     duration_ms: durationMs,
     duration_seconds: Math.floor(durationMs / 1000),
     duration_minutes: Math.floor(durationMs / 60000),
+    song_url: summary.song_url ?? null,
+    album_url: summary.album_url ?? null,
+    artist_links_json: summary.artist_links_json ?? '[]',
   }
+}
+
+let spotifyTokenCache = {
+  access_token: null,
+  expires_at: 0,
+}
+
+async function getSpotifyAccessToken() {
+  const now = Date.now()
+  if (spotifyTokenCache.access_token && spotifyTokenCache.expires_at > now + 60000) {
+    return spotifyTokenCache.access_token
+  }
+
+  if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) return null
+
+  const basic = Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString('base64')
+
+  const response = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${basic}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'grant_type=client_credentials',
+  })
+
+  if (!response.ok) return null
+
+  const data = await response.json()
+  spotifyTokenCache = {
+    access_token: data.access_token,
+    expires_at: Date.now() + (Number(data.expires_in || 0) * 1000),
+  }
+
+  return spotifyTokenCache.access_token
+}
+
+async function fetchSpotifyTrackMeta(trackId) {
+  if (!trackId) return null
+
+  const token = await getSpotifyAccessToken()
+  if (!token) return null
+
+  try {
+    const response = await fetch(`https://api.spotify.com/v1/tracks/${encodeURIComponent(trackId)}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    })
+
+    if (!response.ok) return null
+
+    const track = await response.json()
+    return {
+      song_url: track?.external_urls?.spotify ?? (track?.id ? `https://open.spotify.com/track/${track.id}` : null),
+      album_url: track?.album?.external_urls?.spotify ?? null,
+      artists: Array.isArray(track?.artists)
+        ? track.artists.map(artist => ({
+            id: artist?.id ?? null,
+            name: artist?.name ?? null,
+            url: artist?.external_urls?.spotify ?? (artist?.id ? `https://open.spotify.com/artist/${artist.id}` : null),
+          })).filter(artist => artist.name && artist.url)
+        : [],
+    }
+  } catch (error) {
+    console.warn(`Failed Spotify metadata lookup for track ${trackId}:`, error.message)
+    return null
+  }
+}
+
+async function enrichSpotifyActivityLinks(row) {
+  const isSpotify = row.kind === 'music' || row.name === 'Spotify' || Number(row.type) === ActivityType.Listening
+  if (!isSpotify || !row.sync_id) return row
+
+  if (row.song_url && safeJsonParseArray(row.artist_links_json).length) return row
+
+  const meta = await fetchSpotifyTrackMeta(row.sync_id)
+  if (!meta) {
+    row.song_url = row.song_url || `https://open.spotify.com/track/${row.sync_id}`
+    row.album_url = row.album_url || null
+    row.artist_links_json = row.artist_links_json || '[]'
+    return row
+  }
+
+  row.song_url = meta.song_url || row.song_url || `https://open.spotify.com/track/${row.sync_id}`
+  row.album_url = meta.album_url || row.album_url || null
+  row.artist_links_json = JSON.stringify(meta.artists || [])
+  return row
 }
 
 let gameImageCache = {}
@@ -642,7 +755,9 @@ async function fetchBestGameImage(gameName) {
   return null
 }
 
-async function withResolvedImage(row) {
+async function enrichRow(row) {
+  await enrichSpotifyActivityLinks(row)
+
   const hasDiscordImage = !!(row.small_image || row.large_image)
   if (hasDiscordImage) {
     row.image_source = row.image_source || 'discord'
@@ -677,6 +792,9 @@ function summaryForApi(summary) {
     is_active: row.is_active === true || row.is_active === 'true',
     active_session_started_at,
     image_url,
+    song_url: row.song_url || null,
+    album_url: row.album_url || null,
+    artist_links: safeJsonParseArray(row.artist_links_json),
   }
 }
 
@@ -691,6 +809,9 @@ function historyRowForApi(row) {
     duration_seconds: Number(row.duration_seconds || 0),
     duration_minutes: Number(row.duration_minutes || 0),
     image_url,
+    song_url: row.song_url || null,
+    album_url: row.album_url || null,
+    artist_links: safeJsonParseArray(row.artist_links_json),
   }
 }
 
@@ -708,7 +829,7 @@ async function loadActivityStore() {
   const map = new Map()
 
   for (const row of rows) {
-    await withResolvedImage(row)
+    await enrichRow(row)
     map.set(row.key, {
       ...row,
       total_active_ms: Number(row.total_active_ms || 0),
@@ -728,7 +849,7 @@ async function persistActivityStore() {
     .sort((a, b) => new Date(b.last_active_at || 0).getTime() - new Date(a.last_active_at || 0).getTime())
 
   for (const row of rows) {
-    await withResolvedImage(row)
+    await enrichRow(row)
   }
 
   const output = rows.map(row => ({
@@ -751,7 +872,7 @@ async function closeInactiveActivities(liveKeys, nowIso) {
     if (!summary.is_active || liveKeys.has(key)) continue
 
     const session = sessionFromSummary(summary, nowIso)
-    await withResolvedImage(session)
+    await enrichRow(session)
 
     summary.total_active_ms = Number(summary.total_active_ms || 0) + session.duration_ms
     summary.total_active_seconds = Math.floor(summary.total_active_ms / 1000)
@@ -795,10 +916,7 @@ async function syncPresenceActivities(reason = 'poll') {
     next.last_ended_at = existing?.last_ended_at ?? null
     next.is_active = true
 
-    if (!(next.small_image || next.large_image) && next.kind === 'game') {
-      await withResolvedImage(next)
-    }
-
+    await enrichRow(next)
     activityStore.set(key, next)
   }
 
@@ -814,9 +932,17 @@ async function getActivityHistory(limit = 100) {
 
   let touched = false
   for (const row of rows) {
-    const before = row.small_image || row.large_image || ''
-    const after = await withResolvedImage(row)
-    if (!before && after) touched = true
+    const beforeImage = row.small_image || row.large_image || ''
+    const beforeSong = row.song_url || ''
+    const beforeArtists = row.artist_links_json || ''
+    await enrichRow(row)
+    if (
+      beforeImage !== (row.small_image || row.large_image || '') ||
+      beforeSong !== (row.song_url || '') ||
+      beforeArtists !== (row.artist_links_json || '')
+    ) {
+      touched = true
+    }
   }
 
   if (touched) {
@@ -874,6 +1000,16 @@ app.get('/', async (_req, res) => {
 
     const user = await response.json()
     const presence = formatPresence(cachedPresence) ?? { status: 'offline', activities: [] }
+
+    for (const activity of presence.activities) {
+      const row = toActivityRow(activity, activityStore.get(activityKey(activity)))
+      row.kind = normalizeActivityKind(activity)
+      await enrichSpotifyActivityLinks(row)
+      activity.song_url = row.song_url || null
+      activity.album_url = row.album_url || null
+      activity.artist_links = safeJsonParseArray(row.artist_links_json)
+    }
+
     const activity_history = [...activityStore.values()]
       .sort((a, b) => new Date(b.last_active_at || 0).getTime() - new Date(a.last_active_at || 0).getTime())
       .map(summaryForApi)
@@ -942,4 +1078,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Activity polling interval: ${ACTIVITY_POLL_INTERVAL_MS}ms`)
   console.log(`SteamGridDB enabled: ${STEAMGRIDDB_API_KEY ? 'yes' : 'no'}`)
   console.log(`IGDB fallback enabled: ${IGDB_CLIENT_ID && IGDB_CLIENT_SECRET ? 'yes' : 'no'}`)
+  console.log(`Spotify enrichment enabled: ${SPOTIFY_CLIENT_ID && SPOTIFY_CLIENT_SECRET ? 'yes' : 'no'}`)
 })

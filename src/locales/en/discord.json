@@ -3,8 +3,9 @@
             "loading": "…",
             "failed": "Failed to load profile",
             "unavailable": "Discord profile unavailable:",
-            "playing": "Playing a game",
-            "listening": "Listening to {{title}} by {{artist}}"
+            "playing": "Playing a Game",
+            "streak": "Streak",
+            "listening": "Listening to Music"
     }
 
 

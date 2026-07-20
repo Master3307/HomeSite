@@ -19,6 +19,21 @@ const AlbumArt = memo(function AlbumArt({ src, alt, className = 'discord-presenc
   )
 })
 
+const ExternalTextLink = memo(function ExternalTextLink({ href, children, className = '' }) {
+  if (!href || !children) return <>{children}</>
+
+  return (
+    <a
+      href={href}
+      className={className}
+      target="_blank"
+      rel="noreferrer noopener"
+    >
+      {children}
+    </a>
+  )
+})
+
 export default function DiscordProfileCard() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -76,6 +91,25 @@ export default function DiscordProfileCard() {
       .map(part => part.trim())
       .filter(Boolean)
       .join(', ')
+  }
+
+  function normalizeArtistLinks(activity) {
+    if (Array.isArray(activity?.artist_links)) {
+      return activity.artist_links.filter(artist => artist?.name && artist?.url)
+    }
+
+    if (typeof activity?.artist_links_json === 'string' && activity.artist_links_json.trim()) {
+      try {
+        const parsed = JSON.parse(activity.artist_links_json)
+        return Array.isArray(parsed)
+          ? parsed.filter(artist => artist?.name && artist?.url)
+          : []
+      } catch {
+        return []
+      }
+    }
+
+    return []
   }
 
   function getProfileSignature(data) {
@@ -140,6 +174,7 @@ export default function DiscordProfileCard() {
 
     const [progress, setProgress] = useState(0)
     const [displayedArt, setDisplayedArt] = useState(resolvedImage ?? '')
+    const [now, setNow] = useState(Date.now())
     const rafRef = useRef(null)
 
     const start = activity?.timestamps?.start ? new Date(activity.timestamps.start).getTime() : null
@@ -153,6 +188,9 @@ export default function DiscordProfileCard() {
         state: activity?.state ?? '',
         image_url: resolvedImage ?? '',
         album: activity?.assets?.large_text ?? '',
+        song_url: activity?.song_url ?? '',
+        album_url: activity?.album_url ?? '',
+        artist_links: activity?.artist_links ?? [],
         last_active_at: historyItem?.last_active_at ?? '',
         total_active_ms: historyItem?.total_active_ms ?? 0,
         streak: historyItem?.streak ?? null,
@@ -175,20 +213,38 @@ export default function DiscordProfileCard() {
       if (!isSpotify || !start || !end) return
 
       function tick() {
-        const now = Date.now()
-        const elapsed = now - start
+        const currentNow = Date.now()
+        const elapsed = currentNow - start
+        setNow(currentNow)
         setProgress(Math.min(elapsed / (end - start), 1))
-        if (now < end) rafRef.current = requestAnimationFrame(tick)
+        if (currentNow < end) rafRef.current = requestAnimationFrame(tick)
       }
 
       rafRef.current = requestAnimationFrame(tick)
       return () => cancelAnimationFrame(rafRef.current)
     }, [isSpotify, start, end])
 
-    const elapsed = start ? Math.max(0, Date.now() - start) : 0
-    const remaining = duration ? Math.max(0, duration - elapsed) : 0
+    useEffect(() => {
+      if (!isGame || !activity?.timestamps?.start) return
+
+      const timer = setInterval(() => {
+        setNow(Date.now())
+      }, 1000)
+
+      return () => clearInterval(timer)
+    }, [isGame, activity?.timestamps?.start])
+
+    const elapsed = start && duration
+      ? Math.min(Math.max(0, now - start), duration)
+      : 0
 
     if (isSpotify) {
+      const artistLinks = normalizeArtistLinks(activity)
+      const fallbackArtists = formatArtists(activity?.state)
+      const albumLabel = activity?.assets?.large_text || ''
+      const songUrl = activity?.song_url || null
+      const albumUrl = activity?.album_url || null
+
       return (
         <div className="discord-presence-card discord-presence-card--music">
           <AlbumArt
@@ -199,16 +255,46 @@ export default function DiscordProfileCard() {
 
           <div className="discord-presence__content">
             <span className="discord-presence__eyebrow">
-              {t('discord.listeningSimple', 'Listening to Spotify')}
+              {t('discord.listening', 'Listening to Spotify')}
             </span>
 
             <span className="discord-presence__title">
-              {activity?.details || 'Unknown song'}
+              <ExternalTextLink
+                href={songUrl}
+                className="discord-presence__link discord-presence__link--title"
+              >
+                {activity?.details || 'Unknown song'}
+              </ExternalTextLink>
             </span>
 
             <span className="discord-presence__subtitle">
-              {formatArtists(activity?.state) || 'Unknown artist'}
+              {artistLinks.length > 0 ? (
+                artistLinks.map((artist, index) => (
+                  <span key={`${artist.id || artist.name}-${index}`}>
+                    {index > 0 ? ', ' : ''}
+                    <ExternalTextLink
+                      href={artist.url}
+                      className="discord-presence__link discord-presence__link--artist"
+                    >
+                      {artist.name}
+                    </ExternalTextLink>
+                  </span>
+                ))
+              ) : (
+                fallbackArtists || 'Unknown artist'
+              )}
             </span>
+
+            {albumLabel ? (
+              <span className="discord-presence__subtitle discord-presence__subtitle--album">
+                <ExternalTextLink
+                  href={albumUrl}
+                  className="discord-presence__link discord-presence__link--album"
+                >
+                  {albumLabel}
+                </ExternalTextLink>
+              </span>
+            ) : null}
 
             {duration ? (
               <div className="discord-presence__progress-wrap">
@@ -238,17 +324,14 @@ export default function DiscordProfileCard() {
 
     if (isGame) {
       const subtitle = activity?.details || activity?.state || ''
-      const totalTime = historyItem?.total_active_ms ?? 0
       const streak = historyItem?.streak ?? null
-      const lastActiveAt = historyItem?.last_active_at ?? null
       const gameStart = activity?.timestamps?.start
         ? new Date(activity.timestamps.start).getTime()
         : null
 
       const elapsedGameTime = gameStart
-        ? Math.max(0, Date.now() - gameStart)
+        ? Math.max(0, now - gameStart)
         : 0
-
 
       return (
         <div className="discord-presence-card discord-presence-card--game">
@@ -272,11 +355,9 @@ export default function DiscordProfileCard() {
             </span>
 
             <div className="discord-presence__meta-row">
-
-
               {typeof streak === 'number' && streak > 0 ? (
                 <span className="discord-presence__meta-pill">
-                  {streak} day{streak === 1 ? '' : 's'} streak
+                  <span className="material-symbols-outlined streak" style={{ userSelect: 'none' }}>bolt</span> {streak}x{streak === 1 ? '' : 's'} {t('discord.streak', 'Streak')}
                 </span>
               ) : null}
             </div>
@@ -413,28 +494,32 @@ export default function DiscordProfileCard() {
 
       <div className="discord-card__body">
         <div className="discord-card__topline">
-          <h3 className="discord-card__name">{displayName}</h3>
+          <div className="discord-card__name-row">
+            <h3 className="discord-card__name">{displayName}</h3>
 
-          <div className="discord-card__meta">
-            {profile?.primary_guild?.tag ? (
-              <span className="discord-card__tag">{profile.primary_guild.tag}</span>
-            ) : null}
+            {(profile?.primary_guild?.tag || profile?.guild_badge) ? (
+              <span className="discord-card__name-pill">
+                {profile?.guild_badge ? (
+                  <img
+                    className="discord-card__guild-badge"
+                    src={profile.guild_badge}
+                    alt=""
+                    width={18}
+                    height={18}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : null}
 
-            {profile?.guild_badge ? (
-              <img
-                className="discord-card__guild-badge"
-                src={profile.guild_badge}
-                alt=""
-                width={22}
-                height={22}
-                loading="lazy"
-                decoding="async"
-              />
+                {profile?.primary_guild?.tag ? (
+                  <span className="discord-card__tag">{profile.primary_guild.tag}</span>
+                ) : null}
+              </span>
             ) : null}
           </div>
         </div>
 
-        <p className="discord-card__username">@{username}</p>
+        <p className="discord-card__username"><i><a className="username" href="https://discord.com/users/817826076486139985" target="_blank" rel="noreferrer noopener">@{username}</a></i></p>
 
         <Activity activities={profile?.presence?.activities} />
 
