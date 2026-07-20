@@ -977,11 +977,19 @@ async function getActivityHistory(limit = 100) {
     await writeCsvRows(ACTIVITY_SESSIONS_CSV_PATH, SESSION_HEADERS, rows)
   }
 
-  const sorted = rows
-    .sort((a, b) => new Date(b.ended_at || b.started_at || 0).getTime() - new Date(a.ended_at || a.started_at || 0).getTime())
-    .slice(0, limit)
+  const sorted = rows.sort(
+    (a, b) => new Date(b.ended_at || b.started_at || 0).getTime() - new Date(a.ended_at || a.started_at || 0).getTime()
+  )
 
-  return sorted.map(historyRowForApi)
+  let latestMusicIncluded = false
+  const filtered = sorted.filter(row => {
+    if (row.kind !== 'music') return true
+    if (latestMusicIncluded) return false
+    latestMusicIncluded = true
+    return true
+  })
+
+  return filtered.slice(0, limit).map(historyRowForApi)
 }
 
 client.on('ready', async () => {
