@@ -110,3 +110,4 @@ yarn-error.log*
 # Server #
 ##########
 update.sh
+server/*.csv
