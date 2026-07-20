@@ -25,7 +25,7 @@ export default function Error({ forcedCode }) {
   const code = String(forcedCode ?? params.get('code') ?? 'template').trim()
   const errorInfo = getErrorMessage(code)
 
-  const { t } = useTranslation('error')
+  const { t } = useTranslation(['error', 'title'])
 
   useEffect(() => {
     document.title = `${t(errorInfo.titleKey)} – MrKoby07`
@@ -57,7 +57,7 @@ export default function Error({ forcedCode }) {
     <div className={styles.errorPage}>
       <header className="head">
         <h1 className="tit">
-          {t('templateTitle')} <b>&nbsp;MrKoby07</b>
+          {t('error', { ns: 'title', defaultValue: 'Error of' })} <b>&nbsp;MrKoby07</b>
         </h1>
       </header>
 
