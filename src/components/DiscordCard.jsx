@@ -316,15 +316,6 @@ export default function DiscordProfileCard() {
               content={artistContent}
             />
 
-            {albumLabel ? (
-              <OverflowPan
-                className="discord-presence__line-wrap discord-presence__subtitle-wrap discord-presence__subtitle-wrap--album"
-                innerClassName="discord-presence__line-inner discord-presence__subtitle discord-presence__subtitle--album"
-                title={albumLabel}
-                contentKey={`spotify-album:${albumLabel}:${albumUrl || ''}`}
-                content={albumContent}
-              />
-            ) : null}
 
             {duration ? (
               <div className="discord-presence__progress-wrap">
