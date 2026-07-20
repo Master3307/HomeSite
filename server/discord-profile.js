@@ -555,9 +555,6 @@ app.get('/', async (_req, res) => {
 
     const user = await response.json()
     const presence = formatPresence(cachedPresence) ?? { status: 'offline', activities: [] }
-    const activitySummary = [...activityStore.values()]
-      .sort((a, b) => new Date(b.last_active_at || 0).getTime() - new Date(a.last_active_at || 0).getTime())
-      .map(summaryForApi)
 
     res.json({
       id: user.id,
@@ -573,7 +570,6 @@ app.get('/', async (_req, res) => {
       primary_guild: user.primary_guild ?? null,
       collectibles: user.collectibles ?? null,
       presence,
-      activity_summary: activitySummary,
     })
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' })
