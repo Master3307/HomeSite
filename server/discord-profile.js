@@ -558,7 +558,6 @@ app.get('/', async (_req, res) => {
     const activitySummary = [...activityStore.values()]
       .sort((a, b) => new Date(b.last_active_at || 0).getTime() - new Date(a.last_active_at || 0).getTime())
       .map(summaryForApi)
-    const recentHistory = await getActivityHistory(100)
 
     res.json({
       id: user.id,
@@ -575,25 +574,13 @@ app.get('/', async (_req, res) => {
       collectibles: user.collectibles ?? null,
       presence,
       activity_summary: activitySummary,
-      activity_history: recentHistory,
     })
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' })
   }
 })
 
-app.get('/api/discord-profile/activity-summary', async (_req, res) => {
-  try {
-    const rows = [...activityStore.values()]
-      .sort((a, b) => new Date(b.last_active_at || 0).getTime() - new Date(a.last_active_at || 0).getTime())
-      .map(summaryForApi)
-    res.json(rows)
-  } catch (error) {
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to read activity summary' })
-  }
-})
-
-app.get('/api/discord-profile/activity-history', async (req, res) => {
+app.get('/history', async (req, res) => {
   try {
     const limit = Math.max(1, Math.min(500, Number(req.query.limit || 100)))
     const rows = await getActivityHistory(limit)
