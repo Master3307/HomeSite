@@ -1074,7 +1074,7 @@ app.get('/', async (_req, res) => {
 
 app.get('/history', async (req, res) => {
   try {
-    const limit = Math.max(1, Math.min(500, Number(req.query.limit || 100)))
+    const limit = Math.max(1, Math.min(500, Number(req.query.limit || 1000)))
     const rows = await getActivityHistory(limit)
     res.json(rows)
   } catch (error) {
