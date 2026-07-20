@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import ProfilePicture from './ProfilePicture.jsx'
+import OverflowPan from './OverflowPan.jsx'
 import { useTranslation } from 'react-i18next'
 
 const AlbumArt = memo(function AlbumArt({ src, alt, className = 'discord-presence__image' }) {
@@ -165,6 +166,7 @@ export default function DiscordProfileCard() {
       />
     )
   }
+
   function PresenceCard({ activity }) {
     const historyItem = getHistoryItemForActivity(activity)
     const resolvedImage = getBestActivityImage(activity, historyItem)
@@ -180,32 +182,19 @@ export default function DiscordProfileCard() {
     const end = activity?.timestamps?.end ? new Date(activity.timestamps.end).getTime() : null
     const duration = start && end ? end - start : null
 
-    // Always merge live + history data for links and metadata
     const resolvedSpotifyMeta = useMemo(() => {
       const artistLinks = normalizeArtistLinks(activity)
       const historyArtistLinks = normalizeArtistLinks(historyItem)
 
       return {
-        songUrl: activity?.song_url
-          || historyItem?.song_url
-          || null,
-        albumUrl: activity?.album_url
-          || historyItem?.album_url
-          || null,
-        artistLinks: artistLinks.length
-          ? artistLinks
-          : historyArtistLinks,
-        albumLabel: activity?.assets?.large_text
-          || historyItem?.large_text
-          || '',
+        songUrl: activity?.song_url || historyItem?.song_url || null,
+        albumUrl: activity?.album_url || historyItem?.album_url || null,
+        artistLinks: artistLinks.length ? artistLinks : historyArtistLinks,
+        albumLabel: activity?.assets?.large_text || historyItem?.large_text || '',
         fallbackArtists: formatArtists(activity?.state || historyItem?.state),
-        streak: historyItem?.streak ?? null,
-        lastActiveAt: historyItem?.last_active_at ?? '',
-        totalActiveMs: historyItem?.total_active_ms ?? 0,
       }
     }, [activity, historyItem])
 
-    // Keep album art in sync when song changes
     useEffect(() => {
       if (resolvedImage && resolvedImage !== displayedArt) {
         setDisplayedArt(resolvedImage)
@@ -252,11 +241,57 @@ export default function DiscordProfileCard() {
         fallbackArtists,
       } = resolvedSpotifyMeta
 
+      const songTitle = activity?.details || 'Unknown song'
+      const artistLine = fallbackArtists || 'Unknown artist'
+      const artistKey = artistLinks?.length
+        ? artistLinks.map(artist => `${artist.id || artist.name}:${artist.name}:${artist.url}`).join('|')
+        : artistLine
+
+      const songContent = useMemo(() => (
+        <ExternalTextLink
+          href={songUrl}
+          className="discord-presence__link discord-presence__link--title"
+        >
+          {songTitle}
+        </ExternalTextLink>
+      ), [songUrl, songTitle])
+
+      const artistContent = useMemo(() => {
+        if (artistLinks && artistLinks.length > 0) {
+          return artistLinks.map((artist, index) => (
+            <span key={`${artist.id || artist.name}-${index}`}>
+              {index > 0 ? ', ' : ''}
+              <ExternalTextLink
+                href={artist.url}
+                className="discord-presence__link discord-presence__link--artist"
+              >
+                {artist.name}
+              </ExternalTextLink>
+            </span>
+          ))
+        }
+
+        return artistLine
+      }, [artistLinks, artistLine])
+
+      const albumContent = useMemo(() => {
+        if (!albumLabel) return null
+
+        return (
+          <ExternalTextLink
+            href={albumUrl}
+            className="discord-presence__link discord-presence__link--album"
+          >
+            {albumLabel}
+          </ExternalTextLink>
+        )
+      }, [albumUrl, albumLabel])
+
       return (
         <div className="discord-presence-card discord-presence-card--music">
           <AlbumArt
             src={displayedArt}
-            alt={albumLabel || activity?.details || 'Album art'}
+            alt={albumLabel || songTitle || 'Album art'}
             className="discord-presence__image discord-presence__image--music"
           />
 
@@ -265,42 +300,30 @@ export default function DiscordProfileCard() {
               {t('discord.listening', 'Listening to Spotify')}
             </span>
 
-            <span className="discord-presence__title">
-              <ExternalTextLink
-                href={songUrl}
-                className="discord-presence__link discord-presence__link--title"
-              >
-                {activity?.details || 'Unknown song'}
-              </ExternalTextLink>
-            </span>
+            <OverflowPan
+              className="discord-presence__line-wrap discord-presence__title-wrap"
+              innerClassName="discord-presence__line-inner discord-presence__title"
+              title={songTitle}
+              contentKey={`spotify-title:${songTitle}:${songUrl || ''}`}
+              content={songContent}
+            />
 
-            <span className="discord-presence__subtitle">
-              {artistLinks && artistLinks.length > 0 ? (
-                artistLinks.map((artist, index) => (
-                  <span key={`${artist.id || artist.name}-${index}`}>
-                    {index > 0 ? ', ' : ''}
-                    <ExternalTextLink
-                      href={artist.url}
-                      className="discord-presence__link discord-presence__link--artist"
-                    >
-                      {artist.name}
-                    </ExternalTextLink>
-                  </span>
-                ))
-              ) : (
-                fallbackArtists || 'Unknown artist'
-              )}
-            </span>
+            <OverflowPan
+              className="discord-presence__line-wrap discord-presence__subtitle-wrap"
+              innerClassName="discord-presence__line-inner discord-presence__subtitle"
+              title={artistLine}
+              contentKey={`spotify-artists:${artistKey}`}
+              content={artistContent}
+            />
 
             {albumLabel ? (
-              <span className="discord-presence__subtitle discord-presence__subtitle--album">
-                <ExternalTextLink
-                  href={albumUrl}
-                  className="discord-presence__link discord-presence__link--album"
-                >
-                  {albumLabel}
-                </ExternalTextLink>
-              </span>
+              <OverflowPan
+                className="discord-presence__line-wrap discord-presence__subtitle-wrap discord-presence__subtitle-wrap--album"
+                innerClassName="discord-presence__line-inner discord-presence__subtitle discord-presence__subtitle--album"
+                title={albumLabel}
+                contentKey={`spotify-album:${albumLabel}:${albumUrl || ''}`}
+                content={albumContent}
+              />
             ) : null}
 
             {duration ? (
@@ -340,11 +363,18 @@ export default function DiscordProfileCard() {
         ? Math.max(0, now - gameStart)
         : 0
 
+      const gameTitle = activity?.name || 'Unknown game'
+      const gameSubtitleText = subtitle || (elapsedGameTime > 0 ? `${formatDuration(elapsedGameTime)}` : 'In game')
+      const gameSubtitleKey = subtitle ? `game-subtitle:${subtitle}` : 'game-subtitle:fallback'
+
+      const gameTitleContent = useMemo(() => gameTitle, [gameTitle])
+      const gameSubtitleContent = useMemo(() => gameSubtitleText, [gameSubtitleText])
+
       return (
         <div className="discord-presence-card discord-presence-card--game">
           <AlbumArt
             src={displayedArt}
-            alt={`${activity?.name || 'Game'} cover`}
+            alt={`${gameTitle} cover`}
             className="discord-presence__image discord-presence__image--game"
           />
 
@@ -353,13 +383,21 @@ export default function DiscordProfileCard() {
               {t('discord.playing', 'Playing')}
             </span>
 
-            <span className="discord-presence__title">
-              {activity?.name || 'Unknown game'}
-            </span>
+            <OverflowPan
+              className="discord-presence__line-wrap discord-presence__title-wrap"
+              innerClassName="discord-presence__line-inner discord-presence__title"
+              title={gameTitle}
+              contentKey={`game-title:${gameTitle}`}
+              content={gameTitleContent}
+            />
 
-            <span className="discord-presence__subtitle">
-              {subtitle || (elapsedGameTime > 0 ? `${formatDuration(elapsedGameTime)}` : 'In game')}
-            </span>
+            <OverflowPan
+              className="discord-presence__line-wrap discord-presence__subtitle-wrap"
+              innerClassName="discord-presence__line-inner discord-presence__subtitle"
+              title={gameSubtitleText}
+              contentKey={gameSubtitleKey}
+              content={gameSubtitleContent}
+            />
 
             <div className="discord-presence__meta-row">
               {typeof streak === 'number' && streak > 0 ? (
@@ -372,6 +410,14 @@ export default function DiscordProfileCard() {
         </div>
       )
     }
+
+    const genericTitle = activity?.name || 'Unknown activity'
+    const genericDetails = activity?.details || ''
+    const genericState = activity?.state || ''
+
+    const genericTitleContent = useMemo(() => genericTitle, [genericTitle])
+    const genericDetailsContent = useMemo(() => genericDetails, [genericDetails])
+    const genericStateContent = useMemo(() => genericState, [genericState])
 
     return (
       <div className="discord-presence-card discord-presence-card--generic">
@@ -386,16 +432,32 @@ export default function DiscordProfileCard() {
             {activity?.type_label || 'Activity'}
           </span>
 
-          <span className="discord-presence__title">
-            {activity?.name || 'Unknown activity'}
-          </span>
+          <OverflowPan
+            className="discord-presence__line-wrap discord-presence__title-wrap"
+            innerClassName="discord-presence__line-inner discord-presence__title"
+            title={genericTitle}
+            contentKey={`generic-title:${genericTitle}`}
+            content={genericTitleContent}
+          />
 
-          {activity?.details ? (
-            <span className="discord-presence__subtitle">{activity.details}</span>
+          {genericDetails ? (
+            <OverflowPan
+              className="discord-presence__line-wrap discord-presence__subtitle-wrap"
+              innerClassName="discord-presence__line-inner discord-presence__subtitle"
+              title={genericDetails}
+              contentKey={`generic-details:${genericDetails}`}
+              content={genericDetailsContent}
+            />
           ) : null}
 
-          {activity?.state ? (
-            <span className="discord-presence__subtitle">{activity.state}</span>
+          {genericState ? (
+            <OverflowPan
+              className="discord-presence__line-wrap discord-presence__subtitle-wrap"
+              innerClassName="discord-presence__line-inner discord-presence__subtitle"
+              title={genericState}
+              contentKey={`generic-state:${genericState}`}
+              content={genericStateContent}
+            />
           ) : null}
         </div>
       </div>
