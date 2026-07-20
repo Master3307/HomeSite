@@ -15,7 +15,9 @@ app.use(cors())
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN
 const DISCORD_USER_ID = process.env.DISCORD_USER_ID
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID
-const RAWG_API_KEY = process.env.RAWG_API_KEY
+const IGDB_CLIENT_ID = process.env.IGDB_CLIENT_ID
+const IGDB_CLIENT_SECRET = process.env.IGDB_CLIENT_SECRET
+const STEAMGRIDDB_API_KEY = process.env.STEAMGRIDDB_API_KEY
 const PORT = process.env.PORT || 3001
 const ACTIVITY_POLL_INTERVAL_MS = Math.max(15000, Number(process.env.ACTIVITY_POLL_INTERVAL_MS || 30000))
 
@@ -29,6 +31,7 @@ if (!DISCORD_GUILD_ID) throw new Error('Missing DISCORD_GUILD_ID')
 
 const DISCORD_API = 'https://discord.com/api/v10'
 const CDN = 'https://cdn.discordapp.com'
+const STEAMGRIDDB_API = 'https://www.steamgriddb.com/api/v2'
 
 const ACTIVITY_HEADERS = [
   'key',
@@ -53,6 +56,7 @@ const ACTIVITY_HEADERS = [
   'large_text',
   'small_image',
   'small_text',
+  'image_source',
   'first_seen_at',
   'last_active_at',
   'last_started_at',
@@ -89,6 +93,7 @@ const SESSION_HEADERS = [
   'large_text',
   'small_image',
   'small_text',
+  'image_source',
   'started_at',
   'ended_at',
   'duration_ms',
@@ -349,6 +354,7 @@ function toActivityRow(activity, existing = null, nowIso = new Date().toISOStrin
     large_text: activity.assets?.large_text ?? null,
     small_image: activity.assets?.small_image ?? null,
     small_text: activity.assets?.small_text ?? null,
+    image_source: existing?.image_source ?? (activity.assets?.small_image || activity.assets?.large_image ? 'discord' : null),
     first_seen_at: existing?.first_seen_at ?? nowIso,
     last_active_at: nowIso,
     last_started_at: existing?.last_started_at ?? activity.timestamps?.start ?? nowIso,
@@ -390,6 +396,7 @@ function sessionFromSummary(summary, endedAtIso) {
     large_text: summary.large_text,
     small_image: summary.small_image,
     small_text: summary.small_text,
+    image_source: summary.image_source ?? null,
     started_at: startedAtIso,
     ended_at: endedAtIso,
     duration_ms: durationMs,
@@ -399,6 +406,10 @@ function sessionFromSummary(summary, endedAtIso) {
 }
 
 let gameImageCache = {}
+let igdbTokenCache = {
+  access_token: null,
+  expires_at: 0,
+}
 
 async function loadGameImageCache() {
   gameImageCache = await readJsonFile(GAME_IMAGE_CACHE_PATH, {})
@@ -408,64 +419,251 @@ async function saveGameImageCache() {
   await writeJsonFile(GAME_IMAGE_CACHE_PATH, gameImageCache)
 }
 
-async function fetchGameImageFallback(gameName) {
+function buildIgdbImageUrl(imageId, size = 'cover_small') {
+  if (!imageId) return null
+  return `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg`
+}
+
+function normalizeName(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[®™:]/g, '')
+    .replace(/\(.*?\)/g, ' ')
+    .replace(/\[.*?\]/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function scoreNameMatch(query, candidate) {
+  const q = normalizeName(query)
+  const c = normalizeName(candidate)
+  if (!q || !c) return 0
+  if (q === c) return 100
+  if (c.startsWith(q)) return 90
+  if (q.startsWith(c)) return 85
+  if (c.includes(q) || q.includes(c)) return 75
+
+  const qWords = new Set(q.split(' ').filter(Boolean))
+  const cWords = new Set(c.split(' ').filter(Boolean))
+  let overlap = 0
+  for (const word of qWords) {
+    if (cWords.has(word)) overlap++
+  }
+  return overlap * 10
+}
+
+async function getIgdbAccessToken() {
+  const now = Date.now()
+  if (igdbTokenCache.access_token && igdbTokenCache.expires_at > now + 60000) {
+    return igdbTokenCache.access_token
+  }
+
+  if (!IGDB_CLIENT_ID || !IGDB_CLIENT_SECRET) return null
+
+  const tokenUrl = new URL('https://id.twitch.tv/oauth2/token')
+  tokenUrl.searchParams.set('client_id', IGDB_CLIENT_ID)
+  tokenUrl.searchParams.set('client_secret', IGDB_CLIENT_SECRET)
+  tokenUrl.searchParams.set('grant_type', 'client_credentials')
+
+  const response = await fetch(tokenUrl, { method: 'POST' })
+  if (!response.ok) return null
+
+  const data = await response.json()
+  igdbTokenCache = {
+    access_token: data.access_token,
+    expires_at: Date.now() + (Number(data.expires_in || 0) * 1000),
+  }
+
+  return igdbTokenCache.access_token
+}
+
+async function fetchIgdbGameIcon(gameName) {
   if (!gameName) return null
-  if (gameImageCache[gameName]) return gameImageCache[gameName]
-  if (!RAWG_API_KEY) return null
+
+  const token = await getIgdbAccessToken()
+  if (!token) return null
 
   try {
-    const url = new URL('https://api.rawg.io/api/games')
-    url.searchParams.set('key', RAWG_API_KEY)
-    url.searchParams.set('search', gameName)
-    url.searchParams.set('search_precise', 'true')
-    url.searchParams.set('page_size', '5')
+    const body = `fields name,cover.image_id; search "${String(gameName).replace(/"/g, '\\"')}"; limit 5;`
 
-    const response = await fetch(url, {
+    const response = await fetch('https://api.igdb.com/v4/games', {
+      method: 'POST',
       headers: {
-        'User-Agent': 'discord-profile-activity-logger/1.0',
+        'Accept': 'application/json',
+        'Client-ID': IGDB_CLIENT_ID,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'text/plain',
       },
+      body,
     })
 
     if (!response.ok) return null
 
-    const data = await response.json()
-    const results = Array.isArray(data.results) ? data.results : []
+    const results = await response.json()
+    if (!Array.isArray(results) || !results.length) return null
 
-    const exact = results.find(item => item.name?.toLowerCase() === gameName.toLowerCase())
-    const chosen = exact || results[0] || null
-    const imageUrl = chosen?.background_image || null
+    const chosen = [...results]
+      .map(item => ({ item, score: scoreNameMatch(gameName, item?.name) }))
+      .sort((a, b) => b.score - a.score)[0]?.item
 
-    if (imageUrl) {
-      gameImageCache[gameName] = imageUrl
-      await saveGameImageCache()
-    }
-
-    return imageUrl
+    return buildIgdbImageUrl(chosen?.cover?.image_id ?? null, 'cover_small')
   } catch (error) {
-    console.warn(`Failed RAWG fallback for ${gameName}:`, error.message)
+    console.warn(`Failed IGDB fallback for ${gameName}:`, error.message)
     return null
   }
 }
 
-// Mutates row fields so they can be persisted
+async function sgdbRequest(endpoint, query = {}) {
+  if (!STEAMGRIDDB_API_KEY) return null
+
+  const url = new URL(`${STEAMGRIDDB_API}${endpoint}`)
+  for (const [key, value] of Object.entries(query)) {
+    if (value != null && value !== '') url.searchParams.set(key, String(value))
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${STEAMGRIDDB_API_KEY}`,
+      'Accept': 'application/json',
+    },
+  })
+
+  if (!response.ok) return null
+  return response.json()
+}
+
+async function searchSteamGridDbGame(gameName) {
+  if (!gameName) return null
+  try {
+    const data = await sgdbRequest(`/search/autocomplete/${encodeURIComponent(gameName)}`)
+    const list = Array.isArray(data?.data) ? data.data : []
+    if (!list.length) return null
+
+    const chosen = [...list]
+      .map(item => {
+        const game = item?.data ?? item
+        return { game, score: scoreNameMatch(gameName, game?.name) }
+      })
+      .sort((a, b) => b.score - a.score)[0]?.game
+
+    return chosen ?? null
+  } catch (error) {
+    console.warn(`Failed SteamGridDB search for ${gameName}:`, error.message)
+    return null
+  }
+}
+
+function pickBestSteamGridDbAsset(items, preferredStyles = []) {
+  if (!Array.isArray(items) || !items.length) return null
+
+  const styleRank = new Map(preferredStyles.map((style, index) => [style, index]))
+  const scored = items.map(item => {
+    const styleScore = styleRank.has(item.style) ? 100 - styleRank.get(item.style) : 0
+    const baseScore = Number(item.score || 0)
+    return { item, score: styleScore + baseScore }
+  })
+
+  scored.sort((a, b) => b.score - a.score)
+  return scored[0]?.item ?? null
+}
+
+async function fetchSteamGridDbGameImage(gameName) {
+  if (!gameName) return null
+
+  const cacheKey = `game:${normalizeName(gameName)}`
+  if (gameImageCache[cacheKey]) return gameImageCache[cacheKey]
+
+  try {
+    const game = await searchSteamGridDbGame(gameName)
+    if (!game?.id) return null
+
+    const icons = await sgdbRequest(`/icons/game/${game.id}`, {
+      styles: 'official,custom',
+      dimensions: '512,1024',
+      mimes: 'image/png',
+      types: 'static',
+      nsfw: 'false',
+      humor: 'false',
+      epilepsy: 'false',
+      limit: 50,
+    })
+
+    const bestIcon = pickBestSteamGridDbAsset(icons?.data, ['official', 'custom'])
+    if (bestIcon?.url) {
+      const payload = { url: bestIcon.url, thumb: bestIcon.thumb ?? null, source: 'steamgriddb-icon', game_id: game.id, matched_name: game.name }
+      gameImageCache[cacheKey] = payload
+      await saveGameImageCache()
+      return payload
+    }
+
+    const grids = await sgdbRequest(`/grids/game/${game.id}`, {
+      styles: 'alternate,no_logo,material,blurred,white_logo',
+      dimensions: '512x512,1024x1024',
+      mimes: 'image/png,image/webp,image/jpeg',
+      types: 'static',
+      nsfw: 'false',
+      humor: 'false',
+      epilepsy: 'false',
+      limit: 50,
+    })
+
+    const bestGrid = pickBestSteamGridDbAsset(grids?.data, ['alternate', 'no_logo', 'material', 'blurred', 'white_logo'])
+    if (bestGrid?.url) {
+      const payload = { url: bestGrid.url, thumb: bestGrid.thumb ?? null, source: 'steamgriddb-grid', game_id: game.id, matched_name: game.name }
+      gameImageCache[cacheKey] = payload
+      await saveGameImageCache()
+      return payload
+    }
+
+    return null
+  } catch (error) {
+    console.warn(`Failed SteamGridDB lookup for ${gameName}:`, error.message)
+    return null
+  }
+}
+
+async function fetchBestGameImage(gameName) {
+  if (!gameName) return null
+
+  const cacheKey = `game:${normalizeName(gameName)}`
+  if (gameImageCache[cacheKey]) return gameImageCache[cacheKey]
+
+  const sgdb = await fetchSteamGridDbGameImage(gameName)
+  if (sgdb?.url) return sgdb
+
+  const igdbUrl = await fetchIgdbGameIcon(gameName)
+  if (igdbUrl) {
+    const payload = { url: igdbUrl, thumb: igdbUrl, source: 'igdb-cover' }
+    gameImageCache[cacheKey] = payload
+    await saveGameImageCache()
+    return payload
+  }
+
+  return null
+}
+
 async function withResolvedImage(row) {
-  let imageUrl = row.large_image || row.small_image || null
+  const hasDiscordImage = !!(row.small_image || row.large_image)
+  if (hasDiscordImage) {
+    row.image_source = row.image_source || 'discord'
+    return row.small_image || row.large_image || null
+  }
 
-  if (!imageUrl && row.kind === 'game') {
-    imageUrl = await fetchGameImageFallback(row.name)
-
-    if (imageUrl) {
-      if (!row.large_image) row.large_image = imageUrl
-      else if (!row.small_image) row.small_image = imageUrl
+  if (row.kind === 'game') {
+    const result = await fetchBestGameImage(row.name)
+    if (result?.url) {
+      row.small_image = result.url
+      row.image_source = result.source || null
+      return result.url
     }
   }
 
-  return imageUrl
+  return null
 }
 
 function summaryForApi(summary) {
   const { active_session_started_at, ...row } = summary
-  const image_url = row.large_image || row.small_image || null
+  const image_url = row.small_image || row.large_image || null
   return {
     ...row,
     type: row.type === '' ? null : Number(row.type),
@@ -483,7 +681,7 @@ function summaryForApi(summary) {
 }
 
 function historyRowForApi(row) {
-  const image_url = row.large_image || row.small_image || null
+  const image_url = row.small_image || row.large_image || null
   return {
     ...row,
     type: row.type === '' ? null : Number(row.type),
@@ -508,8 +706,8 @@ const client = new Client({
 async function loadActivityStore() {
   const rows = await readCsvRows(ACTIVITY_CSV_PATH, ACTIVITY_HEADERS)
   const map = new Map()
+
   for (const row of rows) {
-    // Resolve and persist any missing game images once
     await withResolvedImage(row)
     map.set(row.key, {
       ...row,
@@ -520,7 +718,7 @@ async function loadActivityStore() {
       active_session_started_at: row.is_active === 'true' ? row.last_started_at || null : null,
     })
   }
-  // Persist any newly resolved images
+
   await writeCsvRows(ACTIVITY_CSV_PATH, ACTIVITY_HEADERS, [...map.values()])
   return map
 }
@@ -529,7 +727,6 @@ async function persistActivityStore() {
   const rows = [...activityStore.values()]
     .sort((a, b) => new Date(b.last_active_at || 0).getTime() - new Date(a.last_active_at || 0).getTime())
 
-  // Ensure we persist resolved images as well
   for (const row of rows) {
     await withResolvedImage(row)
   }
@@ -540,6 +737,7 @@ async function persistActivityStore() {
     total_active_minutes: Math.floor(Number(row.total_active_ms || 0) / 60000),
     is_active: row.is_active ? 'true' : 'false',
   }))
+
   await writeCsvRows(ACTIVITY_CSV_PATH, ACTIVITY_HEADERS, output)
 }
 
@@ -553,7 +751,6 @@ async function closeInactiveActivities(liveKeys, nowIso) {
     if (!summary.is_active || liveKeys.has(key)) continue
 
     const session = sessionFromSummary(summary, nowIso)
-    // Resolve and persist any missing game image for this session
     await withResolvedImage(session)
 
     summary.total_active_ms = Number(summary.total_active_ms || 0) + session.duration_ms
@@ -598,6 +795,10 @@ async function syncPresenceActivities(reason = 'poll') {
     next.last_ended_at = existing?.last_ended_at ?? null
     next.is_active = true
 
+    if (!(next.small_image || next.large_image) && next.kind === 'game') {
+      await withResolvedImage(next)
+    }
+
     activityStore.set(key, next)
   }
 
@@ -611,13 +812,13 @@ async function syncPresenceActivities(reason = 'poll') {
 async function getActivityHistory(limit = 100) {
   const rows = await readCsvRows(ACTIVITY_SESSIONS_CSV_PATH, SESSION_HEADERS)
 
-  // Resolve and persist any missing game images across all sessions
   let touched = false
   for (const row of rows) {
-    const before = row.large_image || row.small_image || ''
+    const before = row.small_image || row.large_image || ''
     const after = await withResolvedImage(row)
     if (!before && after) touched = true
   }
+
   if (touched) {
     await writeCsvRows(ACTIVITY_SESSIONS_CSV_PATH, SESSION_HEADERS, rows)
   }
@@ -673,6 +874,9 @@ app.get('/', async (_req, res) => {
 
     const user = await response.json()
     const presence = formatPresence(cachedPresence) ?? { status: 'offline', activities: [] }
+    const activity_history = [...activityStore.values()]
+      .sort((a, b) => new Date(b.last_active_at || 0).getTime() - new Date(a.last_active_at || 0).getTime())
+      .map(summaryForApi)
 
     res.json({
       id: user.id,
@@ -688,6 +892,7 @@ app.get('/', async (_req, res) => {
       primary_guild: user.primary_guild ?? null,
       collectibles: user.collectibles ?? null,
       presence,
+      activity_history,
     })
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' })
@@ -735,5 +940,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Activity sessions file: ${ACTIVITY_SESSIONS_CSV_PATH}`)
   console.log(`Game image cache file: ${GAME_IMAGE_CACHE_PATH}`)
   console.log(`Activity polling interval: ${ACTIVITY_POLL_INTERVAL_MS}ms`)
-  console.log(`RAWG fallback enabled: ${RAWG_API_KEY ? 'yes' : 'no'}`)
+  console.log(`SteamGridDB enabled: ${STEAMGRIDDB_API_KEY ? 'yes' : 'no'}`)
+  console.log(`IGDB fallback enabled: ${IGDB_CLIENT_ID && IGDB_CLIENT_SECRET ? 'yes' : 'no'}`)
 })
