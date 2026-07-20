@@ -15,11 +15,13 @@ app.use(cors())
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN
 const DISCORD_USER_ID = process.env.DISCORD_USER_ID
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID
+const RAWG_API_KEY = process.env.RAWG_API_KEY
 const PORT = process.env.PORT || 3001
 const ACTIVITY_POLL_INTERVAL_MS = Math.max(15000, Number(process.env.ACTIVITY_POLL_INTERVAL_MS || 30000))
 
 const ACTIVITY_CSV_PATH = path.join(__dirname, 'activity.csv')
 const ACTIVITY_SESSIONS_CSV_PATH = path.join(__dirname, 'activity_sessions.csv')
+const GAME_IMAGE_CACHE_PATH = path.join(__dirname, 'game_image_cache.json')
 
 if (!DISCORD_BOT_TOKEN) throw new Error('Missing DISCORD_BOT_TOKEN')
 if (!DISCORD_USER_ID) throw new Error('Missing DISCORD_USER_ID')
@@ -266,6 +268,28 @@ async function appendCsvRow(filePath, headers, row) {
   await fs.appendFile(filePath, `${line}\n`, 'utf8')
 }
 
+async function ensureJsonFile(filePath, fallbackValue) {
+  try {
+    await fs.access(filePath)
+  } catch {
+    await fs.writeFile(filePath, JSON.stringify(fallbackValue, null, 2), 'utf8')
+  }
+}
+
+async function readJsonFile(filePath, fallbackValue) {
+  await ensureJsonFile(filePath, fallbackValue)
+  try {
+    const raw = await fs.readFile(filePath, 'utf8')
+    return JSON.parse(raw)
+  } catch {
+    return fallbackValue
+  }
+}
+
+async function writeJsonFile(filePath, value) {
+  await fs.writeFile(filePath, JSON.stringify(value, null, 2), 'utf8')
+}
+
 function normalizeActivityKind(activity) {
   if (activity.type === ActivityType.Listening || activity.name === 'Spotify') return 'music'
   if (activity.type === ActivityType.Playing) return 'game'
@@ -374,8 +398,74 @@ function sessionFromSummary(summary, endedAtIso) {
   }
 }
 
+let gameImageCache = {}
+
+async function loadGameImageCache() {
+  gameImageCache = await readJsonFile(GAME_IMAGE_CACHE_PATH, {})
+}
+
+async function saveGameImageCache() {
+  await writeJsonFile(GAME_IMAGE_CACHE_PATH, gameImageCache)
+}
+
+async function fetchGameImageFallback(gameName) {
+  if (!gameName) return null
+  if (gameImageCache[gameName]) return gameImageCache[gameName]
+  if (!RAWG_API_KEY) return null
+
+  try {
+    const url = new URL('https://api.rawg.io/api/games')
+    url.searchParams.set('key', RAWG_API_KEY)
+    url.searchParams.set('search', gameName)
+    url.searchParams.set('search_precise', 'true')
+    url.searchParams.set('page_size', '5')
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'discord-profile-activity-logger/1.0',
+      },
+    })
+
+    if (!response.ok) return null
+
+    const data = await response.json()
+    const results = Array.isArray(data.results) ? data.results : []
+
+    const exact = results.find(item => item.name?.toLowerCase() === gameName.toLowerCase())
+    const chosen = exact || results[0] || null
+    const imageUrl = chosen?.background_image || null
+
+    if (imageUrl) {
+      gameImageCache[gameName] = imageUrl
+      await saveGameImageCache()
+    }
+
+    return imageUrl
+  } catch (error) {
+    console.warn(`Failed RAWG fallback for ${gameName}:`, error.message)
+    return null
+  }
+}
+
+// Mutates row fields so they can be persisted
+async function withResolvedImage(row) {
+  let imageUrl = row.large_image || row.small_image || null
+
+  if (!imageUrl && row.kind === 'game') {
+    imageUrl = await fetchGameImageFallback(row.name)
+
+    if (imageUrl) {
+      if (!row.large_image) row.large_image = imageUrl
+      else if (!row.small_image) row.small_image = imageUrl
+    }
+  }
+
+  return imageUrl
+}
+
 function summaryForApi(summary) {
   const { active_session_started_at, ...row } = summary
+  const image_url = row.large_image || row.small_image || null
   return {
     ...row,
     type: row.type === '' ? null : Number(row.type),
@@ -387,12 +477,13 @@ function summaryForApi(summary) {
     session_count: Number(row.session_count || 0),
     streak: row.streak == null || row.streak === '' ? null : Number(row.streak),
     is_active: row.is_active === true || row.is_active === 'true',
-    active_session_started_at: active_session_started_at ?? null,
-    image_url: row.large_image || row.small_image || null,
+    active_session_started_at,
+    image_url,
   }
 }
 
 function historyRowForApi(row) {
+  const image_url = row.large_image || row.small_image || null
   return {
     ...row,
     type: row.type === '' ? null : Number(row.type),
@@ -401,7 +492,7 @@ function historyRowForApi(row) {
     duration_ms: Number(row.duration_ms || 0),
     duration_seconds: Number(row.duration_seconds || 0),
     duration_minutes: Number(row.duration_minutes || 0),
-    image_url: row.large_image || row.small_image || null,
+    image_url,
   }
 }
 
@@ -418,6 +509,8 @@ async function loadActivityStore() {
   const rows = await readCsvRows(ACTIVITY_CSV_PATH, ACTIVITY_HEADERS)
   const map = new Map()
   for (const row of rows) {
+    // Resolve and persist any missing game images once
+    await withResolvedImage(row)
     map.set(row.key, {
       ...row,
       total_active_ms: Number(row.total_active_ms || 0),
@@ -427,19 +520,27 @@ async function loadActivityStore() {
       active_session_started_at: row.is_active === 'true' ? row.last_started_at || null : null,
     })
   }
+  // Persist any newly resolved images
+  await writeCsvRows(ACTIVITY_CSV_PATH, ACTIVITY_HEADERS, [...map.values()])
   return map
 }
 
 async function persistActivityStore() {
   const rows = [...activityStore.values()]
     .sort((a, b) => new Date(b.last_active_at || 0).getTime() - new Date(a.last_active_at || 0).getTime())
-    .map(row => ({
-      ...row,
-      total_active_seconds: Math.floor(Number(row.total_active_ms || 0) / 1000),
-      total_active_minutes: Math.floor(Number(row.total_active_ms || 0) / 60000),
-      is_active: row.is_active ? 'true' : 'false',
-    }))
-  await writeCsvRows(ACTIVITY_CSV_PATH, ACTIVITY_HEADERS, rows)
+
+  // Ensure we persist resolved images as well
+  for (const row of rows) {
+    await withResolvedImage(row)
+  }
+
+  const output = rows.map(row => ({
+    ...row,
+    total_active_seconds: Math.floor(Number(row.total_active_ms || 0) / 1000),
+    total_active_minutes: Math.floor(Number(row.total_active_ms || 0) / 60000),
+    is_active: row.is_active ? 'true' : 'false',
+  }))
+  await writeCsvRows(ACTIVITY_CSV_PATH, ACTIVITY_HEADERS, output)
 }
 
 function queueWrite(task) {
@@ -452,6 +553,9 @@ async function closeInactiveActivities(liveKeys, nowIso) {
     if (!summary.is_active || liveKeys.has(key)) continue
 
     const session = sessionFromSummary(summary, nowIso)
+    // Resolve and persist any missing game image for this session
+    await withResolvedImage(session)
+
     summary.total_active_ms = Number(summary.total_active_ms || 0) + session.duration_ms
     summary.total_active_seconds = Math.floor(summary.total_active_ms / 1000)
     summary.total_active_minutes = Math.floor(summary.total_active_ms / 60000)
@@ -506,15 +610,29 @@ async function syncPresenceActivities(reason = 'poll') {
 
 async function getActivityHistory(limit = 100) {
   const rows = await readCsvRows(ACTIVITY_SESSIONS_CSV_PATH, SESSION_HEADERS)
-  return rows
+
+  // Resolve and persist any missing game images across all sessions
+  let touched = false
+  for (const row of rows) {
+    const before = row.large_image || row.small_image || ''
+    const after = await withResolvedImage(row)
+    if (!before && after) touched = true
+  }
+  if (touched) {
+    await writeCsvRows(ACTIVITY_SESSIONS_CSV_PATH, SESSION_HEADERS, rows)
+  }
+
+  const sorted = rows
     .sort((a, b) => new Date(b.ended_at || b.started_at || 0).getTime() - new Date(a.ended_at || a.started_at || 0).getTime())
     .slice(0, limit)
-    .map(historyRowForApi)
+
+  return sorted.map(historyRowForApi)
 }
 
 client.on('ready', async () => {
   console.log(`Bot ready: ${client.user.tag}`)
   try {
+    await loadGameImageCache()
     const guild = await client.guilds.fetch(DISCORD_GUILD_ID)
     const member = await guild.members.fetch({ user: DISCORD_USER_ID, withPresences: true })
     cachedPresence = member.presence ?? null
@@ -615,5 +733,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Discord profile API listening on http://localhost:${PORT}`)
   console.log(`Activity summary file: ${ACTIVITY_CSV_PATH}`)
   console.log(`Activity sessions file: ${ACTIVITY_SESSIONS_CSV_PATH}`)
+  console.log(`Game image cache file: ${GAME_IMAGE_CACHE_PATH}`)
   console.log(`Activity polling interval: ${ACTIVITY_POLL_INTERVAL_MS}ms`)
+  console.log(`RAWG fallback enabled: ${RAWG_API_KEY ? 'yes' : 'no'}`)
 })
