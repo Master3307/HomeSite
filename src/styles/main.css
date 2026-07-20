@@ -319,4 +319,214 @@ body {
   margin-bottom: 32px;
 }
 
+.discord-presence-card {
+  --presence-bg: rgba(255, 255, 255, 0.08);
+  --presence-border: rgba(255, 255, 255, 0.16);
+  --presence-text: rgba(255, 255, 255, 0.96);
+  --presence-muted: rgba(255, 255, 255, 0.72);
+  --presence-faint: rgba(255, 255, 255, 0.56);
+  --presence-progress-track: rgba(255, 255, 255, 0.14);
+  --presence-progress-fill: rgba(255, 255, 255, 0.92);
 
+  --presence-image-size: 76px;
+  --presence-image-left: 0.9rem;
+  --presence-image-gap: 1rem;
+  --presence-side-slot: calc(var(--presence-image-left) + var(--presence-image-size) + var(--presence-image-gap));
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88px;
+  width: min(50%, 34rem);
+  margin-top: 0.9rem;
+  margin-inline: auto;
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+  padding-left: var(--presence-side-slot);
+  padding-right: var(--presence-side-slot);
+  color: var(--presence-text);
+  background: var(--presence-bg);
+  border: 0px solid var(--presence-border);
+  border-radius: 13px;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+@supports (corner-shape: squircle) {
+  .discord-presence-card {
+    corner-shape: squircle;
+  }
+}
+
+.discord-presence__image {
+  position: absolute;
+  left: var(--presence-image-left);
+  top: 50%;
+  transform: translateY(-50%);
+  display: block;
+  width: var(--presence-image-size);
+  height: var(--presence-image-size);
+  object-fit: cover;
+  user-select: none;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+@supports (corner-shape: squircle) {
+  .discord-presence__image {
+    corner-shape: squircle;
+  }
+}
+
+.discord-presence__image--music {
+  object-fit: cover;
+}
+
+.discord-presence__image--game {
+  object-fit: cover;
+}
+
+.discord-presence__content {
+  width: 100%;
+  max-width: 22rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.22rem;
+}
+
+.discord-presence__eyebrow {
+  width: 100%;
+  font-size: 0.74rem;
+  line-height: 1.2;
+  color: var(--presence-faint);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discord-presence__title {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--presence-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discord-presence__subtitle {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  color: var(--presence-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discord-presence__progress-wrap {
+  width: 100%;
+  margin-top: 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+}
+
+.discord-presence__progress {
+  position: relative;
+  width: 100%;
+  height: 0.32rem;
+  overflow: hidden;
+  background: var(--presence-progress-track);
+  border-radius: 999px;
+}
+
+.discord-presence__progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--presence-progress-fill);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.24);
+}
+
+.discord-presence__times {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.72rem;
+  color: var(--presence-faint);
+}
+
+.discord-presence__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  width: 100%;
+}
+
+.discord-presence__meta-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: var(--presence-muted);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+
+@media (max-width: 420px) {
+  .discord-presence-card {
+    --presence-image-size: 64px;
+    --presence-image-left: 0.8rem;
+    --presence-image-gap: 0.8rem;
+    --presence-side-slot: calc(var(--presence-image-left) + var(--presence-image-size) + var(--presence-image-gap));
+
+    width: min(100%, 30rem);
+    min-height: 80px;
+    padding-top: 0.8rem;
+    padding-bottom: 0.8rem;
+    padding-left: var(--presence-side-slot);
+    padding-right: var(--presence-side-slot);
+    border-radius: 13px;
+  }
+
+  .discord-presence__image {
+    width: 64px;
+    height: 64px;
+    border-radius: 13px;
+  }
+
+  .discord-presence__title {
+    font-size: 0.93rem;
+  }
+
+  .discord-presence__subtitle {
+    font-size: 0.82rem;
+  }
+}
