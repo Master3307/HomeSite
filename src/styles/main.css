@@ -621,7 +621,7 @@ button:hover {
       var(--presence-image-left) + var(--presence-image-size) + var(--presence-image-gap)
     );
 
-    width: min(100%, 30rem);
+    width: min(100%, 70rem);
     min-height: 80px;
     padding-top: 0.8rem;
     padding-right: var(--presence-side-slot);
