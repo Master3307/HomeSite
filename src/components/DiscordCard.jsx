@@ -393,7 +393,7 @@ export default function DiscordProfileCard() {
             <div className="discord-presence__meta-row">
               {typeof streak === 'number' && streak > 0 ? (
                 <span className="discord-presence__meta-pill">
-                  <span className="material-symbols-outlined streak" style={{ userSelect: 'none' }}>bolt</span> {streak}x{streak === 1 ? '' : 's'} {t('discord.streak', 'Streak')}
+                  <span className="material-symbols-outlined streak" style={{ userSelect: 'none' }}>bolt</span> {streak}x {t('discord.streak', 'Streak')}
                 </span>
               ) : null}
             </div>
