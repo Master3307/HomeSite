@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "node server/bot.cjs",
+    "server": "node server/bot.cjs && node server/services/discord-profile.js",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "build": "pnpm run sitemap && vite build && cp dist/index.html dist/404.html",
     "lint": "oxlint",
