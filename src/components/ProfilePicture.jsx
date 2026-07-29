@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getRandomAvatarDecoration } from '../lib/avatar-decoration.js'
 import { playAudio } from '../lib/play-audio.js'
 
@@ -24,9 +24,25 @@ function getConnectionProfile() {
   }
 }
 
+function getPresenceIcon(status) {
+  switch (status) {
+    case 'online':
+      return '/img/online.png'
+    case 'idle':
+      return '/img/idle.png'
+    case 'dnd':
+    case 'do_not_disturb':
+      return '/img/dnd.png'
+    case 'offline':
+    default:
+      return '/img/offline.png'
+  }
+}
+
 export default function ProfilePicture({
-  avatarSrc,                           // Discord CDN URL
+  avatarSrc,
   decorationSrc,
+  presence,
   alt = 'Profile picture',
   fallbackStaticSrc = '/img/pfp/MrKoby4purple-md.webp',
   fallbackAnimatedSrc = '/img/pfp/MrKoby07animated.gif',
@@ -42,16 +58,22 @@ export default function ProfilePicture({
     randomDecoration ? getRandomAvatarDecoration() : null
   )
 
-  const profile = useMemo(() => getConnectionProfile(), [])
+  const profile = getConnectionProfile()
 
-  // Keep currentSrc in sync when avatarSrc changes
+  const presenceStatus =
+    presence?.status ||
+    presence?.presence?.status ||
+    'offline'
+
+  const presenceIcon = getPresenceIcon(presenceStatus)
+
   useEffect(() => {
     setCurrentSrc(avatarSrc || fallbackStaticSrc)
     setThumbFormat('webp')
     setShowGif(false)
+    setGifReady(false)
   }, [avatarSrc, fallbackStaticSrc])
 
-  // Preload local animated GIF when allowed
   useEffect(() => {
     if (!fallbackAnimatedSrc) return
     if (profile === 'save-data' || profile === 'slow') return
@@ -99,23 +121,19 @@ export default function ProfilePicture({
         decoding="async"
         onDragStart={(e) => e.preventDefault()}
         onMouseEnter={() => {
-          // Only flip to GIF when we’re already on a fallback and GIF is ready
           if (!avatarSrc && gifReady) {
             setShowGif(true)
             setCurrentSrc(fallbackAnimatedSrc)
           }
         }}
         onError={(e) => {
-          // 1) If Discord avatarSrc fails → use local animated GIF
           if (avatarSrc && fallbackAnimatedSrc) {
             setCurrentSrc(fallbackAnimatedSrc)
             setShowGif(true)
-            // prevent looping if local GIF fails too
             e.currentTarget.onerror = null
             return
           }
 
-          // 2) If GIF fails or not available → switch static WebP → JPG
           if (!avatarSrc && !showGif && thumbFormat === 'webp') {
             setThumbFormat('jpg')
             setCurrentSrc(fallbackThumb)
@@ -123,7 +141,6 @@ export default function ProfilePicture({
             return
           }
 
-          // 3) If GIF was shown and failed → fallback to static JPG
           if (!avatarSrc && showGif) {
             setShowGif(false)
             setThumbFormat('jpg')
@@ -146,6 +163,19 @@ export default function ProfilePicture({
           onDragStart={(e) => e.preventDefault()}
         />
       ) : null}
+
+      <img
+        className="pfp-status-dot"
+        src={presenceIcon}
+        alt={presenceStatus}
+        aria-label={`Status: ${presenceStatus}`}
+        draggable={false}
+        width={24}
+        height={24}
+        loading="lazy"
+        decoding="async"
+        onDragStart={(e) => e.preventDefault()}
+      />
     </div>
   )
 }

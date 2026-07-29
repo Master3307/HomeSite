@@ -537,6 +537,7 @@ export default function DiscordProfileCard() {
 
   const displayName = profile?.global_name ?? profile?.username ?? 'MrKoby07'
   const username = profile?.username ?? 'master3307'
+  const status = profile?.presence?.status ?? profile?.status ?? 'offline'
 
   return (
     <article className={`discord-card${refreshing ? ' discord-card--refreshing' : ''}`}>
@@ -544,6 +545,7 @@ export default function DiscordProfileCard() {
         <ProfilePicture
           avatarSrc={avatarSrc}
           decorationSrc={profile?.avatar_decoration}
+          presence={profile?.presence}
           alt={`${displayName} avatar`}
           enableAudio
           onLoad={() => setAvatarState('loaded')}
