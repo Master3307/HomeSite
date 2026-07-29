@@ -5,300 +5,243 @@
  * @version 3.3.0
  */
 
-// Declare constants which will be used throughout the bot.
 require('dotenv').config()
 
-const fs = require("fs");
+const fs = require('fs')
+const path = require('path')
 const {
-	Client,
-	Collection,
-	GatewayIntentBits,
-	Partials,
-} = require("discord.js");
-const { REST } = require("@discordjs/rest");
-const { Routes } = require("discord-api-types/v9");
+  Client,
+  Collection,
+  GatewayIntentBits,
+  Partials,
+} = require('discord.js')
+const { REST } = require('@discordjs/rest')
+const { Routes } = require('discord-api-types/v9')
 
 const token = process.env.DISCORD_BOT_TOKEN
 const client_id = process.env.DISCORD_CLIENT_ID
 const test_guild_id = process.env.DISCORD_GUILD_ID
 
+if (!token) throw new Error('Missing DISCORD_BOT_TOKEN')
+if (!client_id) throw new Error('Missing DISCORD_CLIENT_ID')
+if (!test_guild_id) throw new Error('Missing DISCORD_GUILD_ID')
+
+const EVENTS_DIR = path.join(__dirname, 'events')
+const COMMANDS_DIR = path.join(__dirname, 'commands')
+const INTERACTIONS_DIR = path.join(__dirname, 'interactions')
+const TRIGGERS_DIR = path.join(__dirname, 'triggers')
+
 /**
  * From v13, specifying the intents is compulsory.
  * @type {import('./typings').Client}
- * @description Main Application Client */
+ * @description Main Application Client
+ */
 
 // @ts-ignore
 const client = new Client({
-	// Please add all intents you need, more detailed information @ https://ziad87.net/intents/
-	intents: [
-		GatewayIntentBits.Guilds,
-		GatewayIntentBits.DirectMessages,
-		GatewayIntentBits.GuildMessages,
-		GatewayIntentBits.MessageContent,
-	],
-	partials: [Partials.Channel],
-});
-
-/**********************************************************************/
-// Below we will be making an event handler!
-
-/**
- * @description All event files of the event handler.
- * @type {String[]}
- */
-
-const eventFiles = fs
-	.readdirSync("./events")
-	.filter((file) => file.endsWith(".js"));
-
-// Loop through all files and execute the event when it is actually emmited.
-for (const file of eventFiles) {
-	const event = require(`./events/${file}`);
-	if (event.once) {
-		client.once(event.name, (...args) => event.execute(...args, client));
-	} else {
-		client.on(
-			event.name,
-			async (...args) => await event.execute(...args, client)
-		);
-	}
-}
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+  partials: [Partials.Channel],
+})
 
 /**********************************************************************/
 // Define Collection of Commands, Slash Commands and cooldowns
 
-client.commands = new Collection();
-client.slashCommands = new Collection();
-client.buttonCommands = new Collection();
-client.selectCommands = new Collection();
-client.contextCommands = new Collection();
-client.modalCommands = new Collection();
-client.cooldowns = new Collection();
-client.autocompleteInteractions = new Collection();
-client.triggers = new Collection();
+client.commands = new Collection()
+client.slashCommands = new Collection()
+client.buttonCommands = new Collection()
+client.selectCommands = new Collection()
+client.contextCommands = new Collection()
+client.modalCommands = new Collection()
+client.cooldowns = new Collection()
+client.autocompleteInteractions = new Collection()
+client.triggers = new Collection()
+
+/**********************************************************************/
+// Helper functions
+
+function readJsFiles(dirPath) {
+  if (!fs.existsSync(dirPath)) return []
+  return fs.readdirSync(dirPath).filter((file) => file.endsWith('.js'))
+}
+
+function readSubdirectories(dirPath) {
+  if (!fs.existsSync(dirPath)) return []
+  return fs.readdirSync(dirPath).filter((entry) => {
+    const fullPath = path.join(dirPath, entry)
+    return fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()
+  })
+}
+
+/**********************************************************************/
+// Event handler
+
+const eventFiles = readJsFiles(EVENTS_DIR)
+
+for (const file of eventFiles) {
+  const event = require(path.join(EVENTS_DIR, file))
+  if (event.once) {
+    client.once(event.name, (...args) => event.execute(...args, client))
+  } else {
+    client.on(event.name, async (...args) => await event.execute(...args, client))
+  }
+}
 
 /**********************************************************************/
 // Registration of Message-Based Legacy Commands.
 
-/**
- * @type {String[]}
- * @description All command categories aka folders.
- */
-
-const commandFolders = fs.readdirSync("./commands");
-
-// Loop through all files and store commands in commands collection.
+const commandFolders = readSubdirectories(COMMANDS_DIR)
 
 for (const folder of commandFolders) {
-	const commandFiles = fs
-		.readdirSync(`./commands/${folder}`)
-		.filter((file) => file.endsWith(".js"));
-	for (const file of commandFiles) {
-		const command = require(`./commands/${folder}/${file}`);
-		client.commands.set(command.name, command);
-	}
+  const folderPath = path.join(COMMANDS_DIR, folder)
+  const commandFiles = readJsFiles(folderPath)
+
+  for (const file of commandFiles) {
+    const command = require(path.join(folderPath, file))
+    client.commands.set(command.name, command)
+  }
 }
 
 /**********************************************************************/
 // Registration of Slash-Command Interactions.
 
-/**
- * @type {String[]}
- * @description All slash commands.
- */
+const slashBaseDir = path.join(INTERACTIONS_DIR, 'slash')
+const slashCommands = readSubdirectories(slashBaseDir)
 
-const slashCommands = fs.readdirSync("./interactions/slash");
+for (const moduleName of slashCommands) {
+  const modulePath = path.join(slashBaseDir, moduleName)
+  const commandFiles = readJsFiles(modulePath)
 
-// Loop through all files and store slash-commands in slashCommands collection.
-
-for (const module of slashCommands) {
-	const commandFiles = fs
-		.readdirSync(`./interactions/slash/${module}`)
-		.filter((file) => file.endsWith(".js"));
-
-	for (const commandFile of commandFiles) {
-		const command = require(`./interactions/slash/${module}/${commandFile}`);
-		client.slashCommands.set(command.data.name, command);
-	}
+  for (const commandFile of commandFiles) {
+    const command = require(path.join(modulePath, commandFile))
+    client.slashCommands.set(command.data.name, command)
+  }
 }
 
 /**********************************************************************/
 // Registration of Autocomplete Interactions.
 
-/**
- * @type {String[]}
- * @description All autocomplete interactions.
- */
+const autocompleteBaseDir = path.join(INTERACTIONS_DIR, 'autocomplete')
+const autocompleteInteractions = readSubdirectories(autocompleteBaseDir)
 
-const autocompleteInteractions = fs.readdirSync("./interactions/autocomplete");
+for (const moduleName of autocompleteInteractions) {
+  const modulePath = path.join(autocompleteBaseDir, moduleName)
+  const files = readJsFiles(modulePath)
 
-// Loop through all files and store autocomplete interactions in autocompleteInteractions collection.
-
-for (const module of autocompleteInteractions) {
-	const files = fs
-		.readdirSync(`./interactions/autocomplete/${module}`)
-		.filter((file) => file.endsWith(".js"));
-
-	for (const interactionFile of files) {
-		const interaction = require(`./interactions/autocomplete/${module}/${interactionFile}`);
-		client.autocompleteInteractions.set(interaction.name, interaction);
-	}
+  for (const interactionFile of files) {
+    const interaction = require(path.join(modulePath, interactionFile))
+    client.autocompleteInteractions.set(interaction.name, interaction)
+  }
 }
 
 /**********************************************************************/
 // Registration of Context-Menu Interactions
 
-/**
- * @type {String[]}
- * @description All Context Menu commands.
- */
-
-const contextMenus = fs.readdirSync("./interactions/context-menus");
-
-// Loop through all files and store context-menus in contextMenus collection.
+const contextMenusBaseDir = path.join(INTERACTIONS_DIR, 'context-menus')
+const contextMenus = readSubdirectories(contextMenusBaseDir)
 
 for (const folder of contextMenus) {
-	const files = fs
-		.readdirSync(`./interactions/context-menus/${folder}`)
-		.filter((file) => file.endsWith(".js"));
-	for (const file of files) {
-		const menu = require(`./interactions/context-menus/${folder}/${file}`);
-		const keyName = `${folder.toUpperCase()} ${menu.data.name}`;
-		client.contextCommands.set(keyName, menu);
-	}
+  const folderPath = path.join(contextMenusBaseDir, folder)
+  const files = readJsFiles(folderPath)
+
+  for (const file of files) {
+    const menu = require(path.join(folderPath, file))
+    const keyName = `${folder.toUpperCase()} ${menu.data.name}`
+    client.contextCommands.set(keyName, menu)
+  }
 }
 
 /**********************************************************************/
 // Registration of Button-Command Interactions.
 
-/**
- * @type {String[]}
- * @description All button commands.
- */
+const buttonBaseDir = path.join(INTERACTIONS_DIR, 'buttons')
+const buttonCommands = readSubdirectories(buttonBaseDir)
 
-const buttonCommands = fs.readdirSync("./interactions/buttons");
+for (const moduleName of buttonCommands) {
+  const modulePath = path.join(buttonBaseDir, moduleName)
+  const commandFiles = readJsFiles(modulePath)
 
-// Loop through all files and store button-commands in buttonCommands collection.
-
-for (const module of buttonCommands) {
-	const commandFiles = fs
-		.readdirSync(`./interactions/buttons/${module}`)
-		.filter((file) => file.endsWith(".js"));
-
-	for (const commandFile of commandFiles) {
-		const command = require(`./interactions/buttons/${module}/${commandFile}`);
-		client.buttonCommands.set(command.id, command);
-	}
+  for (const commandFile of commandFiles) {
+    const command = require(path.join(modulePath, commandFile))
+    client.buttonCommands.set(command.id, command)
+  }
 }
 
 /**********************************************************************/
 // Registration of Modal-Command Interactions.
 
-/**
- * @type {String[]}
- * @description All modal commands.
- */
+const modalBaseDir = path.join(INTERACTIONS_DIR, 'modals')
+const modalCommands = readSubdirectories(modalBaseDir)
 
-const modalCommands = fs.readdirSync("./interactions/modals");
+for (const moduleName of modalCommands) {
+  const modulePath = path.join(modalBaseDir, moduleName)
+  const commandFiles = readJsFiles(modulePath)
 
-// Loop through all files and store modal-commands in modalCommands collection.
-
-for (const module of modalCommands) {
-	const commandFiles = fs
-		.readdirSync(`./interactions/modals/${module}`)
-		.filter((file) => file.endsWith(".js"));
-
-	for (const commandFile of commandFiles) {
-		const command = require(`./interactions/modals/${module}/${commandFile}`);
-		client.modalCommands.set(command.id, command);
-	}
+  for (const commandFile of commandFiles) {
+    const command = require(path.join(modulePath, commandFile))
+    client.modalCommands.set(command.id, command)
+  }
 }
 
 /**********************************************************************/
-// Registration of select-menus Interactions
+// Registration of Select-Menus Interactions
 
-/**
- * @type {String[]}
- * @description All Select Menu commands.
- */
+const selectMenusBaseDir = path.join(INTERACTIONS_DIR, 'select-menus')
+const selectMenus = readSubdirectories(selectMenusBaseDir)
 
-const selectMenus = fs.readdirSync("./interactions/select-menus");
+for (const moduleName of selectMenus) {
+  const modulePath = path.join(selectMenusBaseDir, moduleName)
+  const commandFiles = readJsFiles(modulePath)
 
-// Loop through all files and store select-menus in selectMenus collection.
-
-for (const module of selectMenus) {
-	const commandFiles = fs
-		.readdirSync(`./interactions/select-menus/${module}`)
-		.filter((file) => file.endsWith(".js"));
-	for (const commandFile of commandFiles) {
-		const command = require(`./interactions/select-menus/${module}/${commandFile}`);
-		client.selectCommands.set(command.id, command);
-	}
+  for (const commandFile of commandFiles) {
+    const command = require(path.join(modulePath, commandFile))
+    client.selectCommands.set(command.id, command)
+  }
 }
 
 /**********************************************************************/
 // Registration of Slash-Commands in Discord API
 
-const rest = new REST({ version: "9" }).setToken(token);
+const rest = new REST({ version: '9' }).setToken(token)
 
 const commandJsonData = [
-	...Array.from(client.slashCommands.values()).map((c) => c.data.toJSON()),
-	...Array.from(client.contextCommands.values()).map((c) => c.data),
-];
+  ...Array.from(client.slashCommands.values()).map((c) => c.data.toJSON()),
+  ...Array.from(client.contextCommands.values()).map((c) => c.data),
+]
 
-(async () => {
-	try {
-		console.log("Started refreshing application (/) commands.");
+;(async () => {
+  try {
+    console.log('Started refreshing application (/) commands.')
 
-		await rest.put(
-			/**
-			 * By default, you will be using guild commands during development.
-			 * Once you are done and ready to use global commands (which have 1 hour cache time),
-			 * 1. Please uncomment the below (commented) line to deploy global commands.
-			 * 2. Please comment the below (uncommented) line (for guild commands).
-			 */
+    await rest.put(
+      Routes.applicationGuildCommands(client_id, test_guild_id),
+      { body: commandJsonData }
+    )
 
-			Routes.applicationGuildCommands(client_id, test_guild_id),
-
-			/**
-			 * Good advice for global commands, you need to execute them only once to update
-			 * your commands to the Discord API. Please comment it again after running the bot once
-			 * to ensure they don't get re-deployed on the next restart.
-			 */
-
-			// Routes.applicationCommands(client_id)
-
-			{ body: commandJsonData }
-		);
-
-		console.log("Successfully reloaded application (/) commands.");
-	} catch (error) {
-		console.error(error);
-	}
-})();
+    console.log('Successfully reloaded application (/) commands.')
+  } catch (error) {
+    console.error(error)
+  }
+})()
 
 /**********************************************************************/
 // Registration of Message Based Chat Triggers
 
-/**
- * @type {String[]}
- * @description All trigger categories aka folders.
- */
-
-const triggerFolders = fs.readdirSync("./triggers");
-
-// Loop through all files and store triggers in triggers collection.
+const triggerFolders = readSubdirectories(TRIGGERS_DIR)
 
 for (const folder of triggerFolders) {
-	const triggerFiles = fs
-		.readdirSync(`./triggers/${folder}`)
-		.filter((file) => file.endsWith(".js"));
-	for (const file of triggerFiles) {
-		const trigger = require(`./triggers/${folder}/${file}`);
-		client.triggers.set(trigger.name, trigger);
-	}
+  const folderPath = path.join(TRIGGERS_DIR, folder)
+  const triggerFiles = readJsFiles(folderPath)
+
+  for (const file of triggerFiles) {
+    const trigger = require(path.join(folderPath, file))
+    client.triggers.set(trigger.name, trigger)
+  }
 }
 
 // Login into your client application with bot's token.
-
-client.login(token);
+client.login(token)
