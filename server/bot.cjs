@@ -66,7 +66,7 @@ client.triggers = new Collection()
 
 function readJsFiles(dirPath) {
   if (!fs.existsSync(dirPath)) return []
-  return fs.readdirSync(dirPath).filter((file) => file.endsWith('.js'))
+  return fs.readdirSync(dirPath).filter((file) => file.endsWith('.cjs'))
 }
 
 function readSubdirectories(dirPath) {
