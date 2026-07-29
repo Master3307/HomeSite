@@ -84,11 +84,6 @@ module.exports = {
                 inline: false,
               },
               {
-                name: "Source Channel",
-                value: `<#${channel.id}>`,
-                inline: false,
-              },
-              {
                 name: "Requested Code",
                 value: code,
                 inline: false,
@@ -98,8 +93,7 @@ module.exports = {
                 value: message.id,
                 inline: false,
               },
-            )
-            .setTimestamp();
+            );
 
           const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -133,8 +127,7 @@ module.exports = {
                   name: "Submitted Code",
                   value: code,
                   inline: false,
-                })
-                .setTimestamp(),
+                }),
             ],
           })
           .catch(() => null);

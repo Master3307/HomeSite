@@ -100,8 +100,7 @@ module.exports = {
                       name: "Approved Code",
                       value: code,
                       inline: false,
-                    })
-                    .setTimestamp(),
+                    }),
                 ],
               })
               .catch(() => null);
