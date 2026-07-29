@@ -8,7 +8,8 @@
 // Declares constants (destructured) to be used in this file.
 
 const { Collection, ChannelType } = require("discord.js");
-const { prefix, owner } = require("../config.json");
+const prefix = process.env.BOT_PREFIX || '!'
+const owners = process.env.BOT_OWNERS ? process.env.BOT_OWNERS.split(',') : []
 
 // Prefix regex, we will use to match in mention prefix.
 

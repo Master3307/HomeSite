@@ -6,7 +6,7 @@
  */
 
 module.exports = {
-	name: "ready",
+	name: "clientReady",
 	once: true,
 
 	/**

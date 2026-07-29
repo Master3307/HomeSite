@@ -6,7 +6,7 @@
  */
 
 // Deconstructing prefix from config file to use in help command
-const { prefix } = require("./../../config.json");
+const prefix = process.env.BOT_PREFIX || '!'
 
 // Deconstructing EmbedBuilder to create embeds within this command
 const { EmbedBuilder, ChannelType } = require("discord.js");
