@@ -181,5 +181,5 @@ typings/
 # Server #
 ##########
 update.sh
-server/*.csv
-server/*.json
+server/services/*.csv
+server/services/*.json
