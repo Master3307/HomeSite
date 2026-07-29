@@ -1,7 +1,8 @@
 const {
   SlashCommandBuilder,
   EmbedBuilder,
-  PermissionFlagsBits,
+  ChannelType,
+  MessageFlags,
 } = require('discord.js');
 
 const TARGET_CHANNEL_ID = '1479194712111059137';
@@ -41,7 +42,7 @@ async function clearChannel(channel, keepMessageId = null) {
       try {
         await msg.delete();
       } catch (_) {
-        // ignore undeletable / missing perms / already deleted
+        // Ignore undeletable, already deleted, or permission-related failures.
       }
     }
 
@@ -56,6 +57,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('lobby-code')
     .setDescription('Replace the lobby-code channel with a fresh code post.')
+    .setDMPermission(false)
     .addStringOption((option) =>
       option
         .setName('code')
@@ -70,42 +72,43 @@ module.exports = {
         .setDescription('Optional embed description')
         .setRequired(false)
         .setMaxLength(4000)
-    )
-    .setDMPermission(false),
+    ),
 
   async execute(interaction) {
     if (!interaction.inGuild()) {
       return interaction.reply({
         content: 'This command can only be used inside the server.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
     const member = interaction.member;
-    const hasPrivilegedRole = member.roles?.cache?.has(PRIVILEGED_ROLE_ID);
+    const hasPrivilegedRole = member?.roles?.cache?.has(PRIVILEGED_ROLE_ID);
 
     if (!hasPrivilegedRole) {
       return interaction.reply({
         content: 'You are not allowed to use this command.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
-    const code = interaction.options.getString('code', true);
-    const desc = interaction.options.getString('desc') ?? null;
+    await interaction.deferReply({
+      flags: MessageFlags.Ephemeral,
+    });
+
+    const code = interaction.options.getString('code', true).trim();
+    const desc = interaction.options.getString('desc')?.trim() || null;
 
     const channel = await interaction.client.channels.fetch(TARGET_CHANNEL_ID).catch(() => null);
 
-    if (!channel || !channel.isTextBased()) {
-      return interaction.reply({
-        content: 'Target channel was not found or is not a text channel.',
-        ephemeral: true,
+    if (!channel || !channel.isTextBased() || channel.type !== ChannelType.GuildText) {
+      return interaction.editReply({
+        content: 'Target channel was not found or is not a normal text channel.',
       });
     }
 
-    await interaction.reply({
-      content: `Updating <#${TARGET_CHANNEL_ID}>...`,
-      ephemeral: true,
+    await interaction.editReply({
+      content: `Clearing <#${TARGET_CHANNEL_ID}> and posting the new lobby code...`,
     });
 
     await clearChannel(channel);
@@ -131,7 +134,7 @@ module.exports = {
     });
 
     await interaction.editReply({
-      content: `Lobby code updated in <#${TARGET_CHANNEL_ID}>.`,
+      content: `Done. Lobby code updated in <#${TARGET_CHANNEL_ID}>.`,
     });
   },
 };
