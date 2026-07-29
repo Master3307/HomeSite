@@ -3,11 +3,21 @@ const {
   EmbedBuilder,
   ChannelType,
   MessageFlags,
-} = require('discord.js');
+} = require("discord.js");
 
-const TARGET_CHANNEL_ID = '1479194712111059137';
-const PRIVILEGED_ROLE_ID = '1479193560778805300';
-const PING_ROLE_ID = '1487023716658319400';
+const TARGET_CHANNEL_ID = "1479194712111059137";
+const PING_ROLE_ID = "1487023716658319400";
+const PRIVILEGED_ROLE_IDS = [
+  "1479193560778805300",
+  "1479193858565865472",
+  "1479222319711780904",
+];
+
+function hasPrivilegedRole(member) {
+  return PRIVILEGED_ROLE_IDS.some((roleId) =>
+    member?.roles?.cache?.has(roleId),
+  );
+}
 
 async function clearChannel(channel, keepMessageId = null) {
   let lastId;
@@ -48,46 +58,83 @@ async function clearChannel(channel, keepMessageId = null) {
 
     lastId = messages.last()?.id;
     if (!lastId) break;
-
     if (messages.size < 100) break;
   }
 }
 
+async function postLobbyCode(client, code, desc = null) {
+  const channel = await client.channels
+    .fetch(TARGET_CHANNEL_ID)
+    .catch(() => null);
+
+  if (
+    !channel ||
+    !channel.isTextBased() ||
+    channel.type !== ChannelType.GuildText
+  ) {
+    throw new Error(
+      "Target channel was not found or is not a normal text channel.",
+    );
+  }
+
+  await clearChannel(channel);
+
+  const embed = new EmbedBuilder()
+    .setColor("#2F1A80")
+    .setTitle(code)
+    .addFields({
+      name: "updated",
+      value: `<t:${Math.floor(Date.now() / 1000)}:R>`,
+      inline: false,
+    });
+
+  if (desc) {
+    embed.setDescription(desc);
+  }
+
+  return channel.send({
+    content: `||<@&${PING_ROLE_ID}>||\n**Current Lobby Code:**`,
+    embeds: [embed],
+    allowedMentions: {
+      roles: [PING_ROLE_ID],
+    },
+  });
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('lobby-code')
-    .setDescription('Replace the lobby-code channel with a fresh code post.')
+    .setName("lobby-code")
+    .setDescription("Replace the lobby-code channel with a fresh code post.")
     .setDMPermission(false)
     .addStringOption((option) =>
       option
-        .setName('code')
-        .setDescription('The current lobby code')
+        .setName("code")
+        .setDescription("The current lobby code")
         .setRequired(true)
         .setMinLength(1)
-        .setMaxLength(100)
+        .setMaxLength(100),
     )
     .addStringOption((option) =>
       option
-        .setName('desc')
-        .setDescription('Optional embed description')
+        .setName("desc")
+        .setDescription("Optional embed description")
         .setRequired(false)
-        .setMaxLength(4000)
+        .setMaxLength(4000),
     ),
 
   async execute(interaction) {
     if (!interaction.inGuild()) {
       return interaction.reply({
-        content: 'This command can only be used inside the server.',
+        content: "This command can only be used inside the server.",
         flags: MessageFlags.Ephemeral,
       });
     }
 
     const member = interaction.member;
-    const hasPrivilegedRole = member?.roles?.cache?.has(PRIVILEGED_ROLE_ID);
 
-    if (!hasPrivilegedRole) {
+    if (!hasPrivilegedRole(member)) {
       return interaction.reply({
-        content: 'You are not allowed to use this command.',
+        content: "You are not allowed to use this command.",
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -96,45 +143,21 @@ module.exports = {
       flags: MessageFlags.Ephemeral,
     });
 
-    const code = interaction.options.getString('code', true).trim();
-    const desc = interaction.options.getString('desc')?.trim() || null;
-
-    const channel = await interaction.client.channels.fetch(TARGET_CHANNEL_ID).catch(() => null);
-
-    if (!channel || !channel.isTextBased() || channel.type !== ChannelType.GuildText) {
-      return interaction.editReply({
-        content: 'Target channel was not found or is not a normal text channel.',
-      });
-    }
+    const code = interaction.options.getString("code", true).trim();
+    const desc = interaction.options.getString("desc")?.trim() || null;
 
     await interaction.editReply({
       content: `Clearing <#${TARGET_CHANNEL_ID}> and posting the new lobby code...`,
     });
 
-    await clearChannel(channel);
-
-    const embed = new EmbedBuilder()
-      .setTitle(code)
-      .addFields({
-        name: 'updated',
-        value: `<t:${Math.floor(Date.now() / 1000)}:R>`,
-        inline: false,
-      });
-
-    if (desc) {
-      embed.setDescription(desc);
-    }
-
-    await channel.send({
-      content: `||<@&${PING_ROLE_ID}>||\nCurrent Lobby Code:`,
-      embeds: [embed],
-      allowedMentions: {
-        roles: [PING_ROLE_ID],
-      },
-    });
+    await postLobbyCode(interaction.client, code, desc);
 
     await interaction.editReply({
       content: `Done. Lobby code updated in <#${TARGET_CHANNEL_ID}>.`,
     });
   },
+
+  hasPrivilegedRole,
+  postLobbyCode,
+  TARGET_CHANNEL_ID,
 };

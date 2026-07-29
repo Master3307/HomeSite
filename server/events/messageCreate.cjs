@@ -5,171 +5,237 @@
  * @version 3.3.0
  */
 
-// Declares constants (destructured) to be used in this file.
+const {
+  Collection,
+  ChannelType,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require("discord.js");
 
-const { Collection, ChannelType } = require("discord.js");
-const prefix = process.env.BOT_PREFIX || '!'
-const owners = process.env.BOT_OWNERS ? process.env.BOT_OWNERS.split(',') : []
+const prefix = process.env.BOT_PREFIX || "!";
+const owners = process.env.BOT_OWNERS ? process.env.BOT_OWNERS.split(",") : [];
 
-// Prefix regex, we will use to match in mention prefix.
+const {
+  hasPrivilegedRole,
+  postLobbyCode,
+  TARGET_CHANNEL_ID,
+} = require("../interactions/slash/utility/lobby-code.cjs");
+
+const REVIEW_CHANNEL_ID = "1532015231671472399";
 
 const escapeRegex = (string) => {
-	return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
 
 module.exports = {
-	name: "messageCreate",
+  name: "messageCreate",
 
-	/**
-	 * @description Executes when a message is created and handle it.
-	 * @author Naman Vrati
-	 * @param {import('discord.js').Message & { client: import('../typings').Client }} message The message which was created.
-	 */
+  async execute(message) {
+    const { client, guild, channel, content, author } = message;
 
-	async execute(message) {
-		// Declares const to be used.
+    if (author.bot) return;
 
-		const { client, guild, channel, content, author } = message;
+    if (guild && channel.id === TARGET_CHANNEL_ID) {
+      const code = content.trim();
+      if (!code) return;
 
-		// Checks if the bot is mentioned in the message all alone and triggers onMention trigger.
-		// You can change the behavior as per your liking at ./messages/onMention.js
+      if (hasPrivilegedRole(message.member)) {
+        try {
+          await postLobbyCode(client, code, null);
+        } catch (error) {
+          console.error(
+            "Failed to update lobby code from messageCreate:",
+            error,
+          );
+        }
 
-		if (
-			message.content == `<@${client.user.id}>` ||
-			message.content == `<@!${client.user.id}>`
-		) {
-			require("../messages/onMention.cjs").execute(message);
-			return;
-		}
+        return;
+      }
 
-		/**
-		 * @description Converts prefix to lowercase.
-		 * @type {String}
-		 */
+      try {
+        const reviewChannel = await client.channels
+          .fetch(REVIEW_CHANNEL_ID)
+          .catch(() => null);
 
-		const checkPrefix = prefix.toLowerCase();
+        if (
+          reviewChannel &&
+          reviewChannel.isTextBased() &&
+          reviewChannel.type === ChannelType.GuildText
+        ) {
+          const encodedCode = Buffer.from(code, "utf8").toString("base64url");
 
-		/**
-		 * @description Regex expression for mention prefix
-		 */
+          const embed = new EmbedBuilder()
+            .setColor("#2F1A80")
+            .setTitle("Lobby Code Approval Request")
+            .setDescription(
+              "A non-privileged user submitted a lobby code that requires approval.",
+            )
+            .addFields(
+              {
+                name: "User",
+                value: `${author} (${author.tag ?? author.username})`,
+                inline: false,
+              },
+              {
+                name: "User ID",
+                value: author.id,
+                inline: false,
+              },
+              {
+                name: "Source Channel",
+                value: `<#${channel.id}>`,
+                inline: false,
+              },
+              {
+                name: "Requested Code",
+                value: code,
+                inline: false,
+              },
+              {
+                name: "Original Message ID",
+                value: message.id,
+                inline: false,
+              },
+            )
+            .setTimestamp();
 
-		const prefixRegex = new RegExp(
-			`^(<@!?${client.user.id}>|${escapeRegex(checkPrefix)})\\s*`
-		);
+          const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`lobbyapprove:${author.id}:${encodedCode}`)
+              .setLabel("Approve")
+              .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+              .setCustomId(`lobbydeny:${author.id}:${encodedCode}`)
+              .setLabel("Deny")
+              .setStyle(ButtonStyle.Danger),
+          );
 
-		// Checks if message content in lower case starts with bot's mention.
+          await reviewChannel.send({
+            embeds: [embed],
+            components: [row],
+          });
+        }
 
-		if (!prefixRegex.test(content.toLowerCase())) return;
+        await message.delete().catch(() => null);
 
-		/**
-		 * @description Checks and returned matched prefix, either mention or prefix in config.
-		 */
+        await author
+          .send({
+            embeds: [
+              new EmbedBuilder()
+                .setColor("#2F1A80")
+                .setTitle("Lobby Code Pending Approval")
+                .setDescription(
+                  `You do not currently have permission to post lobby codes directly in <#${TARGET_CHANNEL_ID}>. Your submitted code has been forwarded for review. Please wait for approval or denial from the staff team.`,
+                )
+                .addFields({
+                  name: "Submitted Code",
+                  value: code,
+                  inline: false,
+                })
+                .setTimestamp(),
+            ],
+          })
+          .catch(() => null);
+      } catch (error) {
+        console.error("Failed to send approval request for lobby code:", error);
+      }
 
-		const [matchedPrefix] = content.toLowerCase().match(prefixRegex);
+      return;
+    }
 
-		/**
-		 * @type {String[]}
-		 * @description The Message Content of the received message seperated by spaces (' ') in an array, this excludes prefix and command/alias itself.
-		 */
+    if (
+      message.content == `<@${client.user.id}>` ||
+      message.content == `<@!${client.user.id}>`
+    ) {
+      require("../messages/onMention.cjs").execute(message);
+      return;
+    }
 
-		const args = content.slice(matchedPrefix.length).trim().split(/ +/);
+    const checkPrefix = prefix.toLowerCase();
 
-		/**
-		 * @type {String}
-		 * @description Name of the command received from first argument of the args array.
-		 */
+    const prefixRegex = new RegExp(
+      `^(<@!?${client.user.id}>|${escapeRegex(checkPrefix)})\\s*`,
+    );
 
-		const commandName = args.shift().toLowerCase();
+    if (!prefixRegex.test(content.toLowerCase())) return;
 
-		// Check if mesage does not starts with prefix, or message author is bot. If yes, return.
+    const [matchedPrefix] = content.toLowerCase().match(prefixRegex);
 
-		if (!message.content.startsWith(matchedPrefix) || message.author.bot)
-			return;
+    const args = content.slice(matchedPrefix.length).trim().split(/ +/);
+    const commandName = args.shift()?.toLowerCase();
 
-		const command =
-			client.commands.get(commandName) ||
-			client.commands.find(
-				(cmd) => cmd.aliases && cmd.aliases.includes(commandName)
-			);
+    if (!message.content.startsWith(matchedPrefix)) return;
 
-		// It it's not a command, return :)
+    const command =
+      client.commands.get(commandName) ||
+      client.commands.find(
+        (cmd) => cmd.aliases && cmd.aliases.includes(commandName),
+      );
 
-		if (!command) return;
+    if (!command) return;
 
-		// Owner Only Property, add in your command properties if true.
+    if (command.ownerOnly && !owners.includes(message.author.id)) {
+      return message.reply({ content: "This is a owner only command!" });
+    }
 
-		if (command.ownerOnly && message.author.id !== owner) {
-			return message.reply({ content: "This is a owner only command!" });
-		}
+    if (command.guildOnly && message.channel.type === ChannelType.DM) {
+      return message.reply({
+        content: "I can't execute that command inside DMs!",
+      });
+    }
 
-		// Guild Only Property, add in your command properties if true.
+    if (command.permissions && message.channel.type !== ChannelType.DM) {
+      const authorPerms = message.channel.permissionsFor(message.author);
+      if (!authorPerms || !authorPerms.has(command.permissions)) {
+        return message.reply({ content: "You can not do this!" });
+      }
+    }
 
-		if (command.guildOnly && message.channel.type === ChannelType.DM) {
-			return message.reply({
-				content: "I can't execute that command inside DMs!",
-			});
-		}
+    if (command.args && !args.length) {
+      let reply = `You didn't provide any arguments, ${message.author}!`;
 
-		// Author perms property
-		// Will skip the permission check if command channel is a DM. Use guildOnly for possible error prone commands!
+      if (command.usage) {
+        reply += `\nThe proper usage would be: \`${prefix}${command.name} ${command.usage}\``;
+      }
 
-		if (command.permissions && message.channel.type !== ChannelType.DM) {
-			const authorPerms = message.channel.permissionsFor(message.author);
-			if (!authorPerms || !authorPerms.has(command.permissions)) {
-				return message.reply({ content: "You can not do this!" });
-			}
-		}
+      return message.channel.send({ content: reply });
+    }
 
-		// Args missing
+    const { cooldowns } = client;
 
-		if (command.args && !args.length) {
-			let reply = `You didn't provide any arguments, ${message.author}!`;
+    if (!cooldowns.has(command.name)) {
+      cooldowns.set(command.name, new Collection());
+    }
 
-			if (command.usage) {
-				reply += `\nThe proper usage would be: \`${prefix}${command.name} ${command.usage}\``;
-			}
+    const now = Date.now();
+    const timestamps = cooldowns.get(command.name);
+    const cooldownAmount = (command.cooldown || 3) * 1000;
 
-			return message.channel.send({ content: reply });
-		}
+    if (timestamps.has(message.author.id)) {
+      const expirationTime = timestamps.get(message.author.id) + cooldownAmount;
 
-		// Cooldowns
+      if (now < expirationTime) {
+        const timeLeft = (expirationTime - now) / 1000;
+        return message.reply({
+          content: `please wait ${timeLeft.toFixed(
+            1,
+          )} more second(s) before reusing the \`${command.name}\` command.`,
+        });
+      }
+    }
 
-		const { cooldowns } = client;
+    timestamps.set(message.author.id, now);
+    setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
 
-		if (!cooldowns.has(command.name)) {
-			cooldowns.set(command.name, new Collection());
-		}
-
-		const now = Date.now();
-		const timestamps = cooldowns.get(command.name);
-		const cooldownAmount = (command.cooldown || 3) * 1000;
-
-		if (timestamps.has(message.author.id)) {
-			const expirationTime = timestamps.get(message.author.id) + cooldownAmount;
-
-			if (now < expirationTime) {
-				const timeLeft = (expirationTime - now) / 1000;
-				return message.reply({
-					content: `please wait ${timeLeft.toFixed(
-						1
-					)} more second(s) before reusing the \`${command.name}\` command.`,
-				});
-			}
-		}
-
-		timestamps.set(message.author.id, now);
-		setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
-
-		// Rest your creativity is below.
-
-		// execute the final command. Put everything above this.
-		try {
-			command.execute(message, args);
-		} catch (error) {
-			console.error(error);
-			message.reply({
-				content: "There was an error trying to execute that command!",
-			});
-		}
-	},
+    try {
+      command.execute(message, args);
+    } catch (error) {
+      console.error(error);
+      message.reply({
+        content: "There was an error trying to execute that command!",
+      });
+    }
+  },
 };

@@ -23,3 +23,9 @@ Support in Translation is always Welcome!
 Status:
 
 [![Translation status](http://weblate.master3307.org/widget/homesite/multi-auto.svg)](http://weblate.master3307.org/engage/homesite/)
+
+## Credits
+
+Discord Bot Template by [NamVr](https://github.com/NamVr/) used - [repo](https://github.com/NamVr/DiscordBot-Template)
+
+Card tilt effect by Stormxxboy found [here](https://stormxxboy.com/card/)
