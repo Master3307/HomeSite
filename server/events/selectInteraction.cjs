@@ -28,7 +28,7 @@ module.exports = {
 		// You can modify the error message at ./messages/defaultSelectError.js file!
 
 		if (!command) {
-			await require("../messages/defaultSelectError").execute(interaction);
+			await require("../messages/defaultSelectError.cjs").execute(interaction);
 			return;
 		}
 

@@ -38,7 +38,7 @@ module.exports = {
 			message.content == `<@${client.user.id}>` ||
 			message.content == `<@!${client.user.id}>`
 		) {
-			require("../messages/onMention").execute(message);
+			require("../messages/onMention.cjs").execute(message);
 			return;
 		}
 
