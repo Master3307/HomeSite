@@ -87,8 +87,7 @@ module.exports = {
     const dmEmbed = new EmbedBuilder()
       .setColor(0xed4245)
       .setTitle(`You have been kicked from ${interaction.guild.name}`)
-      .addFields({ name: "Reason", value: reason || "No reason provided." })
-      .setTimestamp();
+      .addFields({ name: "Reason", value: reason || "No reason provided." });
 
     if (!isPrivate) {
       dmEmbed.addFields({ name: "Kicked by", value: interaction.user.tag });
