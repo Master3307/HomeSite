@@ -43,11 +43,6 @@ module.exports = {
           name: "Joined Server",
           value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:F>`,
         },
-        {
-          name: "Status",
-          value: member.presence?.status || "offline",
-          inline: true,
-        },
         { name: "Roles", value: roles },
       )
       .setFooter({ text: `ID: ${target.id}` });
