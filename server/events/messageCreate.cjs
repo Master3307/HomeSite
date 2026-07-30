@@ -17,7 +17,7 @@ const {
 const prefix = process.env.BOT_PREFIX || "!";
 const owners = process.env.BOT_OWNERS ? process.env.BOT_OWNERS.split(",") : [];
 
-const stickyMessages = new Map();
+const { getSticky, setSticky } = require("../services/sticky.cjs");
 
 const {
   hasPrivilegedRole,
@@ -25,17 +25,8 @@ const {
   TARGET_CHANNEL_ID,
 } = require("../interactions/slash/utility/lobby-code.cjs");
 
-function getSticky(channelId) {
-  return stickyMessages.get(channelId);
-}
-
-function setSticky(channelId, content, messageId) {
-  stickyMessages.set(channelId, { content, messageId });
-}
-
 const REVIEW_CHANNEL_ID = "1532015231671472399";
 const STICKY_CHANNEL_ID = "1479219328258674709";
-const stickyTimers = new Map();
 
 const escapeRegex = (string) => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -83,23 +74,6 @@ async function sendStickyMessage(message) {
   setSticky(channel.id, stickyText, sentMessage.id);
 }
 
-function scheduleStickyUpdate(message) {
-  if (stickyTimers.has(message.channel.id)) {
-    clearTimeout(stickyTimers.get(message.channel.id));
-  }
-
-  const timeoutId = setTimeout(async () => {
-    stickyTimers.delete(message.channel.id);
-    try {
-      await sendStickyMessage(message);
-    } catch (error) {
-      console.error("Failed to send sticky message:", error);
-    }
-  }, 5000);
-
-  stickyTimers.set(message.channel.id, timeoutId);
-}
-
 module.exports = {
   name: "messageCreate",
 
@@ -109,7 +83,11 @@ module.exports = {
     if (author.bot) return;
 
     if (channel.id === STICKY_CHANNEL_ID) {
-      scheduleStickyUpdate(message);
+      try {
+        await sendStickyMessage(message);
+      } catch (error) {
+        console.error("Failed to send sticky message:", error);
+      }
       return;
     }
 
