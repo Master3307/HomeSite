@@ -11,7 +11,7 @@ module.exports = {
     .addStringOption((option) =>
       option
         .setName("user")
-        .setDescription("The username, user ID, or mention of the user to ban")
+        .setDescription("The mention of the user to ban")
         .setRequired(true),
     )
     .addStringOption((option) =>
@@ -76,8 +76,7 @@ module.exports = {
     const dmEmbed = new EmbedBuilder()
       .setColor(0xed4245)
       .setTitle(`You have been banned from ${interaction.guild.name}`)
-      .addFields({ name: "Reason", value: reason || "No reason provided." })
-      .setTimestamp();
+      .addFields({ name: "Reason", value: reason || "No reason provided." });
 
     if (!isPrivate) {
       dmEmbed.addFields({ name: "Banned by", value: interaction.user.tag });
