@@ -17,8 +17,6 @@ const {
 const prefix = process.env.BOT_PREFIX || "!";
 const owners = process.env.BOT_OWNERS ? process.env.BOT_OWNERS.split(",") : [];
 
-const { getSticky, setSticky } = require("../services/sticky.cjs");
-
 const {
   hasPrivilegedRole,
   postLobbyCode,
@@ -40,15 +38,12 @@ module.exports = {
   async execute(message) {
     const { client, guild, channel, content, author } = message;
 
-    if (channel.id === STICKY_CHANNEL_ID) {
-      // Ignore our own sticky message (prevent a send loop),
-      // but allow other authors so we can observe activity in the channel.
-      if (author && author.id === client.user.id) return;
-      console.log(
-        `sticky: received message in ${channel.id} from ${author?.id} bot=${author?.bot}`,
-      );
+    if (message.channelId === STICKY_CHANNEL_ID) {
+      // Only repost sticky after human messages (also skips our own sticky posts).
+      if (author?.bot) return;
+
       try {
-        await sendStickyMessageToChannel(client, channel);
+        await sendStickyMessageToChannel(client, message.channelId);
       } catch (error) {
         console.error("Failed to send sticky message:", error);
       }

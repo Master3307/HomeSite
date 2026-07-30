@@ -1,4 +1,3 @@
-const { ChannelType } = require("discord.js");
 const { getSticky, setSticky } = require("./sticky.cjs");
 
 const STICKY_CHANNEL_ID = "1479219328258674709";
@@ -51,13 +50,28 @@ async function deletePreviousStickyMessage(channel, client) {
   }
 }
 
-async function sendStickyMessageToChannel(client, channel) {
+async function resolveTextChannel(client, channelOrId) {
+  const channelId =
+    typeof channelOrId === "string" ? channelOrId : channelOrId?.id;
+
+  if (!channelId) {
+    throw new Error("Sticky channel id is missing.");
+  }
+
+  const channel = await client.channels.fetch(channelId).catch(() => null);
+
   if (!channel || !channel.isTextBased()) {
     const actualType = channel?.type ?? "null";
     throw new Error(
-      `Sticky channel not found or is not text-based. channelId=${channel?.id ?? "null"} type=${actualType}`,
+      `Sticky channel not found or is not text-based. channelId=${channelId} type=${actualType}`,
     );
   }
+
+  return channel;
+}
+
+async function sendStickyMessageToChannel(client, channelOrId) {
+  const channel = await resolveTextChannel(client, channelOrId);
 
   await deletePreviousStickyMessage(channel, client);
   const sentMessage = await channel.send(STICKY_TEXT);
@@ -66,10 +80,7 @@ async function sendStickyMessageToChannel(client, channel) {
 }
 
 async function sendStickyToStickyChannel(client) {
-  const channel = await client.channels
-    .fetch(STICKY_CHANNEL_ID)
-    .catch(() => null);
-  return sendStickyMessageToChannel(client, channel);
+  return sendStickyMessageToChannel(client, STICKY_CHANNEL_ID);
 }
 
 module.exports = {
