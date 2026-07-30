@@ -32,47 +32,7 @@ const escapeRegex = (string) => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
 
-async function deletePreviousStickyMessage(channel, client) {
-  const sticky = getSticky(channel.id);
-
-  if (sticky?.messageId) {
-    try {
-      const previous = await channel.messages.fetch(sticky.messageId);
-      if (previous && previous.author?.id === client.user.id) {
-        await previous.delete();
-      }
-      return;
-    } catch {
-      // If the stored message is missing, fall back to finding the latest bot message.
-    }
-  }
-
-  const messages = await channel.messages.fetch({ limit: 20 });
-  const previousBotMessage = messages
-    .filter((msg) => msg.author?.id === client.user.id)
-    .sort((a, b) => b.createdTimestamp - a.createdTimestamp)
-    .first();
-
-  if (previousBotMessage) {
-    try {
-      await previousBotMessage.delete();
-    } catch {
-      // ignore deletion failures
-    }
-  }
-}
-
-async function sendStickyMessage(message) {
-  const { channel, client } = message;
-  await deletePreviousStickyMessage(channel, client);
-
-  const stickyText =
-    "Vote for a Friday dress code **here** every Thursday!\n" +
-    "Suggest Outfits in https://discord.com/channels/1479192792386375852/1479366652239024239!";
-
-  const sentMessage = await channel.send(stickyText);
-  setSticky(channel.id, stickyText, sentMessage.id);
-}
+const { sendStickyMessageToChannel } = require("../services/stickyMessage.cjs");
 
 module.exports = {
   name: "messageCreate",
@@ -80,16 +40,23 @@ module.exports = {
   async execute(message) {
     const { client, guild, channel, content, author } = message;
 
-    if (author.bot) return;
-
     if (channel.id === STICKY_CHANNEL_ID) {
+      // Ignore our own sticky message (prevent a send loop),
+      // but allow other authors so we can observe activity in the channel.
+      if (author && author.id === client.user.id) return;
+      console.log(
+        `sticky: received message in ${channel.id} from ${author?.id} bot=${author?.bot}`,
+      );
       try {
-        await sendStickyMessage(message);
+        await sendStickyMessageToChannel(client, channel);
       } catch (error) {
         console.error("Failed to send sticky message:", error);
       }
       return;
     }
+
+    // For non-sticky channels, ignore bot messages as before.
+    if (author.bot) return;
 
     if (guild && channel.id === TARGET_CHANNEL_ID) {
       const code = content.trim();

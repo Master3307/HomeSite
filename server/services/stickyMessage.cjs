@@ -14,25 +14,40 @@ async function deletePreviousStickyMessage(channel, client) {
       const previous = await channel.messages.fetch(sticky.messageId);
       if (previous && previous.author?.id === client.user.id) {
         await previous.delete();
+        return;
       }
-      return;
     } catch {
-      // If the stored message is missing, fall back to finding the latest bot message.
+      // stored message missing, continue to search
     }
   }
 
-  const messages = await channel.messages.fetch({ limit: 20 });
-  const previousBotMessage = messages
-    .filter((msg) => msg.author?.id === client.user.id)
-    .sort((a, b) => b.createdTimestamp - a.createdTimestamp)
-    .first();
+  // Walk recent messages in pages (like lobby-code's clearChannel), looking for the latest bot message
+  let lastId = null;
+  while (true) {
+    const messages = await channel.messages.fetch({
+      limit: 100,
+      ...(lastId ? { before: lastId } : {}),
+    });
+    if (!messages.size) break;
 
-  if (previousBotMessage) {
-    try {
-      await previousBotMessage.delete();
-    } catch {
-      // ignore deletion failures
+    // find bot messages in this page
+    const botMsgs = messages.filter((m) => m.author?.id === client.user.id);
+    if (botMsgs.size) {
+      // pick the newest bot message
+      const toDelete = botMsgs
+        .sort((a, b) => b.createdTimestamp - a.createdTimestamp)
+        .first();
+      try {
+        await toDelete.delete();
+      } catch {
+        // ignore deletion failures
+      }
+      return;
     }
+
+    lastId = messages.last()?.id;
+    if (!lastId) break;
+    if (messages.size < 100) break;
   }
 }
 
