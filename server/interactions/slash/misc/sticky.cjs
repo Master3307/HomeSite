@@ -3,7 +3,9 @@
  */
 
 const { SlashCommandBuilder } = require("discord.js");
-const { sendStickyToStickyChannel } = require("../../../services/stickyMessage.cjs");
+const {
+  sendStickyToStickyChannel,
+} = require("../../../services/stickyMessage.cjs");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -28,7 +30,8 @@ module.exports = {
     } catch (error) {
       console.error("Sticky command failed:", error);
       await interaction.editReply({
-        content: "Failed to send the sticky message. Check the bot logs and channel permissions.",
+        content:
+          "Failed to send the sticky message. Check the bot logs and channel permissions.",
       });
     }
   },

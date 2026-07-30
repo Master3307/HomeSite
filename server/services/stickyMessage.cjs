@@ -37,8 +37,11 @@ async function deletePreviousStickyMessage(channel, client) {
 }
 
 async function sendStickyMessageToChannel(client, channel) {
-  if (!channel || !channel.isTextBased() || channel.type !== ChannelType.GuildText) {
-    throw new Error("Sticky channel not found or is not a text channel.");
+  if (!channel || !channel.isTextBased()) {
+    const actualType = channel?.type ?? "null";
+    throw new Error(
+      `Sticky channel not found or is not text-based. channelId=${channel?.id ?? "null"} type=${actualType}`,
+    );
   }
 
   await deletePreviousStickyMessage(channel, client);
@@ -48,7 +51,9 @@ async function sendStickyMessageToChannel(client, channel) {
 }
 
 async function sendStickyToStickyChannel(client) {
-  const channel = await client.channels.fetch(STICKY_CHANNEL_ID).catch(() => null);
+  const channel = await client.channels
+    .fetch(STICKY_CHANNEL_ID)
+    .catch(() => null);
   return sendStickyMessageToChannel(client, channel);
 }
 
