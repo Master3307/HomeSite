@@ -17,6 +17,8 @@ const {
 const prefix = process.env.BOT_PREFIX || "!";
 const owners = process.env.BOT_OWNERS ? process.env.BOT_OWNERS.split(",") : [];
 
+const { getSticky, setSticky } = require("../services/sticky.cjs");
+
 const {
   hasPrivilegedRole,
   postLobbyCode,
@@ -24,10 +26,71 @@ const {
 } = require("../interactions/slash/utility/lobby-code.cjs");
 
 const REVIEW_CHANNEL_ID = "1532015231671472399";
+const STICKY_CHANNEL_ID = "1479219328258674709";
+const stickyTimers = new Map();
 
 const escapeRegex = (string) => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
+
+async function deletePreviousStickyMessage(channel, client) {
+  const sticky = getSticky(channel.id);
+
+  if (sticky?.messageId) {
+    try {
+      const previous = await channel.messages.fetch(sticky.messageId);
+      if (previous && previous.author?.id === client.user.id) {
+        await previous.delete();
+      }
+      return;
+    } catch {
+      // If the stored message is missing, fall back to finding the latest bot message.
+    }
+  }
+
+  const messages = await channel.messages.fetch({ limit: 20 });
+  const previousBotMessage = messages
+    .filter((msg) => msg.author?.id === client.user.id)
+    .sort((a, b) => b.createdTimestamp - a.createdTimestamp)
+    .first();
+
+  if (previousBotMessage) {
+    try {
+      await previousBotMessage.delete();
+    } catch {
+      // ignore deletion failures
+    }
+  }
+}
+
+async function sendStickyMessage(message) {
+  const { channel, client } = message;
+  await deletePreviousStickyMessage(channel, client);
+
+  const stickyText =
+    "Vote for a Friday dress code **here** every Thursday!\n" +
+    "Suggest Outfits in https://discord.com/channels/1479192792386375852/1479366652239024239!";
+
+  const sentMessage = await channel.send(stickyText);
+  setSticky(channel.id, stickyText, sentMessage.id);
+}
+
+function scheduleStickyUpdate(message) {
+  if (stickyTimers.has(message.channel.id)) {
+    clearTimeout(stickyTimers.get(message.channel.id));
+  }
+
+  const timeoutId = setTimeout(async () => {
+    stickyTimers.delete(message.channel.id);
+    try {
+      await sendStickyMessage(message);
+    } catch (error) {
+      console.error("Failed to send sticky message:", error);
+    }
+  }, 5000);
+
+  stickyTimers.set(message.channel.id, timeoutId);
+}
 
 module.exports = {
   name: "messageCreate",
@@ -36,6 +99,11 @@ module.exports = {
     const { client, guild, channel, content, author } = message;
 
     if (author.bot) return;
+
+    if (channel.id === STICKY_CHANNEL_ID) {
+      scheduleStickyUpdate(message);
+      return;
+    }
 
     if (guild && channel.id === TARGET_CHANNEL_ID) {
       const code = content.trim();
