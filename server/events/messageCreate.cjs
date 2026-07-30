@@ -17,13 +17,21 @@ const {
 const prefix = process.env.BOT_PREFIX || "!";
 const owners = process.env.BOT_OWNERS ? process.env.BOT_OWNERS.split(",") : [];
 
-const { getSticky, setSticky } = require("../services/sticky.cjs");
+const stickyMessages = new Map();
 
 const {
   hasPrivilegedRole,
   postLobbyCode,
   TARGET_CHANNEL_ID,
 } = require("../interactions/slash/utility/lobby-code.cjs");
+
+function getSticky(channelId) {
+  return stickyMessages.get(channelId);
+}
+
+function setSticky(channelId, content, messageId) {
+  stickyMessages.set(channelId, { content, messageId });
+}
 
 const REVIEW_CHANNEL_ID = "1532015231671472399";
 const STICKY_CHANNEL_ID = "1479219328258674709";
