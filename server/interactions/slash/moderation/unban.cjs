@@ -38,6 +38,17 @@ module.exports = {
 
     await interaction.deferReply({ ephemeral: true });
 
+    const MOD_ROLE_ID = "1479193858565865472";
+
+    if (
+      !interaction.member.roles.cache.has(MOD_ROLE_ID) &&
+      !interaction.member.permissions.has(PermissionFlagsBits.Administrator)
+    ) {
+      return interaction.editReply({
+        content: "You don't have permission to use this command.",
+      });
+    }
+
     let bannedUser = null;
 
     try {
