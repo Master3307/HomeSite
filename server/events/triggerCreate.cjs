@@ -25,6 +25,9 @@ module.exports = {
 
 		if (message.author.bot) return;
 
+		const { triggers } = message.client;
+		if (!triggers?.size) return;
+
 		// Checking ALL triggers using every function and breaking out if a trigger was found.
 
 		/**

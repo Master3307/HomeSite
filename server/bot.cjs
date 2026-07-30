@@ -58,6 +58,7 @@ client.contextCommands = new Collection();
 client.modalCommands = new Collection();
 client.cooldowns = new Collection();
 client.autocompleteInteractions = new Collection();
+client.triggers = new Collection();
 
 /**********************************************************************/
 // Helper functions
