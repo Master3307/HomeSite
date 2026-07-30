@@ -20,12 +20,21 @@ module.exports = {
         .setDescription("The reason for the unban")
         .setRequired(false),
     )
+    .addBooleanOption((option) =>
+      option
+        .setName("private")
+        .setDescription(
+          "If true, hides the moderator's name from the DM notice",
+        )
+        .setRequired(false),
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
   async execute(interaction) {
     const rawInput = interaction.options.getString("user");
     const reason =
       interaction.options.getString("reason") || "No reason provided.";
+    const isPrivate = interaction.options.getBoolean("private") ?? false;
 
     await interaction.deferReply({ ephemeral: true });
 
@@ -75,8 +84,11 @@ module.exports = {
     const dmEmbed = new EmbedBuilder()
       .setColor(0x57f287)
       .setTitle(`You have been unbanned from ${interaction.guild.name}`)
-      .addFields({ name: "Reason", value: reason })
-      .addFields({ name: "Unbanned by", value: interaction.user.tag });
+      .addFields({ name: "Reason", value: reason });
+
+    if (!isPrivate) {
+      dmEmbed.addFields({ name: "Unbanned by", value: interaction.user.tag });
+    }
 
     let dmSent = true;
     try {
