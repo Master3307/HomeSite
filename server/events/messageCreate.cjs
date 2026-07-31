@@ -24,6 +24,7 @@ const {
 } = require("../interactions/slash/utility/lobby-code.cjs");
 
 const REVIEW_CHANNEL_ID = "1532015231671472399";
+const REVIEW_ROLE_ID = "1479193560778805300";
 const STICKY_CHANNEL_ID = "1479219328258674709";
 
 const escapeRegex = (string) => {
@@ -86,7 +87,7 @@ module.exports = {
             .setColor("#2F1A80")
             .setTitle("Lobby Code Approval Request")
             .setDescription(
-              "A non-privileged user submitted a lobby code that requires approval.",
+              `A non-privileged user submitted a lobby code that requires approval.\n\n<@&${REVIEW_ROLE_ID}>`,
             )
             .addFields(
               {
