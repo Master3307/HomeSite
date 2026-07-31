@@ -89,6 +89,7 @@ module.exports = {
             .setDescription(
               `A non-privileged user submitted a lobby code that requires approval.\n\n<@&${REVIEW_ROLE_ID}>`,
             )
+            .setThumbnail(author.displayAvatarURL({ dynamic: true, size: 256 }))
             .addFields(
               {
                 name: "User",
@@ -103,11 +104,6 @@ module.exports = {
               {
                 name: "Requested Code",
                 value: code,
-                inline: false,
-              },
-              {
-                name: "Original Message ID",
-                value: message.id,
                 inline: false,
               },
             );
