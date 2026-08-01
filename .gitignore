@@ -26,6 +26,7 @@
 *.exe
 *.o
 *.so
+sitemap.xml
 
 
 # Packages #
