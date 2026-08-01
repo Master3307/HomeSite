@@ -12,7 +12,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "images": "node scripts/generate-images.mjs",
-    "megit": "git add . && git commit && git pull --rebase && git push && git checkout master && git merge dev && git pull --rebase && git push && git checkout dev && git status"
+    "megit": "git add . && (git diff --cached --quiet || git commit) && git pull --rebase && git push && git checkout master && git merge dev && git pull --rebase && git push && git checkout dev && git status"
   },
   "dependencies": {
     "@mongez/sitemap": "^1.0.2",
