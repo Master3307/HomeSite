@@ -2,8 +2,8 @@
     "about": {
         "header": "About this Website",
         "card": {
-            "line1": "This is my personal website that I work on!",
-            "line2": "Find most of myself on this site!",
+            "line1": "This is a Work in Progress.",
+            "line2": "Learn more about me here!",
             "line3": "View more…",
             "github": "View the source code on <strong><a href=\"https://github.com/Master3307/HomeSite\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a></strong>"
         }
