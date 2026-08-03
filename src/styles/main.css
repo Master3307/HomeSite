@@ -190,7 +190,37 @@ button:hover {
     transform 0.2s ease;
 }
 
+.back-icon {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 34px !important;
+  line-height: 1;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 64;
+  user-select: none;
+  -webkit-touch-callout: none;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
 .close-icon:hover {
+  color: red;
+  transform: scale(1.1);
+}
+
+.back-icon:hover {
   color: red;
   transform: scale(1.1);
 }

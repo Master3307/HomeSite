@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import CloseButton from "./CloseButton.jsx";
+import BackButton from "./BackButton.jsx";
 
 export default function About() {
   const { t } = useTranslation('about')
 
   return (
     <div className="card">
-      <CloseButton />
+      <BackButton />
       <h2>{t('about.header')}</h2>
       <p>
         {t('about.card.line1')} <br />
