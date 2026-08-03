@@ -7,6 +7,7 @@ function run(cmd) {
 
 try {
   run("git add .");
+  run("git fetch");
 
   try {
     execSync("git diff --cached --quiet", { stdio: "inherit" });
