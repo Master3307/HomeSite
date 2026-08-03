@@ -291,9 +291,6 @@ button:hover {
   background: var(--bg-secondary);
   border: 1px solid var(--accent);
   border-radius: 13px;
-  transition:
-    background-color 0.2s ease,
-    transform 0.2s ease;
 }
 
 .picker select:hover {

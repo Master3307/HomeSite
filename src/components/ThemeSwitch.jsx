@@ -34,7 +34,7 @@ export default function ThemeSwitch() {
           palette
         </span>
       </label>
-    
+
     </div>
   )
 }
