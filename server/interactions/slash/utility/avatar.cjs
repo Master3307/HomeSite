@@ -1,8 +1,4 @@
-const {
-  SlashCommandBuilder,
-  EmbedBuilder,
-  AttachmentBuilder,
-} = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,8 +12,9 @@ module.exports = {
     ),
 
   async execute(interaction) {
+    await interaction.deferReply();
+
     const user = interaction.options.getUser("user") ?? interaction.user;
-    const member = interaction.options.getMember("user") ?? interaction.member;
 
     const avatarUrl = user.displayAvatarURL({
       extension: "png",
@@ -25,22 +22,14 @@ module.exports = {
       forceStatic: true,
     });
 
-    const attachment = new AttachmentBuilder(avatarUrl, {
-      name: "avatar.png",
-    });
-
-    const displayName = member?.displayName || user.globalName || user.username;
-
     const embed = new EmbedBuilder()
       .setColor(0x5865f2)
-      .setTitle(`${displayName}'s avatar`)
+      .setTitle(`${user.username}'s avatar`)
       .setURL(avatarUrl)
-      .setImage("attachment://avatar.png")
-      .setFooter({ text: `Requested by ${interaction.user.username}` });
+      .setImage(avatarUrl);
 
-    await interaction.reply({
+    await interaction.editReply({
       embeds: [embed],
-      files: [attachment],
     });
   },
 };
