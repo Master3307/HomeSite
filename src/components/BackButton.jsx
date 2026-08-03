@@ -6,12 +6,12 @@ export default function BackButton() {
     return (
         <span
             className="material-symbols-outlined back-icon"
-            onClick={() => navigate("/")}
+            onClick={() => navigate(-1)}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
-                    navigate("/");
+                    navigate(-1);
                 }
             }}
         >
