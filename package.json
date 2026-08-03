@@ -5,14 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "sync": "git add . && (git diff --cached --quiet || git commit) && git pull --rebase && git push && git checkout master && git merge dev && git pull --rebase && git push && git checkout dev && echo && echo -------------------------------------- && git status",
     "server": "node server/bot.cjs",
     "discord": "node server/services/discord-profile.js",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "build": "pnpm run sitemap && vite build && cp dist/index.html dist/404.html",
     "lint": "oxlint",
     "preview": "vite preview",
-    "images": "node scripts/generate-images.mjs",
-    "sync": "git add . && (git diff --cached --quiet || git commit) && git pull --rebase && git push && git checkout master && git merge dev && git pull --rebase && git push && git checkout dev && echo && echo -------------------------------------- && git status"
+    "images": "node scripts/generate-images.mjs"
   },
   "packageManager": "pnpm@11.17.0",
   "engines": {
