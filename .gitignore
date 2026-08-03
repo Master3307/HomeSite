@@ -124,6 +124,7 @@ venv/
 .env
 .env.*
 .env.test
+!.env.example
 
 
 # Node / JS tooling #
