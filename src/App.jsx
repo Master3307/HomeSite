@@ -14,8 +14,9 @@ export default function App() {
       <Route path="/card" element={<Card />} />
       <Route path="/error" element={<Error />} />
       <Route path="/about" element={<About />} />
-      <Route path="*" element={<Error forcedCode={404} />} />
       <Route path="/dash" element={<Dash />} />
+      <Route path="*" element={<Error forcedCode={404} />} />
+
     </Routes>
   )
 }
