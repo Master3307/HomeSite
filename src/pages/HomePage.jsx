@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import ThemeSwitch from '../components/ThemeSwitch.jsx'
 import LanguageSwitch from '../components/LanguageSwitch.jsx'
 import About from '../components/AboutCard.jsx'
-import Greeting from '../components/GreetingCard.jsx'
+import Dash from '../components/DashCard.jsx'
 
 export default function Home() {
   const { t } = useTranslation('title')
@@ -16,7 +16,7 @@ export default function Home() {
         </h1>
       </header>
 
-
+      <Dash />
       <About />
 
       <ThemeSwitch />
