@@ -4,9 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { tiltCard, resetCard } from '../lib/tilt.js'
 import { playAudio } from '../lib/play-audio.js'
 
-import styles from '../styles/error.module.css'
-
-
+import '../styles/error.css'
 
 export default function ErrorCard({ errorInfo }) {
   const navigate = useNavigate()
@@ -14,7 +12,7 @@ export default function ErrorCard({ errorInfo }) {
 
   return (
     <div
-      className={`card ${styles.errorCard}`}
+      className="card errorCard"
       onMouseMove={tiltCard}
       onMouseLeave={resetCard}
     >
@@ -41,19 +39,22 @@ export default function ErrorCard({ errorInfo }) {
 
       <br />
 
-      <div className={styles.errorButtons}>
+      <div className="errorButtons">
         <button type="button" onClick={() => navigate(-1)}>
-          <span class="material-symbols-outlined">arrow_left_alt</span>{t('back')}
+          <span className="material-symbols-outlined">arrow_left_alt</span>
+          {t('back')}
         </button>
 
         <Link to="/">
           <button type="button">
-            <span class="material-symbols-outlined">home</span>{t('home')}
+            <span className="material-symbols-outlined">home</span>
+            {t('home')}
           </button>
         </Link>
 
         <button type="button" onClick={() => window.location.reload()}>
-          <span class="material-symbols-outlined">refresh</span>{t('reload')}
+          <span className="material-symbols-outlined">refresh</span>
+          {t('reload')}
         </button>
       </div>
     </div>

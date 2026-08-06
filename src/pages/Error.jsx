@@ -9,7 +9,7 @@ import ErrorCard from '../components/ErrorCard.jsx'
 
 import { getErrorMessage } from '../lib/error.js'
 
-import styles from '../styles/error.module.css'
+import '../styles/error.css'
 
 const ERROR_THEME = {
   '--bg-secondary': '#970000',
@@ -54,7 +54,7 @@ export default function Error({ forcedCode }) {
   }, [errorInfo.titleKey, t])
 
   return (
-    <div className={styles.errorPage}>
+    <div className="errorPage">
       <header className="head">
         <h1 className="tit">
           {t('error', { ns: 'title', defaultValue: 'Error of' })} <b>&nbsp;MrKoby07</b>
