@@ -13,16 +13,16 @@
     "preview": "vite preview",
     "images": "node scripts/generate-images.mjs"
   },
-  "packageManager": "pnpm@11.17.0",
+  "packageManager": "pnpm@11.20.0",
   "engines": {
     "pnpm": ">=10.0.0"
   },
   "dependencies": {
+    "@discordjs/rest": "^1.0.0",
     "@mongez/sitemap": "^1.0.2",
     "cors": "^2.8.6",
+    "discord-api-types": "^0.36.2",
     "discord.js": "^14.26.4",
-		"@discordjs/rest": "^1.0.0",
-		"discord-api-types": "^0.36.2",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "i18next": "^26.3.4",
