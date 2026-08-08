@@ -3,8 +3,6 @@ import { useEffect } from 'react'
 import { useLocation } from 'react-router'
 
 import About from '../components/AboutCard.jsx'
-import LanguageSwitch from '../components/LanguageSwitch.jsx'
-import ThemeSwitch from '../components/ThemeSwitch.jsx'
 import ErrorCard from '../components/ErrorCard.jsx'
 
 import { getErrorMessage } from '../lib/error.js'
@@ -64,8 +62,6 @@ export default function Error({ forcedCode }) {
       <ErrorCard errorInfo={errorInfo} />
 
       <About />
-      <ThemeSwitch />
-      <LanguageSwitch />
     </div>
   )
 }

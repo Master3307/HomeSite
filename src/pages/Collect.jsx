@@ -1,6 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import ThemeSwitch from '../components/ThemeSwitch.jsx'
-import LanguageSwitch from '../components/LanguageSwitch.jsx'
 import About from '../components/AboutCard.jsx'
 
 export default function Home() {
@@ -21,8 +19,6 @@ export default function Home() {
 
 
       <About />
-      <ThemeSwitch />
-      <LanguageSwitch />
     </>
   )
 }

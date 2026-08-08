@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ThemeSwitch from '../components/ThemeSwitch.jsx'
-import LanguageSwitch from '../components/LanguageSwitch.jsx'
 
 function matchesMedia(query) {
   return window.matchMedia?.(query).matches ?? null
@@ -305,9 +303,6 @@ export default function Home() {
           <h2>{t('noRedirect', { ns: 'filter'})}</h2>
         )}
       </div>
-
-      <ThemeSwitch />
-      <LanguageSwitch />
     </>
   )
 }
