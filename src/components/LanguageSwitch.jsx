@@ -12,6 +12,7 @@ const languageLabels = {
   fr: t('languages.fr'),
   hr: t('languages.hr'),
   it: t('languages.it'),
+  lv: t('languages.lv'),
   uk: t('languages.uk'),
 }
 
