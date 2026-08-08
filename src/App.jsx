@@ -4,6 +4,8 @@ import Card from './pages/Card.jsx'
 import Error from './pages/Error.jsx'
 import About from './pages/About.jsx'
 import Dash from './pages/HomePage.jsx'
+import Filer from './pages/Filter.jsx'
+import Collect from './pages/Collect.jsx'
 
 export default function App() {
   return (
@@ -15,6 +17,8 @@ export default function App() {
       <Route path="/error" element={<Error />} />
       <Route path="/about" element={<About />} />
       <Route path="/dash" element={<Dash />} />
+      <Route path="/filter" element={<Filer />} />
+      <Route path="/collect" element={<Collect />} />
       <Route path="*" element={<Error forcedCode={404} />} />
 
     </Routes>

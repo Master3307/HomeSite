@@ -698,5 +698,16 @@ button:hover {
 
   .discord-card__tag {
     font-size: 0.24rem;
+
+
+  }
+
+  .redirect-info {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    opacity: 0.7;
+    overflow-wrap: anywhere;
   }
 }
+
