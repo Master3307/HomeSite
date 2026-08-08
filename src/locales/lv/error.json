@@ -1,13 +1,13 @@
 {
-    "templateTitle": "Error",
-    "403": "It seems like you aren't allowed to access this page – Forbidden.",
+    "templateTitle": "Kļūda",
+    "403": "Izskatās, ka jums nav atļauts piekļūt šai lapai — piekļuve liegta.",
     "504": "It seems like there was an error on the server – Gateway Timeout.",
-    "template": "It seems like you encountered an error.",
+    "template": "Izskatās, ka radās kļūda.",
     "back": "Go Back",
-    "404": "It seems like you've found a page that doesn't exist – Not Found.",
-    "500": "It seems like there was an error on the server – Internal Server Error.",
+    "404": "Izskatās, ka esat atradis lapu, kas neeksistē — lapa nav atrasta.",
+    "500": "Izskatās, ka serverī radās kļūda – iekšēja servera kļūda.",
     "reload": "Reload Page",
-    "503": "It seems like there was an error on the server – Service Unavailable.",
+    "503": "Izskatās, ka serverī radās kļūda – pakalpojums nav pieejams.",
     "home": "Go Home",
-    "502": "It seems like there was an error on the server – Bad Gateway."
+    "502": "Izskatās, ka serverī radās kļūda – nederīga vārteja."
 }
