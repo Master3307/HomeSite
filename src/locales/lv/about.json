@@ -1,11 +1,11 @@
 {
     "about": {
         "card": {
-            "github": "View the source code on <strong><a href=\"https://github.com/Master3307/HomeSite\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a></strong>",
-            "line2": "Learn more about me here!",
-            "line3": "View more…",
-            "line1": "This is a Work in Progress."
+            "github": "Apskati pirmkodu vietnē <strong><a href=\"https://github.com/Master3307/HomeSite\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a></strong>",
+            "line2": "Uzzini vairāk par mani šeit!",
+            "line3": "Skatīt vairāk…",
+            "line1": "Šis ir nepabeigts darbs."
         },
-        "header": "About this Website"
+        "header": "Par šo vietni"
     }
 }
