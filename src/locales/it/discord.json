@@ -1,10 +1,10 @@
 {
     "discord": {
-        "streak": "Streak",
+        "streak": "Serie",
         "loading": "…",
-        "listening": "Listening to Music",
-        "playing": "Playing a Game",
-        "unavailable": "Discord profile unavailable:",
-        "failed": "Failed to load profile"
+        "listening": "Ascoltando musica",
+        "playing": "Giocando ad un gioco",
+        "unavailable": "Profilo discord non disponibile:",
+        "failed": "Impossibile caricare il profilo"
     }
 }
