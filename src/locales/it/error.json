@@ -1,13 +1,13 @@
 {
-    "templateTitle": "Error",
-    "403": "It seems like you aren't allowed to access this page – Forbidden.",
-    "504": "It seems like there was an error on the server – Gateway Timeout.",
-    "template": "It seems like you encountered an error.",
-    "back": "Go Back",
-    "404": "It seems like you've found a page that doesn't exist – Not Found.",
-    "500": "It seems like there was an error on the server – Internal Server Error.",
-    "reload": "Reload Page",
-    "503": "It seems like there was an error on the server – Service Unavailable.",
-    "home": "Go Home",
-    "502": "It seems like there was an error on the server – Bad Gateway."
+    "templateTitle": "Errore",
+    "403": "Sembra che tu non abbia il permesso di accedere a questa pagina – vietato.",
+    "504": "Sembra che c'era un errore sul server - timeout del portale.",
+    "template": "Sembra che si sia verificato un errore.",
+    "back": "Trona indietro",
+    "404": "Sembra che tu abbia trovato una pagina che non esiste – Non trovata.",
+    "500": "Sembra che qui c'era un errore sul server– Errore del server internazionale.",
+    "reload": "Ricarica la pagina",
+    "503": "Sembra che c'era un errore sul server– Servizio non disponibile.",
+    "home": "Vai a casa",
+    "502": "Sembra che c'era un errore sul server – Portale difettoso."
 }
