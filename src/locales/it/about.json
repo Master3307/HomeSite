@@ -1,0 +1,11 @@
+{
+    "about": {
+        "card": {
+            "github": "View the source code on <strong><a href=\"https://github.com/Master3307/HomeSite\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a></strong>",
+            "line2": "Learn more about me here!",
+            "line3": "View more…",
+            "line1": "This is a Work in Progress."
+        },
+        "header": "About this Website"
+    }
+}
