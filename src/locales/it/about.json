@@ -1,11 +1,11 @@
 {
     "about": {
         "card": {
-            "github": "View the source code on <strong><a href=\"https://github.com/Master3307/HomeSite\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a></strong>",
-            "line2": "Learn more about me here!",
-            "line3": "View more…",
-            "line1": "This is a Work in Progress."
+            "github": "Guarda il codice risorsa su <strong><a href=\"https://github.com/Master3307/HomeSite\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a></strong>",
+            "line2": "Impara di più su di me qui!",
+            "line3": "Visualizza di più…",
+            "line1": "Questo è un lavoro in corso."
         },
-        "header": "About this Website"
+        "header": "Informazioni sul sito web"
     }
 }
