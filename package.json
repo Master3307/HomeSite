@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "sync": "node scripts/sync.cjs",
-    "server": "node server/bot.cjs",
+    "git-sync": "node scripts/sync.cjs",
+    "bot": "node server/bot.cjs",
     "discord": "node server/services/discord-profile.js",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "build": "pnpm run sitemap && vite build && cp dist/index.html dist/404.html",
