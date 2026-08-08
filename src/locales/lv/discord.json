@@ -1,10 +1,10 @@
 {
     "discord": {
-        "streak": "Streak",
+        "streak": "Sērija",
         "loading": "…",
-        "listening": "Listening to Music",
-        "playing": "Playing a Game",
-        "unavailable": "Discord profile unavailable:",
-        "failed": "Failed to load profile"
+        "listening": "Klausās mūziku",
+        "playing": "Spēlē spēli",
+        "unavailable": "Discord profils nav pieejams:",
+        "failed": "Neizdevās ielādēt profilu"
     }
 }
