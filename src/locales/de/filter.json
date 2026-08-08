@@ -1,6 +1,6 @@
 {
     "noRedirect": "No Redirect.",
-    "redirecting": "Redirecting in {{secondsLeft}} seconds…",
+    "redirecting": "Leite in {{secondsLeft}} Sekunden weiter…",
     "collect": "What is collected?",
-    "tracked": "After the timer, you will be tracked :3"
+    "tracked": "Nach dem Timer, wirst du getrackt :3"
 }
