@@ -1,0 +1,10 @@
+{
+    "discord": {
+        "streak": "Streak",
+        "loading": "…",
+        "listening": "Listening to Music",
+        "playing": "Playing a Game",
+        "unavailable": "Discord profile unavailable:",
+        "failed": "Failed to load profile"
+    }
+}
