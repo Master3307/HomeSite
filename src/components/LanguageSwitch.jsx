@@ -4,29 +4,19 @@ import { supportedLngs } from '../lib/i18n'
 export default function LanguageSwitch() {
   const { t, i18n } = useTranslation('language')
 
-const languageLabels = {
-  bar: t('languages.bar'),
-  de: t('languages.de'),
-  en: t('languages.en'),
-  es: t('languages.es'),
-  fr: t('languages.fr'),
-  hr: t('languages.hr'),
-  it: t('languages.it'),
-  lv: t('languages.lv'),
-  uk: t('languages.uk'),
-}
-
   return (
     <div className="picker">
       <div className="select-box">
         <select
           id="language-select"
-          value={i18n.language}
+          value={i18n.resolvedLanguage ?? i18n.language}
           onChange={(e) => i18n.changeLanguage(e.target.value)}
         >
           {supportedLngs.map((code) => (
             <option key={code} value={code}>
-              {languageLabels[code] ?? code.toUpperCase()}
+              {t(`languages.${code}`, {
+                defaultValue: code.toUpperCase(),
+              })}
             </option>
           ))}
         </select>
@@ -35,7 +25,6 @@ const languageLabels = {
       <label htmlFor="language-select">
         <span className="material-symbols-outlined">language</span>
       </label>
-
     </div>
   )
 }
