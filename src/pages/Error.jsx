@@ -9,12 +9,7 @@ import { getErrorMessage } from '../lib/error.js'
 
 import '../styles/error.css'
 
-const ERROR_THEME = {
-  '--bg-secondary': '#970000',
-  '--accent': '#b60b0b',
-  '--accent-hover': '#610000',
-  '--bg-primary': '#320505',
-}
+
 
 export default function Error({ forcedCode }) {
   const location = useLocation()
