@@ -151,7 +151,7 @@ button:hover {
   padding: 28px 26px;
   overflow: hidden;
   text-align: center;
-  background: #ffffff0b;
+  background: #ffffff04;
   border-radius: 13px;
   transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
   transition: transform 0.5s ease-out;
@@ -159,7 +159,7 @@ button:hover {
   backdrop-filter: blur(8px);
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.047);
 }
 
 .about-card {
