@@ -1,7 +1,7 @@
 {
     "discord": {
         "streak": "Serie",
-        "loading": "…",
+        "loading": "Caricamento…",
         "listening": "Ascoltando musica",
         "playing": "Giocando ad un gioco",
         "unavailable": "Profilo discord non disponibile:",
