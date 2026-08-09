@@ -26,6 +26,6 @@ Status:
 
 ## Credits
 
-Discord Bot Template by [NamVr](https://github.com/NamVr/) used – [repo](https://github.com/NamVr/DiscordBot-Template)
+Discord Bot Template by [NamVr](https://github.com/NamVr/) found [here](https://github.com/NamVr/DiscordBot-Template)
 
-Card Tilt effect by Stormxxboy found [here](https://stormxxboy.com/card/)
+Card Tilt effect by [Stormxxboy](https://stormxxboy.com/card/) found [here](https://stormxxboy.com/card/script.js)
