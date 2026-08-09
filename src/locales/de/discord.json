@@ -2,7 +2,7 @@
     "discord": {
         "listening": "Hört sich Musik an",
         "playing": "Spielt ein Spiel",
-        "loading": "…",
+        "loading": "Lade…",
         "failed": "Fehler beim laden des Profils",
         "unavailable": "Discord Profil nicht verfügbar:",
         "streak": "Streak"
