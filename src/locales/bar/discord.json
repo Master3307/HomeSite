@@ -1,10 +1,10 @@
 {
     "discord": {
-        "listening": "Listening to ",
-        "playing": "Playing a game — ",
-        "loading": "…",
-        "failed": "Failed to load profile",
-        "unavailable": "Discord profile unavailable:",
+        "listening": "Heart grad Musik",
+        "playing": "Spuit grad a Spiel",
+        "loading": "Lädt…",
+        "failed": "Profil hod ned glodn werdn kenna",
+        "unavailable": "Discord Profil ned verfügbar:",
         "streak": "Streak"
     }
 }
