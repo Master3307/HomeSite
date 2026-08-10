@@ -1,4 +1,4 @@
-<h1 align="center">HomeSite</h1>
+<h1 align="center"><img src="https://server.master3307.org/Sharing/HomeSiteLogo.webp" style="height: 69px; witdth: auto;"></img></h1>
 
 This is the source code of [my personal website](https://home.master3307.org). ~~It is a simple site built with HTML, CSS, and JavaScript.~~ It's a Site I rewrote into Vite+React
 
