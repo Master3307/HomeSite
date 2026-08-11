@@ -161,7 +161,7 @@ https://home.master3307.org/img/screenshots/HomePage.png
 
 
 eeeheheheeh I can work with this:
-https://home.master3307.org/img/screenshots/DiscordPreview.png 
+https://home.master3307.org/img/screenshots/DiscordPreview.png
 
 I hate what AI has been doing with the discord thing.
 you got the API here: https://discord-api.master3307.org/
@@ -171,8 +171,16 @@ a live update to my Discord Status and everything.
 I can work with this for sure....
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+
+btw, that all has long been implemented.
+now we got new designs I'm pretty proud of:
+- https://home.master3307.org/img/HomeSiteLogo.webp
+- https://home.master3307.org/img/HomeSiteIcon.webp
+- https://home.master3307.org/img/GitHubCard.png
 
 
 
