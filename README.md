@@ -24,6 +24,17 @@ Status:
 
 [![Translation status](http://weblate.master3307.org/widget/homesite/multi-auto.svg)](http://weblate.master3307.org/engage/homesite/)
 
+## Cultbot
+<img src="cultbot.jpg" style="width: 50%;">
+
+The code for the Official Cultbot is also in here!
+
+Visit our Server and join The Cult of Black Cats!
+
+(It's a [Bongo Cat](https://store.steampowered.com/app/3419430/Bongo_Cat/) Community)
+
+[Join Now!](https://discord.gg/px86PYjcyB)
+
 ## Credits
 
 Discord Bot Template by [NamVr](https://github.com/NamVr/) found [here](https://github.com/NamVr/DiscordBot-Template)
