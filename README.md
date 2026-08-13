@@ -28,7 +28,7 @@ Status:
 
 <img src="cultbot.png" width="43%">
 
-The code for the Official Cultbot is also in here!
+The code for the Official Cultbot also lives here!
 
 Visit our Server and join The Cult of Black Cats!
 
