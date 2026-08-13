@@ -30,7 +30,7 @@ Status:
 
 ## Cultbot
 
-<img src="cultbot.png" width="42%">
+<img src="cultbot.png" width="305px">
 
 The code for the **Official Cultbot** also lives here!
 
