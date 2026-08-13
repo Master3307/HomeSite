@@ -25,7 +25,8 @@ Status:
 [![Translation status](http://weblate.master3307.org/widget/homesite/multi-auto.svg)](http://weblate.master3307.org/engage/homesite/)
 
 ## Cultbot
-<img src="cultbot.jpg" style="width: 43%; border-radius: 13px;">
+
+<img src="cultbot.png" width="43%">
 
 The code for the Official Cultbot is also in here!
 
