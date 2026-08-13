@@ -8,6 +8,7 @@ const {
 const ROLE_ID = "1483524975959736484";
 const DEFAULT_CHANNEL_ID = "1479219328258674709";
 const POLL_DURATION = 24 * 60 * 60 * 1000;
+const EMBED_UPDATE_INTERVAL = 3000;
 const DEFAULT_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"];
 
 const data = new SlashCommandBuilder()
@@ -58,7 +59,6 @@ for (let number = 1; number <= 6; number += 1) {
   }
 }
 
-// Optional target channel. If omitted, DEFAULT_CHANNEL_ID is used.
 data.addChannelOption((option) =>
   option
     .setName("channel")
@@ -88,13 +88,15 @@ function isImageOrGif(attachment) {
   return /\.(png|jpe?g|gif|webp)$/i.test(attachment.name ?? "");
 }
 
+function countVotes(votes, optionIndex) {
+  return [...votes.values()].filter((value) => value === optionIndex).length;
+}
+
 function makePollEmbed(options, votes, endsAt, ended = false) {
   const total = votes.size;
   const list = options
     .map((option, index) => {
-      const count = [...votes.values()].filter(
-        (value) => value === index,
-      ).length;
+      const count = countVotes(votes, index);
       const percentage = total ? ((count / total) * 100).toFixed(1) : "0.0";
       return `${index + 1}. ${option.emoji}・${option.description}\n   └ ${count} vote${count === 1 ? "" : "s"} (${percentage}%)`;
     })
@@ -114,9 +116,7 @@ function makePollEmbed(options, votes, endsAt, ended = false) {
 
 function makeResultsEmbed(options, votes) {
   const total = votes.size;
-  const counts = options.map(
-    (_, index) => [...votes.values()].filter((value) => value === index).length,
-  );
+  const counts = options.map((_, index) => countVotes(votes, index));
   const highest = Math.max(...counts);
   const highestOptions = options
     .map((option, index) => ({ option, index }))
@@ -158,7 +158,6 @@ module.exports = {
       });
     }
 
-    // Use the optional /fdc channel input, otherwise fetch the configured default.
     const selectedChannel = interaction.options.getChannel("channel");
     const channel =
       selectedChannel ??
@@ -173,7 +172,7 @@ module.exports = {
       });
     }
 
-    const me = interaction.guild.members.me;
+    const me = await interaction.guild.members.fetchMe();
     const permissions = channel.permissionsFor(me);
     const requiredPermissions = [
       PermissionFlagsBits.SendMessages,
@@ -181,6 +180,7 @@ module.exports = {
       PermissionFlagsBits.AttachFiles,
       PermissionFlagsBits.AddReactions,
       PermissionFlagsBits.ReadMessageHistory,
+      PermissionFlagsBits.ManageMessages,
     ];
 
     if (
@@ -188,7 +188,7 @@ module.exports = {
       !requiredPermissions.every((permission) => permissions.has(permission))
     ) {
       return interaction.reply({
-        content: `I need Send Messages, Embed Links, Attach Files, Add Reactions, and Read Message History in ${channel}.`,
+        content: `I need Send Messages, Embed Links, Attach Files, Add Reactions, Read Message History, and Manage Messages in ${channel}.`,
         ephemeral: true,
       });
     }
@@ -284,19 +284,44 @@ module.exports = {
       }
 
       let updateTimer = null;
+      let updateInProgress = false;
+      let updateQueued = false;
       let pollEnded = false;
 
+      const editPollEmbed = async () => {
+        if (pollEnded) return;
+
+        if (updateInProgress) {
+          updateQueued = true;
+          return;
+        }
+
+        updateInProgress = true;
+        try {
+          await pollMessage.edit({
+            embeds: [makePollEmbed(options, votes, endsAt)],
+          });
+        } catch (error) {
+          // Do not hide edit failures: this makes missing permissions/API errors visible in logs.
+          console.error(`Failed to update FDC poll ${pollMessage.id}:`, error);
+        } finally {
+          updateInProgress = false;
+
+          if (updateQueued && !pollEnded) {
+            updateQueued = false;
+            queueEmbedUpdate();
+          }
+        }
+      };
+
       const queueEmbedUpdate = () => {
-        if (pollEnded || updateTimer) return;
+        if (pollEnded) return;
+        if (updateTimer) return;
 
         updateTimer = setTimeout(async () => {
           updateTimer = null;
-          if (!pollEnded) {
-            await pollMessage
-              .edit({ embeds: [makePollEmbed(options, votes, endsAt)] })
-              .catch(() => null);
-          }
-        }, 1500);
+          await editPollEmbed();
+        }, EMBED_UPDATE_INTERVAL);
       };
 
       const collector = pollMessage.createReactionCollector({
@@ -314,17 +339,23 @@ module.exports = {
         if (selectedIndex === -1) return;
 
         const previousIndex = votes.get(user.id);
+        // Set the new vote before removing the old reaction. If Discord immediately emits a
+        // remove event for the old reaction, it cannot erase this newer selection.
         votes.set(user.id, selectedIndex);
 
-        if (
-          previousIndex !== undefined &&
-          previousIndex !== selectedIndex &&
-          permissions.has(PermissionFlagsBits.ManageMessages)
-        ) {
+        if (previousIndex !== undefined && previousIndex !== selectedIndex) {
           const oldReaction = pollMessage.reactions.cache.find(
             (old) => reactionKey(old) === options[previousIndex].key,
           );
-          await oldReaction?.users.remove(user.id).catch(() => null);
+
+          try {
+            await oldReaction?.users.remove(user.id);
+          } catch (error) {
+            console.error(
+              `Failed to remove old FDC vote for ${user.id}:`,
+              error,
+            );
+          }
         }
 
         queueEmbedUpdate();
@@ -335,6 +366,7 @@ module.exports = {
           (option) => option.key === reactionKey(reaction),
         );
 
+        // A removal only clears the vote when that reaction is still the user's active choice.
         if (votes.get(user.id) === removedIndex) votes.delete(user.id);
         queueEmbedUpdate();
       });
@@ -343,17 +375,18 @@ module.exports = {
         pollEnded = true;
         if (updateTimer) clearTimeout(updateTimer);
 
-        await pollMessage
-          .edit({ embeds: [makePollEmbed(options, votes, endsAt, true)] })
-          .catch(() => null);
-
-        await channel
-          .send({ embeds: [makeResultsEmbed(options, votes)] })
-          .catch(() => null);
+        try {
+          await pollMessage.edit({
+            embeds: [makePollEmbed(options, votes, endsAt, true)],
+          });
+          await channel.send({ embeds: [makeResultsEmbed(options, votes)] });
+        } catch (error) {
+          console.error(`Failed to close FDC poll ${pollMessage.id}:`, error);
+        }
       });
 
       await interaction.editReply({
-        content: `FDC poll created in ${channel}: ${pollMessage.url}\nIt closes in 24 hours. Live totals update in the embed; the final results will be posted there automatically.`,
+        content: `FDC poll created in ${channel}: ${pollMessage.url}\nThe live embed updates within ${EMBED_UPDATE_INTERVAL / 1000} seconds after a vote. It closes in 24 hours and final results will be posted there automatically.`,
       });
     } catch (error) {
       console.error("Failed to create FDC poll:", error);
