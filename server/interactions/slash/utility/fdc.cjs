@@ -122,7 +122,7 @@ function makeResultsEmbed(options, votes) {
     .map((option, index) => {
       const count = counts[index];
       const percentage = total ? ((count / total) * 100).toFixed(1) : "0.0";
-      return `${index + 1}. ${option.emoji}・${option.description}\n   └ **${count}** vote${count === 1 ? "" : "s"} • **${percentage}%**`;
+      return `**${index + 1}. ${option.emoji}・${option.description}**\n   └ **${count}** vote${count === 1 ? "" : "s"} • **${percentage}%**`;
     })
     .join("\n\n");
 
