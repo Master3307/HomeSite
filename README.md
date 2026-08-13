@@ -1,6 +1,6 @@
 <h1 align="center"><a href="https://home.master3307.org/"><img src="public/img/HomeSiteLogo.webp" alt="HomeSite" style="height: 69px; width: auto;"></a></h1>
 
-<p align="center"><i><strong>My Personal Website</strong></i></p>
+<p align="center"><i><strong>~ My Personal Website ~</strong></i></p>
 
 -----------------------------------------
 
