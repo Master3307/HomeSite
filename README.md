@@ -1,5 +1,9 @@
 <h1 align="center"><a href="https://home.master3307.org/"><img src="public/img/HomeSiteLogo.webp" alt="HomeSite" style="height: 69px; width: auto;"></a></h1>
 
+<p align="center"><i><strong>My Personal Website</strong></i></p>
+
+-----------------------------------------
+
 This is the source code of [my personal website](https://home.master3307.org). ~~It is a simple site built with HTML, CSS, and JavaScript.~~ It's a Site I rewrote into Vite+React
 
 I use this not only to show my skills but also to learn a bit of WebDev.
