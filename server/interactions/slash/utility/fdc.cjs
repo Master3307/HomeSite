@@ -8,7 +8,7 @@ const {
 const ROLE_ID = "1483524975959736484";
 const DEFAULT_CHANNEL_ID = "1479219328258674709";
 const POLL_DURATION = 24 * 60 * 60 * 1000;
-const EMBED_UPDATE_INTERVAL = 3000;
+const EMBED_UPDATE_INTERVAL = 1500;
 const DEFAULT_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"];
 
 const data = new SlashCommandBuilder()
