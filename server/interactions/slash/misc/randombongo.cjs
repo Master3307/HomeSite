@@ -6,11 +6,11 @@ const catImages = [
     description: "Nigel Secret",
   },
   {
-    url: "https://cataas.com/cat/cute/says/Meow%20Meow!",
+    url: "https://cataas.com/cat/cute/says/Meow%20Meow!?width=400&height=300",
     description: 'A random Cat from "Cataas"!',
   },
   {
-    url: "https://cataas.com/cat/gif/says/Meow%20Meow!",
+    url: "https://cataas.com/cat/gif/says/Meow%20Meow!?width=400&height=300",
     description: "Random Cat GIF! :3",
   },
   {
