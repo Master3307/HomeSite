@@ -106,7 +106,7 @@ function makePollEmbed(options, votes, endsAt, ended = false) {
     .setColor(ended ? 0x5865f2 : 0xf1c40f)
     .setTitle(ended ? "Friday Dress Code — Results" : "Friday Dress Code Poll")
     .setDescription(
-      `${list}\n\n**Choose your vote with the emojis below.**\n${ended ? `Poll closed • **${total}** total voter${total === 1 ? "" : "s"}.` : `**${total}** total voter${total === 1 ? "" : "s"}.`}`,
+      `${list}\n\n**Choose your vote with the emojis below.**\n${ended ? `Poll closed • **${total}** voter${total === 1 ? "" : "s"}.` : `**${total}** voter${total === 1 ? "" : "s"}.`}`,
     );
 }
 
