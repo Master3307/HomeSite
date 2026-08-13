@@ -2,7 +2,7 @@
 
 <p align="center"><i><strong>~ My Personal Website ~</strong></i></p>
 
------------------------------------------
+---------------------------------------------------------------------
 
 This is the source code of [my personal website](https://home.master3307.org). ~~It is a simple site built with HTML, CSS, and JavaScript.~~ It's a Site I rewrote into Vite+React
 
