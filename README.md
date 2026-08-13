@@ -28,13 +28,13 @@ Status:
 
 <img src="cultbot.png" width="42%">
 
-The code for the Official Cultbot also lives here!
+The code for the **Official Cultbot** also lives here!
 
-Visit our Server and join The Cult of Black Cats!
+Visit our Server and join ***The Cult of Black Cats!***
 
 (It's a [Bongo Cat](https://store.steampowered.com/app/3419430/Bongo_Cat/) Community)
 
-[Join Now!](https://discord.gg/px86PYjcyB)
+[**Join Now!**](https://discord.gg/px86PYjcyB)
 
 ## Credits
 
