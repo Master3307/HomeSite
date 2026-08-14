@@ -173,6 +173,7 @@ function parseEndTime(input) {
 
 function makePollEmbed(options, votes, endsAt, ended = false) {
   const total = votes.size;
+
   const list = options
     .map((option, index) => {
       const count = countVotes(votes, index);
@@ -199,34 +200,25 @@ function makeResultsEmbed(options, votes) {
   const counts = options.map((_, index) => countVotes(votes, index));
   const highest = Math.max(...counts);
 
-  const highestOptions = options
+  const winningOptions = options
     .map((option, index) => ({ option, index }))
     .filter(({ index }) => counts[index] === highest);
 
-  const rows = options
-    .map((option, index) => {
-      const count = counts[index];
-      const percentage = total ? ((count / total) * 100).toFixed(1) : "0.0";
-
-      return `**${index + 1}. ${option.emoji}・${option.description}**\n   └ **${count}** vote${count === 1 ? "" : "s"} • **${percentage}%**`;
-    })
-    .join("\n\n");
-
-  const mostVoted =
+  const winnerText =
     total === 0
       ? "No votes were cast."
-      : highestOptions.length === 1
-        ? `Most votes: ${highestOptions[0].option.emoji}・${highestOptions[0].option.description} — ${highest} vote${highest === 1 ? "" : "s"}.`
-        : `Most votes (tie): ${highestOptions
-            .map(({ option }) => `${option.emoji}・${option.description}`)
-            .join(" **and** ")} — ${highest} votes each.`;
+      : winningOptions.length === 1
+        ? `**Winner:**\n${winningOptions[0].index + 1}. ${winningOptions[0].option.description}`
+        : `**Tie:**\n${winningOptions
+            .map(({ option, index }) => `${index + 1}. ${option.description}`)
+            .join("\n")}`;
 
   return new EmbedBuilder()
     .setColor(0x5865f2)
-    .setTitle("Friday Dress Code — Final Results")
-    .setDescription(`${rows}\n\n**Total voters:** ${total}\n${mostVoted}`)
+    .setTitle("Friday Dress Code: Final Results")
+    .setDescription(winnerText)
     .setFooter({
-      text: "The poll has ended — this does not announce a winner.",
+      text: `The poll has ended. Total voters: ${total}`,
     })
     .setTimestamp();
 }
@@ -451,8 +443,6 @@ module.exports = {
 
         const previousIndex = votes.get(user.id);
 
-        // Set the new vote before removing the old reaction so the remove
-        // event cannot erase the user's newly selected option.
         votes.set(user.id, selectedIndex);
 
         if (previousIndex !== undefined && previousIndex !== selectedIndex) {
