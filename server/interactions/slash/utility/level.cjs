@@ -182,12 +182,18 @@ module.exports = {
     ),
 
   async execute(interaction) {
+    /*
+        Must be the first awaited operation. This acknowledges the command
+        before Discord's short interaction response deadline expires.
+
+        This is public because /level view outputs are intended to be public.
+        Staff adjustment confirmations will also be public in this design.
+      */
+    await interaction.deferReply();
+
     const group = interaction.options.getSubcommandGroup();
     const subcommand = interaction.options.getSubcommand();
 
-    /*
-        /level view user [user]
-      */
     if (group === "view" && subcommand === "user") {
       const targetUser =
         interaction.options.getUser("user") || interaction.user;
@@ -225,17 +231,12 @@ module.exports = {
         )
         .setTimestamp();
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [embed],
       });
     }
 
-    /*
-        /level view leaderboard
-      */
     if (group === "view" && subcommand === "leaderboard") {
-      await interaction.deferReply();
-
       const leaderboard = levels.getLeaderboard(10);
 
       const entries = await Promise.all(
@@ -274,15 +275,9 @@ module.exports = {
       });
     }
 
-    /*
-        All remaining commands are staff-only:
-        /level points ...
-        /level levels ...
-      */
     if (!isLevelModerator(interaction)) {
-      return interaction.reply({
+      return interaction.editReply({
         content: "You don't have permission to use this command.",
-        ephemeral: true,
       });
     }
 
@@ -290,15 +285,10 @@ module.exports = {
     const amount = interaction.options.getInteger("amount");
 
     if (!target) {
-      return interaction.reply({
+      return interaction.editReply({
         content: "That user is not currently in this server.",
-        ephemeral: true,
       });
     }
-
-    await interaction.deferReply({
-      ephemeral: true,
-    });
 
     let updatedUser;
 
@@ -332,9 +322,16 @@ module.exports = {
       }
     }
 
-    return interaction.editReply(
-      `${target} is now Level **${updatedUser.level}/${levels.MAX_LEVEL}** ` +
+    if (!updatedUser) {
+      return interaction.editReply({
+        content: "That level action could not be completed.",
+      });
+    }
+
+    return interaction.editReply({
+      content:
+        `${target} is now Level **${updatedUser.level}/${levels.MAX_LEVEL}** ` +
         `with **${updatedUser.points.toLocaleString()}** points.`,
-    );
+    });
   },
 };
