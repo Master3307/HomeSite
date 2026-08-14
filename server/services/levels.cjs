@@ -296,9 +296,14 @@ async function announceLevelUp(member, oldLevel, newLevel, points) {
     .setColor("#8B5CF6")
     .setAuthor({
       name: "Level up!",
-      iconURL: member.user.displayAvatarURL(),
     })
-    .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
+    .setThumbnail(
+      member.displayAvatarURL({
+        size: 256,
+        extension: "png",
+        forceStatic: false,
+      }),
+    )
     .setDescription(
       `Congratulations ${member}, you reached **Level ${newLevel}**!`,
     )
