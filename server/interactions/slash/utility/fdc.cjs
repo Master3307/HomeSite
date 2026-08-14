@@ -189,7 +189,7 @@ function makePollEmbed(options, votes, endsAt, ended = false) {
 
   return new EmbedBuilder()
     .setColor(ended ? 0x5865f2 : 0xf1c40f)
-    .setTitle(ended ? "Friday Dress Code — Results" : "Friday Dress Code Poll")
+    .setTitle(ended ? "Friday Dress Code: Results" : "Friday Dress Code Poll")
     .setDescription(
       `${list}\n\n**Choose your vote with the emojis below.**\n${endText}`,
     );
