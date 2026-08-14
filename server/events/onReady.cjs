@@ -5,15 +5,24 @@
  * @version 3.2.2
  */
 
-module.exports = {
-	name: "clientReady",
-	once: true,
+const levels = require("../services/levels.cjs");
 
-	/**
-	 * @description Executes when client is ready (bot initialization).
-	 * @param {import('../typings').Client} client Main Application Client.
-	 */
-	execute(client) {
-		console.log(`Ready! Logged in as ${client.user.tag}`);
-	},
+module.exports = {
+  name: "clientReady",
+  once: true,
+
+  /**
+   * @description Executes when client is ready (bot initialization).
+   * @param {import('../typings').Client} client Main Application Client.
+   */
+  async execute(client) {
+    try {
+      await levels.load();
+      console.log(`[Levels] Service initialized.`);
+    } catch (error) {
+      console.error("[Levels] Failed to initialize:", error);
+    }
+
+    console.log(`Ready! Logged in as ${client.user.tag}`);
+  },
 };

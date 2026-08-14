@@ -14,6 +14,8 @@ const {
   ButtonStyle,
 } = require("discord.js");
 
+const levels = require("../services/levels.cjs");
+
 const prefix = process.env.BOT_PREFIX || "!";
 const owners = process.env.BOT_OWNERS ? process.env.BOT_OWNERS.split(",") : [];
 
@@ -39,24 +41,47 @@ module.exports = {
   async execute(message) {
     const { client, guild, channel, content, author } = message;
 
-    if (message.channelId === STICKY_CHANNEL_ID) {
-      // Only repost sticky after human messages (also skips our own sticky posts).
-      if (author?.bot) return;
+    /*
+      Award XP before rejecting bot messages, so other Discord bots may level.
 
+      levels.cjs ignores this bot's own level-up messages in the announcement
+      channel to prevent an XP loop.
+    */
+    try {
+      await levels.trackMessage(message);
+    } catch (error) {
+      console.error("[Levels] Failed to track message activity:", error);
+    }
+
+    /*
+      Bots gain XP above, but never run normal message behavior below:
+      - sticky reposting
+      - lobby-code handling
+      - mention responses
+      - prefix commands
+
+      This prevents message loops.
+    */
+    if (author?.bot) {
+      return;
+    }
+
+    if (message.channelId === STICKY_CHANNEL_ID) {
       try {
         await sendStickyMessageToChannel(client, message.channelId);
       } catch (error) {
         console.error("Failed to send sticky message:", error);
       }
+
       return;
     }
 
-    // For non-sticky channels, ignore bot messages as before.
-    if (author.bot) return;
-
     if (guild && channel.id === TARGET_CHANNEL_ID) {
       const code = content.trim();
-      if (!code) return;
+
+      if (!code) {
+        return;
+      }
 
       if (hasPrivilegedRole(message.member)) {
         try {
@@ -87,9 +112,15 @@ module.exports = {
             .setColor("#2F1A80")
             .setTitle("Lobby Code Approval Request")
             .setDescription(
-              `A non-privileged user submitted a lobby code that requires approval.\n\n<@&${REVIEW_ROLE_ID}>`,
+              "A non-privileged user submitted a lobby code that requires approval.\n\n" +
+                `<@&${REVIEW_ROLE_ID}>`,
             )
-            .setThumbnail(author.displayAvatarURL({ dynamic: true, size: 256 }))
+            .setThumbnail(
+              author.displayAvatarURL({
+                dynamic: true,
+                size: 256,
+              }),
+            )
             .addFields(
               {
                 name: "User",
@@ -134,7 +165,10 @@ module.exports = {
                 .setColor("#2F1A80")
                 .setTitle("Lobby Code Pending Approval")
                 .setDescription(
-                  `You do not currently have permission to post lobby codes directly in <#${TARGET_CHANNEL_ID}>. Your submitted code has been forwarded for review. Please wait for approval or denial from the staff team.`,
+                  "You do not currently have permission to post lobby codes " +
+                    `directly in <#${TARGET_CHANNEL_ID}>. Your submitted code ` +
+                    "has been forwarded for review. Please wait for approval " +
+                    "or denial from the staff team.",
                 )
                 .addFields({
                   name: "Submitted Code",
@@ -152,8 +186,8 @@ module.exports = {
     }
 
     if (
-      message.content == `<@${client.user.id}>` ||
-      message.content == `<@!${client.user.id}>`
+      message.content === `<@${client.user.id}>` ||
+      message.content === `<@!${client.user.id}>`
     ) {
       require("../messages/onMention.cjs").execute(message);
       return;
@@ -165,14 +199,19 @@ module.exports = {
       `^(<@!?${client.user.id}>|${escapeRegex(checkPrefix)})\\s*`,
     );
 
-    if (!prefixRegex.test(content.toLowerCase())) return;
+    if (!prefixRegex.test(content.toLowerCase())) {
+      return;
+    }
 
     const [matchedPrefix] = content.toLowerCase().match(prefixRegex);
 
     const args = content.slice(matchedPrefix.length).trim().split(/ +/);
+
     const commandName = args.shift()?.toLowerCase();
 
-    if (!message.content.startsWith(matchedPrefix)) return;
+    if (!message.content.startsWith(matchedPrefix)) {
+      return;
+    }
 
     const command =
       client.commands.get(commandName) ||
@@ -180,10 +219,14 @@ module.exports = {
         (cmd) => cmd.aliases && cmd.aliases.includes(commandName),
       );
 
-    if (!command) return;
+    if (!command) {
+      return;
+    }
 
     if (command.ownerOnly && !owners.includes(message.author.id)) {
-      return message.reply({ content: "This is a owner only command!" });
+      return message.reply({
+        content: "This is a owner only command!",
+      });
     }
 
     if (command.guildOnly && message.channel.type === ChannelType.DM) {
@@ -194,8 +237,11 @@ module.exports = {
 
     if (command.permissions && message.channel.type !== ChannelType.DM) {
       const authorPerms = message.channel.permissionsFor(message.author);
+
       if (!authorPerms || !authorPerms.has(command.permissions)) {
-        return message.reply({ content: "You can not do this!" });
+        return message.reply({
+          content: "You can not do this!",
+        });
       }
     }
 
@@ -203,10 +249,14 @@ module.exports = {
       let reply = `You didn't provide any arguments, ${message.author}!`;
 
       if (command.usage) {
-        reply += `\nThe proper usage would be: \`${prefix}${command.name} ${command.usage}\``;
+        reply +=
+          `\nThe proper usage would be: ` +
+          `\`${prefix}${command.name} ${command.usage}\``;
       }
 
-      return message.channel.send({ content: reply });
+      return message.channel.send({
+        content: reply,
+      });
     }
 
     const { cooldowns } = client;
@@ -224,21 +274,26 @@ module.exports = {
 
       if (now < expirationTime) {
         const timeLeft = (expirationTime - now) / 1000;
+
         return message.reply({
-          content: `please wait ${timeLeft.toFixed(
-            1,
-          )} more second(s) before reusing the \`${command.name}\` command.`,
+          content:
+            `please wait ${timeLeft.toFixed(1)} more second(s) ` +
+            `before reusing the \`${command.name}\` command.`,
         });
       }
     }
 
     timestamps.set(message.author.id, now);
-    setTimeout(() => timestamps.delete(message.author.id), cooldownAmount);
+
+    setTimeout(() => {
+      timestamps.delete(message.author.id);
+    }, cooldownAmount);
 
     try {
       command.execute(message, args);
     } catch (error) {
       console.error(error);
+
       message.reply({
         content: "There was an error trying to execute that command!",
       });

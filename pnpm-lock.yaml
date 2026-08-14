@@ -20,6 +20,12 @@ importers:
       cors:
         specifier: ^2.8.6
         version: 2.8.6
+      csv-parse:
+        specifier: ^6.1.0
+        version: 6.2.1
+      csv-stringify:
+        specifier: ^6.6.0
+        version: 6.8.3
       discord-api-types:
         specifier: ^0.36.2
         version: 0.36.3
@@ -636,6 +642,12 @@ packages:
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
+  csv-parse@6.2.1:
+    resolution: {integrity: sha512-LRLMV+UCyfMokp8Wb411duBf1gaBKJfOfBWU9eHMJ+b+cJYZsNu3AFmjJf3+yPGd59Exz1TsMjaSFyxnYB9+IQ==}
+
+  csv-stringify@6.8.3:
+    resolution: {integrity: sha512-gIeSCvq5F4VtXV3naV3VAewLhBkiZBz+PPhTOA8H3Y8h/ELa+R1ml0GZck/4/Nzo9ep2lvOluilJ6MJlbZsKMA==}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -1638,6 +1650,10 @@ snapshots:
       vary: 1.1.2
 
   csstype@3.2.3: {}
+
+  csv-parse@6.2.1: {}
+
+  csv-stringify@6.8.3: {}
 
   debug@4.4.3:
     dependencies:

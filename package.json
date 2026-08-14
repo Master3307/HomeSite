@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "images": "node scripts/generate-images.mjs"
   },
-  "packageManager": "pnpm@11.20.0",
+  "packageManager": "pnpm@11.21.0",
   "engines": {
     "pnpm": ">=10.0.0"
   },
@@ -21,6 +21,8 @@
     "@discordjs/rest": "^1.0.0",
     "@mongez/sitemap": "^1.0.2",
     "cors": "^2.8.6",
+    "csv-parse": "^6.1.0",
+    "csv-stringify": "^6.6.0",
     "discord-api-types": "^0.36.2",
     "discord.js": "^14.26.4",
     "dotenv": "^17.4.2",
