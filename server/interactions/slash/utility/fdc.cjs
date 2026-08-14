@@ -2,18 +2,17 @@ const {
   SlashCommandBuilder,
   EmbedBuilder,
   PermissionFlagsBits,
-  ChannelType,
 } = require("discord.js");
 
 const ROLE_ID = "1483524975959736484";
 const DEFAULT_CHANNEL_ID = "1479219328258674709";
-const POLL_DURATION = 24 * 60 * 60 * 1000;
+const DEFAULT_POLL_DURATION = 24 * 60 * 60 * 1000;
 const EMBED_UPDATE_INTERVAL = 1500;
 const DEFAULT_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"];
 
 const data = new SlashCommandBuilder()
   .setName("fdc")
-  .setDescription("Start a 24-hour Friday Dress Code poll")
+  .setDescription("Start a Friday Dress Code poll")
   .addAttachmentOption((option) =>
     option
       .setName("1_media")
@@ -28,6 +27,15 @@ const data = new SlashCommandBuilder()
       )
       .setMaxLength(400)
       .setRequired(true),
+  )
+  .addStringOption((option) =>
+    option
+      .setName("ends_at")
+      .setDescription(
+        "When the poll ends: 12h, 1d, 1d12h, or 2026-08-15 18:30 (default: 24h)",
+      )
+      .setMaxLength(100)
+      .setRequired(false),
   );
 
 for (let number = 1; number <= 6; number += 1) {
@@ -59,14 +67,6 @@ for (let number = 1; number <= 6; number += 1) {
   }
 }
 
-data.addChannelOption((option) =>
-  option
-    .setName("channel")
-    .setDescription("Channel where the FDC poll should be posted")
-    .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-    .setRequired(false),
-);
-
 function emojiKey(emoji) {
   const custom = emoji.match(/^<a?:[^:>]+:(\d+)>$/);
   return custom ? `custom:${custom[1]}` : `unicode:${emoji}`;
@@ -92,21 +92,105 @@ function countVotes(votes, optionIndex) {
   return [...votes.values()].filter((value) => value === optionIndex).length;
 }
 
+function formatDiscordTimestamp(date, style = "F") {
+  return `<t:${Math.floor(date.getTime() / 1000)}:${style}>`;
+}
+
+function parseDuration(input) {
+  const value = input.trim().toLowerCase().replace(/\s+/g, "");
+
+  if (!value) return null;
+
+  const pattern = /(\d+(?:\.\d+)?)(ms|s|m|h|d|w)/g;
+  let match;
+  let consumed = "";
+  let milliseconds = 0;
+
+  const units = {
+    ms: 1,
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+    w: 7 * 24 * 60 * 60 * 1000,
+  };
+
+  while ((match = pattern.exec(value)) !== null) {
+    const [, amount, unit] = match;
+    consumed += match[0];
+    milliseconds += Number(amount) * units[unit];
+  }
+
+  if (
+    consumed !== value ||
+    !Number.isFinite(milliseconds) ||
+    milliseconds <= 0
+  ) {
+    return null;
+  }
+
+  return milliseconds;
+}
+
+function parseEndTime(input) {
+  if (!input) {
+    return new Date(Date.now() + DEFAULT_POLL_DURATION);
+  }
+
+  const value = input.trim();
+
+  if (!value) return null;
+
+  const duration = parseDuration(value);
+  if (duration !== null) {
+    return new Date(Date.now() + duration);
+  }
+
+  const discordTimestamp = value.match(/^<t:(\d+)(?::[a-zA-Z])?>$/);
+  if (discordTimestamp) {
+    const timestamp = Number(discordTimestamp[1]) * 1000;
+    const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  if (/^\d{10}$/.test(value)) {
+    const date = new Date(Number(value) * 1000);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  if (/^\d{13}$/.test(value)) {
+    const date = new Date(Number(value));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?$/.test(value)
+    ? value.replace(" ", "T")
+    : value;
+
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function makePollEmbed(options, votes, endsAt, ended = false) {
   const total = votes.size;
   const list = options
     .map((option, index) => {
       const count = countVotes(votes, index);
       const percentage = total ? ((count / total) * 100).toFixed(1) : "0.0";
+
       return `${index + 1}. ${option.emoji}・${option.description}\n   └ ${count} vote${count === 1 ? "" : "s"} (${percentage}%)`;
     })
     .join("\n\n");
+
+  const endText = ended
+    ? `Poll closed • **${total}** voter${total === 1 ? "" : "s"}.`
+    : `Ends ${formatDiscordTimestamp(endsAt, "R")} (${formatDiscordTimestamp(endsAt, "f")})\n**${total}** voter${total === 1 ? "" : "s"}.`;
 
   return new EmbedBuilder()
     .setColor(ended ? 0x5865f2 : 0xf1c40f)
     .setTitle(ended ? "Friday Dress Code — Results" : "Friday Dress Code Poll")
     .setDescription(
-      `${list}\n\n**Choose your vote with the emojis below.**\n${ended ? `Poll closed • **${total}** voter${total === 1 ? "" : "s"}.` : `**${total}** voter${total === 1 ? "" : "s"}.`}`,
+      `${list}\n\n**Choose your vote with the emojis below.**\n${endText}`,
     );
 }
 
@@ -114,6 +198,7 @@ function makeResultsEmbed(options, votes) {
   const total = votes.size;
   const counts = options.map((_, index) => countVotes(votes, index));
   const highest = Math.max(...counts);
+
   const highestOptions = options
     .map((option, index) => ({ option, index }))
     .filter(({ index }) => counts[index] === highest);
@@ -122,6 +207,7 @@ function makeResultsEmbed(options, votes) {
     .map((option, index) => {
       const count = counts[index];
       const percentage = total ? ((count / total) * 100).toFixed(1) : "0.0";
+
       return `**${index + 1}. ${option.emoji}・${option.description}**\n   └ **${count}** vote${count === 1 ? "" : "s"} • **${percentage}%**`;
     })
     .join("\n\n");
@@ -131,7 +217,9 @@ function makeResultsEmbed(options, votes) {
       ? "No votes were cast."
       : highestOptions.length === 1
         ? `Most votes: ${highestOptions[0].option.emoji}・${highestOptions[0].option.description} — ${highest} vote${highest === 1 ? "" : "s"}.`
-        : `Most votes (tie): ${highestOptions.map(({ option }) => `${option.emoji}・${option.description}`).join(" **and** ")} — ${highest} votes each.`;
+        : `Most votes (tie): ${highestOptions
+            .map(({ option }) => `${option.emoji}・${option.description}`)
+            .join(" **and** ")} — ${highest} votes each.`;
 
   return new EmbedBuilder()
     .setColor(0x5865f2)
@@ -154,12 +242,9 @@ module.exports = {
       });
     }
 
-    const selectedChannel = interaction.options.getChannel("channel");
-    const channel =
-      selectedChannel ??
-      (await interaction.guild.channels
-        .fetch(DEFAULT_CHANNEL_ID)
-        .catch(() => null));
+    const channel = await interaction.guild.channels
+      .fetch(DEFAULT_CHANNEL_ID)
+      .catch(() => null);
 
     if (!channel || typeof channel.send !== "function") {
       return interaction.reply({
@@ -168,8 +253,29 @@ module.exports = {
       });
     }
 
+    const endInput = interaction.options.getString("ends_at");
+    const endsAt = parseEndTime(endInput);
+
+    if (!endsAt) {
+      return interaction.reply({
+        content:
+          "Invalid `ends_at` value. Use a duration such as `12h`, `1d`, `1d12h`, or an exact date/time such as `2026-08-15 18:30`.",
+        ephemeral: true,
+      });
+    }
+
+    if (endsAt.getTime() <= Date.now()) {
+      return interaction.reply({
+        content: "The poll end time must be in the future.",
+        ephemeral: true,
+      });
+    }
+
+    const pollDuration = endsAt.getTime() - Date.now();
+
     const me = await interaction.guild.members.fetchMe();
     const permissions = channel.permissionsFor(me);
+
     const requiredPermissions = [
       PermissionFlagsBits.SendMessages,
       PermissionFlagsBits.EmbedLinks,
@@ -190,6 +296,7 @@ module.exports = {
     }
 
     const role = await interaction.guild.roles.fetch(ROLE_ID).catch(() => null);
+
     if (!role) {
       return interaction.reply({
         content: `I could not find the required FDC role (${ROLE_ID}) in this server.`,
@@ -209,11 +316,13 @@ module.exports = {
     }
 
     const options = [];
+
     for (let number = 1; number <= 6; number += 1) {
       const media = interaction.options.getAttachment(`${number}_media`);
       const description = interaction.options.getString(
         `${number}_description`,
       );
+
       const emoji =
         interaction.options.getString(`${number}_emoji`)?.trim() ||
         DEFAULT_EMOJIS[number - 1];
@@ -241,7 +350,13 @@ module.exports = {
         });
       }
 
-      options.push({ number, media, description, emoji, key: emojiKey(emoji) });
+      options.push({
+        number,
+        media,
+        description,
+        emoji,
+        key: emojiKey(emoji),
+      });
     }
 
     const duplicateEmoji = options.find(
@@ -267,8 +382,8 @@ module.exports = {
         })),
       });
 
-      const endsAt = new Date(Date.now() + POLL_DURATION);
       const votes = new Map();
+
       const pollMessage = await channel.send({
         content: `<@&${ROLE_ID}>・Vote for The FDC! :D`,
         allowedMentions: { roles: [ROLE_ID] },
@@ -293,12 +408,12 @@ module.exports = {
         }
 
         updateInProgress = true;
+
         try {
           await pollMessage.edit({
             embeds: [makePollEmbed(options, votes, endsAt)],
           });
         } catch (error) {
-          // Do not hide edit failures: this makes missing permissions/API errors visible in logs.
           console.error(`Failed to update FDC poll ${pollMessage.id}:`, error);
         } finally {
           updateInProgress = false;
@@ -311,8 +426,7 @@ module.exports = {
       };
 
       const queueEmbedUpdate = () => {
-        if (pollEnded) return;
-        if (updateTimer) return;
+        if (pollEnded || updateTimer) return;
 
         updateTimer = setTimeout(async () => {
           updateTimer = null;
@@ -324,7 +438,7 @@ module.exports = {
         filter: (reaction, user) =>
           !user.bot &&
           options.some((option) => option.key === reactionKey(reaction)),
-        time: POLL_DURATION,
+        time: pollDuration,
         dispose: true,
       });
 
@@ -332,11 +446,13 @@ module.exports = {
         const selectedIndex = options.findIndex(
           (option) => option.key === reactionKey(reaction),
         );
+
         if (selectedIndex === -1) return;
 
         const previousIndex = votes.get(user.id);
-        // Set the new vote before removing the old reaction. If Discord immediately emits a
-        // remove event for the old reaction, it cannot erase this newer selection.
+
+        // Set the new vote before removing the old reaction so the remove
+        // event cannot erase the user's newly selected option.
         votes.set(user.id, selectedIndex);
 
         if (previousIndex !== undefined && previousIndex !== selectedIndex) {
@@ -362,33 +478,47 @@ module.exports = {
           (option) => option.key === reactionKey(reaction),
         );
 
-        // A removal only clears the vote when that reaction is still the user's active choice.
-        if (votes.get(user.id) === removedIndex) votes.delete(user.id);
+        if (votes.get(user.id) === removedIndex) {
+          votes.delete(user.id);
+        }
+
         queueEmbedUpdate();
       });
 
       collector.on("end", async () => {
         pollEnded = true;
-        if (updateTimer) clearTimeout(updateTimer);
+
+        if (updateTimer) {
+          clearTimeout(updateTimer);
+          updateTimer = null;
+        }
 
         try {
           await pollMessage.edit({
             embeds: [makePollEmbed(options, votes, endsAt, true)],
           });
-          await channel.send({ embeds: [makeResultsEmbed(options, votes)] });
+
+          await channel.send({
+            embeds: [makeResultsEmbed(options, votes)],
+          });
         } catch (error) {
           console.error(`Failed to close FDC poll ${pollMessage.id}:`, error);
         }
       });
 
       await interaction.editReply({
-        content: `FDC poll created in ${channel}: ${pollMessage.url}\nThe live embed updates within ${EMBED_UPDATE_INTERVAL / 1000} seconds after a vote. It closes in 24 hours and final results will be posted there automatically.`,
+        content: [
+          `FDC poll created in ${channel}: ${pollMessage.url}`,
+          `It closes ${formatDiscordTimestamp(endsAt, "R")} (${formatDiscordTimestamp(endsAt, "f")}).`,
+          `The live embed updates within ${EMBED_UPDATE_INTERVAL / 1000} seconds after a vote.`,
+        ].join("\n"),
       });
     } catch (error) {
       console.error("Failed to create FDC poll:", error);
+
       await interaction.editReply({
         content:
-          "I could not create the FDC poll. Check the bot console and its permissions in the selected target channel.",
+          "I could not create the FDC poll. Check the bot console and its permissions in the FDC channel.",
       });
     }
   },
