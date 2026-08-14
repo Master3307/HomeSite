@@ -21,22 +21,58 @@ const MIN_MESSAGE_POINTS = 10;
 const MAX_MESSAGE_POINTS = 18;
 
 const LEVEL_REWARDS = {
-  // 3: {
-  //   roleId: "ROLE_ID_FOR_LEVEL_3",
-  //   label: "Regular",
-  // },
-  // 6: {
-  //   roleId: "ROLE_ID_FOR_LEVEL_6",
-  //   label: "Active",
-  // },
-  // 10: {
-  //   roleId: "ROLE_ID_FOR_LEVEL_10",
-  //   label: "Veteran",
-  // },
-  // 13: {
-  //   roleId: "ROLE_ID_FOR_LEVEL_13",
-  //   label: "Legend",
-  // },
+  1: {
+    roleId: "1537933506766966924",
+    label: "Meowcomer",
+  },
+  2: {
+    roleId: "1537935662915780739",
+    label: "Black Cat",
+  },
+  3: {
+    roleId: "1537935742557364326",
+    label: "Talcative",
+  },
+  4: {
+    roleId: "1537935823981387786",
+    label: "Seeker of News",
+  },
+  5: {
+    roleId: "1537936248281497610",
+    label: "Gossip Spreader",
+  },
+  6: {
+    roleId: "1537936305147744336",
+    label: "Purrfect Listener",
+  },
+  7: {
+    roleId: "1537936407048359976",
+    label: "Knowledgeable Cat",
+  },
+  8: {
+    roleId: "1537936470109855774",
+    label: "Cult Worshiper",
+  },
+  9: {
+    roleId: "1537936530645975201",
+    label: "True Cult Member",
+  },
+  10: {
+    roleId: "1537936583091552470",
+    label: "Taught Leader",
+  },
+  11: {
+    roleId: "1537936674338639933",
+    label: "Wisdom Keeper",
+  },
+  12: {
+    roleId: "1537936764101206096",
+    label: "Catful Diety",
+  },
+  13: {
+    roleId: "1537936830937440266",
+    label: "Bastet",
+  },
 };
 
 const users = new Map();
