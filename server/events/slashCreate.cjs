@@ -5,25 +5,21 @@
  * @version 3.3.0
  */
 
+const UNKNOWN_INTERACTION_CODE = 10062;
+
 module.exports = {
   name: "interactionCreate",
 
   /**
    * @description Executes when an interaction is created and handles it.
-   * @author Naman Vrati
    * @param {import('discord.js').CommandInteraction & { client: import('../typings').Client }} interaction
-   * The interaction which was created.
    */
   async execute(interaction) {
-    const { client } = interaction;
-
-    /*
-		Ignore buttons, select menus, modals, autocomplete, and context menus.
-		Their own event files handle them.
-	  */
     if (!interaction.isChatInputCommand()) {
       return;
     }
+
+    const { client } = interaction;
 
     const command = client.slashCommands.get(interaction.commandName);
 
@@ -31,22 +27,30 @@ module.exports = {
       return;
     }
 
+    const receivedAt = Date.now();
+
     try {
       await command.execute(interaction);
     } catch (error) {
+      const elapsedMs = Date.now() - receivedAt;
+
       console.error(
-        `[Slash Commands] Failed to execute /${interaction.commandName}:`,
+        `[Slash Commands] /${interaction.commandName} failed after ${elapsedMs}ms:`,
         error,
       );
 
       /*
-		  Commands such as /level defer immediately, so their initial response
-		  has already been acknowledged. They must receive editReply(), not
-		  another reply().
+        The interaction has expired or was already consumed elsewhere.
+        A fallback reply would only create another 10062 error.
+      */
+      if (error?.code === UNKNOWN_INTERACTION_CODE) {
+        console.error(
+          `[Slash Commands] /${interaction.commandName} could not be acknowledged. ` +
+            "Check for duplicate bot processes/listeners or event-loop blocking.",
+        );
+        return;
+      }
 
-		  Commands that fail before replying/defering still receive a normal,
-		  private reply.
-		*/
       try {
         if (interaction.deferred || interaction.replied) {
           await interaction.editReply({
@@ -54,7 +58,6 @@ module.exports = {
             embeds: [],
             components: [],
           });
-
           return;
         }
 
@@ -63,14 +66,13 @@ module.exports = {
           ephemeral: true,
         });
       } catch (responseError) {
-        /*
-			Avoid crashing the interaction event if Discord has already expired
-			the token or the response itself cannot be delivered.
-		  */
-        console.error(
-          `[Slash Commands] Failed to send error response for /${interaction.commandName}:`,
-          responseError,
-        );
+        if (responseError?.code !== UNKNOWN_INTERACTION_CODE) {
+          console.error(
+            `[Slash Commands] Could not send failure response for ` +
+              `/${interaction.commandName}:`,
+            responseError,
+          );
+        }
       }
     }
   },
