@@ -10,10 +10,6 @@ const catImages = [
     description: 'A random Cat from "Cataas"!',
   },
   {
-    url: "https://cataas.com/cat/gif/says/Meow%20Meow!?width=400&height=300",
-    description: "Random Cat GIF! :3",
-  },
-  {
     url: "https://user.uploads.dev/file/4f588aa32b1fcbaae594574504f917f0.png",
     description: "The Crimson Crew!",
   },
