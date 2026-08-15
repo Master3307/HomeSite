@@ -4,6 +4,7 @@ const {
   PermissionFlagsBits,
 } = require("discord.js");
 
+const MOD_ROLE_ID = "1479193858565865472";
 const ROLE_ID = "1483524975959736484";
 const DEFAULT_CHANNEL_ID = "1479219328258674709";
 const DEFAULT_POLL_DURATION = 24 * 60 * 60 * 1000;
@@ -43,7 +44,9 @@ for (let number = 1; number <= 6; number += 1) {
     option
       .setName(`${number}_emoji`)
       .setDescription(
-        `Reaction emoji for option ${number} (defaults to ${DEFAULT_EMOJIS[number - 1]})`,
+        `Reaction emoji for option ${number} (defaults to ${
+          DEFAULT_EMOJIS[number - 1]
+        })`,
       )
       .setMaxLength(100)
       .setRequired(false),
@@ -85,6 +88,7 @@ function reactionKey(reaction) {
 
 function isImageOrGif(attachment) {
   if (attachment.contentType?.startsWith("image/")) return true;
+
   return /\.(png|jpe?g|gif|webp)$/i.test(attachment.name ?? "");
 }
 
@@ -142,24 +146,29 @@ function parseEndTime(input) {
   if (!value) return null;
 
   const duration = parseDuration(value);
+
   if (duration !== null) {
     return new Date(Date.now() + duration);
   }
 
   const discordTimestamp = value.match(/^<t:(\d+)(?::[a-zA-Z])?>$/);
+
   if (discordTimestamp) {
     const timestamp = Number(discordTimestamp[1]) * 1000;
     const date = new Date(timestamp);
+
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
   if (/^\d{10}$/.test(value)) {
     const date = new Date(Number(value) * 1000);
+
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
   if (/^\d{13}$/.test(value)) {
     const date = new Date(Number(value));
+
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
@@ -168,6 +177,7 @@ function parseEndTime(input) {
     : value;
 
   const date = new Date(normalized);
+
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -179,13 +189,20 @@ function makePollEmbed(options, votes, endsAt, ended = false) {
       const count = countVotes(votes, index);
       const percentage = total ? ((count / total) * 100).toFixed(1) : "0.0";
 
-      return `${index + 1}. ${option.emoji}・${option.description}\n   └ ${count} vote${count === 1 ? "" : "s"} (${percentage}%)`;
+      return `${index + 1}. ${option.emoji}・${option.description}\n   └ ${count} vote${
+        count === 1 ? "" : "s"
+      } (${percentage}%)`;
     })
     .join("\n\n");
 
   const endText = ended
     ? `Poll closed • **${total}** voter${total === 1 ? "" : "s"}.`
-    : `Ends ${formatDiscordTimestamp(endsAt, "R")} (${formatDiscordTimestamp(endsAt, "f")})\n**${total}** voter${total === 1 ? "" : "s"}.`;
+    : `Ends ${formatDiscordTimestamp(
+        endsAt,
+        "R",
+      )} (${formatDiscordTimestamp(endsAt, "f")})\n**${total}** voter${
+        total === 1 ? "" : "s"
+      }.`;
 
   return new EmbedBuilder()
     .setColor(ended ? 0x5865f2 : 0xf1c40f)
@@ -209,7 +226,9 @@ function makeResultsEmbed(options, votes) {
     total === 0
       ? "No votes were cast."
       : winningOptions.length === 1
-        ? `**Winner:**\n${winningOptions[0].index + 1}. ${winningOptions[0].option.description}`
+        ? `**Winner:**\n${winningOptions[0].index + 1}. ${
+            winningOptions[0].option.description
+          }`
         : `**Tie:**\n${winningOptions
             .map(({ option, index }) => `${index + 1}. ${option.description}`)
             .join("\n")}`;
@@ -225,12 +244,25 @@ function makeResultsEmbed(options, votes) {
 }
 
 module.exports = {
+  moderatorOnly: true,
   data,
 
   async execute(interaction) {
     if (!interaction.inGuild()) {
       return interaction.reply({
         content: "This command can only be used in a server.",
+        ephemeral: true,
+      });
+    }
+
+    const member = interaction.member;
+
+    if (
+      !member.roles.cache.has(MOD_ROLE_ID) &&
+      !member.permissions.has(PermissionFlagsBits.Administrator)
+    ) {
+      return interaction.reply({
+        content: "You don't have permission to use this command.",
         ephemeral: true,
       });
     }
@@ -500,8 +532,13 @@ module.exports = {
       await interaction.editReply({
         content: [
           `FDC poll created in ${channel}: ${pollMessage.url}`,
-          `It closes ${formatDiscordTimestamp(endsAt, "R")} (${formatDiscordTimestamp(endsAt, "f")}).`,
-          `The live embed updates within ${EMBED_UPDATE_INTERVAL / 1000} seconds after a vote.`,
+          `It closes ${formatDiscordTimestamp(
+            endsAt,
+            "R",
+          )} (${formatDiscordTimestamp(endsAt, "f")}).`,
+          `The live embed updates within ${
+            EMBED_UPDATE_INTERVAL / 1000
+          } seconds after a vote.`,
         ].join("\n"),
       });
     } catch (error) {

@@ -75,7 +75,7 @@ function createCommandFields(commands, title) {
 
   const commandLines = commands.map(
     (command) =>
-      `</${command.data.name}:0> — ${
+      `</${command.data.name}:0>: ${
         command.data.description || "*No description*"
       }`,
   );

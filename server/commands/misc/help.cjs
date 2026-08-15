@@ -47,10 +47,9 @@ function chunkLines(lines, maxLength = 1024) {
     if (nextChunk.length > maxLength && currentChunk.length > 0) {
       chunks.push(currentChunk.join("\n"));
       currentChunk = [line];
-      continue;
+    } else {
+      currentChunk.push(line);
     }
-
-    currentChunk.push(line);
   }
 
   if (currentChunk.length > 0) {
@@ -60,12 +59,12 @@ function chunkLines(lines, maxLength = 1024) {
   return chunks;
 }
 
-function createCommandFields(commands, title) {
-  if (!commands.length) {
+function createCommandFields(commandList, title) {
+  if (!commandList.length) {
     return [];
   }
 
-  const commandLines = commands.map((command) => {
+  const commandLines = commandList.map((command) => {
     const description = command.description || "No description provided.";
     return `\`${prefix}${command.name}\`: ${description}`;
   });
@@ -85,20 +84,25 @@ module.exports = {
   cooldown: 5,
 
   async execute(message, args) {
-    const { commands } = message.client;
+    const commandCollection = message.client.commands;
+
+    /*
+     * Your command handler stores prefix commands in a Discord.js Collection.
+     * Turn it into a normal array before filter/sort/count operations.
+     */
+    const allCommands = Array.from(commandCollection.values())
+      .filter((command) => command?.name)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
     const userIsModerator = isModerator(message);
 
-    // !help — show command categories directly in the current channel.
+    // !help — send the help embed directly as a reply in the current chat.
     if (!args.length) {
-      const sortedCommands = commands
-        .filter((command) => command.name)
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-      const publicCommands = sortedCommands.filter(
+      const publicCommands = allCommands.filter(
         (command) => !command.moderatorOnly,
       );
 
-      const moderatorCommands = sortedCommands.filter(
+      const moderatorCommands = allCommands.filter(
         (command) => command.moderatorOnly,
       );
 
@@ -113,7 +117,7 @@ module.exports = {
       }
 
       const visibleCommandCount = userIsModerator
-        ? sortedCommands.length
+        ? allCommands.length
         : publicCommands.length;
 
       const helpEmbed = createBaseEmbed(message)
@@ -127,7 +131,7 @@ module.exports = {
             `Use \`${prefix}help <command>\` for detailed information.`,
             `Example: \`${prefix}help random-cat\``,
             userIsModerator
-              ? "You can view moderator commands."
+              ? "You can also view moderator commands."
               : "Moderator commands are hidden.",
           ].join("\n"),
         )
@@ -153,13 +157,13 @@ module.exports = {
     const requestedName = args[0].trim().toLowerCase();
 
     const command =
-      commands.get(requestedName) ||
-      commands.find((item) =>
+      commandCollection.get(requestedName) ||
+      allCommands.find((item) =>
         item.aliases?.some((alias) => alias.toLowerCase() === requestedName),
       );
 
     if (!command) {
-      const suggestions = commands
+      const suggestions = allCommands
         .filter((item) => canViewCommand(message, item))
         .filter((item) => {
           const names = [item.name, ...(item.aliases ?? [])];
@@ -191,7 +195,6 @@ module.exports = {
       });
     }
 
-    // Do not reveal moderator command information to regular users.
     if (command.moderatorOnly && !userIsModerator) {
       return message.reply({
         content: "You don't have permission to use this command.",
