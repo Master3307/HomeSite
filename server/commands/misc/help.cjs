@@ -1,6 +1,7 @@
-const { EmbedBuilder, ChannelType } = require("discord.js");
+const { EmbedBuilder, PermissionFlagsBits } = require("discord.js");
 
 const prefix = process.env.BOT_PREFIX || "!";
+const MOD_ROLE_ID = "1479193858565865472";
 
 const COLORS = {
   primary: 0x5865f2,
@@ -15,10 +16,25 @@ function createBaseEmbed(message) {
   return new EmbedBuilder()
     .setColor(COLORS.primary)
     .setFooter({
-      text: `${message.client.user?.username ?? "Bot"} • Help Center`,
+      text: message.client.user?.username ?? "Bot",
       iconURL: getBotAvatar(message.client),
     })
     .setTimestamp();
+}
+
+function isModerator(message) {
+  if (!message.guild || !message.member) {
+    return false;
+  }
+
+  return (
+    message.member.roles.cache.has(MOD_ROLE_ID) ||
+    message.member.permissions.has(PermissionFlagsBits.Administrator)
+  );
+}
+
+function canViewCommand(message, command) {
+  return !command.moderatorOnly || isModerator(message);
 }
 
 function chunkLines(lines, maxLength = 1024) {
@@ -44,6 +60,23 @@ function chunkLines(lines, maxLength = 1024) {
   return chunks;
 }
 
+function createCommandFields(commands, title) {
+  if (!commands.length) {
+    return [];
+  }
+
+  const commandLines = commands.map((command) => {
+    const description = command.description || "No description provided.";
+    return `\`${prefix}${command.name}\`: ${description}`;
+  });
+
+  return chunkLines(commandLines).map((chunk, index) => ({
+    name: index === 0 ? title : `${title} (continued)`,
+    value: chunk,
+    inline: false,
+  }));
+}
+
 module.exports = {
   name: "help",
   description: "Browse all commands or view help for one command.",
@@ -53,41 +86,54 @@ module.exports = {
 
   async execute(message, args) {
     const { commands } = message.client;
+    const userIsModerator = isModerator(message);
 
-    // /help equivalent: !help
+    // !help — show command categories directly in the current channel.
     if (!args.length) {
       const sortedCommands = commands
         .filter((command) => command.name)
         .sort((a, b) => a.name.localeCompare(b.name));
 
-      const commandLines = sortedCommands.map((command) => {
-        const description = command.description || "No description provided.";
-        return `\`${prefix}${command.name}\` — ${description}`;
-      });
+      const publicCommands = sortedCommands.filter(
+        (command) => !command.moderatorOnly,
+      );
 
-      const commandChunks = chunkLines(commandLines);
+      const moderatorCommands = sortedCommands.filter(
+        (command) => command.moderatorOnly,
+      );
 
-      const commandFields = commandChunks.map((chunk, index) => ({
-        name: index === 0 ? "Available Commands" : "More Commands",
-        value: chunk,
-        inline: false,
-      }));
+      const fields = [
+        ...createCommandFields(publicCommands, "Public Commands"),
+      ];
+
+      if (userIsModerator) {
+        fields.push(
+          ...createCommandFields(moderatorCommands, "Moderator Commands"),
+        );
+      }
+
+      const visibleCommandCount = userIsModerator
+        ? sortedCommands.length
+        : publicCommands.length;
 
       const helpEmbed = createBaseEmbed(message)
         .setTitle("Command Center")
         .setDescription(
           [
-            `I currently have **${sortedCommands.length}** command${
-              sortedCommands.length === 1 ? "" : "s"
+            `I currently have **${visibleCommandCount}** available command${
+              visibleCommandCount === 1 ? "" : "s"
             }.`,
             "",
             `Use \`${prefix}help <command>\` for detailed information.`,
             `Example: \`${prefix}help random-cat\``,
+            userIsModerator
+              ? "You can view moderator commands."
+              : "Moderator commands are hidden.",
           ].join("\n"),
         )
         .addFields(
-          commandFields.length
-            ? commandFields
+          fields.length
+            ? fields
             : [
                 {
                   name: "No commands available",
@@ -96,43 +142,12 @@ module.exports = {
               ],
         );
 
-      try {
-        await message.author.send({ embeds: [helpEmbed] });
-
-        if (message.channel.type !== ChannelType.DM) {
-          await message.reply({
-            content: "📬 I've sent the full command list to your DMs!",
-            allowedMentions: {
-              repliedUser: false,
-            },
-          });
-        }
-      } catch (error) {
-        console.error(
-          `Could not send help DM to ${message.author.tag}.`,
-          error,
-        );
-
-        const fallbackEmbed = createBaseEmbed(message)
-          .setColor(COLORS.error)
-          .setTitle("I couldn't send you a DM")
-          .setDescription(
-            [
-              "Your DMs may be disabled or blocked for this server.",
-              "",
-              "Please enable DMs temporarily and try again.",
-            ].join("\n"),
-          );
-
-        await message.reply({
-          embeds: [fallbackEmbed],
-          allowedMentions: {
-            repliedUser: false,
-          },
-        });
-      }
-
-      return;
+      return message.reply({
+        embeds: [helpEmbed],
+        allowedMentions: {
+          repliedUser: false,
+        },
+      });
     }
 
     const requestedName = args[0].trim().toLowerCase();
@@ -145,8 +160,10 @@ module.exports = {
 
     if (!command) {
       const suggestions = commands
+        .filter((item) => canViewCommand(message, item))
         .filter((item) => {
           const names = [item.name, ...(item.aliases ?? [])];
+
           return names.some((name) =>
             name.toLowerCase().includes(requestedName),
           );
@@ -166,14 +183,22 @@ module.exports = {
           ].join("\n"),
         );
 
-      await message.reply({
+      return message.reply({
         embeds: [errorEmbed],
         allowedMentions: {
           repliedUser: false,
         },
       });
+    }
 
-      return;
+    // Do not reveal moderator command information to regular users.
+    if (command.moderatorOnly && !userIsModerator) {
+      return message.reply({
+        content: "You don't have permission to use this command.",
+        allowedMentions: {
+          repliedUser: false,
+        },
+      });
     }
 
     const aliases = command.aliases?.length
@@ -187,13 +212,8 @@ module.exports = {
       .setDescription(command.description || "No description provided.")
       .addFields(
         {
-          name: "Usage",
-          value: `\`${prefix}${command.name}${usageSuffix}\``,
-          inline: false,
-        },
-        {
-          name: "Aliases",
-          value: aliases,
+          name: "Category",
+          value: command.moderatorOnly ? "Moderator" : "Public",
           inline: true,
         },
         {
@@ -201,9 +221,19 @@ module.exports = {
           value: `${command.cooldown ?? 3} second(s)`,
           inline: true,
         },
+        {
+          name: "Usage",
+          value: `\`${prefix}${command.name}${usageSuffix}\``,
+          inline: false,
+        },
+        {
+          name: "Aliases",
+          value: aliases,
+          inline: false,
+        },
       );
 
-    await message.reply({
+    return message.reply({
       embeds: [commandEmbed],
       allowedMentions: {
         repliedUser: false,

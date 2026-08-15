@@ -2,7 +2,10 @@ const {
   EmbedBuilder,
   SlashCommandBuilder,
   ApplicationCommandOptionType,
+  PermissionFlagsBits,
 } = require("discord.js");
+
+const MOD_ROLE_ID = "1479193858565865472";
 
 const COLORS = {
   primary: 0x5865f2,
@@ -11,34 +14,35 @@ const COLORS = {
   muted: 0x99aab5,
 };
 
-/**
- * @param {import("discord.js").Client} client
- * @returns {string}
- */
 function getBotAvatar(client) {
   return client.user?.displayAvatarURL({ size: 256 }) ?? null;
 }
 
-/**
- * @param {import("discord.js").ChatInputCommandInteraction} interaction
- * @returns {EmbedBuilder}
- */
 function createBaseEmbed(interaction) {
   const avatar = getBotAvatar(interaction.client);
 
   return new EmbedBuilder()
     .setColor(COLORS.primary)
     .setFooter({
-      text: `${interaction.client.user?.username ?? "Bot"} • Help Center`,
+      text: interaction.client.user?.username ?? "Bot",
       iconURL: avatar,
     })
     .setTimestamp();
 }
 
-/**
- * @param {import("discord.js").SlashCommandBuilder} command
- * @returns {string}
- */
+function isModerator(interaction) {
+  const member = interaction.member;
+
+  return (
+    member?.roles?.cache?.has(MOD_ROLE_ID) ||
+    member?.permissions?.has(PermissionFlagsBits.Administrator)
+  );
+}
+
+function canViewCommand(interaction, command) {
+  return !command.moderatorOnly || isModerator(interaction);
+}
+
 function formatOptions(command) {
   const options = command.options ?? [];
 
@@ -49,6 +53,7 @@ function formatOptions(command) {
   return options
     .map((option) => {
       const required = option.required ? "`Required`" : "`Optional`";
+
       const type =
         ApplicationCommandOptionType[option.type]
           ?.replaceAll("_", " ")
@@ -63,9 +68,48 @@ function formatOptions(command) {
     .join("\n\n");
 }
 
-/**
- * @type {import("../../../typings").SlashInteractionCommand}
- */
+function createCommandFields(commands, title) {
+  if (!commands.length) {
+    return [];
+  }
+
+  const commandLines = commands.map(
+    (command) =>
+      `</${command.data.name}:0> — ${
+        command.data.description || "*No description*"
+      }`,
+  );
+
+  const fields = [];
+  let currentChunk = [];
+
+  for (const line of commandLines) {
+    const proposed = [...currentChunk, line].join("\n");
+
+    if (proposed.length > 1024 && currentChunk.length > 0) {
+      fields.push({
+        name: fields.length === 0 ? title : `${title} (continued)`,
+        value: currentChunk.join("\n"),
+        inline: false,
+      });
+
+      currentChunk = [line];
+    } else {
+      currentChunk.push(line);
+    }
+  }
+
+  if (currentChunk.length > 0) {
+    fields.push({
+      name: fields.length === 0 ? title : `${title} (continued)`,
+      value: currentChunk.join("\n"),
+      inline: false,
+    });
+  }
+
+  return fields;
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("help")
@@ -79,10 +123,12 @@ module.exports = {
 
   async autocomplete(interaction) {
     const focusedValue = interaction.options.getFocused().toLowerCase();
+    const canViewModeratorCommands = isModerator(interaction);
 
     const choices = interaction.client.slashCommands
+      .filter((command) => !command.moderatorOnly || canViewModeratorCommands)
       .map((command) => ({
-        name: `/${command.data.name} — ${command.data.description}`,
+        name: `/${command.data.name}: ${command.data.description}`,
         value: command.data.name,
       }))
       .filter(
@@ -103,12 +149,14 @@ module.exports = {
       .toLowerCase();
 
     const commands = interaction.client.slashCommands;
+    const userIsModerator = isModerator(interaction);
 
     if (requestedName) {
       const command = commands.get(requestedName);
 
       if (!command) {
         const suggestions = commands
+          .filter((item) => canViewCommand(interaction, item))
           .map((item) => item.data.name)
           .filter((name) => name.includes(requestedName))
           .slice(0, 5);
@@ -132,12 +180,24 @@ module.exports = {
         });
       }
 
+      if (command.moderatorOnly && !userIsModerator) {
+        return interaction.reply({
+          content: "You don't have permission to use this command.",
+          ephemeral: true,
+        });
+      }
+
       const commandEmbed = createBaseEmbed(interaction)
         .setTitle(`/${command.data.name}`)
         .setDescription(
           command.data.description || "No description has been provided.",
         )
         .addFields(
+          {
+            name: "Category",
+            value: command.moderatorOnly ? "Moderator" : "Public",
+            inline: true,
+          },
           {
             name: "Usage",
             value: `\`/${command.data.name}\``,
@@ -154,51 +214,41 @@ module.exports = {
     }
 
     const sortedCommands = commands
-      .map((command) => command.data)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .map((command) => command)
+      .sort((a, b) => a.data.name.localeCompare(b.data.name));
 
-    const commandLines = sortedCommands.map(
-      (command) =>
-        `</${command.name}:0> — ${command.description || "*No description*"}`,
+    const publicCommands = sortedCommands.filter(
+      (command) => !command.moderatorOnly,
     );
 
-    // Discord embed field values max out at 1,024 chars.
-    const fields = [];
-    let currentChunk = [];
+    const moderatorCommands = sortedCommands.filter(
+      (command) => command.moderatorOnly,
+    );
 
-    for (const line of commandLines) {
-      const proposed = [...currentChunk, line].join("\n");
+    const fields = [...createCommandFields(publicCommands, "Public commands")];
 
-      if (proposed.length > 1024 && currentChunk.length > 0) {
-        fields.push({
-          name: fields.length === 0 ? "Available commands" : "More commands",
-          value: currentChunk.join("\n"),
-          inline: false,
-        });
-
-        currentChunk = [line];
-      } else {
-        currentChunk.push(line);
-      }
+    if (userIsModerator) {
+      fields.push(
+        ...createCommandFields(moderatorCommands, "Moderator commands"),
+      );
     }
 
-    if (currentChunk.length > 0) {
-      fields.push({
-        name: fields.length === 0 ? "Available commands" : "More commands",
-        value: currentChunk.join("\n"),
-        inline: false,
-      });
-    }
+    const visibleCommandCount = userIsModerator
+      ? sortedCommands.length
+      : publicCommands.length;
 
     const listEmbed = createBaseEmbed(interaction)
       .setTitle("Command Center")
       .setDescription(
         [
-          `I currently have **${sortedCommands.length}** slash command${
-            sortedCommands.length === 1 ? "" : "s"
+          `I currently have **${visibleCommandCount}** available slash command${
+            visibleCommandCount === 1 ? "" : "s"
           }.`,
           "",
           "Use `/help command:<command>` to see its options and usage.",
+          userIsModerator
+            ? "You can also view moderator commands."
+            : "Moderator commands are hidden.",
         ].join("\n"),
       )
       .addFields(
