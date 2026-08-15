@@ -7,6 +7,7 @@ const meows = [
   "Meow! <a:meow:1538086368457261126>",
   "Miau Miau! 🇩🇪",
   "Няв Няв! 🇺🇦",
+  "Miao Miao! 🇮🇹",
   "Meow? Meow!",
   "*cat noises*",
   "Purrrrrr…",
