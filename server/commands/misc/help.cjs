@@ -1,132 +1,213 @@
-/**
- * @file Dynamic help command
- * @author Naman Vrati
- * @since 1.0.0
- * @version 3.3.0
- */
-
-// Deconstructing prefix from config file to use in help command
-const prefix = process.env.BOT_PREFIX || '!'
-
-// Deconstructing EmbedBuilder to create embeds within this command
 const { EmbedBuilder, ChannelType } = require("discord.js");
 
-/**
- * @type {import('../../typings').LegacyCommand}
- */
+const prefix = process.env.BOT_PREFIX || "!";
+
+const COLORS = {
+  primary: 0x5865f2,
+  error: 0xed4245,
+};
+
+function getBotAvatar(client) {
+  return client.user?.displayAvatarURL({ size: 256 }) ?? null;
+}
+
+function createBaseEmbed(message) {
+  return new EmbedBuilder()
+    .setColor(COLORS.primary)
+    .setFooter({
+      text: `${message.client.user?.username ?? "Bot"} • Help Center`,
+      iconURL: getBotAvatar(message.client),
+    })
+    .setTimestamp();
+}
+
+function chunkLines(lines, maxLength = 1024) {
+  const chunks = [];
+  let currentChunk = [];
+
+  for (const line of lines) {
+    const nextChunk = [...currentChunk, line].join("\n");
+
+    if (nextChunk.length > maxLength && currentChunk.length > 0) {
+      chunks.push(currentChunk.join("\n"));
+      currentChunk = [line];
+      continue;
+    }
+
+    currentChunk.push(line);
+  }
+
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk.join("\n"));
+  }
+
+  return chunks;
+}
+
 module.exports = {
-	name: "help",
-	description: "List all commands of bot or info about a specific command.",
-	aliases: ["commands"],
-	usage: "[command name]",
-	cooldown: 5,
+  name: "help",
+  description: "Browse all commands or view help for one command.",
+  aliases: ["commands", "cmds"],
+  usage: "[command name]",
+  cooldown: 5,
 
-	execute(message, args) {
-		const { commands } = message.client;
+  async execute(message, args) {
+    const { commands } = message.client;
 
-		// If there are no args, it means it needs whole help command.
+    // /help equivalent: !help
+    if (!args.length) {
+      const sortedCommands = commands
+        .filter((command) => command.name)
+        .sort((a, b) => a.name.localeCompare(b.name));
 
-		if (!args.length) {
-			/**
-			 * @type {EmbedBuilder}
-			 * @description Help command embed object
-			 */
+      const commandLines = sortedCommands.map((command) => {
+        const description = command.description || "No description provided.";
+        return `\`${prefix}${command.name}\` — ${description}`;
+      });
 
-			let helpEmbed = new EmbedBuilder()
-				.setColor("Random")
-				.setTitle("List of all my commands")
-				.setDescription(
-					"`" + commands.map((command) => command.name).join("`, `") + "`"
-				)
+      const commandChunks = chunkLines(commandLines);
 
-				.addFields([
-					{
-						name: "Usage",
-						value: `\nYou can send \`${prefix}help [command name]\` to get info on a specific command!`,
-					},
-				]);
+      const commandFields = commandChunks.map((chunk, index) => ({
+        name: index === 0 ? "Available Commands" : "More Commands",
+        value: chunk,
+        inline: false,
+      }));
 
-			// Attempts to send embed in DMs.
+      const helpEmbed = createBaseEmbed(message)
+        .setTitle("Command Center")
+        .setDescription(
+          [
+            `I currently have **${sortedCommands.length}** command${
+              sortedCommands.length === 1 ? "" : "s"
+            }.`,
+            "",
+            `Use \`${prefix}help <command>\` for detailed information.`,
+            `Example: \`${prefix}help random-cat\``,
+          ].join("\n"),
+        )
+        .addFields(
+          commandFields.length
+            ? commandFields
+            : [
+                {
+                  name: "No commands available",
+                  value: "No prefix commands are currently loaded.",
+                },
+              ],
+        );
 
-			return message.author
-				.send({ embeds: [helpEmbed] })
+      try {
+        await message.author.send({ embeds: [helpEmbed] });
 
-				.then(() => {
-					if (message.channel.type === ChannelType.DM) return;
+        if (message.channel.type !== ChannelType.DM) {
+          await message.reply({
+            content: "📬 I've sent the full command list to your DMs!",
+            allowedMentions: {
+              repliedUser: false,
+            },
+          });
+        }
+      } catch (error) {
+        console.error(
+          `Could not send help DM to ${message.author.tag}.`,
+          error,
+        );
 
-					// On validation, reply back.
+        const fallbackEmbed = createBaseEmbed(message)
+          .setColor(COLORS.error)
+          .setTitle("I couldn't send you a DM")
+          .setDescription(
+            [
+              "Your DMs may be disabled or blocked for this server.",
+              "",
+              "Please enable DMs temporarily and try again.",
+            ].join("\n"),
+          );
 
-					message.reply({
-						content: "I've sent you a DM with all my commands!",
-					});
-				})
-				.catch((error) => {
-					// On failing, throw error.
+        await message.reply({
+          embeds: [fallbackEmbed],
+          allowedMentions: {
+            repliedUser: false,
+          },
+        });
+      }
 
-					console.error(
-						`Could not send help DM to ${message.author.tag}.\n`,
-						error
-					);
+      return;
+    }
 
-					message.reply({ content: "It seems like I can't DM you!" });
-				});
-		}
+    const requestedName = args[0].trim().toLowerCase();
 
-		// If argument is provided, check if it's a command.
+    const command =
+      commands.get(requestedName) ||
+      commands.find((item) =>
+        item.aliases?.some((alias) => alias.toLowerCase() === requestedName),
+      );
 
-		/**
-		 * @type {String}
-		 * @description First argument in lower case
-		 */
+    if (!command) {
+      const suggestions = commands
+        .filter((item) => {
+          const names = [item.name, ...(item.aliases ?? [])];
+          return names.some((name) =>
+            name.toLowerCase().includes(requestedName),
+          );
+        })
+        .map((item) => `\`${prefix}${item.name}\``)
+        .slice(0, 5);
 
-		const name = args[0].toLowerCase();
+      const errorEmbed = createBaseEmbed(message)
+        .setColor(COLORS.error)
+        .setTitle("Command Not Found")
+        .setDescription(
+          [
+            `I couldn't find a command named \`${requestedName}\`.`,
+            suggestions.length
+              ? `\nDid you mean: ${suggestions.join(", ")}?`
+              : `\nUse \`${prefix}help\` to see every available command.`,
+          ].join("\n"),
+        );
 
-		const command =
-			commands.get(name) ||
-			commands.find((c) => c.aliases && c.aliases.includes(name));
+      await message.reply({
+        embeds: [errorEmbed],
+        allowedMentions: {
+          repliedUser: false,
+        },
+      });
 
-		// If it's an invalid command.
+      return;
+    }
 
-		if (!command) {
-			return message.reply({ content: "That's not a valid command!" });
-		}
+    const aliases = command.aliases?.length
+      ? command.aliases.map((alias) => `\`${prefix}${alias}\``).join(", ")
+      : "No aliases";
 
-		/**
-		 * @type {EmbedBuilder}
-		 * @description Embed of Help command for a specific command.
-		 */
+    const usageSuffix = command.usage ? ` ${command.usage}` : "";
 
-		let commandEmbed = new EmbedBuilder()
-			.setColor("Random")
-			.setTitle("Command Help");
+    const commandEmbed = createBaseEmbed(message)
+      .setTitle(`${prefix}${command.name}`)
+      .setDescription(command.description || "No description provided.")
+      .addFields(
+        {
+          name: "Usage",
+          value: `\`${prefix}${command.name}${usageSuffix}\``,
+          inline: false,
+        },
+        {
+          name: "Aliases",
+          value: aliases,
+          inline: true,
+        },
+        {
+          name: "Cooldown",
+          value: `${command.cooldown ?? 3} second(s)`,
+          inline: true,
+        },
+      );
 
-		if (command.description)
-			commandEmbed.setDescription(`${command.description}`);
-
-		if (command.aliases)
-			commandEmbed.addFields([
-				{
-					name: "Aliases",
-					value: `\`${command.aliases.join(", ")}\``,
-					inline: true,
-				},
-				{
-					name: "Cooldown",
-					value: `${command.cooldown || 3} second(s)`,
-					inline: true,
-				},
-			]);
-		if (command.usage)
-			commandEmbed.addFields([
-				{
-					name: "Usage",
-					value: `\`${prefix}${command.name} ${command.usage}\``,
-					inline: true,
-				},
-			]);
-
-		// Finally send the embed.
-
-		message.channel.send({ embeds: [commandEmbed] });
-	},
+    await message.reply({
+      embeds: [commandEmbed],
+      allowedMentions: {
+        repliedUser: false,
+      },
+    });
+  },
 };

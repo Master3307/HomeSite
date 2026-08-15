@@ -12,7 +12,7 @@ const MAX_LEVEL = 13;
 
 // Progression tuning
 const BASE_LEVEL_POINTS = 1300;
-const LEVEL_GROWTH = 1.13;
+const LEVEL_GROWTH = 2.613;
 
 // Message XP tuning
 const MESSAGE_COOLDOWN_MS = 45_000;

@@ -1,81 +1,217 @@
+const {
+  EmbedBuilder,
+  SlashCommandBuilder,
+  ApplicationCommandOptionType,
+} = require("discord.js");
+
+const COLORS = {
+  primary: 0x5865f2,
+  success: 0x57f287,
+  error: 0xed4245,
+  muted: 0x99aab5,
+};
+
 /**
- * @file Sample help command with slash command.
- * @author Naman Vrati & Thomas Fournier
- * @since 3.0.0
- * @version 3.3.0
+ * @param {import("discord.js").Client} client
+ * @returns {string}
  */
-
-// Deconstructed the constants we need in this file.
-
-const { EmbedBuilder, SlashCommandBuilder } = require("discord.js");
+function getBotAvatar(client) {
+  return client.user?.displayAvatarURL({ size: 256 }) ?? null;
+}
 
 /**
- * @type {import('../../../typings').SlashInteractionCommand}
+ * @param {import("discord.js").ChatInputCommandInteraction} interaction
+ * @returns {EmbedBuilder}
+ */
+function createBaseEmbed(interaction) {
+  const avatar = getBotAvatar(interaction.client);
+
+  return new EmbedBuilder()
+    .setColor(COLORS.primary)
+    .setFooter({
+      text: `${interaction.client.user?.username ?? "Bot"} • Help Center`,
+      iconURL: avatar,
+    })
+    .setTimestamp();
+}
+
+/**
+ * @param {import("discord.js").SlashCommandBuilder} command
+ * @returns {string}
+ */
+function formatOptions(command) {
+  const options = command.options ?? [];
+
+  if (!options.length) {
+    return "This command has no options.";
+  }
+
+  return options
+    .map((option) => {
+      const required = option.required ? "`Required`" : "`Optional`";
+      const type =
+        ApplicationCommandOptionType[option.type]
+          ?.replaceAll("_", " ")
+          .toLowerCase() ?? "unknown";
+
+      return [
+        `**${option.name}** ${required}`,
+        `> ${option.description || "No description provided."}`,
+        `> Type: \`${type}\``,
+      ].join("\n");
+    })
+    .join("\n\n");
+}
+
+/**
+ * @type {import("../../../typings").SlashInteractionCommand}
  */
 module.exports = {
-	// The data needed to register slash commands to Discord.
+  data: new SlashCommandBuilder()
+    .setName("help")
+    .setDescription("Browse all commands or view help for one command.")
+    .addStringOption((option) =>
+      option
+        .setName("command")
+        .setDescription("The command to get detailed help for.")
+        .setAutocomplete(true),
+    ),
 
-	data: new SlashCommandBuilder()
-		.setName("help")
-		.setDescription(
-			"List all commands of bot or info about a specific command."
-		)
-		.addStringOption((option) =>
-			option
-				.setName("command")
-				.setDescription("The specific command to see the info of.")
-		),
+  async autocomplete(interaction) {
+    const focusedValue = interaction.options.getFocused().toLowerCase();
 
-	async execute(interaction) {
-		/**
-		 * @type {string}
-		 * @description The "command" argument
-		 */
-		let name = interaction.options.getString("command");
+    const choices = interaction.client.slashCommands
+      .map((command) => ({
+        name: `/${command.data.name} — ${command.data.description}`,
+        value: command.data.name,
+      }))
+      .filter(
+        (command) =>
+          command.value.includes(focusedValue) ||
+          command.name.toLowerCase().includes(focusedValue),
+      )
+      .slice(0, 25);
 
-		/**
-		 * @type {EmbedBuilder}
-		 * @description Help command's embed
-		 */
-		const helpEmbed = new EmbedBuilder().setColor("Random");
+    await interaction.respond(choices);
+  },
 
-		if (name) {
-			name = name.toLowerCase();
+  async execute(interaction) {
+    const requestedName = interaction.options
+      .getString("command")
+      ?.trim()
+      .replace(/^\//, "")
+      .toLowerCase();
 
-			// If a single command has been asked for, send only this command's help.
+    const commands = interaction.client.slashCommands;
 
-			helpEmbed.setTitle(`Help for \`${name}\` command`);
+    if (requestedName) {
+      const command = commands.get(requestedName);
 
-			if (interaction.client.slashCommands.has(name)) {
-				const command = interaction.client.slashCommands.get(name);
+      if (!command) {
+        const suggestions = commands
+          .map((item) => item.data.name)
+          .filter((name) => name.includes(requestedName))
+          .slice(0, 5);
 
-				if (command.data.description)
-					helpEmbed.setDescription(
-						command.data.description + "\n\n**Parameters:**"
-					);
-			} else {
-				helpEmbed
-					.setDescription(`No slash command with the name \`${name}\` found.`)
-					.setColor("Red");
-			}
-		} else {
-			// Give a list of all the commands
+        const suggestionText = suggestions.length
+          ? `\n\nDid you mean: ${suggestions
+              .map((name) => `\`/${name}\``)
+              .join(", ")}?`
+          : "";
 
-			helpEmbed
-				.setTitle("List of all my slash commands")
-				.setDescription(
-					"`" +
-						interaction.client.slashCommands
-							.map((command) => command.data.name)
-							.join("`, `") +
-						"`"
-				);
-		}
+        const errorEmbed = createBaseEmbed(interaction)
+          .setColor(COLORS.error)
+          .setTitle("Command not found")
+          .setDescription(
+            `I couldn't find a command named \`/${requestedName}\`.${suggestionText}`,
+          );
 
-		// Replies to the interaction!
+        return interaction.reply({
+          embeds: [errorEmbed],
+          ephemeral: true,
+        });
+      }
 
-		await interaction.reply({
-			embeds: [helpEmbed],
-		});
-	},
+      const commandEmbed = createBaseEmbed(interaction)
+        .setTitle(`/${command.data.name}`)
+        .setDescription(
+          command.data.description || "No description has been provided.",
+        )
+        .addFields(
+          {
+            name: "Usage",
+            value: `\`/${command.data.name}\``,
+            inline: true,
+          },
+          {
+            name: "Options",
+            value: formatOptions(command.data),
+            inline: false,
+          },
+        );
+
+      return interaction.reply({ embeds: [commandEmbed] });
+    }
+
+    const sortedCommands = commands
+      .map((command) => command.data)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const commandLines = sortedCommands.map(
+      (command) =>
+        `</${command.name}:0> — ${command.description || "*No description*"}`,
+    );
+
+    // Discord embed field values max out at 1,024 chars.
+    const fields = [];
+    let currentChunk = [];
+
+    for (const line of commandLines) {
+      const proposed = [...currentChunk, line].join("\n");
+
+      if (proposed.length > 1024 && currentChunk.length > 0) {
+        fields.push({
+          name: fields.length === 0 ? "Available commands" : "More commands",
+          value: currentChunk.join("\n"),
+          inline: false,
+        });
+
+        currentChunk = [line];
+      } else {
+        currentChunk.push(line);
+      }
+    }
+
+    if (currentChunk.length > 0) {
+      fields.push({
+        name: fields.length === 0 ? "Available commands" : "More commands",
+        value: currentChunk.join("\n"),
+        inline: false,
+      });
+    }
+
+    const listEmbed = createBaseEmbed(interaction)
+      .setTitle("Command Center")
+      .setDescription(
+        [
+          `I currently have **${sortedCommands.length}** slash command${
+            sortedCommands.length === 1 ? "" : "s"
+          }.`,
+          "",
+          "Use `/help command:<command>` to see its options and usage.",
+        ].join("\n"),
+      )
+      .addFields(
+        fields.length
+          ? fields
+          : [
+              {
+                name: "No commands available",
+                value: "No slash commands are currently registered.",
+              },
+            ],
+      );
+
+    return interaction.reply({ embeds: [listEmbed] });
+  },
 };

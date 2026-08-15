@@ -46,7 +46,8 @@ module.exports = {
             (serverAvatar
               ? `Server avatar: [Open server avatar](<${serverAvatar}>)`
               : `Server avatar: No server-specific avatar set.`),
-        );
+        )
+        .setTimestamp();
 
       if (serverAvatar) {
         embed.setThumbnail(globalAvatar);

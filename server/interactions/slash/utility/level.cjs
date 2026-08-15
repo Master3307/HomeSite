@@ -259,7 +259,7 @@ module.exports = {
 
       const embed = new EmbedBuilder()
         .setColor("#F59E0B")
-        .setTitle("🏆 Activity leaderboard")
+        .setTitle("🏆 Cult Rank leaderboard")
         .setDescription(
           entries.length
             ? entries.join("\n")

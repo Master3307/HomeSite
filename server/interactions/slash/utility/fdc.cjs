@@ -192,7 +192,8 @@ function makePollEmbed(options, votes, endsAt, ended = false) {
     .setTitle(ended ? "Friday Dress Code: Results" : "Friday Dress Code Poll")
     .setDescription(
       `${list}\n\n**Choose your vote with the emojis below.**\n${endText}`,
-    );
+    )
+    .setTimestamp();
 }
 
 function makeResultsEmbed(options, votes) {

@@ -86,7 +86,8 @@ async function postLobbyCode(client, code, desc = null) {
       name: "updated",
       value: `<t:${Math.floor(Date.now() / 1000)}:R>`,
       inline: false,
-    });
+    })
+    .setTimestamp();
 
   if (desc) {
     embed.setDescription(desc);
