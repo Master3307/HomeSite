@@ -4,7 +4,7 @@ const meows = [
   "Meow Meow! <a:CATO_Danse:1533609328433561760>",
   "Meow Meow! <a:CATO_Danse:1533609328433561760>",
   "Meow Meow! <a:CATO_Danse:1533609328433561760>",
-  "Meow! <a:1498030996447039672:1538086368457261126>",
+  "Meow! <a:meow:1538086368457261126>",
   "Miau Miau! 🇩🇪",
   "Няв Няв! 🇺🇦",
   "Meow? Meow!",
