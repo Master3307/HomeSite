@@ -3,6 +3,7 @@ const {
   SlashCommandBuilder,
   ApplicationCommandOptionType,
   PermissionFlagsBits,
+  MessageFlags,
 } = require("discord.js");
 
 const MOD_ROLE_ID = "1479193858565865472";
@@ -43,29 +44,66 @@ function canViewCommand(interaction, command) {
   return !command.moderatorOnly || isModerator(interaction);
 }
 
-function formatOptions(command) {
+/*
+ * Embed field values may not exceed 1,024 characters.
+ * Commands with many options, such as /fdc, are split across fields.
+ */
+function formatOptionFields(command) {
   const options = command.options ?? [];
 
   if (!options.length) {
-    return "This command has no options.";
+    return [
+      {
+        name: "Options",
+        value: "This command has no options.",
+        inline: false,
+      },
+    ];
   }
 
-  return options
-    .map((option) => {
-      const required = option.required ? "`Required`" : "`Optional`";
+  const optionBlocks = options.map((option) => {
+    const required = option.required ? "`Required`" : "`Optional`";
 
-      const type =
-        ApplicationCommandOptionType[option.type]
-          ?.replaceAll("_", " ")
-          .toLowerCase() ?? "unknown";
+    const type =
+      ApplicationCommandOptionType[option.type]
+        ?.replaceAll("_", " ")
+        .toLowerCase() ?? "unknown";
 
-      return [
-        `**${option.name}** ${required}`,
-        `> ${option.description || "No description provided."}`,
-        `> Type: \`${type}\``,
-      ].join("\n");
-    })
-    .join("\n\n");
+    return [
+      `**${option.name}** ${required}`,
+      `> ${option.description || "No description provided."}`,
+      `> Type: \`${type}\``,
+    ].join("\n");
+  });
+
+  const fields = [];
+  let currentChunk = "";
+
+  for (const block of optionBlocks) {
+    const proposed = currentChunk ? `${currentChunk}\n\n${block}` : block;
+
+    if (proposed.length > 1024 && currentChunk) {
+      fields.push({
+        name: fields.length === 0 ? "Options" : "Options (continued)",
+        value: currentChunk,
+        inline: false,
+      });
+
+      currentChunk = block;
+    } else {
+      currentChunk = proposed;
+    }
+  }
+
+  if (currentChunk) {
+    fields.push({
+      name: fields.length === 0 ? "Options" : "Options (continued)",
+      value: currentChunk,
+      inline: false,
+    });
+  }
+
+  return fields;
 }
 
 function createCommandFields(commands, title) {
@@ -75,7 +113,7 @@ function createCommandFields(commands, title) {
 
   const commandLines = commands.map(
     (command) =>
-      `</${command.data.name}:0>: ${
+      `</${command.data.name}:0> — ${
         command.data.description || "*No description*"
       }`,
   );
@@ -176,14 +214,14 @@ module.exports = {
 
         return interaction.reply({
           embeds: [errorEmbed],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
       if (command.moderatorOnly && !userIsModerator) {
         return interaction.reply({
           content: "You don't have permission to use this command.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -203,14 +241,12 @@ module.exports = {
             value: `\`/${command.data.name}\``,
             inline: true,
           },
-          {
-            name: "Options",
-            value: formatOptions(command.data),
-            inline: false,
-          },
+          ...formatOptionFields(command.data),
         );
 
-      return interaction.reply({ embeds: [commandEmbed] });
+      return interaction.reply({
+        embeds: [commandEmbed],
+      });
     }
 
     const sortedCommands = commands
@@ -258,10 +294,13 @@ module.exports = {
               {
                 name: "No commands available",
                 value: "No slash commands are currently registered.",
+                inline: false,
               },
             ],
       );
 
-    return interaction.reply({ embeds: [listEmbed] });
+    return interaction.reply({
+      embeds: [listEmbed],
+    });
   },
 };
