@@ -6,6 +6,7 @@ function run(cmd) {
 }
 
 try {
+  run("git checkout dev");
   run("git add .");
   run("git fetch");
 
