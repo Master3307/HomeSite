@@ -203,8 +203,7 @@ module.exports = {
         : `${progress.pointsIntoLevel.toLocaleString()} / ${progress.pointsNeeded.toLocaleString()} points to Level ${progress.nextLevel}`;
 
       const avatarUrl = targetUser.displayAvatarURL({
-        extension: "png",
-        forceStatic: true,
+        extension: "webp",
         size: 256,
       });
 
