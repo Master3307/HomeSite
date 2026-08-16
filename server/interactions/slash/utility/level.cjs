@@ -202,13 +202,18 @@ module.exports = {
         ? "Maximum level reached. Points can still increase."
         : `${progress.pointsIntoLevel.toLocaleString()} / ${progress.pointsNeeded.toLocaleString()} points to Level ${progress.nextLevel}`;
 
+      const avatarUrl = targetUser.displayAvatarURL({
+        extension: "png",
+        size: 256,
+      });
+
       const embed = new EmbedBuilder()
         .setColor("#8B5CF6")
         .setAuthor({
           name: `${targetUser.username}'s level`,
-          iconURL: targetUser.displayAvatarURL(),
+          iconURL: avatarUrl,
         })
-        .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
+        .setThumbnail(avatarUrl)
         .addFields(
           {
             name: "Level",
