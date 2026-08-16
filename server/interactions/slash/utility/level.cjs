@@ -28,12 +28,12 @@ async function getGuildMember(interaction, optionName = "user") {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("level")
-    .setDescription("View and manage activity levels.")
+    .setDescription("View and manage levels.")
 
     .addSubcommandGroup((group) =>
       group
         .setName("view")
-        .setDescription("View activity levels and rankings.")
+        .setDescription("View levels and rankings.")
 
         .addSubcommand((subcommand) =>
           subcommand
@@ -183,12 +183,8 @@ module.exports = {
 
   async execute(interaction) {
     /*
-        Must be the first awaited operation. This acknowledges the command
-        before Discord's short interaction response deadline expires.
-
-        This is public because /level view outputs are intended to be public.
-        Staff adjustment confirmations will also be public in this design.
-      */
+      Must remain the first awaited operation.
+    */
     await interaction.deferReply();
 
     const group = interaction.options.getSubcommandGroup();
@@ -200,6 +196,7 @@ module.exports = {
 
       const user = levels.getUser(targetUser.id);
       const progress = levels.getProgress(user);
+      const rank = levels.getRank(user.level);
 
       const progressText = progress.isMaxLevel
         ? "Maximum level reached. Points can still increase."
@@ -208,7 +205,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setColor("#8B5CF6")
         .setAuthor({
-          name: `${targetUser.username}'s activity level`,
+          name: `${targetUser.username}'s level`,
           iconURL: targetUser.displayAvatarURL(),
         })
         .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
@@ -216,6 +213,11 @@ module.exports = {
           {
             name: "Level",
             value: `${user.level} / ${levels.MAX_LEVEL}`,
+            inline: true,
+          },
+          {
+            name: "Rank",
+            value: rank.label,
             inline: true,
           },
           {
@@ -251,7 +253,8 @@ module.exports = {
 
           return (
             `**#${entry.rank}** ${displayName}` +
-            ` — Level **${entry.level}**` +
+            ` — **${entry.rankLabel}**` +
+            ` (Level **${entry.level}**)` +
             ` • ${entry.points.toLocaleString()} points`
           );
         }),
@@ -259,7 +262,7 @@ module.exports = {
 
       const embed = new EmbedBuilder()
         .setColor("#F59E0B")
-        .setTitle("🏆 Cult Rank leaderboard")
+        .setTitle("🏆 Cult Rank Leaderboard")
         .setDescription(
           entries.length
             ? entries.join("\n")
@@ -328,9 +331,12 @@ module.exports = {
       });
     }
 
+    const rank = levels.getRank(updatedUser.level);
+
     return interaction.editReply({
       content:
-        `${target} is now Level **${updatedUser.level}/${levels.MAX_LEVEL}** ` +
+        `${target} is now **${rank.label}** ` +
+        `(Level **${updatedUser.level}/${levels.MAX_LEVEL}**) ` +
         `with **${updatedUser.points.toLocaleString()}** points.`,
     });
   },

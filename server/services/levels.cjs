@@ -92,6 +92,28 @@ function getUser(userId) {
   return users.get(userId);
 }
 
+/*
+  Returns the configured rank for a level.
+
+  Rank labels come from LEVEL_REWARDS, not the user's current Discord roles.
+  This ensures profile and leaderboard rank display stays consistent with
+  the level system even if a role was manually removed.
+*/
+function getRank(level) {
+  const safeLevel = Math.max(
+    0,
+    Math.min(MAX_LEVEL, Math.floor(Number(level) || 0)),
+  );
+
+  const reward = LEVEL_REWARDS[safeLevel];
+
+  return {
+    level: safeLevel,
+    roleId: reward?.roleId ?? null,
+    label: reward?.label ?? "Unranked",
+  };
+}
+
 function pointsNeededForNextLevel(currentLevel) {
   if (currentLevel >= MAX_LEVEL) {
     return null;
@@ -210,7 +232,6 @@ async function load() {
       });
     }
 
-    // Normalizes the CSV and corrects any old/mismatched level values.
     await save();
 
     console.log(`[Levels] Loaded ${users.size} record(s).`);
@@ -219,7 +240,6 @@ async function load() {
       throw error;
     }
 
-    // First startup: immediately create a valid empty CSV.
     await save();
 
     console.log("[Levels] Created services/levels.csv.");
@@ -288,9 +308,11 @@ async function announceLevelUp(member, oldLevel, newLevel, points) {
 
   const grantedRoles = await grantRewards(member, oldLevel, newLevel);
 
+  const rank = getRank(newLevel);
+
   const rewardText = grantedRoles.length
     ? grantedRoles.map((role) => role.toString()).join(", ")
-    : "No reward at this level";
+    : rank.label;
 
   const embed = new EmbedBuilder()
     .setColor("#8B5CF6")
@@ -309,6 +331,11 @@ async function announceLevelUp(member, oldLevel, newLevel, points) {
     )
     .addFields(
       {
+        name: "Rank",
+        value: rank.label,
+        inline: true,
+      },
+      {
         name: "Total points",
         value: `${points.toLocaleString()} points`,
         inline: true,
@@ -316,7 +343,7 @@ async function announceLevelUp(member, oldLevel, newLevel, points) {
       {
         name: "Reward",
         value: rewardText,
-        inline: true,
+        inline: false,
       },
     )
     .setFooter({
@@ -405,10 +432,10 @@ async function trackMessage(message) {
   }
 
   /*
-    Other bot accounts CAN gain XP.
+    Other bot accounts can gain XP.
 
-    Only exclude this bot's own level-up announcement messages, otherwise
-    it could earn points from its own embeds in the announcement channel.
+    Exclude only this bot's level-up announcements to avoid awarding
+    it XP from its own generated embeds.
   */
   if (
     message.author.id === message.client.user.id &&
@@ -455,12 +482,18 @@ function getLeaderboard(limit = 10) {
       return a.userId.localeCompare(b.userId);
     })
     .slice(0, safeLimit)
-    .map((user, index) => ({
-      rank: index + 1,
-      userId: user.userId,
-      points: user.points,
-      level: user.level,
-    }));
+    .map((user, index) => {
+      const rank = getRank(user.level);
+
+      return {
+        rank: index + 1,
+        userId: user.userId,
+        points: user.points,
+        level: user.level,
+        rankLabel: rank.label,
+        rankRoleId: rank.roleId,
+      };
+    });
 }
 
 module.exports = {
@@ -471,6 +504,7 @@ module.exports = {
   save,
 
   getUser,
+  getRank,
   getProgress,
   getLeaderboard,
 
