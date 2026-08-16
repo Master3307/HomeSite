@@ -204,6 +204,7 @@ module.exports = {
 
       const avatarUrl = targetUser.displayAvatarURL({
         extension: "webp",
+        forceStatic: true,
         size: 256,
       });
 
