@@ -204,6 +204,7 @@ module.exports = {
 
       const avatarUrl = targetUser.displayAvatarURL({
         extension: "png",
+        forceStatic: true,
         size: 256,
       });
 
