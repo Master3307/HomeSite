@@ -37,18 +37,6 @@ module.exports = {
 
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("user")
-            .setDescription("View a user's level and points.")
-            .addUserOption((option) =>
-              option
-                .setName("user")
-                .setDescription("The user to view. Defaults to yourself.")
-                .setRequired(false),
-            ),
-        )
-
-        .addSubcommand((subcommand) =>
-          subcommand
             .setName("leaderboard")
             .setDescription("View the highest-point users."),
         ),
@@ -189,60 +177,6 @@ module.exports = {
 
     const group = interaction.options.getSubcommandGroup();
     const subcommand = interaction.options.getSubcommand();
-
-    if (group === "view" && subcommand === "user") {
-      const targetUser =
-        interaction.options.getUser("user") || interaction.user;
-
-      const user = levels.getUser(targetUser.id);
-      const progress = levels.getProgress(user);
-      const rank = levels.getRank(user.level);
-
-      const progressText = progress.isMaxLevel
-        ? "Maximum level reached. Points can still increase."
-        : `${progress.pointsIntoLevel.toLocaleString()} / ${progress.pointsNeeded.toLocaleString()} points to Level ${progress.nextLevel}`;
-
-      const avatarUrl = targetUser.displayAvatarURL({
-        extension: "webp",
-        forceStatic: true,
-        size: 256,
-      });
-
-      const embed = new EmbedBuilder()
-        .setColor("#8B5CF6")
-        .setAuthor({
-          name: `${targetUser.username}'s level`,
-          iconURL: avatarUrl,
-        })
-        .setThumbnail(avatarUrl)
-        .addFields(
-          {
-            name: "Level",
-            value: `${user.level} / ${levels.MAX_LEVEL}`,
-            inline: true,
-          },
-          {
-            name: "Rank",
-            value: rank.label,
-            inline: true,
-          },
-          {
-            name: "Points",
-            value: user.points.toLocaleString(),
-            inline: true,
-          },
-          {
-            name: "Progress",
-            value: progressText,
-            inline: false,
-          },
-        )
-        .setTimestamp();
-
-      return interaction.editReply({
-        embeds: [embed],
-      });
-    }
 
     if (group === "view" && subcommand === "leaderboard") {
       const leaderboard = levels.getLeaderboard(10);
