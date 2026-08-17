@@ -155,7 +155,7 @@ async function showProfile(interaction, target) {
     ? "Maximum level reached. Points can still increase."
     : `${progress.pointsIntoLevel.toLocaleString()} / ${progress.pointsNeeded.toLocaleString()} points to Level ${progress.nextLevel}`;
 
-  const discordAvatarUrl = target.displayAvatarURL({
+  const discordAvatarUrl = member.displayAvatarURL({
     extension: "webp",
     forceStatic: true,
     size: 4096,
