@@ -6,7 +6,6 @@ import crypto from "node:crypto";
 import { Client, GatewayIntentBits, ActivityType } from "discord.js";
 import fs from "node:fs/promises";
 import path from "node:path";
-d;
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
