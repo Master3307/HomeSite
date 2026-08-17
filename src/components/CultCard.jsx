@@ -7,7 +7,7 @@ export default function Cult() {
 
   return (
     <div id="card" className="card">
-      <h2>{t('header', { user: 'Stranger' })}</h2>
+      <h2>{t('header', { user: t('stranger') })}</h2>
       <br />
       <img src='/discordpic.webp' className='discordpic' title='hehehehehe' alt='Some Funny Cat Greeting You' />
     </div>
