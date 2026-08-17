@@ -1,5 +1,15 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const {
+  SlashCommandBuilder,
+  EmbedBuilder,
+  AttachmentBuilder,
+} = require("discord.js");
+
+const fs = require("node:fs/promises");
+const path = require("node:path");
+
 const levels = require("../../../services/levels.cjs");
+
+const AVATAR_DIRECTORY = path.resolve(__dirname, "../../../services/avatars");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -41,27 +51,17 @@ module.exports = {
       ? "Maximum level reached. Points can still increase."
       : `${progress.pointsIntoLevel.toLocaleString()} / ${progress.pointsNeeded.toLocaleString()} points to Level ${progress.nextLevel}`;
 
-    const avatarUrl = target.displayAvatarURL({
+    const discordAvatarUrl = target.displayAvatarURL({
       extension: "webp",
       forceStatic: true,
-      size: 256,
+      size: 4096,
     });
 
     const embed = new EmbedBuilder()
       .setColor(0x5865f2)
-      .setTitle(target.tag)
-      .setThumbnail(avatarUrl)
+      .setTitle(`${member.displayName} (${target.username})`)
+      .setThumbnail(discordAvatarUrl)
       .addFields(
-        {
-          name: "Account Created",
-          value: `<t:${Math.floor(target.createdTimestamp / 1000)}:F>`,
-          inline: false,
-        },
-        {
-          name: "Joined Server",
-          value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:F>`,
-          inline: false,
-        },
         {
           name: "Level",
           value: `${levelUser.level} / ${levels.MAX_LEVEL}`,
@@ -87,10 +87,46 @@ module.exports = {
           value: roles,
           inline: false,
         },
+        {
+          name: "Account Created",
+          value: `<t:${Math.floor(target.createdTimestamp / 1000)}:F>`,
+          inline: false,
+        },
+        {
+          name: "Joined Server",
+          value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:F>`,
+          inline: false,
+        },
       )
       .setFooter({ text: `ID: ${target.id}` })
       .setTimestamp();
 
-    await interaction.reply({ embeds: [embed] });
+    const avatarFilename = `${target.id}.webp`;
+
+    const customAvatarPath = path.join(AVATAR_DIRECTORY, avatarFilename);
+
+    const hasCustomAvatar = await fs
+      .access(customAvatarPath)
+      .then(() => true)
+      .catch(() => false);
+
+    if (hasCustomAvatar) {
+      const customAvatar = new AttachmentBuilder(customAvatarPath, {
+        name: avatarFilename,
+      });
+
+      embed.setImage(`attachment://${avatarFilename}`);
+
+      await interaction.reply({
+        embeds: [embed],
+        files: [customAvatar],
+      });
+
+      return;
+    }
+
+    await interaction.reply({
+      embeds: [embed],
+    });
   },
 };

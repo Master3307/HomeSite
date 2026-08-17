@@ -14,6 +14,11 @@
 
 # Custom #
 ##########
+update.sh
+/server/services/*.csv
+/server/services/*.json
+/server/services/avatars/
+
 /config.json
 .node-version
 
@@ -178,10 +183,3 @@ typings/
 # MkDocs #
 ##########
 /site
-
-
-# Server #
-##########
-update.sh
-server/services/*.csv
-server/services/*.json

@@ -80,16 +80,29 @@ const messageCooldowns = new Map();
 
 let writeQueue = Promise.resolve();
 
-function getUser(userId) {
+/*
+  username is the Discord account username, such as "example_user".
+
+  It is updated whenever the bot sees the member again, so a username
+  change will be saved on their next XP gain or admin level/point update.
+*/
+function getUser(userId, username = "Unknown User") {
   if (!users.has(userId)) {
     users.set(userId, {
       userId,
+      username,
       points: 0,
       level: 0,
     });
   }
 
-  return users.get(userId);
+  const user = users.get(userId);
+
+  if (username && username !== "Unknown User") {
+    user.username = username;
+  }
+
+  return user;
 }
 
 /*
@@ -181,13 +194,14 @@ async function write() {
     })
     .map((user) => ({
       userId: user.userId,
+      username: user.username ?? "Unknown User",
       points: user.points,
       level: user.level,
     }));
 
   const csv = stringify(rows, {
     header: true,
-    columns: ["userId", "points", "level"],
+    columns: ["userId", "username", "points", "level"],
   });
 
   const temporaryFile = `${DATA_FILE}.tmp`;
@@ -227,11 +241,17 @@ async function load() {
 
       users.set(row.userId, {
         userId: row.userId,
+        username: row.username || "Unknown User",
         points,
         level: calculateLevel(points),
       });
     }
 
+    /*
+      Rewrites older CSV files into the new format:
+
+      userId,username,points,level
+    */
     await save();
 
     console.log(`[Levels] Loaded ${users.size} record(s).`);
@@ -368,11 +388,10 @@ async function applyPoints(member, pointsDelta) {
     throw new Error("[Levels] applyPoints requires a GuildMember object.");
   }
 
-  const user = getUser(member.id);
+  const user = getUser(member.id, member.user.username);
   const oldLevel = user.level;
 
   user.points = Math.max(0, user.points + Math.floor(pointsDelta));
-
   user.level = calculateLevel(user.points);
 
   await save();
@@ -389,7 +408,7 @@ async function setPoints(member, points) {
     throw new Error("[Levels] setPoints requires a GuildMember object.");
   }
 
-  const user = getUser(member.id);
+  const user = getUser(member.id, member.user.username);
   const oldLevel = user.level;
 
   user.points = Math.max(0, Math.floor(points));
@@ -411,7 +430,7 @@ async function setLevel(member, level) {
 
   const safeLevel = Math.max(0, Math.min(MAX_LEVEL, Math.floor(level)));
 
-  const user = getUser(member.id);
+  const user = getUser(member.id, member.user.username);
   const oldLevel = user.level;
 
   user.level = safeLevel;
@@ -488,6 +507,7 @@ function getLeaderboard(limit = 10) {
       return {
         rank: index + 1,
         userId: user.userId,
+        username: user.username ?? "Unknown User",
         points: user.points,
         level: user.level,
         rankLabel: rank.label,

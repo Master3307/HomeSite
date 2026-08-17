@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "images": "node scripts/generate-images.mjs"
   },
-  "packageManager": "pnpm@11.21.0",
+  "packageManager": "pnpm@11.22.0",
   "engines": {
     "pnpm": ">=10.0.0"
   },
@@ -27,6 +27,7 @@
     "discord.js": "^14.26.4",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "sharp": "^0.35.3",
     "i18next": "^26.3.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

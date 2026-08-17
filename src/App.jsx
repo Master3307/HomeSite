@@ -6,6 +6,7 @@ import About from './pages/About.jsx'
 import Dash from './pages/HomePage.jsx'
 import Filer from './pages/Filter.jsx'
 import Collect from './pages/Collect.jsx'
+import Cult from './pages/Cult.jsx'
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
       <Route path="/dash" element={<Dash />} />
       <Route path="/filter" element={<Filer />} />
       <Route path="/collect" element={<Collect />} />
+      <Route path="/cult" element={<Cult />} />
       <Route path="*" element={<Error forcedCode={404} />} />
 
     </Routes>
