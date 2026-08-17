@@ -2,33 +2,69 @@ const {
   SlashCommandBuilder,
   EmbedBuilder,
   PermissionFlagsBits,
+  InteractionContextType,
+  ApplicationIntegrationType,
 } = require("discord.js");
 
 const levels = require("../../../services/levels.cjs");
 
 const MOD_ROLE_ID = "1479193858565865472";
 
+// Users allowed to run level-management commands outside a guild.
+// Replace this placeholder with your Discord user ID.
+const DM_LEVEL_MODERATOR_IDS = new Set([
+  "1525217425987993752",
+  "1233908962550616085",
+]);
+
 function isLevelModerator(interaction) {
+  if (!interaction.inGuild() || !interaction.member) {
+    return DM_LEVEL_MODERATOR_IDS.has(interaction.user.id);
+  }
+
   return (
     interaction.member.roles.cache.has(MOD_ROLE_ID) ||
     interaction.member.permissions.has(PermissionFlagsBits.Administrator)
   );
 }
 
-async function getGuildMember(interaction, optionName = "user") {
-  const user = interaction.options.getUser(optionName);
+async function getTargetUser(interaction, optionName = "user") {
+  return interaction.options.getUser(optionName);
+}
 
-  if (!user) {
+async function getGuildMember(interaction, userId) {
+  if (!interaction.inGuild() || !interaction.guild) {
     return null;
   }
 
-  return interaction.guild.members.fetch(user.id).catch(() => null);
+  return interaction.guild.members.fetch(userId).catch(() => null);
+}
+
+async function getDisplayName(interaction, userId) {
+  const member = await getGuildMember(interaction, userId);
+
+  if (member) {
+    return member.displayName;
+  }
+
+  const user = await interaction.client.users.fetch(userId).catch(() => null);
+
+  return user?.globalName || user?.username || `Unknown user (${userId})`;
 }
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("level")
     .setDescription("View and manage levels.")
+    .setIntegrationTypes(
+      ApplicationIntegrationType.GuildInstall,
+      ApplicationIntegrationType.UserInstall,
+    )
+    .setContexts(
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel,
+    )
 
     .addSubcommandGroup((group) =>
       group
@@ -176,9 +212,6 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    /*
-      Must remain the first awaited operation.
-    */
     await interaction.deferReply();
 
     const group = interaction.options.getSubcommandGroup(true);
@@ -189,13 +222,7 @@ module.exports = {
 
       const entries = await Promise.all(
         leaderboard.map(async (entry) => {
-          const member = await interaction.guild.members
-            .fetch(entry.userId)
-            .catch(() => null);
-
-          const displayName = member
-            ? member.displayName
-            : `Unknown user (${entry.userId})`;
+          const displayName = await getDisplayName(interaction, entry.userId);
 
           return (
             `**#${entry.rank}** ${displayName}` +
@@ -226,16 +253,18 @@ module.exports = {
 
     if (!isLevelModerator(interaction)) {
       return interaction.editReply({
-        content: "You don't have permission to use this command.",
+        content: interaction.inGuild()
+          ? "You need the level-moderator role or Administrator permission to use this command."
+          : "You are not allowed to manage levels from a DM.",
       });
     }
 
-    const target = await getGuildMember(interaction);
+    const target = await getTargetUser(interaction);
     const amount = interaction.options.getInteger("amount", true);
 
     if (!target) {
       return interaction.editReply({
-        content: "That user is not currently in this server.",
+        content: "I could not find that user.",
       });
     }
 
@@ -255,13 +284,11 @@ module.exports = {
 
     if (group === "add" && subcommand === "level") {
       const currentUser = levels.getUser(target.id);
-
       updatedUser = await levels.setLevel(target, currentUser.level + amount);
     }
 
     if (group === "remove" && subcommand === "level") {
       const currentUser = levels.getUser(target.id);
-
       updatedUser = await levels.setLevel(target, currentUser.level - amount);
     }
 
