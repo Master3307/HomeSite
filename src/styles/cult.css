@@ -1,11 +1,10 @@
-body {
-    --bg-secondary: #1a0b0b !important;
-    --accent: #b60b0b !important;
-    --accent-hover: #610000 !important;
-    --bg-primary: #470404 !important;
+body.cult-page {
+  --bg-secondary: #1a0b0b !important;
+  --accent: #b60b0b !important;
+  --accent-hover: #610000 !important;
+  --bg-primary: #470404 !important;
+}
 
-  }
-
-  .discordpic {
-    width: 150px;
-  }
+.discordpic {
+  width: 150px;
+}

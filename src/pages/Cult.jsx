@@ -1,5 +1,6 @@
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
+import { useEffect } from 'react'
 import CultCard from '../components/CultCard'
 import '../styles/cult.css'
 
@@ -8,9 +9,17 @@ export default function Home() {
 
   const title = 'Cult of Black Cats'
   const description =
-    'Enter the Cult of Black Cats — a mysterious gathering of feline darkness.'
+    'Be a part of the Cult of black Cats!'
   const image = 'https://home.master3307.org/discordpic-zoomed.webp'
   const url = 'https://home.master3307.org/'
+
+  useEffect(() => {
+    document.body.classList.add('cult-page')
+
+    return () => {
+      document.body.classList.remove('cult-page')
+    }
+  }, [])
 
   return (
     <>
