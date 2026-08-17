@@ -199,7 +199,7 @@ module.exports = {
 
           return (
             `**#${entry.rank}** ${displayName}` +
-            ` — **${entry.rankLabel}**` +
+            `: **${entry.rankLabel}**` +
             ` (Level **${entry.level}**)` +
             ` • ${entry.points.toLocaleString()} points`
           );
