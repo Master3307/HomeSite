@@ -28,6 +28,7 @@
     "discord.js": "^14.26.4",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-session": "^1.19.0",
     "i18next": "^26.3.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -39,6 +40,8 @@
     "use-scramble": "^2.2.15"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.19.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",

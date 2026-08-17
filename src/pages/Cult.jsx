@@ -2,6 +2,7 @@ import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
 import CultCard from '../components/CultCard'
+import Login from '../components/Login'
 import '../styles/cult.css'
 
 export default function Home() {
@@ -49,6 +50,7 @@ export default function Home() {
         </h1>
       </header>
 
+      <Login />
       <CultCard />
     </>
   )
