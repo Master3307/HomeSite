@@ -248,8 +248,15 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("profiles")
     .setDescription("View or manage profiles and custom avatars")
-    .setIntegrationTypes(ApplicationIntegrationType.GuildInstall)
-    .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM)
+    .setIntegrationTypes(
+      ApplicationIntegrationType.GuildInstall,
+      ApplicationIntegrationType.UserInstall,
+    )
+    .setContexts(
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel,
+    )
 
     .addSubcommandGroup((group) =>
       group

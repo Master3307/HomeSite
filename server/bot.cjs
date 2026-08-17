@@ -16,15 +16,13 @@ const {
   Partials,
 } = require("discord.js");
 const { REST } = require("@discordjs/rest");
-const { Routes } = require("discord-api-types/v9");
+const { Routes } = require("discord-api-types/v10");
 
 const token = process.env.DISCORD_BOT_TOKEN;
 const client_id = process.env.DISCORD_CLIENT_ID;
-const test_guild_id = process.env.DISCORD_GUILD_ID;
 
 if (!token) throw new Error("Missing DISCORD_BOT_TOKEN");
 if (!client_id) throw new Error("Missing DISCORD_CLIENT_ID");
-if (!test_guild_id) throw new Error("Missing DISCORD_GUILD_ID");
 
 const EVENTS_DIR = path.join(__dirname, "events");
 const COMMANDS_DIR = path.join(__dirname, "commands");
@@ -71,6 +69,7 @@ client.triggers = new Collection();
 
 function readJsFiles(dirPath) {
   if (!fs.existsSync(dirPath)) return [];
+
   return fs
     .readdirSync(dirPath)
     .filter((file) => file.endsWith(".js") || file.endsWith(".cjs"));
@@ -78,8 +77,10 @@ function readJsFiles(dirPath) {
 
 function readSubdirectories(dirPath) {
   if (!fs.existsSync(dirPath)) return [];
+
   return fs.readdirSync(dirPath).filter((entry) => {
     const fullPath = path.join(dirPath, entry);
+
     return fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
   });
 }
@@ -91,6 +92,7 @@ const eventFiles = readJsFiles(EVENTS_DIR);
 
 for (const file of eventFiles) {
   const event = require(path.join(EVENTS_DIR, file));
+
   if (event.once) {
     client.once(event.name, (...args) => event.execute(...args, client));
   } else {
@@ -214,28 +216,31 @@ for (const moduleName of selectMenus) {
 }
 
 /**********************************************************************/
-// Registration of Slash-Commands in Discord API
+// Registration of global Slash-Commands in Discord API
 
-const rest = new REST({ version: "9" }).setToken(token);
+const rest = new REST({ version: "10" }).setToken(token);
 
 const commandJsonData = [
-  ...Array.from(client.slashCommands.values()).map((c) => c.data.toJSON()),
-  ...Array.from(client.contextCommands.values()).map((c) => c.data),
+  ...Array.from(client.slashCommands.values()).map((command) =>
+    command.data.toJSON(),
+  ),
+  ...Array.from(client.contextCommands.values()).map((command) =>
+    command.data.toJSON ? command.data.toJSON() : command.data,
+  ),
 ];
 
 (async () => {
   try {
-    console.log("Started refreshing application (/) commands.");
+    console.log("Started refreshing global application (/) commands.");
 
-    await rest.put(Routes.applicationGuildCommands(client_id, test_guild_id), {
+    await rest.put(Routes.applicationCommands(client_id), {
       body: commandJsonData,
     });
 
-    console.log("Successfully reloaded application (/) commands.");
+    console.log("Successfully reloaded global application (/) commands.");
   } catch (error) {
-    console.error(error);
+    console.error("Failed to register global application commands:", error);
   }
 })();
 
-// Login into your client application with bot's token.
 client.login(token);
