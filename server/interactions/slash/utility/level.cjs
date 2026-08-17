@@ -33,7 +33,7 @@ module.exports = {
     .addSubcommandGroup((group) =>
       group
         .setName("view")
-        .setDescription("View levels and rankings.")
+        .setDescription("View level information.")
 
         .addSubcommand((subcommand) =>
           subcommand
@@ -44,12 +44,12 @@ module.exports = {
 
     .addSubcommandGroup((group) =>
       group
-        .setName("points")
-        .setDescription("Manage a user's points.")
+        .setName("add")
+        .setDescription("Add points or levels to a user.")
 
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("add")
+            .setName("points")
             .setDescription("Add points to a user.")
             .addUserOption((option) =>
               option
@@ -68,7 +68,32 @@ module.exports = {
 
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("remove")
+            .setName("level")
+            .setDescription("Add levels to a user.")
+            .addUserOption((option) =>
+              option
+                .setName("user")
+                .setDescription("The user to modify.")
+                .setRequired(true),
+            )
+            .addIntegerOption((option) =>
+              option
+                .setName("amount")
+                .setDescription("Number of levels to add.")
+                .setRequired(true)
+                .setMinValue(1),
+            ),
+        ),
+    )
+
+    .addSubcommandGroup((group) =>
+      group
+        .setName("remove")
+        .setDescription("Remove points or levels from a user.")
+
+        .addSubcommand((subcommand) =>
+          subcommand
+            .setName("points")
             .setDescription("Remove points from a user.")
             .addUserOption((option) =>
               option
@@ -87,51 +112,7 @@ module.exports = {
 
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("set")
-            .setDescription("Set a user's total points.")
-            .addUserOption((option) =>
-              option
-                .setName("user")
-                .setDescription("The user to modify.")
-                .setRequired(true),
-            )
-            .addIntegerOption((option) =>
-              option
-                .setName("amount")
-                .setDescription("The new total point amount.")
-                .setRequired(true)
-                .setMinValue(0),
-            ),
-        ),
-    )
-
-    .addSubcommandGroup((group) =>
-      group
-        .setName("levels")
-        .setDescription("Manage a user's level.")
-
-        .addSubcommand((subcommand) =>
-          subcommand
-            .setName("add")
-            .setDescription("Add levels to a user.")
-            .addUserOption((option) =>
-              option
-                .setName("user")
-                .setDescription("The user to modify.")
-                .setRequired(true),
-            )
-            .addIntegerOption((option) =>
-              option
-                .setName("amount")
-                .setDescription("Number of levels to add.")
-                .setRequired(true)
-                .setMinValue(1),
-            ),
-        )
-
-        .addSubcommand((subcommand) =>
-          subcommand
-            .setName("remove")
+            .setName("level")
             .setDescription("Remove levels from a user.")
             .addUserOption((option) =>
               option
@@ -146,11 +127,36 @@ module.exports = {
                 .setRequired(true)
                 .setMinValue(1),
             ),
+        ),
+    )
+
+    .addSubcommandGroup((group) =>
+      group
+        .setName("set")
+        .setDescription("Set a user's points or level.")
+
+        .addSubcommand((subcommand) =>
+          subcommand
+            .setName("points")
+            .setDescription("Set a user's total points.")
+            .addUserOption((option) =>
+              option
+                .setName("user")
+                .setDescription("The user to modify.")
+                .setRequired(true),
+            )
+            .addIntegerOption((option) =>
+              option
+                .setName("amount")
+                .setDescription("The new total point amount.")
+                .setRequired(true)
+                .setMinValue(0),
+            ),
         )
 
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("set")
+            .setName("level")
             .setDescription("Set a user's level.")
             .addUserOption((option) =>
               option
@@ -175,8 +181,8 @@ module.exports = {
     */
     await interaction.deferReply();
 
-    const group = interaction.options.getSubcommandGroup();
-    const subcommand = interaction.options.getSubcommand();
+    const group = interaction.options.getSubcommandGroup(true);
+    const subcommand = interaction.options.getSubcommand(true);
 
     if (group === "view" && subcommand === "leaderboard") {
       const leaderboard = levels.getLeaderboard(10);
@@ -225,7 +231,7 @@ module.exports = {
     }
 
     const target = await getGuildMember(interaction);
-    const amount = interaction.options.getInteger("amount");
+    const amount = interaction.options.getInteger("amount", true);
 
     if (!target) {
       return interaction.editReply({
@@ -235,34 +241,32 @@ module.exports = {
 
     let updatedUser;
 
-    if (group === "points") {
-      if (subcommand === "add") {
-        updatedUser = await levels.applyPoints(target, amount);
-      }
-
-      if (subcommand === "remove") {
-        updatedUser = await levels.applyPoints(target, -amount);
-      }
-
-      if (subcommand === "set") {
-        updatedUser = await levels.setPoints(target, amount);
-      }
+    if (group === "add" && subcommand === "points") {
+      updatedUser = await levels.applyPoints(target, amount);
     }
 
-    if (group === "levels") {
+    if (group === "remove" && subcommand === "points") {
+      updatedUser = await levels.applyPoints(target, -amount);
+    }
+
+    if (group === "set" && subcommand === "points") {
+      updatedUser = await levels.setPoints(target, amount);
+    }
+
+    if (group === "add" && subcommand === "level") {
       const currentUser = levels.getUser(target.id);
 
-      if (subcommand === "add") {
-        updatedUser = await levels.setLevel(target, currentUser.level + amount);
-      }
+      updatedUser = await levels.setLevel(target, currentUser.level + amount);
+    }
 
-      if (subcommand === "remove") {
-        updatedUser = await levels.setLevel(target, currentUser.level - amount);
-      }
+    if (group === "remove" && subcommand === "level") {
+      const currentUser = levels.getUser(target.id);
 
-      if (subcommand === "set") {
-        updatedUser = await levels.setLevel(target, amount);
-      }
+      updatedUser = await levels.setLevel(target, currentUser.level - amount);
+    }
+
+    if (group === "set" && subcommand === "level") {
+      updatedUser = await levels.setLevel(target, amount);
     }
 
     if (!updatedUser) {

@@ -235,37 +235,47 @@ async function showProfile(interaction, target) {
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("profile")
-    .setDescription("View or manage your profile")
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("view")
-        .setDescription("View a user's profile")
-        .addUserOption((option) =>
-          option
-            .setName("user")
-            .setDescription("The user whose profile you want to view")
-            .setRequired(false),
-        ),
-    )
+    .setName("profiles")
+    .setDescription("View or manage profiles and custom avatars")
+
     .addSubcommandGroup((group) =>
       group
-        .setName("avatar")
-        .setDescription("Manage your custom avatar")
+        .setName("view")
+        .setDescription("View profiles or custom avatars")
+
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("view")
-            .setDescription("View a custom avatar")
+            .setName("profile")
+            .setDescription("View a user's profile")
+            .addUserOption((option) =>
+              option
+                .setName("user")
+                .setDescription("The user whose profile you want to view")
+                .setRequired(false),
+            ),
+        )
+
+        .addSubcommand((subcommand) =>
+          subcommand
+            .setName("avatar")
+            .setDescription("View a user's custom avatar")
             .addUserOption((option) =>
               option
                 .setName("user")
                 .setDescription("The user whose custom avatar you want to view")
                 .setRequired(false),
             ),
-        )
+        ),
+    )
+
+    .addSubcommandGroup((group) =>
+      group
+        .setName("set")
+        .setDescription("Set profile options")
+
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("set")
+            .setName("avatar")
             .setDescription("Upload a custom avatar")
             .addAttachmentOption((option) =>
               option
@@ -273,40 +283,40 @@ module.exports = {
                 .setDescription("The image to use as your avatar")
                 .setRequired(true),
             ),
-        )
+        ),
+    )
+
+    .addSubcommandGroup((group) =>
+      group
+        .setName("remove")
+        .setDescription("Remove profile options")
+
         .addSubcommand((subcommand) =>
           subcommand
-            .setName("remove")
+            .setName("avatar")
             .setDescription("Remove your custom avatar"),
         ),
     ),
 
   async execute(interaction) {
-    const group = interaction.options.getSubcommandGroup(false);
-    const subcommand = interaction.options.getSubcommand(false);
+    const group = interaction.options.getSubcommandGroup(true);
+    const subcommand = interaction.options.getSubcommand(true);
 
-    // `/profile view` without a user displays the caller's profile.
-    if (!group && subcommand === "view") {
+    if (group === "view" && subcommand === "profile") {
       const target = interaction.options.getUser("user") || interaction.user;
 
       await showProfile(interaction, target);
       return;
     }
 
-    if (group !== "avatar") {
-      return;
-    }
-
-    // `/profile avatar view` displays the caller's avatar by default.
-    // `/profile avatar view user:@User` displays that user's custom avatar.
-    if (subcommand === "view") {
+    if (group === "view" && subcommand === "avatar") {
       const target = interaction.options.getUser("user") || interaction.user;
 
       await showCustomAvatar(interaction, target);
       return;
     }
 
-    if (subcommand === "set") {
+    if (group === "set" && subcommand === "avatar") {
       const attachment = interaction.options.getAttachment("image", true);
 
       await interaction.deferReply({ ephemeral: true });
@@ -317,7 +327,7 @@ module.exports = {
         await interaction.editReply("Your custom avatar has been saved!");
       } catch (error) {
         console.error(
-          `[profile avatar set] Failed for ${interaction.user.id}:`,
+          `[profile set avatar] Failed for ${interaction.user.id}:`,
           error,
         );
 
@@ -329,7 +339,7 @@ module.exports = {
       return;
     }
 
-    if (subcommand === "remove") {
+    if (group === "remove" && subcommand === "avatar") {
       try {
         const removed = await removeAvatar(interaction.user.id);
 
@@ -341,7 +351,7 @@ module.exports = {
         });
       } catch (error) {
         console.error(
-          `[profile avatar remove] Failed for ${interaction.user.id}:`,
+          `[profile remove avatar] Failed for ${interaction.user.id}:`,
           error,
         );
 
