@@ -1,14 +1,14 @@
 blank_issues_enabled: false
 
 contact_links:
-  - name: Link: Discord Server
+  - name: Link - Discord Server
     url: https://discord.gg/px86PYjcyB
     about: Contact me (MrKoby07) directly or join the community.
 
-  - name: Link: Security reports
+  - name: Link - Security reports
     url: https://github.com/Master3307/HomeSite/security/advisories/new
     about: Report security vulnerabilities privately.
 
-  - name: Link: HomeSite website
+  - name: Link - HomeSite website
     url: https://home.master3307.org/
     about: Visit the live HomeSite.
