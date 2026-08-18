@@ -8,6 +8,17 @@ projects:
   - Master3307/2
 
 body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Site
+        - Backend
+        - Both
+    validations:
+      required: true
+
   - type: textarea
     id: message
     attributes:
@@ -16,18 +27,6 @@ body:
       placeholder: Tell us what you need...
     validations:
       required: true
-
-  - type: dropdown
-    id: area
-    attributes:
-      label: Area (optional)
-      options:
-        - Site
-        - Backend
-        - Both
-        - Not sure
-    validations:
-      required: false
 
   - type: textarea
     id: extra

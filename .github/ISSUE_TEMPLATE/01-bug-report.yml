@@ -9,6 +9,17 @@ projects:
   - Master3307/2
 
 body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Site
+        - Backend
+        - Both
+    validations:
+      required: true
+
   - type: textarea
     id: bug
     attributes:
@@ -27,18 +38,6 @@ body:
         1. Go to ...
         2. Click ...
         3. See the problem
-    validations:
-      required: false
-
-  - type: dropdown
-    id: area
-    attributes:
-      label: Area (optional)
-      options:
-        - Site
-        - Backend
-        - Both
-        - Not sure
     validations:
       required: false
 

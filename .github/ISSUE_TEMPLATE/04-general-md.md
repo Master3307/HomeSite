@@ -1,6 +1,6 @@
 ---
 name: General issue (Markdown)
-about: Open a free-form issue for HomeSite
+about: Open a General issue but in *markdown*. ooo
 title: "[General]: "
 labels: ""
 assignees: "Master3307"
@@ -11,7 +11,6 @@ projects: "Master3307/2"
 
 - [ ] Bug report
 - [ ] Feature request
-- [ ] Question
 - [ ] Other
 
 **What part of the repository is this for?**
@@ -19,7 +18,6 @@ projects: "Master3307/2"
 - [ ] Backend
 - [ ] Site
 - [ ] Both
-- [ ] Not sure
 
 **Can you describe your issue and add screenshots if possible?**
 

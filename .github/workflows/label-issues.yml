@@ -1,0 +1,28 @@
+name: Label issues
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Add area labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          if [[ "$ISSUE_BODY" == *$'### Area\n\nSite'* ]]; then
+            gh issue edit "$ISSUE_NUMBER" --add-label "site"
+          elif [[ "$ISSUE_BODY" == *$'### Area\n\nBackend'* ]]; then
+            gh issue edit "$ISSUE_NUMBER" --add-label "backend"
+          elif [[ "$ISSUE_BODY" == *$'### Area\n\nBoth'* ]]; then
+            gh issue edit "$ISSUE_NUMBER" --add-label "site+backend"
+          fi

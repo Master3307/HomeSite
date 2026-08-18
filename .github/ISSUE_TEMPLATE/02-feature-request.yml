@@ -17,9 +17,8 @@ body:
         - Site
         - Backend
         - Both
-        - Not sure
     validations:
-      required: false
+      required: true
 
   - type: textarea
     id: request
