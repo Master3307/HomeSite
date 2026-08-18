@@ -1,6 +1,14 @@
 blank_issues_enabled: false
 
 contact_links:
-  - name: HomeSite Discussions
-    url: https://github.com/Master3307/HomeSite/discussions
-    about: Ask general questions or start non-actionable discussions here.
+  - name: Discord Server
+    url: https://discord.gg/px86PYjcyB
+    about: Contact me (MrKoby07) directly or join the community.
+
+  - name: Security reports
+    url: https://github.com/Master3307/HomeSite/security/advisories/new
+    about: Report security vulnerabilities privately.
+
+  - name: HomeSite website
+    url: https://home.master3307.org/
+    about: Visit the live HomeSite.

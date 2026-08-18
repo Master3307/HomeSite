@@ -1,6 +1,6 @@
-name: Issue report
-description: Report a bug or request a feature for HomeSite
-title: "[Issue]: "
+name: General issue
+description: Ask a question, share feedback, or report anything else about HomeSite.
+title: "[General]: "
 labels: []
 assignees:
   - Master3307
@@ -8,54 +8,31 @@ projects:
   - Master3307/2
 
 body:
-  - type: dropdown
-    id: issue-type
-    attributes:
-      label: What kind of issue is this?
-      options:
-        - label: Bug report
-          required: false
-        - label: Feature request
-          required: false
-    validations:
-      required: true
-
-  - type: dropdown
-    id: repo-area
-    attributes:
-      label: What part of the repository is this for?
-      options:
-        - label: Backend
-          required: false
-        - label: Site
-          required: false
-        - label: Both
-          required: false
-    validations:
-      required: true
-
   - type: textarea
-    id: description
+    id: message
     attributes:
-      label: Can you describe your issue?
-      description: Explain what happened or what you would like to see. Add screenshots if possible.
-      placeholder: Describe the issue here...
+      label: What's on your mind?
+      description: Ask a question, share feedback, or describe the issue.
+      placeholder: Tell us what you need...
     validations:
       required: true
 
-  - type: upload
-    id: screenshots
+  - type: dropdown
+    id: area
     attributes:
-      label: Screenshots
-      description: Add screenshots, recordings, or other relevant files if available.
+      label: Area (optional)
+      options:
+        - Site
+        - Backend
+        - Both
+        - Not sure
     validations:
       required: false
 
   - type: textarea
-    id: additional-info
+    id: extra
     attributes:
-      label: Any other information available?
-      description: Include detailed explanations, logs, related issues, suggested fixes, or useful context links.
-      placeholder: Paste logs, stack traces, links, or additional context here.
+      label: Anything else? (optional)
+      description: Add screenshots, logs, links, or other context.
     validations:
       required: false

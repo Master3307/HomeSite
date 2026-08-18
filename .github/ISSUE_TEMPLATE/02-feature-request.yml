@@ -9,78 +9,31 @@ projects:
   - Master3307/2
 
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for suggesting an improvement to HomeSite. Please provide enough context to help us evaluate the request.
-
   - type: dropdown
-    id: repo-area
+    id: area
     attributes:
-      label: What part of the repository is this for?
+      label: Area
       options:
-        - Backend
         - Site
+        - Backend
         - Both
+        - Not sure
+    validations:
+      required: false
+
+  - type: textarea
+    id: request
+    attributes:
+      label: What would you like to see?
+      description: Tell us your idea, the problem it solves, or how it should work.
+      placeholder: It would be useful if...
     validations:
       required: true
 
   - type: textarea
-    id: problem
+    id: extra
     attributes:
-      label: What problem would this solve?
-      description: Describe the limitation, frustration, or use case that led to this request.
-      placeholder: It is currently difficult to...
-    validations:
-      required: true
-
-  - type: textarea
-    id: proposal
-    attributes:
-      label: Proposed solution
-      description: Describe the feature or behavior you would like to see.
-      placeholder: Add a way to...
-    validations:
-      required: true
-
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives considered
-      description: Describe workarounds or other approaches you have considered.
-      placeholder: I tried...
+      label: Anything else? (optional)
+      description: Add screenshots, examples, links, or implementation ideas.
     validations:
       required: false
-
-  - type: textarea
-    id: implementation
-    attributes:
-      label: Possible implementation
-      description: Optional—share technical ideas, affected components, APIs, or implementation details.
-      placeholder: This could be implemented by...
-    validations:
-      required: false
-
-  - type: textarea
-    id: mockups
-    attributes:
-      label: Mockups, screenshots, or examples
-      description: Drag and drop images/files here, or link to examples from other sites or projects.
-    validations:
-      required: false
-
-  - type: textarea
-    id: context
-    attributes:
-      label: Additional context
-      description: Add links, related issues, edge cases, or anything else that could help.
-    validations:
-      required: false
-
-  - type: checkboxes
-    id: checks
-    attributes:
-      label: Before submitting
-      options:
-        - label: I searched existing issues and did not find a duplicate.
-          required: true
