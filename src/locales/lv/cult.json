@@ -1,3 +1,4 @@
 {
-    "header": "Welcome, {{user}}!"
+    "header": "Welcome, {{user}}!",
+    "stranger": "Stranger"
 }
