@@ -1,0 +1,86 @@
+name: Feature request
+description: Suggest an improvement or new feature for HomeSite.
+title: "[Feature]: "
+labels:
+  - enhancement
+assignees:
+  - Master3307
+projects:
+  - Master3307/2
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement to HomeSite. Please provide enough context to help us evaluate the request.
+
+  - type: dropdown
+    id: repo-area
+    attributes:
+      label: What part of the repository is this for?
+      options:
+        - Backend
+        - Site
+        - Both
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the limitation, frustration, or use case that led to this request.
+      placeholder: It is currently difficult to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the feature or behavior you would like to see.
+      placeholder: Add a way to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe workarounds or other approaches you have considered.
+      placeholder: I tried...
+    validations:
+      required: false
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Possible implementation
+      description: Optional—share technical ideas, affected components, APIs, or implementation details.
+      placeholder: This could be implemented by...
+    validations:
+      required: false
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups, screenshots, or examples
+      description: Drag and drop images/files here, or link to examples from other sites or projects.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add links, related issues, edge cases, or anything else that could help.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true

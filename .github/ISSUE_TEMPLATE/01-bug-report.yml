@@ -1,0 +1,94 @@
+name: Bug report
+description: Tell us about something that is broken or behaving unexpectedly.
+title: "[Bug]: "
+labels:
+  - bug
+assignees:
+  - Master3307
+projects:
+  - Master3307/2
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please fill in the details below so we can reproduce it.
+
+  - type: dropdown
+    id: repo-area
+    attributes:
+      label: Where does the bug occur?
+      options:
+        - Backend
+        - Site
+        - Both
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Clearly describe the unexpected behavior.
+      placeholder: The site displays an error when I...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Give the smallest reliable set of steps.
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See the error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened instead?
+      placeholder: I expected...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include browser, operating system, device, app version, and commit hash where relevant.
+      placeholder: |
+        - OS:
+        - Browser:
+        - Device:
+        - HomeSite version / commit:
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or console output
+      description: Paste relevant logs, errors, or stack traces.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or recordings
+      description: Drag and drop screenshots or recordings here if relevant.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
