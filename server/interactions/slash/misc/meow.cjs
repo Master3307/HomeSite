@@ -20,7 +20,7 @@ const meows = [
   "*meows* :3",
   "I am ***C A T***.",
   "meeeeeow :3",
-  "!meow",
+  "/meow",
   "meow!",
   "-# (meow)",
   "Meow Meow! ^^",
