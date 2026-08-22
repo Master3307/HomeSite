@@ -63,12 +63,11 @@ app.use(
   }),
 );
 
-const ACTIVITY_CSV_PATH = path.join(__dirname, "activity.csv");
-const ACTIVITY_SESSIONS_CSV_PATH = path.join(
-  __dirname,
-  "activity_sessions.csv",
-);
-const GAME_IMAGE_CACHE_PATH = path.join(__dirname, "game_image_cache.json");
+const DB_DIR = path.join(__dirname, "db");
+
+const ACTIVITY_CSV_PATH = path.join(DB_DIR, "activity.csv");
+const ACTIVITY_SESSIONS_CSV_PATH = path.join(DB_DIR, "activity_sessions.csv");
+const GAME_IMAGE_CACHE_PATH = path.join(DB_DIR, "game_image_cache.json");
 
 const DISCORD_API = "https://discord.com/api/v10";
 const CDN = "https://cdn.discordapp.com";
@@ -332,6 +331,8 @@ function parseCsv(content) {
 }
 
 async function ensureCsvFile(filePath, headers) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+
   try {
     await fs.access(filePath);
   } catch {
@@ -346,11 +347,14 @@ async function readCsvRows(filePath, headers) {
 }
 
 async function writeCsvRows(filePath, headers, rows) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+
   const body = rows
     .map((row) =>
       headers.map((header) => csvEscape(row[header] ?? "")).join(","),
     )
     .join("\n");
+
   await fs.writeFile(
     filePath,
     `${headers.join(",")}\n${body}${body ? "\n" : ""}`,

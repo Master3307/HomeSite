@@ -4,7 +4,7 @@ const { parse } = require("csv-parse/sync");
 const { stringify } = require("csv-stringify/sync");
 const { EmbedBuilder } = require("discord.js");
 
-const DATA_FILE = path.join(__dirname, "levels.csv");
+const DATA_FILE = path.join(__dirname, "db", "levels.csv");
 
 const LEVEL_UP_CHANNEL_ID = "1483528579722514472";
 
@@ -184,6 +184,8 @@ function getProgress(user) {
 }
 
 async function write() {
+  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
+
   const rows = [...users.values()]
     .sort((a, b) => {
       if (b.points !== a.points) {
@@ -221,6 +223,8 @@ function save() {
 }
 
 async function load() {
+  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
+
   try {
     const csv = await fs.readFile(DATA_FILE, "utf8");
 
@@ -262,7 +266,7 @@ async function load() {
 
     await save();
 
-    console.log("[Levels] Created services/levels.csv.");
+    console.log("[Levels] Created db/levels.csv.");
   }
 }
 
