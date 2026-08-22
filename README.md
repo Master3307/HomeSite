@@ -49,7 +49,6 @@ Methods of contact include:
 - [Discord Server](https://discord.gg/px86PYjcyB)
 - [Email](mailto:hirmerkorbinian122@gmail.com)
 
-
 ## Credits
 
 Discord Bot Template by [NamVr](https://github.com/NamVr/) found [here](https://github.com/NamVr/DiscordBot-Template)
