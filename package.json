@@ -10,7 +10,6 @@
     "cleaner": "node scripts/clean.cjs",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "build": "pnpm run sitemap && vite build && cp dist/index.html dist/404.html",
-    "lint": "oxlint",
     "preview": "vite preview",
     "images": "node scripts/generate-images.mjs"
   },
