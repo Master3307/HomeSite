@@ -40,6 +40,15 @@ Visit our Discord Server and join ***The Cult of Black Cats!***
 
 [**Join Now!**](https://discord.gg/px86PYjcyB)
 
+## Organization
+
+This Repo is organized by [The HomeSite Project](https://github.com/users/Master3307/projects/2).
+
+Read "[Contributing](CONTRIBUTING.md)" and respect the "[Code of Conduct](CODE_OF_CONDUCT.md)".
+
+In short:
+Use Conventional Commits and keep everything friendly :D
+
 ## Contact
 
 Methods of contact include:
