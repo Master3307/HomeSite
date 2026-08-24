@@ -1,0 +1,39 @@
+{
+    "id": "/",
+    "name": "HomeSite",
+    "short_name": "HomeSite",
+    "description": "MrKoby07's personal website, projects, and links.",
+    "categories": ["personal", "portfolio", "social"],
+    "lang": "en",
+    "start_url": "/",
+    "scope": "/",
+    "icons": [
+        {
+            "src": "/android-chrome-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "shortcuts": [
+        {
+          "name": "Profile Card",
+          "short_name": "Card",
+          "description": "Open MrKoby07's profile card.",
+          "url": "/card"
+        },
+        {
+          "name": "About",
+          "short_name": "About",
+          "description": "Learn more about MrKoby07 and HomeSite.",
+          "url": "/about"
+        }
+      ],
+    "theme_color": "#63369e",
+    "background_color": "#63369e",
+    "display": "standalone"
+}
