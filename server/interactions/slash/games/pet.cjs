@@ -1,11 +1,34 @@
 const {
   SlashCommandBuilder,
   EmbedBuilder,
+  AttachmentBuilder,
   InteractionContextType,
   ApplicationIntegrationType,
 } = require("discord.js");
+const fs = require("node:fs/promises");
+const path = require("node:path");
+const sharp = require("sharp");
+const { createCanvas, loadImage } = require("canvas");
+const { GIFEncoder, quantize, applyPalette } = require("gifenc");
 
 const petting = require("../../../services/petting.cjs");
+
+const OUT_SIZE = 112;
+const FRAME_COUNT = 5;
+const GIF_DELAY = 60;
+const AVATAR_DIR = path.resolve(__dirname, "../../../services/avatars");
+const HAND_SPRITE_PATH = path.resolve(
+  __dirname,
+  "../../../assets/petpet/sprite.png",
+);
+
+const frameOffsets = [
+  { x: 0, y: 0, w: 0, h: 0 },
+  { x: -4, y: 12, w: 4, h: -12 },
+  { x: -12, y: 18, w: 12, h: -18 },
+  { x: -8, y: 12, w: 4, h: -12 },
+  { x: -4, y: 0, w: 0, h: 0 },
+];
 
 function getAchievementLines(achievements, userId) {
   const userAchievements = achievements.filter(
@@ -112,7 +135,138 @@ function buildPetEmbed(interaction, target, result) {
     .setTitle(title)
     .setDescription(description)
     .addFields(fields)
+    .setImage("attachment://petpet.gif")
     .setTimestamp();
+}
+
+async function loadRemoteImage(url) {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "Official-Cultbot/1.0",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Could not download Discord avatar: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (!contentType.startsWith("image/")) {
+    throw new Error(
+      `Discord avatar response was not an image: ${contentType || "unknown content type"}`,
+    );
+  }
+
+  const data = Buffer.from(await response.arrayBuffer());
+
+  return loadImage(data);
+}
+
+async function loadWebpImage(filePath) {
+  const pngBuffer = await sharp(filePath).ensureAlpha().png().toBuffer();
+
+  return loadImage(pngBuffer);
+}
+
+async function loadTargetPetImage(target) {
+  const localAvatarPath = path.join(AVATAR_DIR, `${target.id}.webp`);
+
+  try {
+    await fs.access(localAvatarPath);
+    return await loadWebpImage(localAvatarPath);
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      console.warn(
+        `[pet] Could not use local WebP avatar for ${target.id}; using Discord avatar instead.`,
+        error,
+      );
+    }
+  }
+
+  return loadRemoteImage(
+    target.displayAvatarURL({
+      extension: "png",
+      size: 256,
+      forceStatic: true,
+    }),
+  );
+}
+
+function drawFrame(ctx, targetImage, handSprite, frame) {
+  const offset = frameOffsets[frame];
+  const squish = 1.25;
+  const scale = 0.875;
+  const spriteX = 14;
+  const spriteY = 20;
+  const spriteWidth = 112;
+  const spriteHeight = spriteWidth * (targetImage.height / targetImage.width);
+
+  const dx = Math.trunc(spriteX + offset.x * (squish * 0.4));
+  const dy = Math.trunc(spriteY + offset.y * (squish * 0.9));
+  const dw = Math.trunc((spriteWidth + offset.w * squish) * scale);
+  const dh = Math.trunc((spriteHeight + offset.h * squish) * scale);
+
+  ctx.clearRect(0, 0, OUT_SIZE, OUT_SIZE);
+  ctx.imageSmoothingEnabled = false;
+
+  const crop = Math.min(targetImage.width, targetImage.height);
+  const sx = Math.floor((targetImage.width - crop) / 2);
+  const sy = Math.floor((targetImage.height - crop) / 2);
+
+  ctx.drawImage(targetImage, sx, sy, crop, crop, dx, dy, dw, dh);
+
+  ctx.drawImage(
+    handSprite,
+    frame * OUT_SIZE,
+    0,
+    OUT_SIZE,
+    OUT_SIZE,
+    0,
+    Math.max(0, Math.trunc(dy * 0.75 - Math.max(0, spriteY) - 0.5)),
+    OUT_SIZE,
+    OUT_SIZE,
+  );
+}
+
+async function createPetpetGif(target) {
+  const [targetImage, handSprite] = await Promise.all([
+    loadTargetPetImage(target),
+    loadImage(HAND_SPRITE_PATH),
+  ]);
+
+  if (
+    handSprite.width < OUT_SIZE * FRAME_COUNT ||
+    handSprite.height < OUT_SIZE
+  ) {
+    throw new Error(
+      `Invalid petpet sprite sheet: expected at least ${OUT_SIZE * FRAME_COUNT}x${OUT_SIZE}, got ${handSprite.width}x${handSprite.height}.`,
+    );
+  }
+
+  const canvas = createCanvas(OUT_SIZE, OUT_SIZE);
+  const ctx = canvas.getContext("2d");
+  const encoder = GIFEncoder();
+
+  for (let frame = 0; frame < FRAME_COUNT; frame += 1) {
+    drawFrame(ctx, targetImage, handSprite, frame);
+
+    const rgba = ctx.getImageData(0, 0, OUT_SIZE, OUT_SIZE).data;
+    const palette = quantize(rgba, 256);
+    const index = applyPalette(rgba, palette);
+
+    encoder.writeFrame(index, OUT_SIZE, OUT_SIZE, {
+      palette,
+      delay: GIF_DELAY,
+      repeat: 0,
+    });
+  }
+
+  encoder.finish();
+
+  return Buffer.from(encoder.bytes());
 }
 
 module.exports = {
@@ -143,7 +297,6 @@ module.exports = {
         content: "You cannot pet yourself.",
         ephemeral: true,
       });
-
       return;
     }
 
@@ -152,7 +305,6 @@ module.exports = {
         content: "You can only pet real people.",
         ephemeral: true,
       });
-
       return;
     }
 
@@ -176,22 +328,28 @@ module.exports = {
               result.cooldownUntil / 1000,
             )}:R>.`,
           );
-
           return;
         }
 
         await interaction.editReply(
           "I could not process that pet. Please try again later.",
         );
-
         return;
       }
 
-      const embed = buildPetEmbed(interaction, target, result);
+      const [embed, gif] = await Promise.all([
+        Promise.resolve(buildPetEmbed(interaction, target, result)),
+        createPetpetGif(target),
+      ]);
+
+      const attachment = new AttachmentBuilder(gif, {
+        name: "petpet.gif",
+      });
 
       await interaction.editReply({
         content: `${target}`,
         embeds: [embed],
+        files: [attachment],
         allowedMentions: {
           users: [target.id],
         },

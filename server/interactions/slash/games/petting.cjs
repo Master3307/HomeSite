@@ -6,11 +6,11 @@ const {
   ButtonStyle,
   InteractionContextType,
   ApplicationIntegrationType,
+  MessageFlags,
 } = require("discord.js");
 
 const petting = require("../../../services/petting.cjs");
 
-const DASHBOARD_TIMEOUT_MS = 10 * 60 * 1000;
 const LEADERBOARD_LIMIT = 10;
 
 const PAGE = {
@@ -46,11 +46,6 @@ function createDashboardButtons({ ownerId, targetId, activePage }) {
       page: PAGE.ACHIEVEMENTS,
       label: "Achievements",
       emoji: "🎖️",
-    },
-    {
-      page: PAGE.CAT,
-      label: "Cat",
-      emoji: "🐈",
     },
   ];
 
@@ -92,7 +87,7 @@ function progressBar(progress, length = 10) {
   const safeProgress = Math.max(0, Math.min(1, Number(progress) || 0));
   const filled = Math.round(safeProgress * length);
 
-  return `${"█".repeat(filled)}${"░".repeat(length - filled)}`;
+  return `<${"=".repeat(filled)}${"-".repeat(length - filled)}>`;
 }
 
 async function getUserFromId(interaction, userId) {
@@ -270,7 +265,9 @@ async function buildLeaderboardEmbed(interaction) {
             : `**${entry.rank}.**`;
 
     lines.push(
-      `${medal} ${name} — **${formatNumber(entry.totalGiven)}** pets · best combo ${formatNumber(entry.bestCombo)}`,
+      `${medal} ${name} — **${formatNumber(
+        entry.totalGiven,
+      )}** pets · best combo ${formatNumber(entry.bestCombo)}`,
     );
   }
 
@@ -337,32 +334,6 @@ async function buildAchievementsEmbed(interaction, target) {
     .setTimestamp();
 }
 
-async function buildCatEmbed(interaction, target) {
-  const stats = await petting.getUserStats(target.id);
-  const displayName = getDisplayName(interaction, target);
-
-  return new EmbedBuilder()
-    .setColor(0x34d399)
-    .setTitle(`🐈 ${displayName}'s Petting Cat`)
-    .setThumbnail(
-      target.displayAvatarURL({
-        extension: "webp",
-        forceStatic: true,
-        size: 512,
-      }),
-    )
-    .setDescription(
-      [
-        `Selected cat: **${stats.selectedCat || "default"}**`,
-        "",
-        "The cat designer is not implemented yet.",
-        "For now, this page uses the Discord profile avatar as the cat portrait.",
-        "Later, it can use your existing custom-avatar system or a generated cat design.",
-      ].join("\n"),
-    )
-    .setTimestamp();
-}
-
 async function buildDashboardEmbed(interaction, target, page) {
   switch (page) {
     case PAGE.STATS:
@@ -381,26 +352,6 @@ async function buildDashboardEmbed(interaction, target, page) {
     default:
       return buildInfoEmbed(interaction, target);
   }
-}
-
-function parseButtonId(customId) {
-  const parts = customId.split(":");
-
-  if (parts.length !== 4 || parts[0] !== "petting") {
-    return null;
-  }
-
-  const [, ownerId, targetId, page] = parts;
-
-  if (!Object.values(PAGE).includes(page)) {
-    return null;
-  }
-
-  return {
-    ownerId,
-    targetId,
-    page,
-  };
 }
 
 module.exports = {
@@ -427,125 +378,23 @@ module.exports = {
     const target = interaction.options.getUser("user") || interaction.user;
 
     await interaction.deferReply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
 
     try {
       const page = PAGE.INFO;
+
       const embed = await buildDashboardEmbed(interaction, target, page);
+
       const row = createDashboardButtons({
         ownerId: interaction.user.id,
         targetId: target.id,
         activePage: page,
       });
 
-      const response = await interaction.editReply({
+      await interaction.editReply({
         embeds: [embed],
         components: [row],
-      });
-
-      const collector = response.createMessageComponentCollector({
-        time: DASHBOARD_TIMEOUT_MS,
-      });
-
-      collector.on("collect", async (buttonInteraction) => {
-        const buttonData = parseButtonId(buttonInteraction.customId);
-
-        if (!buttonData) {
-          return;
-        }
-
-        if (buttonData.ownerId !== interaction.user.id) {
-          await buttonInteraction.reply({
-            content:
-              "Only the person who opened this dashboard can use its buttons.",
-            ephemeral: true,
-          });
-
-          return;
-        }
-
-        if (buttonInteraction.user.id !== interaction.user.id) {
-          await buttonInteraction.reply({
-            content:
-              "Only the person who opened this dashboard can use its buttons.",
-            ephemeral: true,
-          });
-
-          return;
-        }
-
-        try {
-          await buttonInteraction.deferUpdate();
-
-          const buttonTarget = await getUserFromId(
-            interaction,
-            buttonData.targetId,
-          );
-
-          if (!buttonTarget) {
-            await buttonInteraction.editReply({
-              content: "That user could no longer be found.",
-              embeds: [],
-              components: [],
-            });
-
-            collector.stop("target_missing");
-            return;
-          }
-
-          const embed = await buildDashboardEmbed(
-            interaction,
-            buttonTarget,
-            buttonData.page,
-          );
-
-          const row = createDashboardButtons({
-            ownerId: buttonData.ownerId,
-            targetId: buttonData.targetId,
-            activePage: buttonData.page,
-          });
-
-          await buttonInteraction.editReply({
-            embeds: [embed],
-            components: [row],
-          });
-        } catch (error) {
-          console.error(
-            `[petting] Failed to handle dashboard button for ${interaction.user.id}:`,
-            error,
-          );
-
-          if (!buttonInteraction.replied && !buttonInteraction.deferred) {
-            await buttonInteraction.reply({
-              content: "I could not update this petting dashboard.",
-              ephemeral: true,
-            });
-          }
-        }
-      });
-
-      collector.on("end", async () => {
-        try {
-          const disabledRow = createDashboardButtons({
-            ownerId: interaction.user.id,
-            targetId: target.id,
-            activePage: PAGE.INFO,
-          });
-
-          for (const button of disabledRow.components) {
-            button.setDisabled(true);
-          }
-
-          await interaction.editReply({
-            components: [disabledRow],
-          });
-        } catch (error) {
-          console.error(
-            `[petting] Failed to disable expired dashboard for ${interaction.user.id}:`,
-            error,
-          );
-        }
       });
     } catch (error) {
       console.error(

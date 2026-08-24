@@ -19,7 +19,6 @@ const PAGE = {
   STATS: "stats",
   LEADERBOARD: "leaderboard",
   ACHIEVEMENTS: "achievements",
-  CAT: "cat",
 };
 
 const LEADERBOARD_LIMIT = 10;
@@ -80,11 +79,6 @@ function createPettingButtons({ ownerId, targetId, activePage }) {
       label: "Achievements",
       emoji: "🎖️",
     },
-    {
-      page: PAGE.CAT,
-      label: "Cat",
-      emoji: "🐈",
-    },
   ];
 
   return new ActionRowBuilder().addComponents(
@@ -115,11 +109,11 @@ function formatPercentage(numerator, denominator) {
   return `${Math.round((numerator / denominator) * 100)}%`;
 }
 
-function progressBar(progress, length = 10) {
+function progressBar(progress, length = 25) {
   const safeProgress = Math.max(0, Math.min(1, Number(progress) || 0));
   const filled = Math.round(safeProgress * length);
 
-  return `${"█".repeat(filled)}${"░".repeat(length - filled)}`;
+  return `[${"=".repeat(filled)}${"–".repeat(length - filled)}]`;
 }
 
 async function getUserFromId(client, userId) {
@@ -371,31 +365,6 @@ async function buildPettingAchievementsEmbed(interaction, target) {
     .setTimestamp();
 }
 
-async function buildPettingCatEmbed(interaction, target) {
-  const stats = await petting.getUserStats(target.id);
-  const displayName = await getDisplayName(interaction, target);
-
-  return new EmbedBuilder()
-    .setColor(0x34d399)
-    .setTitle(`🐈 ${displayName}'s Petting Cat`)
-    .setThumbnail(
-      target.displayAvatarURL({
-        extension: "webp",
-        forceStatic: true,
-        size: 512,
-      }),
-    )
-    .setDescription(
-      [
-        `Selected cat: **${stats.selectedCat || "default"}**`,
-        "",
-        "The cat designer is not implemented yet.",
-        "For now, this page uses the Discord profile avatar as the cat portrait.",
-      ].join("\n"),
-    )
-    .setTimestamp();
-}
-
 async function buildPettingDashboardEmbed(interaction, target, page) {
   switch (page) {
     case PAGE.STATS:
@@ -406,9 +375,6 @@ async function buildPettingDashboardEmbed(interaction, target, page) {
 
     case PAGE.ACHIEVEMENTS:
       return buildPettingAchievementsEmbed(interaction, target);
-
-    case PAGE.CAT:
-      return buildPettingCatEmbed(interaction, target);
 
     case PAGE.INFO:
     default:

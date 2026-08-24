@@ -12,7 +12,7 @@ const RECIPROCATION_POINTS = 8;
 const COMBO_START_POINTS = 15;
 const COMBO_CONTINUE_POINTS = 3;
 
-const DATA_DIRECTORY = path.resolve(__dirname, "../db");
+const DATA_DIRECTORY = path.resolve(__dirname, "db");
 const STATS_FILE = path.join(DATA_DIRECTORY, "petting.csv");
 const PAIRS_FILE = path.join(DATA_DIRECTORY, "petting-pairs.json");
 const COMBOS_FILE = path.join(DATA_DIRECTORY, "petting-combos.json");
