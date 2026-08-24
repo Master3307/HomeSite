@@ -18,8 +18,10 @@
     "pnpm": ">=10.0.0"
   },
   "dependencies": {
+    "@cwasm/webp": "^0.1.5",
     "@discordjs/rest": "^1.7.1",
     "@mongez/sitemap": "^1.0.2",
+    "canvas": "^3.2.3",
     "cors": "^2.8.6",
     "csv-parse": "^6.2.1",
     "csv-stringify": "^6.8.3",
@@ -28,6 +30,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
+    "gifenc": "^1.0.3",
     "i18next": "^26.4.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
