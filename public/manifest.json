@@ -2,6 +2,8 @@
     "id": "/",
     "name": "MrKoby07 — HomeSite",
     "short_name": "HomeSite",
+    "description": "MrKoby07's personal website, projects, and links.",
+    "lang": "en",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
