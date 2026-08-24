@@ -55,7 +55,6 @@ Methods of contact include:
 
 - [GitHub Discussion](https://github.com/Master3307/HomeSite/discussions/29)
 - [Add on Discord directly:](https://discord.com/users/817826076486139985) master3307
-- [Discord Server](https://discord.gg/px86PYjcyB)
 - [Email](mailto:hirmerkorbinian122@gmail.com)
 
 ## Credits
