@@ -3,6 +3,7 @@
     "name": "MrKoby07 — HomeSite",
     "short_name": "HomeSite",
     "description": "MrKoby07's personal website, projects, and links.",
+    "categories": ["personal", "portfolio", "social"],
     "lang": "en",
     "start_url": "/",
     "scope": "/",
@@ -22,5 +23,19 @@
         "type": "image/png",
         "purpose": "any"
       }
-    ]
+    ],
+    "shortcuts": [
+        {
+          "name": "Profile Card",
+          "short_name": "Card",
+          "description": "Open MrKoby07's profile card.",
+          "url": "/card"
+        },
+        {
+          "name": "About",
+          "short_name": "About",
+          "description": "Learn more about MrKoby07 and HomeSite.",
+          "url": "/about"
+        }
+      ]
   }
