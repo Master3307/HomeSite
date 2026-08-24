@@ -407,6 +407,44 @@ async function applyPoints(member, pointsDelta) {
   return user;
 }
 
+async function addPoints(userId, pointsDelta, reason = "Unknown source") {
+  const normalizedUserId = String(userId);
+  const safePointsDelta = Math.floor(Number(pointsDelta) || 0);
+
+  if (!normalizedUserId) {
+    throw new Error("[Levels] addPoints requires a user ID.");
+  }
+
+  if (safePointsDelta === 0) {
+    return getUser(normalizedUserId);
+  }
+
+  const user = getUser(normalizedUserId);
+  const oldLevel = user.level;
+
+  user.points = Math.max(0, user.points + safePointsDelta);
+  user.level = calculateLevel(user.points);
+
+  await save();
+
+  console.log(
+    `[Levels] Added ${safePointsDelta} point(s) to ${normalizedUserId} from ${reason}.`,
+  );
+
+  /*
+    No role rewards or level-up embed are sent here because this function
+    only receives a user ID, not a GuildMember. The /pet command can fetch
+    members and handle announcements if you want petting level-ups to be
+    publicly announced.
+  */
+  return {
+    ...user,
+    leveledUp: user.level > oldLevel,
+    oldLevel,
+    pointsAdded: safePointsDelta,
+  };
+}
+
 async function setPoints(member, points) {
   if (!member?.id || !member?.user) {
     throw new Error("[Levels] setPoints requires a GuildMember object.");
@@ -539,6 +577,7 @@ module.exports = {
   trackMessage,
 
   applyPoints,
+  addPoints,
   setPoints,
   setLevel,
 };
