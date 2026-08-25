@@ -48,40 +48,30 @@ function getAchievementLines(achievements, userId) {
 
 function buildPetEmbed(interaction, target, result) {
   const isNormalPet = result.type === "normal";
-  const isReciprocatedPet = result.type === "reciprocated";
+  const isComboStarted = result.type === "comboStarted";
   const isCombo = result.type === "combo";
 
   let title = "🐾 Pet!";
   let color = 0xf472b6;
-  let description = `${interaction.user} has petted ${target}!\n${target}, pet them back within one minute to start a combo.`;
+  let description = `You petted ${target}!`;
 
-  if (isReciprocatedPet) {
-    title = "✨ Pet returned!";
+  if (isNormalPet) {
+    description += `\n${target}, pet them back within one minute to start a combo.`;
+  }
+
+  if (isComboStarted) {
+    title = "✨ Combo started!";
     color = 0xa78bfa;
-    description = `${interaction.user} petted ${target} back!\nA petting combo has started.`;
+    description = `You've started a petting combo!`;
   }
 
   if (isCombo) {
     title = "✨ Petting combo!";
     color = 0xfbbf24;
-    description = `${interaction.user} petted ${target} back!\nTheir petting combo is now **${result.combo.count}**.`;
+    description = `Your petting combo is now **${result.combo.count}**.`;
   }
 
-  const fields = [
-    {
-      name: "Points earned",
-      value: `${interaction.user}: +${result.rewards.petterPoints}`,
-      inline: true,
-    },
-  ];
-
-  if (result.rewards.targetPoints > 0) {
-    fields.push({
-      name: "Shared points",
-      value: `${target}: +${result.rewards.targetPoints}`,
-      inline: true,
-    });
-  }
+  const fields = [];
 
   if (result.combo?.count > 0) {
     fields.push({
@@ -111,7 +101,7 @@ function buildPetEmbed(interaction, target, result) {
 
   if (petterAchievements) {
     fields.push({
-      name: `${interaction.user.username}'s achievement unlocked`,
+      name: `${interaction.user.username}'s achievements unlocked`,
       value: petterAchievements,
       inline: false,
     });
@@ -124,7 +114,7 @@ function buildPetEmbed(interaction, target, result) {
 
   if (targetAchievements) {
     fields.push({
-      name: `${target.username}'s achievement unlocked`,
+      name: `${target.username}'s achievements unlocked`,
       value: targetAchievements,
       inline: false,
     });

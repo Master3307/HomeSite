@@ -4,11 +4,10 @@ const path = require("node:path");
 const levels = require("./levels.cjs");
 
 const PET_COOLDOWN_MS = 60 * 60 * 1000;
-const RECIPROCATION_WINDOW_MS = 60 * 1000;
+const COMBO_START_WINDOW_MS = 60 * 1000;
 const COMBO_TIMEOUT_MS = 60 * 60 * 1000;
 
 const NORMAL_PET_POINTS = 2;
-const RECIPROCATION_POINTS = 8;
 const COMBO_START_POINTS = 15;
 const COMBO_CONTINUE_POINTS = 3;
 
@@ -27,7 +26,6 @@ const CSV_HEADER = [
   "totalReceived",
   "uniquePeoplePetted",
   "uniquePeoplePettingYou",
-  "reciprocalPets",
   "comboStarts",
   "bestCombo",
   "currentCombo",
@@ -80,20 +78,6 @@ const ACHIEVEMENTS = [
     threshold: 100,
   },
   {
-    id: "first_reciprocation",
-    name: "Pet Them Back",
-    description: "Return a pet within one minute.",
-    stat: "reciprocalPets",
-    threshold: 1,
-  },
-  {
-    id: "reciprocal_25",
-    name: "Mutual Affection",
-    description: "Return 25 pets.",
-    stat: "reciprocalPets",
-    threshold: 25,
-  },
-  {
     id: "combo_5",
     name: "Purrfect Rhythm",
     description: "Reach a 5-pet combo.",
@@ -127,9 +111,7 @@ let mutationQueue = Promise.resolve();
 
 function enqueueMutation(task) {
   const queuedTask = mutationQueue.then(task, task);
-
   mutationQueue = queuedTask.catch(() => {});
-
   return queuedTask;
 }
 
@@ -144,7 +126,6 @@ function createDefaultStats(userId) {
     totalReceived: 0,
     uniquePeoplePetted: 0,
     uniquePeoplePettingYou: 0,
-    reciprocalPets: 0,
     comboStarts: 0,
     bestCombo: 0,
     currentCombo: 0,
@@ -156,7 +137,6 @@ function createDefaultStats(userId) {
 
 function toNumber(value, fallback = 0) {
   const parsed = Number(value);
-
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
@@ -190,7 +170,6 @@ function parseCsvLine(line) {
   }
 
   values.push(currentValue);
-
   return values;
 }
 
@@ -237,7 +216,6 @@ function parseStatsCsv(contents) {
       totalReceived: toNumber(row.totalReceived),
       uniquePeoplePetted: toNumber(row.uniquePeoplePetted),
       uniquePeoplePettingYou: toNumber(row.uniquePeoplePettingYou),
-      reciprocalPets: toNumber(row.reciprocalPets),
       comboStarts: toNumber(row.comboStarts),
       bestCombo: toNumber(row.bestCombo),
       currentCombo: toNumber(row.currentCombo),
@@ -279,9 +257,7 @@ async function readFileOrDefault(filePath, fallback) {
 }
 
 async function loadStats() {
-  const contents = await readFileOrDefault(STATS_FILE, "");
-
-  return parseStatsCsv(contents);
+  return parseStatsCsv(await readFileOrDefault(STATS_FILE, ""));
 }
 
 async function loadJson(filePath) {
@@ -425,20 +401,14 @@ function updateUniquePettingCounts({
 
   const petterHasPettedTargetBefore =
     pair.pettedBy?.[String(petterId)] === true;
-  const targetHasBeenPettedByPetterBefore =
-    pair.pettedBy?.[String(petterId)] === true;
 
   if (!petterHasPettedTargetBefore) {
     petterStats.uniquePeoplePetted += 1;
-  }
-
-  if (!targetHasBeenPettedByPetterBefore) {
     targetStats.uniquePeoplePettingYou += 1;
   }
 
   pair.pettedBy ??= {};
   pair.pettedBy[String(petterId)] = true;
-
   pairs[key] = pair;
 }
 
@@ -522,12 +492,7 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
       loadJson(ACHIEVEMENTS_FILE),
     ]);
 
-    clearExpiredState({
-      pairs,
-      combos,
-      stats,
-      now,
-    });
+    clearExpiredState({ pairs, combos, stats, now });
 
     const petterStats = getOrCreateStats(stats, normalizedPetterId);
     const targetStats = getOrCreateStats(stats, normalizedTargetId);
@@ -539,12 +504,12 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
     const previousPetAt = toNumber(previousPair.lastPetAt);
     const cooldownUntil = toNumber(previousPair.cooldownUntil);
 
-    const isReturnedPet =
+    const startsCombo =
       previousPetterId === normalizedTargetId &&
       previousTargetId === normalizedPetterId &&
-      now - previousPetAt <= RECIPROCATION_WINDOW_MS;
+      now - previousPetAt <= COMBO_START_WINDOW_MS;
 
-    if (!isReturnedPet && cooldownUntil > now) {
+    if (!startsCombo && cooldownUntil > now) {
       return {
         ok: false,
         code: "COOLDOWN",
@@ -589,12 +554,7 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
     let petterPoints = NORMAL_PET_POINTS;
     let targetPoints = 0;
 
-    if (isReturnedPet) {
-      type = "reciprocated";
-
-      petterStats.reciprocalPets += 1;
-      targetStats.reciprocalPets += 1;
-
+    if (startsCombo) {
       pair.cooldownUntil = 0;
 
       const existingCombo = combos[key];
@@ -638,6 +598,8 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
           milestonePoints,
         };
       } else {
+        type = "comboStarted";
+
         const combo = {
           users: [normalizedPetterId, normalizedTargetId],
           startedAt: now,
@@ -657,8 +619,8 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
         petterStats.bestCombo = Math.max(petterStats.bestCombo, combo.count);
         targetStats.bestCombo = Math.max(targetStats.bestCombo, combo.count);
 
-        petterPoints = RECIPROCATION_POINTS + COMBO_START_POINTS;
-        targetPoints = RECIPROCATION_POINTS + COMBO_START_POINTS;
+        petterPoints = COMBO_START_POINTS;
+        targetPoints = COMBO_START_POINTS;
 
         comboResult = {
           started: true,
@@ -684,9 +646,6 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
 
     pairs[key] = pair;
 
-    petterStats.updatedAt = now;
-    targetStats.updatedAt = now;
-
     unlockedAchievements.push(
       ...evaluateAchievements({
         achievementStore: achievements,
@@ -709,12 +668,7 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
       })),
     );
 
-    await saveAll({
-      stats,
-      pairs,
-      combos,
-      achievements,
-    });
+    await saveAll({ stats, pairs, combos, achievements });
 
     awardLevelPoints(
       normalizedPetterId,
@@ -734,8 +688,6 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
       petterId: normalizedPetterId,
       targetId: normalizedTargetId,
       cooldownUntil: toNumber(pair.cooldownUntil),
-      reciprocationWindowEndsAt:
-        type === "normal" ? now + RECIPROCATION_WINDOW_MS : 0,
       combo: comboResult,
       endedCombos,
       rewards: {
@@ -778,7 +730,6 @@ async function getUserStats(userId) {
           lastPetAt: toNumber(combo.lastPetAt),
           expiresAt: toNumber(combo.expiresAt),
         };
-
         break;
       }
     }
@@ -795,12 +746,10 @@ async function getLeaderboard({ sortBy = "totalGiven", limit = 10 } = {}) {
     "totalGiven",
     "totalReceived",
     "bestCombo",
-    "reciprocalPets",
     "comboStarts",
   ]);
 
   const normalizedSortBy = allowedSorts.has(sortBy) ? sortBy : "totalGiven";
-
   const normalizedLimit = Math.min(Math.max(Number(limit) || 10, 1), 100);
 
   return enqueueMutation(async () => {
@@ -866,7 +815,7 @@ async function getUserAchievements(userId) {
 
 module.exports = {
   PET_COOLDOWN_MS,
-  RECIPROCATION_WINDOW_MS,
+  COMBO_START_WINDOW_MS,
   COMBO_TIMEOUT_MS,
   ACHIEVEMENTS,
   petUser,
