@@ -55,10 +55,6 @@ function buildPetEmbed(interaction, target, result) {
   let color = 0xf472b6;
   let description = `You petted ${target}!`;
 
-  if (isNormalPet) {
-    description += `\n${target}, pet them back within one minute to start a combo.`;
-  }
-
   if (isComboStarted) {
     title = "✨ Combo started!";
     color = 0xa78bfa;
@@ -305,6 +301,7 @@ module.exports = {
         petterId: interaction.user.id,
         targetId: target.id,
       });
+      console.dir(result, { depth: null });
 
       if (!result.ok) {
         if (result.code === "SELF_PET") {
