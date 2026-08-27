@@ -41,10 +41,23 @@ if (!SESSION_SECRET) throw new Error("Missing SESSION_SECRET");
 
 const app = express();
 
+const allowedOrigins = new Set([
+  FRONTEND_ORIGIN, // https://home.master3307.org
+  "http://localhost:5173", // Vite development server
+  "http://127.0.0.1:5173",
+]);
+
 app.set("trust proxy", 1);
 app.use(
   cors({
-    origin: FRONTEND_ORIGIN,
+    origin(origin, callback) {
+      // Requests from browsers include Origin; CLI tools commonly do not.
+      if (!origin || allowedOrigins.has(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS origin not allowed: ${origin}`));
+    },
     credentials: true,
   }),
 );
