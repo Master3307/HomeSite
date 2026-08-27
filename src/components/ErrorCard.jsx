@@ -40,19 +40,19 @@ export default function ErrorCard({ errorInfo }) {
       <br />
 
       <div className="errorButtons">
-        <button type="button" onClick={() => navigate(-1)}>
+        <button className='errorButton' type="button" onClick={() => navigate(-1)}>
           <span className="material-symbols-outlined">arrow_left_alt</span>
           {t('back')}
         </button>
 
         <Link to="/">
-          <button type="button">
+          <button className='errorButton' type="button">
             <span className="material-symbols-outlined">home</span>
             {t('home')}
           </button>
         </Link>
 
-        <button type="button" onClick={() => window.location.reload()}>
+        <button className='errorButton' type="button" onClick={() => window.location.reload()}>
           <span className="material-symbols-outlined">refresh</span>
           {t('reload')}
         </button>

@@ -1,9 +1,35 @@
 .errorPage {
-  --bg-secondary: #970000 !important;
-  --accent: #b60b0b !important;
-  --accent-hover: #610000 !important;
-  --bg-primary: #320505 !important;
+  --bg-secondary: #980000;
+  --accent: #4b0000;
+  --accent-hover: #610000;
+  --bg-primary: #260505;
 
+  position: relative;
+  z-index: 0;
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
+  line-height: 1.3;
+}
+
+.errorPage::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: linear-gradient(
+    to bottom,
+    var(--bg-secondary) 0%,
+    var(--bg-primary) 80%
+  );
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  pointer-events: none;
 }
 
 .errorButtons {
@@ -11,5 +37,22 @@
   justify-content: center;
   gap: 69px;
   flex-wrap: wrap;
+
 }
 
+.errorButton {
+  background-color: color-mix(in srgb, var(--bg-accent) 70%, transparent);
+  backdrop-filter: blur(13px);
+  -webkit-backdrop-filter: blur(13px); /* Safari */
+  padding: 10px 12px;
+  border-radius: 13px;
+  box-shadow:
+  0 10px 30px rgba(0, 0, 0, 0.14),
+  inset 0 1px 0 rgba(255, 255, 255, 0.047);
+
+}
+
+.about-card {
+  margin-top: auto !important;
+  margin-bottom: 32px !important;
+}

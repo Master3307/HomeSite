@@ -3,11 +3,11 @@
 /* Theme */
 :root,
 :root[data-theme="dark"] {
-  --bg-primary: #0d0714;
+  --bg-primary: #150a24;
   --bg-secondary: #63369e;
-  --text-primary: #ffffff;
+  --text-primary: #eee;
   --text-secondary: #c0bfe6;
-  --text-thirdary: #ffffff;
+  --text-thirdary: #eee;
   --vier: #000000;
   --accent: #3d29d4;
   --accent-hover: #594bd667;
@@ -17,11 +17,11 @@
 
 :root[data-theme="light"] {
   --bg-primary: #b28ee1;
-  --bg-secondary: #8859c6;
-  --text-primary: #ffffff;
+  --bg-secondary: #8452c5;
+  --text-primary: #eee;
   --text-secondary: #c1bdce;
   --text-thirdary: #000000;
-  --vier: #ffffff;
+  --vier: #eee;
   --accent: #5f4ee6;
   --accent-hover: #4638c9;
   --border: #e6e0f6;
@@ -31,10 +31,10 @@
   :root:not([data-theme]) {
     --bg-primary: #b28ee1;
     --bg-secondary: #8859c6;
-    --text-primary: #ffffff;
+    --text-primary: #eee;
     --text-secondary: #c1bdce;
     --text-thirdary: #000000;
-    --vier: #ffffff;
+    --vier: #eee;
     --accent: #5f4ee6;
     --accent-hover: #4638c9;
     --border: #e6e0f6;
@@ -73,7 +73,11 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background-image: linear-gradient(var(--bg-secondary), var(--bg-primary));
+  background-image: linear-gradient(
+  to bottom,
+  var(--bg-secondary) 0%,
+  var(--bg-primary) 80%
+);
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
@@ -133,6 +137,24 @@ button:hover {
 }
 
 /* Utilities */
+.head {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+
+  z-index: 1000;
+
+  /* Blue/tinted background — adjust alpha to taste */
+  background-color: color-mix(in srgb, var(--bg-secondary) 13%, transparent);
+
+  /* Blur content scrolling underneath */
+  backdrop-filter: blur(13px);
+  -webkit-backdrop-filter: blur(13px); /* Safari */
+
+  /* Optional: define the lower edge more clearly */
+}
+
 .tit {
   display: flex;
   align-items: center;
@@ -145,9 +167,10 @@ button:hover {
 /* Card */
 .card {
   position: relative;
-  width: 90%;
-  max-width: 888px;
+  width: 95%;
+  max-width: 777px;
   margin: 42px auto;
+  margin-top: 69px;
   padding: 28px 26px;
   overflow: hidden;
   text-align: center;
@@ -155,8 +178,8 @@ button:hover {
   border-radius: 13px;
   transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
   transition: transform 0.5s ease-out;
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.047);
@@ -321,12 +344,17 @@ button:hover {
   padding: 10px 12px;
   color: var(--text-primary);
   background: var(--bg-secondary);
-  border: 1px solid var(--accent);
+  border: 0px solid var(--accent);
   border-radius: 13px;
+  background-color: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
+  backdrop-filter: blur(13px);
+  -webkit-backdrop-filter: blur(13px); /* Safari */
+  box-shadow:
+  0 10px 30px rgba(0, 0, 0, 0.14),
+  inset 0 1px 0 rgba(255, 255, 255, 0.047);
 }
 
 .picker select:hover {
-  border-color: var(--accent-hover);
   background: var(--accent-hover);
 }
 
@@ -709,5 +737,6 @@ button:hover {
     opacity: 0.7;
     overflow-wrap: anywhere;
   }
+
 }
 
