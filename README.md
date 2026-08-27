@@ -62,3 +62,7 @@ Methods of contact include:
 Discord Bot Template by [NamVr](https://github.com/NamVr/) found [here](https://github.com/NamVr/DiscordBot-Template)
 
 Card Tilt effect by [Stormxxboy](https://stormxxboy.com/card/) found [here](https://stormxxboy.com/card/script.js)
+
+---------------------------------------------------------------------
+
+<p align="center"><img src="public/favicon.png" alt="HomeSite" style="height: 46px; width: auto;"></p>
