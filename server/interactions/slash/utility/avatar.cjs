@@ -108,32 +108,32 @@ async function getCustomAvatarPath(userId) {
   return exists ? avatarPath : null;
 }
 
-async function showCustomAvatar(interaction, target) {
-  const avatarFilename = `${target.id}.webp`;
-  const avatarPath = await getCustomAvatarPath(target.id);
+async function showOwnCustomAvatar(interaction) {
+  const avatarPath = await getCustomAvatarPath(interaction.user.id);
 
   if (!avatarPath) {
     await interaction.reply({
-      content: "That user does not have a custom avatar set.",
+      content: "You do not have a custom avatar set.",
       ephemeral: true,
     });
     return;
   }
 
   const avatar = new AttachmentBuilder(avatarPath, {
-    name: avatarFilename,
+    name: `${interaction.user.id}.webp`,
   });
 
   await interaction.reply({
-    content: `${target.username}'s custom avatar:`,
+    content: "Your custom avatar:",
     files: [avatar],
+    ephemeral: true,
   });
 }
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("avatar")
-    .setDescription("View or manage custom avatars.")
+    .setDescription("View or manage your custom avatar.")
     .setIntegrationTypes(
       ApplicationIntegrationType.GuildInstall,
       ApplicationIntegrationType.UserInstall,
@@ -144,14 +144,7 @@ module.exports = {
       InteractionContextType.PrivateChannel,
     )
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName("view")
-        .setDescription("View a user's custom avatar.")
-        .addUserOption((option) =>
-          option
-            .setName("user")
-            .setDescription("The user whose custom avatar you want to view."),
-        ),
+      subcommand.setName("view").setDescription("View your custom avatar."),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -172,9 +165,7 @@ module.exports = {
     const subcommand = interaction.options.getSubcommand(true);
 
     if (subcommand === "view") {
-      const target = interaction.options.getUser("user") ?? interaction.user;
-
-      await showCustomAvatar(interaction, target);
+      await showOwnCustomAvatar(interaction);
       return;
     }
 
