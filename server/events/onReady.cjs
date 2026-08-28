@@ -1,28 +1,25 @@
-/**
- * @file Ready Event File.
- * @author Naman Vrati
- * @since 1.0.0
- * @version 3.2.2
- */
-
 const levels = require("../services/levels.cjs");
+const birthdayCelebrations = require("../services/birthdayCelebrations.cjs");
 
 module.exports = {
   name: "clientReady",
   once: true,
 
-  /**
-   * @description Executes when client is ready (bot initialization).
-   * @param {import('../typings').Client} client Main Application Client.
-   */
   async execute(client) {
+    console.log(`Ready! Logged in as ${client.user.tag}`);
+
     try {
       await levels.load();
-      console.log(`[Levels] Service initialized.`);
+      console.log("[Levels] Service initialized.");
     } catch (error) {
       console.error("[Levels] Failed to initialize:", error);
     }
 
-    console.log(`Ready! Logged in as ${client.user.tag}`);
+    try {
+      birthdayCelebrations.startBirthdayCelebrations(client);
+      console.log("[Birthday] Celebration scheduler initialized.");
+    } catch (error) {
+      console.error("[Birthday] Failed to initialize scheduler:", error);
+    }
   },
 };
