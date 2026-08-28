@@ -1,5 +1,4 @@
 const { EmbedBuilder } = require("discord.js");
-const birthdayService = require("./birthday.cjs");
 
 const BIRTHDAY_CHANNEL_ID = "1542832215195648030";
 const CHECK_INTERVAL = 60 * 60 * 1000;
@@ -19,10 +18,6 @@ function isLeapYear(year) {
   return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
 }
 
-/*
- * We celebrate 29 February birthdays on 28 February in years
- * that do not have a 29 February.
- */
 function isBirthdayToday(birthday, now = new Date()) {
   const month = now.getMonth() + 1;
   const day = now.getDate();
@@ -46,19 +41,7 @@ function getAgeTurning(birthday, now = new Date()) {
   return now.getFullYear() - birthday.year;
 }
 
-async function sendBirthdayMessages(client) {
-  const todayKey = getDateKey();
-
-  /*
-   * Avoid duplicate celebrations during the same process lifetime.
-   * The scheduler may run every hour, but messages should only be sent once/day.
-   */
-  if (lastCheckedDate === todayKey) {
-    return;
-  }
-
-  lastCheckedDate = todayKey;
-
+async function getBirthdayChannel(client) {
   let channel;
 
   try {
@@ -68,65 +51,127 @@ async function sendBirthdayMessages(client) {
       `[birthday-celebrations] Could not fetch channel ${BIRTHDAY_CHANNEL_ID}:`,
       error,
     );
-    return;
+
+    return null;
   }
 
   if (!channel || !channel.isTextBased() || !channel.isSendable()) {
     console.error(
       `[birthday-celebrations] Channel ${BIRTHDAY_CHANNEL_ID} cannot receive messages.`,
     );
+
+    return null;
+  }
+
+  return channel;
+}
+
+async function announceBirthday(client, birthday) {
+  const channel = await getBirthdayChannel(client);
+
+  if (!channel) {
+    return false;
+  }
+
+  const ageTurning = getAgeTurning(birthday);
+
+  const description =
+    ageTurning === null
+      ? `Happy birthday, <@${birthday.userId}>! 🎉`
+      : `Happy birthday, <@${birthday.userId}>!\nYou are turning **${ageTurning}** today! 🎉`;
+
+  const embed = new EmbedBuilder()
+    .setColor(0xf1c40f)
+    .setTitle("🎂 Happy birthday!!")
+    .setDescription(description)
+    .setTimestamp();
+
+  try {
+    await channel.send({
+      content: `<@${birthday.userId}>`,
+      embeds: [embed],
+      allowedMentions: {
+        users: [birthday.userId],
+      },
+    });
+
+    return true;
+  } catch (error) {
+    console.error(
+      `[birthday-celebrations] Failed to announce birthday for ${birthday.userId}:`,
+      error,
+    );
+
+    return false;
+  }
+}
+
+async function announceBirthdays(client, birthdays) {
+  if (birthdays.length === 0) {
+    return false;
+  }
+
+  const channel = await getBirthdayChannel(client);
+
+  if (!channel) {
+    return false;
+  }
+
+  const birthdayLines = birthdays.map((birthday) => {
+    const ageTurning = getAgeTurning(birthday);
+
+    return ageTurning === null
+      ? `🎉 <@${birthday.userId}>`
+      : `🎉 <@${birthday.userId}> is turning **${ageTurning}** today!`;
+  });
+
+  const embed = new EmbedBuilder()
+    .setColor(0xf1c40f)
+    .setTitle("🎂 Happy birthday!")
+    .setDescription(
+      ["Birthdays:", "", ...birthdayLines, "", "Have an amazing day! 🥳"].join(
+        "\n",
+      ),
+    )
+    .setTimestamp();
+
+  try {
+    await channel.send({
+      content: birthdays.map((birthday) => `<@${birthday.userId}>`).join(" "),
+      embeds: [embed],
+      allowedMentions: {
+        users: birthdays.map((birthday) => birthday.userId),
+      },
+    });
+
+    return true;
+  } catch (error) {
+    console.error(
+      "[birthday-celebrations] Failed to send scheduled birthday message:",
+      error,
+    );
+
+    return false;
+  }
+}
+
+async function sendBirthdayMessages(client) {
+  const todayKey = getDateKey();
+
+  if (lastCheckedDate === todayKey) {
     return;
   }
 
+  lastCheckedDate = todayKey;
+
+  const birthdayService = require("./birthday.cjs");
+
   for (const guild of client.guilds.cache.values()) {
-    const birthdays = birthdayService.getGuildBirthdays(guild.id);
+    const todaysBirthdays = birthdayService
+      .getGuildBirthdays(guild.id)
+      .filter((birthday) => isBirthdayToday(birthday));
 
-    const todaysBirthdays = birthdays.filter((birthday) =>
-      isBirthdayToday(birthday),
-    );
-
-    if (todaysBirthdays.length === 0) {
-      continue;
-    }
-
-    const birthdayLines = todaysBirthdays.map((birthday) => {
-      const ageTurning = getAgeTurning(birthday);
-
-      return ageTurning === null
-        ? `🎉 <@${birthday.userId}>`
-        : `🎉 <@${birthday.userId}> is turning **${ageTurning}** today!`;
-    });
-
-    const embed = new EmbedBuilder()
-      .setColor(0xf1c40f)
-      .setTitle("🎂 Happy birthday!")
-      .setDescription(
-        [
-          "Happy birthday to:",
-          "",
-          ...birthdayLines,
-          "",
-          "Have an amazing day! 🥳",
-        ].join("\n"),
-      )
-      .setTimestamp();
-
-    try {
-      await channel.send({
-        content: todaysBirthdays
-          .map((birthday) => `<@${birthday.userId}>`)
-          .join(" "),
-        embeds: [embed],
-        allowedMentions: {
-          users: todaysBirthdays.map((birthday) => birthday.userId),
-        },
-      });
-    } catch (error) {
-      console.error(
-        `[birthday-celebrations] Failed to send birthday message for guild ${guild.id}:`,
-        error,
-      );
-    }
+    await announceBirthdays(client, todaysBirthdays);
   }
 }
 
@@ -181,6 +226,7 @@ function stopBirthdayCelebrations() {
 }
 
 module.exports = {
+  announceBirthday,
   startBirthdayCelebrations,
   stopBirthdayCelebrations,
 };

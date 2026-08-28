@@ -6,9 +6,109 @@ const {
   ButtonStyle,
 } = require("discord.js");
 const birthdayService = require("../../../services/birthday.cjs");
+const birthdayCelebrations = require("../../../services/birthdayCelebrations.cjs");
 
 const ITEMS_PER_PAGE = 10;
 const CUSTOM_ID_PREFIX = "birthday-list";
+
+const MONTH_ALIASES = new Map([
+  // English / German / Ukrainian — January
+  ["january", 1],
+  ["jan", 1],
+  ["januar", 1],
+  ["січень", 1],
+  ["січня", 1],
+  ["січ", 1],
+
+  // February
+  ["february", 2],
+  ["feb", 2],
+  ["februar", 2],
+  ["лютий", 2],
+  ["лютого", 2],
+  ["лют", 2],
+
+  // March
+  ["march", 3],
+  ["mar", 3],
+  ["märz", 3],
+  ["maerz", 3],
+  ["mär", 3],
+  ["марта", 3],
+  ["березень", 3],
+  ["березня", 3],
+  ["бер", 3],
+
+  // April
+  ["april", 4],
+  ["apr", 4],
+  ["квітень", 4],
+  ["квітня", 4],
+  ["квіт", 4],
+
+  // May
+  ["may", 5],
+  ["mai", 5],
+  ["травень", 5],
+  ["травня", 5],
+  ["трав", 5],
+
+  // June
+  ["june", 6],
+  ["jun", 6],
+  ["juni", 6],
+  ["червень", 6],
+  ["червня", 6],
+  ["черв", 6],
+
+  // July
+  ["july", 7],
+  ["jul", 7],
+  ["juli", 7],
+  ["липень", 7],
+  ["липня", 7],
+  ["лип", 7],
+
+  // August
+  ["august", 8],
+  ["aug", 8],
+  ["серпень", 8],
+  ["серпня", 8],
+  ["серп", 8],
+
+  // September
+  ["september", 9],
+  ["sep", 9],
+  ["sept", 9],
+  ["вересень", 9],
+  ["вересня", 9],
+  ["вер", 9],
+
+  // October
+  ["october", 10],
+  ["oct", 10],
+  ["oktober", 10],
+  ["okt", 10],
+  ["жовтень", 10],
+  ["жовтня", 10],
+  ["жовт", 10],
+
+  // November
+  ["november", 11],
+  ["nov", 11],
+  ["листопад", 11],
+  ["листопада", 11],
+  ["лист", 11],
+
+  // December
+  ["december", 12],
+  ["dec", 12],
+  ["dezember", 12],
+  ["dez", 12],
+  ["грудень", 12],
+  ["грудня", 12],
+  ["груд", 12],
+]);
 
 function isLeapYear(year) {
   return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
@@ -31,66 +131,17 @@ function birthdayDateInYear(birthday, year) {
   return createDateAtMidnight(year, birthday.month, day);
 }
 
-function parseBirthdayDate(input) {
-  const value = String(input ?? "").trim();
+function getMonthFromName(value) {
+  const normalized = String(value)
+    .trim()
+    .toLocaleLowerCase()
+    .normalize("NFC")
+    .replace(/\.+$/u, "");
 
-  if (!value) {
-    return {
-      error:
-        "Please provide a date, for example `09.09.2010`, `09.09.` or a Discord timestamp.",
-    };
-  }
+  return MONTH_ALIASES.get(normalized) ?? null;
+}
 
-  const timestampMatch =
-    value.match(/^<t:(\d{1,13})(?::[tTdDfFR])?>$/) ??
-    value.match(/^(\d{10,13})$/);
-
-  if (timestampMatch) {
-    let timestamp = Number(timestampMatch[1]);
-
-    if (timestampMatch[1].length === 13) {
-      timestamp = Math.floor(timestamp / 1000);
-    }
-
-    const date = new Date(timestamp * 1000);
-
-    if (Number.isNaN(date.getTime())) {
-      return { error: "That timestamp is not a valid date." };
-    }
-
-    const year = date.getUTCFullYear();
-    const currentYear = new Date().getFullYear();
-
-    if (year < 1900 || year > currentYear) {
-      return {
-        error: `The year must be between \`1900\` and \`${currentYear}\`.`,
-      };
-    }
-
-    return {
-      birthday: {
-        day: date.getUTCDate(),
-        month: date.getUTCMonth() + 1,
-        year,
-      },
-    };
-  }
-
-  const dateMatch = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})?\.?$/);
-
-  if (!dateMatch) {
-    return {
-      error: [
-        "Invalid date format.",
-        "Use `DD.MM.YYYY`, `DD.MM.`, a Unix timestamp, or a Discord timestamp such as `<t:1283983200:D>`.",
-      ].join(" "),
-    };
-  }
-
-  const day = Number(dateMatch[1]);
-  const month = Number(dateMatch[2]);
-  const year = dateMatch[3] ? Number(dateMatch[3]) : null;
-
+function validateBirthdayParts(day, month, year) {
   if (month < 1 || month > 12) {
     return { error: "The month must be between `1` and `12`." };
   }
@@ -113,6 +164,94 @@ function parseBirthdayDate(input) {
       month,
       year,
     },
+  };
+}
+
+function parseBirthdayDate(input) {
+  const value = String(input ?? "").trim();
+
+  if (!value) {
+    return {
+      error: [
+        "Please provide a birthday date.",
+        "Examples: `09.09`, `09.09.2000`, `9th September`, `9. September`, or `9 вересня`.",
+      ].join(" "),
+    };
+  }
+
+  const timestampMatch =
+    value.match(/^<t:(\d{1,13})(?::[tTdDfFR])?>$/) ??
+    value.match(/^(\d{10,13})$/);
+
+  if (timestampMatch) {
+    let timestamp = Number(timestampMatch[1]);
+
+    if (timestampMatch[1].length === 13) {
+      timestamp = Math.floor(timestamp / 1000);
+    }
+
+    const date = new Date(timestamp * 1000);
+
+    if (Number.isNaN(date.getTime())) {
+      return { error: "That timestamp is not a valid date." };
+    }
+
+    return validateBirthdayParts(
+      date.getUTCDate(),
+      date.getUTCMonth() + 1,
+      date.getUTCFullYear(),
+    );
+  }
+
+  // Examples: 09.09, 9.9, 9.9., 09.09.2000
+  const numericMatch = value.match(
+    /^(\d{1,2})\s*\.\s*(\d{1,2})(?:\s*\.\s*(\d{4}))?\s*\.?$/,
+  );
+
+  if (numericMatch) {
+    return validateBirthdayParts(
+      Number(numericMatch[1]),
+      Number(numericMatch[2]),
+      numericMatch[3] ? Number(numericMatch[3]) : null,
+    );
+  }
+
+  // Examples:
+  // 9th September 2000
+  // 9th September
+  // 9 September
+  // 9. September
+  // 9th Sep
+  // 9th. Sep.
+  // 9er September
+  // 9 вересня
+  const namedMonthMatch = value.match(
+    /^(\d{1,2})(?:st|nd|rd|th|er)?\.?\s+([^\d\s.]+)\.?(?:\s+(\d{4}))?$/iu,
+  );
+
+  if (namedMonthMatch) {
+    const day = Number(namedMonthMatch[1]);
+    const month = getMonthFromName(namedMonthMatch[2]);
+    const year = namedMonthMatch[3] ? Number(namedMonthMatch[3]) : null;
+
+    if (month === null) {
+      return {
+        error: [
+          `Unknown month name: \`${namedMonthMatch[2]}\`.`,
+          "Use an English, German, or Ukrainian month name.",
+        ].join(" "),
+      };
+    }
+
+    return validateBirthdayParts(day, month, year);
+  }
+
+  return {
+    error: [
+      "Invalid date format.",
+      "Use `DD.MM.YYYY`, `DD.MM.`, a named month, a Unix timestamp, or a Discord timestamp.",
+      "Examples: `09.09`, `9th September 2000`, `9. September`, `9er September`, or `9 вересня`.",
+    ].join(" "),
   };
 }
 
@@ -269,7 +408,7 @@ module.exports = {
           option
             .setName("date")
             .setDescription(
-              "DD.MM.YYYY, DD.MM., Unix timestamp, or Discord timestamp.",
+              "Examples: 09.09, 9th September, 9. September, 9 вересня.",
             )
             .setRequired(true),
         ),
@@ -313,14 +452,21 @@ module.exports = {
         return;
       }
 
-      birthdayService.setBirthday(
+      const savedBirthday = birthdayService.setBirthday(
         interaction.guildId,
         interaction.user.id,
         parsed.birthday,
       );
 
-      const details = getBirthdayDetails(parsed.birthday);
-      const hasYear = parsed.birthday.year !== null;
+      const details = getBirthdayDetails(savedBirthday);
+      const hasYear = savedBirthday.year !== null;
+
+      if (details.isToday) {
+        await birthdayCelebrations.announceBirthday(interaction.client, {
+          userId: interaction.user.id,
+          ...savedBirthday,
+        });
+      }
 
       await interaction.reply({
         embeds: [
@@ -329,7 +475,7 @@ module.exports = {
             .setTitle("🎂 Birthday saved")
             .setDescription(
               [
-                `Your birthday has been set to **${formatBirthday(parsed.birthday)}**.`,
+                `Your birthday has been set to **${formatBirthday(parsed.birthday)}**`,
                 hasYear
                   ? `You are currently **${details.age}** and will turn **${details.nextAge}** on your next birthday.`
                   : "Your birth year was not saved, so no age is displayed.",
