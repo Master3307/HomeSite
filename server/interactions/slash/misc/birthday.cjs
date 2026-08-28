@@ -375,7 +375,7 @@ function createListEmbed(entries, page) {
 
     return [
       `**${number}.** <@${birthday.userId}>`,
-      `${formatBirthday(birthday)}${ageText} • ${when}`,
+      `${formatBirthday(birthday)}${ageText}・Next ${when}`,
     ].join("\n");
   });
 
@@ -384,7 +384,7 @@ function createListEmbed(entries, page) {
     .setTitle("🎂 Global birthday list")
     .setDescription(description.join("\n\n"))
     .setFooter({
-      text: `Page ${safePage + 1}/${pageCount} • ${entries.length} birthday${entries.length === 1 ? "" : "s"}`,
+      text: `Page ${safePage + 1}/${pageCount}・${entries.length} birthday${entries.length === 1 ? "" : "s"}`,
     })
     .setTimestamp();
 }

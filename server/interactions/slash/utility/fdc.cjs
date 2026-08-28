@@ -196,7 +196,7 @@ function makePollEmbed(options, votes, endsAt, ended = false) {
     .join("\n\n");
 
   const endText = ended
-    ? `Poll closed • **${total}** voter${total === 1 ? "" : "s"}.`
+    ? `Poll closed・**${total}** voter${total === 1 ? "" : "s"}.`
     : `Ends ${formatDiscordTimestamp(
         endsAt,
         "R",

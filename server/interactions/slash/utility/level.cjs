@@ -228,7 +228,7 @@ module.exports = {
             `**#${entry.rank}** ${displayName}` +
             `: **${entry.rankLabel}**` +
             ` (Level **${entry.level}**)` +
-            ` • ${entry.points.toLocaleString()} points`
+            `・${entry.points.toLocaleString()} points`
           );
         }),
       );
