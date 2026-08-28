@@ -4,7 +4,10 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  InteractionContextType,
+  ApplicationIntegrationType,
 } = require("discord.js");
+
 const birthdayService = require("../../../services/birthday.cjs");
 const birthdayCelebrations = require("../../../services/birthdayCelebrations.cjs");
 
@@ -350,9 +353,10 @@ function sortBirthdays(birthdays) {
     });
 }
 
-function createListEmbed(guild, entries, page) {
+function createListEmbed(entries, page) {
   const pageCount = Math.max(1, Math.ceil(entries.length / ITEMS_PER_PAGE));
   const safePage = Math.max(0, Math.min(page, pageCount - 1));
+
   const pageEntries = entries.slice(
     safePage * ITEMS_PER_PAGE,
     (safePage + 1) * ITEMS_PER_PAGE,
@@ -360,20 +364,24 @@ function createListEmbed(guild, entries, page) {
 
   const description = pageEntries.map((birthday, index) => {
     const number = safePage * ITEMS_PER_PAGE + index + 1;
-    const member = guild.members.cache.get(birthday.userId);
-    const displayName = member?.displayName ?? `<@${birthday.userId}>`;
+
     const hasYear = birthday.year !== null && birthday.year !== undefined;
+
     const ageText = hasYear ? ` — turns **${birthday.details.nextAge}**` : "";
+
     const when = birthday.details.isToday
       ? "🎉 **today**"
       : `<t:${birthday.details.nextBirthdayUnix}:R>`;
 
-    return `**${number}.** ${displayName}\n${formatBirthday(birthday)}${ageText} • ${when}`;
+    return [
+      `**${number}.** <@${birthday.userId}>`,
+      `${formatBirthday(birthday)}${ageText} • ${when}`,
+    ].join("\n");
   });
 
   return new EmbedBuilder()
     .setColor(0xe91e63)
-    .setTitle("🎂 Birthday list")
+    .setTitle("🎂 Global birthday list")
     .setDescription(description.join("\n\n"))
     .setFooter({
       text: `Page ${safePage + 1}/${pageCount} • ${entries.length} birthday${entries.length === 1 ? "" : "s"}`,
@@ -400,6 +408,15 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("birthday")
     .setDescription("Save, view, or browse birthdays.")
+    .setIntegrationTypes(
+      ApplicationIntegrationType.GuildInstall,
+      ApplicationIntegrationType.UserInstall,
+    )
+    .setContexts(
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel,
+    )
     .addSubcommand((subcommand) =>
       subcommand
         .setName("set")
@@ -424,20 +441,10 @@ module.exports = {
         ),
     )
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName("list")
-        .setDescription("Browse all birthdays saved in this server."),
+      subcommand.setName("list").setDescription("Browse all saved birthdays."),
     ),
 
   async execute(interaction) {
-    if (!interaction.inGuild()) {
-      await interaction.reply({
-        content: "This command can only be used in a server.",
-        ephemeral: true,
-      });
-      return;
-    }
-
     const subcommand = interaction.options.getSubcommand();
 
     if (subcommand === "set") {
@@ -453,7 +460,6 @@ module.exports = {
       }
 
       const savedBirthday = birthdayService.setBirthday(
-        interaction.guildId,
         interaction.user.id,
         parsed.birthday,
       );
@@ -492,10 +498,7 @@ module.exports = {
 
     if (subcommand === "view") {
       const target = interaction.options.getUser("user") ?? interaction.user;
-      const birthday = birthdayService.getBirthday(
-        interaction.guildId,
-        target.id,
-      );
+      const birthday = birthdayService.getBirthday(target.id);
 
       if (!birthday) {
         const ownBirthday = target.id === interaction.user.id;
@@ -516,9 +519,7 @@ module.exports = {
     }
 
     if (subcommand === "list") {
-      const entries = sortBirthdays(
-        birthdayService.getGuildBirthdays(interaction.guildId),
-      );
+      const entries = sortBirthdays(birthdayService.getAllBirthdays());
 
       if (entries.length === 0) {
         await interaction.reply({
@@ -532,7 +533,7 @@ module.exports = {
       const pageCount = Math.ceil(entries.length / ITEMS_PER_PAGE);
 
       await interaction.reply({
-        embeds: [createListEmbed(interaction.guild, entries, page)],
+        embeds: [createListEmbed(entries, page)],
         components:
           pageCount > 1
             ? [createListButtons(page, pageCount, interaction.user.id)]
@@ -547,14 +548,6 @@ module.exports = {
       !interaction.customId.startsWith(`${CUSTOM_ID_PREFIX}:`)
     ) {
       return false;
-    }
-
-    if (!interaction.inGuild()) {
-      await interaction.reply({
-        content: "This button can only be used in a server.",
-        ephemeral: true,
-      });
-      return true;
     }
 
     const [, direction, ownerId, pageString] = interaction.customId.split(":");
@@ -581,9 +574,7 @@ module.exports = {
       return true;
     }
 
-    const entries = sortBirthdays(
-      birthdayService.getGuildBirthdays(interaction.guildId),
-    );
+    const entries = sortBirthdays(birthdayService.getAllBirthdays());
 
     if (entries.length === 0) {
       await interaction.update({
@@ -600,7 +591,7 @@ module.exports = {
     const page = Math.max(0, Math.min(requestedPage, pageCount - 1));
 
     await interaction.update({
-      embeds: [createListEmbed(interaction.guild, entries, page)],
+      embeds: [createListEmbed(entries, page)],
       components:
         pageCount > 1 ? [createListButtons(page, pageCount, ownerId)] : [],
     });

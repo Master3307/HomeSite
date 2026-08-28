@@ -79,53 +79,54 @@ function normalizeBirthday(birthday) {
   return { day, month, year };
 }
 
-function getBirthday(guildId, userId) {
+function getBirthday(userId) {
   const birthdays = readBirthdays();
+  const birthday = birthdays[String(userId)];
 
-  return birthdays[String(guildId)]?.[String(userId)] ?? null;
+  return birthday ? normalizeBirthday(birthday) : null;
 }
 
-function getGuildBirthdays(guildId) {
+function getAllBirthdays() {
   const birthdays = readBirthdays();
-  const guildBirthdays = birthdays[String(guildId)] ?? {};
+  const entries = [];
 
-  return Object.entries(guildBirthdays).map(([userId, birthday]) => ({
-    userId,
-    ...normalizeBirthday(birthday),
-  }));
-}
-
-function setBirthday(guildId, userId, birthday) {
-  const birthdays = readBirthdays();
-  const normalizedBirthday = normalizeBirthday(birthday);
-  const guildKey = String(guildId);
-  const userKey = String(userId);
-
-  if (!birthdays[guildKey]) {
-    birthdays[guildKey] = {};
+  for (const [userId, birthday] of Object.entries(birthdays)) {
+    try {
+      entries.push({
+        userId,
+        ...normalizeBirthday(birthday),
+      });
+    } catch (error) {
+      console.warn(
+        `[birthday-service] Ignoring invalid birthday for user ${userId}:`,
+        error.message,
+      );
+    }
   }
 
-  birthdays[guildKey][userKey] = normalizedBirthday;
+  return entries;
+}
+
+function setBirthday(userId, birthday) {
+  const birthdays = readBirthdays();
+  const normalizedBirthday = normalizeBirthday(birthday);
+
+  birthdays[String(userId)] = normalizedBirthday;
 
   writeBirthdays(birthdays);
 
   return normalizedBirthday;
 }
 
-function removeBirthday(guildId, userId) {
+function removeBirthday(userId) {
   const birthdays = readBirthdays();
-  const guildKey = String(guildId);
   const userKey = String(userId);
 
-  if (!birthdays[guildKey]?.[userKey]) {
+  if (!birthdays[userKey]) {
     return false;
   }
 
-  delete birthdays[guildKey][userKey];
-
-  if (Object.keys(birthdays[guildKey]).length === 0) {
-    delete birthdays[guildKey];
-  }
+  delete birthdays[userKey];
 
   writeBirthdays(birthdays);
 
@@ -134,7 +135,7 @@ function removeBirthday(guildId, userId) {
 
 module.exports = {
   getBirthday,
-  getGuildBirthdays,
+  getAllBirthdays,
   setBirthday,
   removeBirthday,
 };

@@ -4,6 +4,7 @@ const BIRTHDAY_CHANNEL_ID = "1542832215195648030";
 const CHECK_INTERVAL = 60 * 60 * 1000;
 
 let intervalId = null;
+let startupTimeoutId = null;
 let lastCheckedDate = null;
 
 function getDateKey(date = new Date()) {
@@ -166,13 +167,11 @@ async function sendBirthdayMessages(client) {
 
   const birthdayService = require("./birthday.cjs");
 
-  for (const guild of client.guilds.cache.values()) {
-    const todaysBirthdays = birthdayService
-      .getGuildBirthdays(guild.id)
-      .filter((birthday) => isBirthdayToday(birthday));
+  const todaysBirthdays = birthdayService
+    .getAllBirthdays()
+    .filter((birthday) => isBirthdayToday(birthday));
 
-    await announceBirthdays(client, todaysBirthdays);
-  }
+  await announceBirthdays(client, todaysBirthdays);
 }
 
 function millisecondsUntilNextHour() {
@@ -185,7 +184,7 @@ function millisecondsUntilNextHour() {
 }
 
 function startBirthdayCelebrations(client) {
-  if (intervalId) {
+  if (intervalId || startupTimeoutId) {
     return;
   }
 
@@ -196,7 +195,9 @@ function startBirthdayCelebrations(client) {
     );
   });
 
-  setTimeout(() => {
+  startupTimeoutId = setTimeout(() => {
+    startupTimeoutId = null;
+
     sendBirthdayMessages(client).catch((error) => {
       console.error(
         "[birthday-celebrations] Scheduled birthday check failed:",
@@ -216,12 +217,16 @@ function startBirthdayCelebrations(client) {
 }
 
 function stopBirthdayCelebrations() {
-  if (!intervalId) {
-    return;
+  if (startupTimeoutId) {
+    clearTimeout(startupTimeoutId);
+    startupTimeoutId = null;
   }
 
-  clearInterval(intervalId);
-  intervalId = null;
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null;
+  }
+
   lastCheckedDate = null;
 }
 
