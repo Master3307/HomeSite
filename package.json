@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "images": "node scripts/generate-images.mjs"
   },
-  "packageManager": "pnpm@11.22.0",
+  "packageManager": "pnpm@11.24.0",
   "engines": {
     "pnpm": ">=10.0.0"
   },
@@ -21,6 +21,7 @@
     "@cwasm/webp": "^0.1.5",
     "@discordjs/rest": "^1.7.1",
     "@mongez/sitemap": "^1.0.2",
+    "@twemoji/api": "^17.0.3",
     "canvas": "^3.2.3",
     "cors": "^2.8.6",
     "csv-parse": "^6.2.1",
@@ -38,16 +39,16 @@
     "react-i18next": "^17.0.12",
     "react-powerglitch": "^1.1.0",
     "react-router": "^8.3.0",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.4",
     "use-scramble": "^2.2.15"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.19.0",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
+    "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.1.0",
-    "oxlint": "^1.79.0",
+    "oxlint": "^1.80.0",
     "sharp": "^0.35.3",
     "vite": "^8.2.2"
   }
