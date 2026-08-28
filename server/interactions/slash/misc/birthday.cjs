@@ -381,7 +381,7 @@ function createListEmbed(entries, page) {
 
   return new EmbedBuilder()
     .setColor(0xe91e63)
-    .setTitle("🎂 Global birthday list")
+    .setTitle("🎂 Birthday list")
     .setDescription(description.join("\n\n"))
     .setFooter({
       text: `Page ${safePage + 1}/${pageCount}・${entries.length} birthday${entries.length === 1 ? "" : "s"}`,
