@@ -133,6 +133,10 @@ for (const moduleName of slashCommands) {
     client.slashCommands.set(command.data.name, command);
   }
 }
+console.log(
+  "[Slash] Loaded commands:",
+  [...client.slashCommands.keys()].join(", "),
+);
 
 /**********************************************************************/
 // Registration of Autocomplete Interactions.
