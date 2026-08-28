@@ -3,7 +3,16 @@ import ProfilePicture from './ProfilePicture.jsx'
 import OverflowPan from './OverflowPan.jsx'
 import { useTranslation } from 'react-i18next'
 
-const AlbumArt = memo(function AlbumArt({ src, alt, className = 'discord-presence__image' }) {
+
+const SPOTIFY_PROGRESS_DRIFT_MS = 10_000
+const PROFILE_POLL_INTERVAL_MS = 6_500
+
+
+const AlbumArt = memo(function AlbumArt({
+  src,
+  alt,
+  className = 'discord-presence__image',
+}) {
   if (!src) return null
 
   return (
@@ -20,7 +29,12 @@ const AlbumArt = memo(function AlbumArt({ src, alt, className = 'discord-presenc
   )
 })
 
-const ExternalTextLink = memo(function ExternalTextLink({ href, children, className = '' }) {
+
+const ExternalTextLink = memo(function ExternalTextLink({
+  href,
+  children,
+  className = '',
+}) {
   if (!href || !children) return <>{children}</>
 
   return (
@@ -35,6 +49,211 @@ const ExternalTextLink = memo(function ExternalTextLink({ href, children, classN
   )
 })
 
+
+function isSpotifyActivity(activity) {
+  return activity?.type === 2 || activity?.name === 'Spotify'
+}
+
+
+function isGameActivity(activity) {
+  return activity?.type === 0
+}
+
+
+function getTimestampMs(value) {
+  if (!value) return null
+
+  const timestamp = new Date(value).getTime()
+  return Number.isFinite(timestamp) ? timestamp : null
+}
+
+
+function getSpotifyPosition(activity, now = Date.now()) {
+  const start = getTimestampMs(activity?.timestamps?.start)
+  const end = getTimestampMs(activity?.timestamps?.end)
+
+  if (!start || !end || end <= start) return null
+
+  return Math.max(0, Math.min(now - start, end - start))
+}
+
+
+function getSpotifyTrackIdentity(activity) {
+  if (!isSpotifyActivity(activity)) return null
+
+  return {
+    syncId: activity?.sync_id ?? '',
+    title: activity?.details ?? '',
+    artists: activity?.state ?? '',
+    album: activity?.assets?.large_text ?? '',
+    image: activity?.image_url ?? activity?.assets?.large_image ?? '',
+  }
+}
+
+
+function isSameSpotifyTrack(currentActivity, nextActivity) {
+  if (!isSpotifyActivity(currentActivity) || !isSpotifyActivity(nextActivity)) {
+    return false
+  }
+
+  const currentTrackId = currentActivity?.sync_id
+  const nextTrackId = nextActivity?.sync_id
+
+  if (currentTrackId && nextTrackId) {
+    return currentTrackId === nextTrackId
+  }
+
+  const currentTrack = getSpotifyTrackIdentity(currentActivity)
+  const nextTrack = getSpotifyTrackIdentity(nextActivity)
+
+  return (
+    currentTrack?.title === nextTrack?.title &&
+    currentTrack?.artists === nextTrack?.artists &&
+    currentTrack?.album === nextTrack?.album
+  )
+}
+
+
+function shouldAcceptSpotifyTimestamps(
+  currentActivity,
+  nextActivity,
+  thresholdMs = SPOTIFY_PROGRESS_DRIFT_MS,
+) {
+  if (!isSameSpotifyTrack(currentActivity, nextActivity)) {
+    return true
+  }
+
+  const currentPosition = getSpotifyPosition(currentActivity)
+  const nextPosition = getSpotifyPosition(nextActivity)
+
+  // If either response lacks usable timestamps, use the newest API data.
+  if (currentPosition === null || nextPosition === null) {
+    return true
+  }
+
+  return Math.abs(nextPosition - currentPosition) > thresholdMs
+}
+
+
+function getActivitySignature(activity) {
+  if (isSpotifyActivity(activity)) {
+    return {
+      type: 'spotify',
+      sync_id: activity?.sync_id ?? '',
+      name: activity?.name ?? '',
+      details: activity?.details ?? '',
+      state: activity?.state ?? '',
+      song_url: activity?.song_url ?? '',
+      album_url: activity?.album_url ?? '',
+      artist_links: activity?.artist_links ?? [],
+      artist_links_json: activity?.artist_links_json ?? '',
+      image_url: activity?.image_url ?? '',
+      assets: {
+        large_image: activity?.assets?.large_image ?? '',
+        small_image: activity?.assets?.small_image ?? '',
+        large_text: activity?.assets?.large_text ?? '',
+        small_text: activity?.assets?.small_text ?? '',
+      },
+    }
+  }
+
+  return {
+    type: activity?.type ?? null,
+    type_label: activity?.type_label ?? '',
+    application_id: activity?.application_id ?? '',
+    name: activity?.name ?? '',
+    details: activity?.details ?? '',
+    state: activity?.state ?? '',
+    image_url: activity?.image_url ?? '',
+    assets: {
+      large_image: activity?.assets?.large_image ?? '',
+      small_image: activity?.assets?.small_image ?? '',
+      large_text: activity?.assets?.large_text ?? '',
+      small_text: activity?.assets?.small_text ?? '',
+    },
+    timestamps: {
+      start: activity?.timestamps?.start ?? '',
+      end: activity?.timestamps?.end ?? '',
+    },
+  }
+}
+
+
+function getProfileSignature(data) {
+  return JSON.stringify({
+    username: data?.username ?? '',
+    global_name: data?.global_name ?? '',
+    avatar: data?.avatar ?? '',
+    avatar_decoration: data?.avatar_decoration ?? '',
+    guild_badge: data?.guild_badge ?? '',
+    guild_tag: data?.primary_guild?.tag ?? '',
+    status: data?.presence?.status ?? '',
+    activities: (data?.presence?.activities ?? []).map(getActivitySignature),
+    activity_history: (data?.activity_history ?? []).map(item => ({
+      key: item?.key ?? '',
+      image_url: item?.image_url ?? '',
+      is_active: item?.is_active ?? false,
+      last_active_at: item?.last_active_at ?? '',
+      total_active_ms: item?.total_active_ms ?? 0,
+      streak: item?.streak ?? null,
+      song_url: item?.song_url ?? '',
+      album_url: item?.album_url ?? '',
+      artist_links: item?.artist_links ?? [],
+      artist_links_json: item?.artist_links_json ?? '',
+      large_text: item?.large_text ?? '',
+      state: item?.state ?? '',
+    })),
+  })
+}
+
+
+function mergeProfileUpdate(currentProfile, incomingProfile) {
+  const currentActivities = currentProfile?.presence?.activities ?? []
+  const incomingActivities = incomingProfile?.presence?.activities ?? []
+
+  const mergedActivities = incomingActivities.map(incomingActivity => {
+    if (!isSpotifyActivity(incomingActivity)) {
+      return incomingActivity
+    }
+
+    const currentSpotifyActivity = currentActivities.find(isSpotifyActivity)
+
+    if (!currentSpotifyActivity) {
+      return incomingActivity
+    }
+
+    const isSameTrack = isSameSpotifyTrack(
+      currentSpotifyActivity,
+      incomingActivity,
+    )
+
+    const shouldUpdateTimestamps = shouldAcceptSpotifyTimestamps(
+      currentSpotifyActivity,
+      incomingActivity,
+    )
+
+    // Keep the existing timestamps when this is still the same track and
+    // the API-reported progress is within the allowed drift tolerance.
+    if (isSameTrack && !shouldUpdateTimestamps) {
+      return {
+        ...incomingActivity,
+        timestamps: currentSpotifyActivity.timestamps,
+      }
+    }
+
+    return incomingActivity
+  })
+
+  return {
+    ...incomingProfile,
+    presence: {
+      ...incomingProfile.presence,
+      activities: mergedActivities,
+    },
+  }
+}
+
+
 export default function DiscordProfileCard() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -44,8 +263,12 @@ export default function DiscordProfileCard() {
   const [avatarState, setAvatarState] = useState('unknown')
   const { t } = useTranslation('discord')
 
-  const DISCORD_API_URL = import.meta.env.VITE_DISCORD_API_URL ?? 'https://discord-api.master3307.org'
+  const DISCORD_API_URL =
+    import.meta.env.VITE_DISCORD_API_URL ??
+    'https://discord-api.master3307.org'
+
   const lastProfileSignatureRef = useRef('')
+  const profileRef = useRef(null)
 
   const STATUS_LABELS = {
     online: 'Online',
@@ -62,19 +285,27 @@ export default function DiscordProfileCard() {
     })
   }, [])
 
+
   function formatDate(value) {
     if (!value) return ''
+
     const date = new Date(value)
+
     if (Number.isNaN(date.getTime())) return ''
+
     return dateFormatter.format(date)
   }
 
+
   function formatMs(ms) {
     if (!ms || ms < 0) return '0:00'
-    const s = Math.floor(ms / 1000)
-    const m = Math.floor(s / 60)
-    return `${m}:${String(s % 60).padStart(2, '0')}`
+
+    const seconds = Math.floor(ms / 1000)
+    const minutes = Math.floor(seconds / 60)
+
+    return `${minutes}:${String(seconds % 60).padStart(2, '0')}`
   }
+
 
   function formatDuration(ms) {
     const totalMinutes = Math.floor(Number(ms || 0) / 60000)
@@ -83,8 +314,10 @@ export default function DiscordProfileCard() {
 
     if (hours <= 0) return `${minutes} min`
     if (minutes === 0) return `${hours} h`
+
     return `${hours} h ${minutes} min`
   }
+
 
   function formatArtists(value) {
     return String(value || '')
@@ -94,14 +327,19 @@ export default function DiscordProfileCard() {
       .join(', ')
   }
 
+
   function normalizeArtistLinks(activity) {
     if (Array.isArray(activity?.artist_links)) {
       return activity.artist_links.filter(artist => artist?.name && artist?.url)
     }
 
-    if (typeof activity?.artist_links_json === 'string' && activity.artist_links_json.trim()) {
+    if (
+      typeof activity?.artist_links_json === 'string' &&
+      activity.artist_links_json.trim()
+    ) {
       try {
         const parsed = JSON.parse(activity.artist_links_json)
+
         return Array.isArray(parsed)
           ? parsed.filter(artist => artist?.name && artist?.url)
           : []
@@ -113,40 +351,27 @@ export default function DiscordProfileCard() {
     return []
   }
 
-  function getProfileSignature(data) {
-    return JSON.stringify({
-      username: data?.username ?? '',
-      global_name: data?.global_name ?? '',
-      avatar: data?.avatar ?? '',
-      avatar_decoration: data?.avatar_decoration ?? '',
-      guild_badge: data?.guild_badge ?? '',
-      guild_tag: data?.primary_guild?.tag ?? '',
-      status: data?.presence?.status ?? '',
-      activities: data?.presence?.activities ?? [],
-      activity_history: (data?.activity_history ?? []).map(item => ({
-        key: item?.key ?? '',
-        image_url: item?.image_url ?? '',
-        is_active: item?.is_active ?? false,
-        last_active_at: item?.last_active_at ?? '',
-        total_active_ms: item?.total_active_ms ?? 0,
-        streak: item?.streak ?? null,
-      })),
-    })
-  }
 
   function getActivityKey(activity) {
-    const isMusic = activity?.type === 2 || activity?.name === 'Spotify'
-    const isGame = activity?.type === 0
+    const isMusic = isSpotifyActivity(activity)
+    const isGame = isGameActivity(activity)
 
     if (isMusic) return `music:${activity?.name || 'unknown'}`
     if (isGame) return `game:${activity?.name || 'unknown'}`
+
     return `activity:${activity?.type ?? 'unknown'}:${activity?.application_id || 'na'}:${activity?.name || 'unknown'}`
   }
 
+
   function getHistoryItemForActivity(activity) {
     const key = getActivityKey(activity)
-    return (profile?.activity_history ?? []).find(item => item?.key === key) ?? null
+
+    return (
+      (profile?.activity_history ?? []).find(item => item?.key === key) ??
+      null
+    )
   }
+
 
   function getBestActivityImage(activity, historyItem) {
     return (
@@ -158,6 +383,7 @@ export default function DiscordProfileCard() {
     )
   }
 
+
   function StatusDot({ status }) {
     return (
       <span
@@ -167,20 +393,19 @@ export default function DiscordProfileCard() {
     )
   }
 
+
   function PresenceCard({ activity }) {
     const historyItem = getHistoryItemForActivity(activity)
     const resolvedImage = getBestActivityImage(activity, historyItem)
-    const isSpotify = activity?.type === 2 || activity?.name === 'Spotify'
-    const isGame = activity?.type === 0
+    const isSpotify = isSpotifyActivity(activity)
+    const isGame = isGameActivity(activity)
 
-    const [progress, setProgress] = useState(0)
-    const [displayedArt, setDisplayedArt] = useState(resolvedImage ?? '')
     const [now, setNow] = useState(Date.now())
-    const rafRef = useRef(null)
+    const [displayedArt, setDisplayedArt] = useState(resolvedImage ?? '')
 
-    const start = activity?.timestamps?.start ? new Date(activity.timestamps.start).getTime() : null
-    const end = activity?.timestamps?.end ? new Date(activity.timestamps.end).getTime() : null
-    const duration = start && end ? end - start : null
+    const start = getTimestampMs(activity?.timestamps?.start)
+    const end = getTimestampMs(activity?.timestamps?.end)
+    const duration = start && end && end > start ? end - start : null
 
     const resolvedSpotifyMeta = useMemo(() => {
       const artistLinks = normalizeArtistLinks(activity)
@@ -195,42 +420,56 @@ export default function DiscordProfileCard() {
       }
     }, [activity, historyItem])
 
+
     useEffect(() => {
       if (resolvedImage && resolvedImage !== displayedArt) {
         setDisplayedArt(resolvedImage)
       }
     }, [resolvedImage, displayedArt])
 
-    useEffect(() => {
-      if (!isSpotify || !start || !end) return
 
-      function tick() {
-        const currentNow = Date.now()
-        const elapsed = currentNow - start
-        setNow(currentNow)
-        setProgress(Math.min(elapsed / (end - start), 1))
-        if (currentNow < end) rafRef.current = requestAnimationFrame(tick)
+    useEffect(() => {
+      if (!isSpotify || !start || !end) return undefined
+
+      function updateClock() {
+        setNow(Date.now())
       }
 
-      rafRef.current = requestAnimationFrame(tick)
+      updateClock()
+
+      const timer = window.setInterval(updateClock, 1000)
+
       return () => {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current)
+        window.clearInterval(timer)
       }
     }, [isSpotify, start, end])
 
+
     useEffect(() => {
-      if (!isGame || !activity?.timestamps?.start) return
+      if (!isGame || !start) return undefined
 
-      const timer = setInterval(() => {
+      function updateClock() {
         setNow(Date.now())
-      }, 1000)
+      }
 
-      return () => clearInterval(timer)
-    }, [isGame, activity?.timestamps?.start])
+      updateClock()
+
+      const timer = window.setInterval(updateClock, 1000)
+
+      return () => {
+        window.clearInterval(timer)
+      }
+    }, [isGame, start])
+
 
     const elapsed = start && duration
       ? Math.min(Math.max(0, now - start), duration)
       : 0
+
+    const progress = duration
+      ? Math.min(Math.max(elapsed / duration, 0), 1)
+      : 0
+
 
     if (isSpotify) {
       const {
@@ -243,8 +482,11 @@ export default function DiscordProfileCard() {
 
       const songTitle = activity?.details || 'Unknown song'
       const artistLine = fallbackArtists || 'Unknown artist'
+
       const artistKey = artistLinks?.length
-        ? artistLinks.map(artist => `${artist.id || artist.name}:${artist.name}:${artist.url}`).join('|')
+        ? artistLinks
+          .map(artist => `${artist.id || artist.name}:${artist.name}:${artist.url}`)
+          .join('|')
         : artistLine
 
       const songContent = useMemo(() => (
@@ -256,8 +498,9 @@ export default function DiscordProfileCard() {
         </ExternalTextLink>
       ), [songUrl, songTitle])
 
+
       const artistContent = useMemo(() => {
-        if (artistLinks && artistLinks.length > 0) {
+        if (artistLinks.length > 0) {
           return artistLinks.map((artist, index) => (
             <span key={`${artist.id || artist.name}-${index}`}>
               {index > 0 ? ', ' : ''}
@@ -274,6 +517,7 @@ export default function DiscordProfileCard() {
         return artistLine
       }, [artistLinks, artistLine])
 
+
       const albumContent = useMemo(() => {
         if (!albumLabel) return null
 
@@ -286,6 +530,7 @@ export default function DiscordProfileCard() {
           </ExternalTextLink>
         )
       }, [albumUrl, albumLabel])
+
 
       return (
         <div className="discord-presence-card discord-presence-card--music">
@@ -316,6 +561,15 @@ export default function DiscordProfileCard() {
               content={artistContent}
             />
 
+            {albumContent ? (
+              <OverflowPan
+                className="discord-presence__line-wrap discord-presence__album-wrap"
+                innerClassName="discord-presence__line-inner discord-presence__album"
+                title={albumLabel}
+                contentKey={`spotify-album:${albumLabel}:${albumUrl || ''}`}
+                content={albumContent}
+              />
+            ) : null}
 
             {duration ? (
               <div className="discord-presence__progress-wrap">
@@ -343,23 +597,31 @@ export default function DiscordProfileCard() {
       )
     }
 
+
     if (isGame) {
       const subtitle = activity?.details || activity?.state || ''
       const streak = historyItem?.streak ?? null
-      const gameStart = activity?.timestamps?.start
-        ? new Date(activity.timestamps.start).getTime()
-        : null
 
-      const elapsedGameTime = gameStart
-        ? Math.max(0, now - gameStart)
+      const elapsedGameTime = start
+        ? Math.max(0, now - start)
         : 0
 
       const gameTitle = activity?.name || 'Unknown game'
-      const gameSubtitleText = subtitle || (elapsedGameTime > 0 ? `${formatDuration(elapsedGameTime)}` : 'In game')
-      const gameSubtitleKey = subtitle ? `game-subtitle:${subtitle}` : 'game-subtitle:fallback'
+
+      const gameSubtitleText = subtitle ||
+        (elapsedGameTime > 0
+          ? formatDuration(elapsedGameTime)
+          : 'In game')
+
+      const gameSubtitleKey = subtitle
+        ? `game-subtitle:${subtitle}`
+        : 'game-subtitle:fallback'
 
       const gameTitleContent = useMemo(() => gameTitle, [gameTitle])
-      const gameSubtitleContent = useMemo(() => gameSubtitleText, [gameSubtitleText])
+      const gameSubtitleContent = useMemo(
+        () => gameSubtitleText,
+        [gameSubtitleText],
+      )
 
       return (
         <div className="discord-presence-card discord-presence-card--game">
@@ -393,7 +655,14 @@ export default function DiscordProfileCard() {
             <div className="discord-presence__meta-row">
               {typeof streak === 'number' && streak > 0 ? (
                 <span className="discord-presence__meta-pill">
-                  <span className="material-symbols-outlined streak" style={{ userSelect: 'none' }}>bolt</span> {streak}x {t('discord.streak', 'Streak')}
+                  <span
+                    className="material-symbols-outlined streak"
+                    style={{ userSelect: 'none' }}
+                  >
+                    bolt
+                  </span>
+                  {' '}
+                  {streak}x {t('discord.streak', 'Streak')}
                 </span>
               ) : null}
             </div>
@@ -402,12 +671,16 @@ export default function DiscordProfileCard() {
       )
     }
 
+
     const genericTitle = activity?.name || 'Unknown activity'
     const genericDetails = activity?.details || ''
     const genericState = activity?.state || ''
 
     const genericTitleContent = useMemo(() => genericTitle, [genericTitle])
-    const genericDetailsContent = useMemo(() => genericDetails, [genericDetails])
+    const genericDetailsContent = useMemo(
+      () => genericDetails,
+      [genericDetails],
+    )
     const genericStateContent = useMemo(() => genericState, [genericState])
 
     return (
@@ -455,47 +728,71 @@ export default function DiscordProfileCard() {
     )
   }
 
+
   function Activity({ activities }) {
     if (!activities?.length) return null
 
-    const spotify = activities.find(a => a.type === 2)
-    if (spotify) return <PresenceCard activity={spotify} />
+    const spotify = activities.find(isSpotifyActivity)
 
-    const game = activities.find(a => a.type === 0)
-    if (game) return <PresenceCard activity={game} />
+    if (spotify) {
+      return <PresenceCard activity={spotify} />
+    }
+
+    const game = activities.find(isGameActivity)
+
+    if (game) {
+      return <PresenceCard activity={game} />
+    }
 
     return <PresenceCard activity={activities[0]} />
   }
+
 
   useEffect(() => {
     let cancelled = false
 
     async function load(isInitial = false) {
       try {
-        if (isInitial && !profile) {
+        if (isInitial && !profileRef.current) {
           setLoading(true)
         } else {
           setRefreshing(true)
         }
 
         const res = await fetch(`${DISCORD_API_URL}/`)
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
 
-        const data = await res.json()
-        const nextSignature = getProfileSignature(data)
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`)
+        }
+
+        const incomingProfile = await res.json()
 
         if (cancelled) return
 
+        const mergedProfile = mergeProfileUpdate(
+          profileRef.current,
+          incomingProfile,
+        )
+
+        const nextSignature = getProfileSignature(mergedProfile)
+
         if (nextSignature !== lastProfileSignatureRef.current) {
           lastProfileSignatureRef.current = nextSignature
-          setProfile(data)
-          setAvatarSrc(data.avatar ?? '')
+          profileRef.current = mergedProfile
+
+          setProfile(mergedProfile)
+          setAvatarSrc(mergedProfile.avatar ?? '')
         }
 
         setError('')
       } catch (err) {
         if (cancelled) return
-        setError(err instanceof Error ? err.message : t('discord.failed'))
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : t('discord.failed'),
+        )
       } finally {
         if (!cancelled) {
           setLoading(false)
@@ -505,17 +802,28 @@ export default function DiscordProfileCard() {
     }
 
     load(true)
-    const timer = setInterval(() => load(false), 6_500)
+
+    const timer = window.setInterval(() => {
+      load(false)
+    }, PROFILE_POLL_INTERVAL_MS)
 
     return () => {
       cancelled = true
-      clearInterval(timer)
+      window.clearInterval(timer)
     }
   }, [DISCORD_API_URL, t])
 
+
   if (loading && !profile && !avatarSrc) {
-    return <div className="discord-card discord-card--loading">…<br /><br /></div>
+    return (
+      <div className="discord-card discord-card--loading">
+        …
+        <br />
+        <br />
+      </div>
+    )
   }
+
 
   const shouldShowError =
     !!error &&
@@ -535,12 +843,19 @@ export default function DiscordProfileCard() {
     )
   }
 
-  const displayName = profile?.global_name ?? profile?.username ?? 'MrKoby07'
+
+  const displayName =
+    profile?.global_name ??
+    profile?.username ??
+    'MrKoby07'
+
   const username = profile?.username ?? 'master3307'
   const status = profile?.presence?.status ?? profile?.status ?? 'offline'
 
   return (
-    <article className={`discord-card${refreshing ? ' discord-card--refreshing' : ''}`}>
+    <article
+      className={`discord-card${refreshing ? ' discord-card--refreshing' : ''}`}
+    >
       <div className="discord-card__media">
         <ProfilePicture
           avatarSrc={avatarSrc}
@@ -551,7 +866,8 @@ export default function DiscordProfileCard() {
           onLoad={() => setAvatarState('loaded')}
           onError={() => setAvatarState('failed')}
         />
-        <StatusDot status={profile?.presence?.status} />
+
+        <StatusDot status={status} />
       </div>
 
       <div className="discord-card__body">
@@ -574,21 +890,37 @@ export default function DiscordProfileCard() {
                 ) : null}
 
                 {profile?.primary_guild?.tag ? (
-                  <span className="discord-card__tag">{profile.primary_guild.tag}</span>
+                  <span className="discord-card__tag">
+                    {profile.primary_guild.tag}
+                  </span>
                 ) : null}
               </span>
             ) : null}
           </div>
         </div>
 
-        <p className="discord-card__username"><i><a className="username" href="https://discord.com/users/817826076486139985" target="_blank" rel="noreferrer noopener">@{username}</a></i></p>
+        <p className="discord-card__username">
+          <i>
+            <a
+              className="username"
+              href="https://discord.com/users/817826076486139985"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              @{username}
+            </a>
+          </i>
+        </p>
 
         <Activity activities={profile?.presence?.activities} />
 
         {!!error && !!profile ? (
-          <p className="discord-card__hint">{t('discord.unavailable')}</p>
+          <p className="discord-card__hint">
+            {t('discord.unavailable')}
+          </p>
         ) : null}
       </div>
+
       <br />
     </article>
   )
