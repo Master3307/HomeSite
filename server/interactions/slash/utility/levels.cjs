@@ -9,20 +9,12 @@ const levels = require("../../../services/levels.cjs");
 
 const MOD_ROLE_ID = "1479193858565865472";
 
-// Users allowed to run level-management commands outside a guild.
-const DM_LEVEL_MODERATOR_IDS = new Set([
-  "1525217425987993752",
-  "1233908962550616085",
-]);
-
 function isLevelModerator(interaction) {
-  if (!interaction.inGuild() || !interaction.member) {
-    return DM_LEVEL_MODERATOR_IDS.has(interaction.user.id);
-  }
-
   return (
-    interaction.member.roles.cache.has(MOD_ROLE_ID) ||
-    interaction.member.permissions.has(PermissionFlagsBits.Administrator)
+    interaction.inGuild() &&
+    interaction.member &&
+    (interaction.member.roles.cache.has(MOD_ROLE_ID) ||
+      interaction.member.permissions.has(PermissionFlagsBits.Administrator))
   );
 }
 
@@ -30,15 +22,8 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("levels")
     .setDescription("Manage user levels and points.")
-    .setIntegrationTypes(
-      ApplicationIntegrationType.GuildInstall,
-      ApplicationIntegrationType.UserInstall,
-    )
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel,
-    )
+    .setIntegrationTypes(ApplicationIntegrationType.GuildInstall)
+    .setContexts(InteractionContextType.Guild)
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addSubcommand((subcommand) =>
       subcommand
@@ -155,9 +140,8 @@ module.exports = {
 
     if (!isLevelModerator(interaction)) {
       return interaction.editReply({
-        content: interaction.inGuild()
-          ? "You need the level-moderator role or Administrator permission to use this command."
-          : "You are not allowed to manage levels from a DM.",
+        content:
+          "You need the level-moderator role or Administrator permission to use this command.",
       });
     }
 
@@ -182,12 +166,14 @@ module.exports = {
 
       case "add-level": {
         const currentUser = levels.getUser(target.id);
+
         updatedUser = await levels.setLevel(target, currentUser.level + amount);
         break;
       }
 
       case "remove-level": {
         const currentUser = levels.getUser(target.id);
+
         updatedUser = await levels.setLevel(target, currentUser.level - amount);
         break;
       }

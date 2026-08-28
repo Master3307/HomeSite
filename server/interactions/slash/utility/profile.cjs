@@ -8,97 +8,10 @@ const {
 
 const fs = require("node:fs/promises");
 const path = require("node:path");
-const crypto = require("node:crypto");
-const sharp = require("sharp");
 
 const levels = require("../../../services/levels.cjs");
 
 const AVATAR_DIRECTORY = path.resolve(__dirname, "../../../services/avatars");
-
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-const MAX_INPUT_PIXELS = 16_000_000;
-const AVATAR_WIDTH = 256;
-
-async function downloadAttachment(attachment) {
-  if (attachment.size > MAX_UPLOAD_BYTES) {
-    throw new Error("The avatar must be 5 MiB or smaller.");
-  }
-
-  const response = await fetch(attachment.url, {
-    signal: AbortSignal.timeout(15_000),
-  });
-
-  if (!response.ok || !response.body) {
-    throw new Error("I could not download that upload from Discord.");
-  }
-
-  const chunks = [];
-  let receivedBytes = 0;
-
-  for await (const chunk of response.body) {
-    receivedBytes += chunk.length;
-
-    if (receivedBytes > MAX_UPLOAD_BYTES) {
-      throw new Error("The avatar exceeds the 5 MiB upload limit.");
-    }
-
-    chunks.push(Buffer.from(chunk));
-  }
-
-  return Buffer.concat(chunks);
-}
-
-async function saveAvatar(userId, attachment) {
-  const input = await downloadAttachment(attachment);
-
-  await fs.mkdir(AVATAR_DIRECTORY, { recursive: true });
-
-  const targetPath = path.join(AVATAR_DIRECTORY, `${userId}.webp`);
-  const temporaryPath = path.join(
-    AVATAR_DIRECTORY,
-    `.${userId}.${crypto.randomUUID()}.webp`,
-  );
-
-  try {
-    await sharp(input, {
-      failOn: "error",
-      limitInputPixels: MAX_INPUT_PIXELS,
-      animated: false,
-    })
-      .rotate()
-      .resize({
-        width: AVATAR_WIDTH,
-        withoutEnlargement: false,
-      })
-      .webp({
-        quality: 82,
-        effort: 4,
-      })
-      .toFile(temporaryPath);
-
-    await fs.rename(temporaryPath, targetPath);
-
-    return targetPath;
-  } catch (error) {
-    await fs.unlink(temporaryPath).catch(() => {});
-    throw error;
-  }
-}
-
-async function removeAvatar(userId) {
-  const avatarPath = path.join(AVATAR_DIRECTORY, `${userId}.webp`);
-
-  try {
-    await fs.unlink(avatarPath);
-    return true;
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return false;
-    }
-
-    throw error;
-  }
-}
 
 async function getCustomAvatarPath(userId) {
   const avatarPath = path.join(AVATAR_DIRECTORY, `${userId}.webp`);
@@ -111,29 +24,6 @@ async function getCustomAvatarPath(userId) {
   return exists ? avatarPath : null;
 }
 
-async function showCustomAvatar(interaction, target) {
-  const avatarFilename = `${target.id}.webp`;
-  const avatarPath = await getCustomAvatarPath(target.id);
-
-  if (!avatarPath) {
-    await interaction.reply({
-      content: "That user does not have a custom avatar set.",
-      ephemeral: true,
-    });
-
-    return;
-  }
-
-  const avatar = new AttachmentBuilder(avatarPath, {
-    name: avatarFilename,
-  });
-
-  await interaction.reply({
-    content: `${target.username}'s custom avatar:`,
-    files: [avatar],
-  });
-}
-
 async function getMemberInCurrentGuild(interaction, userId) {
   if (!interaction.inGuild() || !interaction.guild) {
     return null;
@@ -142,7 +32,7 @@ async function getMemberInCurrentGuild(interaction, userId) {
   return interaction.guild.members.fetch(userId).catch(() => null);
 }
 
-async function showProfile(interaction, target) {
+async function createProfileResponse(interaction, target) {
   const member = await getMemberInCurrentGuild(interaction, target.id);
   const levelUser = levels.getUser(target.id);
   const progress = levels.getProgress(levelUser);
@@ -207,7 +97,9 @@ async function showProfile(interaction, target) {
       },
       {
         name: "Joined Server",
-        value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:F>`,
+        value: member.joinedTimestamp
+          ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:F>`
+          : "Unknown",
         inline: false,
       },
     );
@@ -224,30 +116,28 @@ async function showProfile(interaction, target) {
   const avatarFilename = `${target.id}.webp`;
   const customAvatarPath = await getCustomAvatarPath(target.id);
 
-  if (customAvatarPath) {
-    const customAvatar = new AttachmentBuilder(customAvatarPath, {
-      name: avatarFilename,
-    });
-
-    embed.setImage(`attachment://${avatarFilename}`);
-
-    await interaction.reply({
+  if (!customAvatarPath) {
+    return {
       embeds: [embed],
-      files: [customAvatar],
-    });
-
-    return;
+    };
   }
 
-  await interaction.reply({
-    embeds: [embed],
+  const customAvatar = new AttachmentBuilder(customAvatarPath, {
+    name: avatarFilename,
   });
+
+  embed.setImage(`attachment://${avatarFilename}`);
+
+  return {
+    embeds: [embed],
+    files: [customAvatar],
+  };
 }
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("profiles")
-    .setDescription("View or manage profiles and custom avatars")
+    .setName("profile")
+    .setDescription("View a profile.")
     .setIntegrationTypes(
       ApplicationIntegrationType.GuildInstall,
       ApplicationIntegrationType.UserInstall,
@@ -257,130 +147,17 @@ module.exports = {
       InteractionContextType.BotDM,
       InteractionContextType.PrivateChannel,
     )
-
-    .addSubcommandGroup((group) =>
-      group
-        .setName("view")
-        .setDescription("View profiles or custom avatars")
-
-        .addSubcommand((subcommand) =>
-          subcommand
-            .setName("profile")
-            .setDescription("View a user's profile")
-            .addUserOption((option) =>
-              option
-                .setName("user")
-                .setDescription("The user whose profile you want to view")
-                .setRequired(false),
-            ),
-        )
-
-        .addSubcommand((subcommand) =>
-          subcommand
-            .setName("avatar")
-            .setDescription("View a user's custom avatar")
-            .addUserOption((option) =>
-              option
-                .setName("user")
-                .setDescription("The user whose custom avatar you want to view")
-                .setRequired(false),
-            ),
-        ),
-    )
-
-    .addSubcommandGroup((group) =>
-      group
-        .setName("set")
-        .setDescription("Set profile options")
-
-        .addSubcommand((subcommand) =>
-          subcommand
-            .setName("avatar")
-            .setDescription("Upload a custom avatar")
-            .addAttachmentOption((option) =>
-              option
-                .setName("image")
-                .setDescription("The image to use as your avatar")
-                .setRequired(true),
-            ),
-        ),
-    )
-
-    .addSubcommandGroup((group) =>
-      group
-        .setName("remove")
-        .setDescription("Remove profile options")
-
-        .addSubcommand((subcommand) =>
-          subcommand
-            .setName("avatar")
-            .setDescription("Remove your custom avatar"),
-        ),
+    .addUserOption((option) =>
+      option
+        .setName("user")
+        .setDescription("The user whose profile you want to view."),
     ),
 
   async execute(interaction) {
-    const group = interaction.options.getSubcommandGroup(true);
-    const subcommand = interaction.options.getSubcommand(true);
+    const target = interaction.options.getUser("user") ?? interaction.user;
 
-    if (group === "view" && subcommand === "profile") {
-      const target = interaction.options.getUser("user") || interaction.user;
+    const response = await createProfileResponse(interaction, target);
 
-      await showProfile(interaction, target);
-      return;
-    }
-
-    if (group === "view" && subcommand === "avatar") {
-      const target = interaction.options.getUser("user") || interaction.user;
-
-      await showCustomAvatar(interaction, target);
-      return;
-    }
-
-    if (group === "set" && subcommand === "avatar") {
-      const attachment = interaction.options.getAttachment("image", true);
-
-      await interaction.deferReply({ ephemeral: true });
-
-      try {
-        await saveAvatar(interaction.user.id, attachment);
-
-        await interaction.editReply("Your custom avatar has been saved!");
-      } catch (error) {
-        console.error(
-          `[profile set avatar] Failed for ${interaction.user.id}:`,
-          error,
-        );
-
-        await interaction.editReply(
-          "I could not use that file. Please upload a valid image no larger than 5 MiB.",
-        );
-      }
-
-      return;
-    }
-
-    if (group === "remove" && subcommand === "avatar") {
-      try {
-        const removed = await removeAvatar(interaction.user.id);
-
-        await interaction.reply({
-          content: removed
-            ? "Your custom avatar has been removed."
-            : "You do not currently have a custom avatar.",
-          ephemeral: true,
-        });
-      } catch (error) {
-        console.error(
-          `[profile remove avatar] Failed for ${interaction.user.id}:`,
-          error,
-        );
-
-        await interaction.reply({
-          content:
-            "I could not remove your custom avatar. Please try again later.",
-          ephemeral: true,
-        });
-      }
-    }
+    await interaction.reply(response);
   },
 };
