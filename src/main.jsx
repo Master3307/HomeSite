@@ -4,7 +4,6 @@ import { BrowserRouter, useLocation } from 'react-router'
 import { HelmetProvider } from 'react-helmet-async'
 import './styles/main.css'
 import './lib/i18n.js'
-import 'sanitize.css';
 import App from './App.jsx'
 import ThemeSwitch from './components/ThemeSwitch.jsx'
 import LanguageSwitch from './components/LanguageSwitch.jsx'
