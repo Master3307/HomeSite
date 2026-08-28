@@ -57,12 +57,14 @@ async function clearChannel(channel, keepMessageId = null) {
     }
 
     lastId = messages.last()?.id;
-    if (!lastId) break;
-    if (messages.size < 100) break;
+
+    if (!lastId || messages.size < 100) {
+      break;
+    }
   }
 }
 
-async function postLobbyCode(client, code, desc = null) {
+async function postLobbyCode(client, code, desc = null, updatedById = null) {
   const channel = await client.channels
     .fetch(TARGET_CHANNEL_ID)
     .catch(() => null);
@@ -79,15 +81,20 @@ async function postLobbyCode(client, code, desc = null) {
 
   await clearChannel(channel);
 
+  const unixTimestamp = Math.floor(Date.now() / 1000);
+
+  const updatedValue = updatedById
+    ? `Updated by <@${updatedById}>\n<t:${unixTimestamp}:R>`
+    : `<t:${unixTimestamp}:R>`;
+
   const embed = new EmbedBuilder()
     .setColor("#2F1A80")
     .setTitle(code)
     .addFields({
       name: "updated",
-      value: `<t:${Math.floor(Date.now() / 1000)}:R>`,
+      value: updatedValue,
       inline: false,
-    })
-    .setTimestamp();
+    });
 
   if (desc) {
     embed.setDescription(desc);
@@ -98,6 +105,7 @@ async function postLobbyCode(client, code, desc = null) {
     embeds: [embed],
     allowedMentions: {
       roles: [PING_ROLE_ID],
+      users: updatedById ? [updatedById] : [],
     },
   });
 }
@@ -151,7 +159,7 @@ module.exports = {
       content: `Clearing <#${TARGET_CHANNEL_ID}> and posting the new lobby code...`,
     });
 
-    await postLobbyCode(interaction.client, code, desc);
+    await postLobbyCode(interaction.client, code, desc, interaction.user.id);
 
     await interaction.editReply({
       content: `Done. Lobby code updated in <#${TARGET_CHANNEL_ID}>.`,
