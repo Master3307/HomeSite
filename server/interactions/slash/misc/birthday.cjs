@@ -424,9 +424,7 @@ module.exports = {
         .addStringOption((option) =>
           option
             .setName("date")
-            .setDescription(
-              "Examples: 09.09, 9th September, 9. September, 9 вересня.",
-            )
+            .setDescription("DD.MM.YYYY - Year is optional.")
             .setRequired(true),
         ),
     )
