@@ -76,7 +76,6 @@ function createLeaderboardButtons(type, page, pageCount, ownerId) {
 }
 
 async function createLevelsLeaderboardEmbed(interaction, page) {
-  // This must return every ranked user, rather than being limited to 10.
   const leaderboard = levels.getLeaderboard();
 
   const pageCount = Math.max(1, Math.ceil(leaderboard.length / ITEMS_PER_PAGE));
@@ -128,13 +127,26 @@ async function createLevelsLeaderboardEmbed(interaction, page) {
 
 async function createPettingLeaderboardEmbed(interaction, page) {
   /*
-   * Important:
-   * Do not pass `limit: ITEMS_PER_PAGE` here, otherwise page 2 and later
-   * can never exist. The petting service needs to return the full ranking.
+   * Do not pass `limit: ITEMS_PER_PAGE` here. We need all entries first,
+   * otherwise later pages cannot be displayed.
    */
-  const leaderboard = await petting.getLeaderboard({
+  const rawLeaderboard = await petting.getLeaderboard({
     sortBy: "totalGiven",
   });
+
+  /*
+   * Only show users who have actively given at least one pet.
+   *
+   * This prevents users who have only received pets from appearing in the
+   * petting leaderboard. Reassign rank after filtering so positions are
+   * always #1, #2, #3, etc. with no gaps.
+   */
+  const leaderboard = rawLeaderboard
+    .filter((entry) => Number(entry.totalGiven || 0) > 0)
+    .map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+    }));
 
   const pageCount = Math.max(1, Math.ceil(leaderboard.length / ITEMS_PER_PAGE));
   const safePage = Math.max(0, Math.min(page, pageCount - 1));

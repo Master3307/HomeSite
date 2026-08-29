@@ -17,7 +17,15 @@ const petting = require("../../../services/petting.cjs");
 const OUT_SIZE = 112;
 const FRAME_COUNT = 5;
 const GIF_DELAY = 60;
-const RETURN_PET_FIELD_DURATION_MS = 60_000;
+
+// A recipient has one minute to return a pet and begin a combo.
+const RETURN_PET_WINDOW_MS = 60_000;
+
+// Once started, a combo expires after three minutes without the next returned pet.
+const COMBO_TIMEOUT_MS = 3 * 60_000;
+
+// The embed's "Return pet" prompt should disappear when the response window ends.
+const RETURN_PET_FIELD_DURATION_MS = RETURN_PET_WINDOW_MS;
 
 const AVATAR_DIR = path.resolve(__dirname, "../../../services/avatars");
 
@@ -69,6 +77,31 @@ function formatAchievementLines(achievements) {
     .join("\n");
 }
 
+function getRewardText(result) {
+  const petterPoints = Number(result.rewards?.petterPoints) || 0;
+  const targetPoints = Number(result.rewards?.targetPoints) || 0;
+
+  if (petterPoints <= 0 && targetPoints <= 0) {
+    return null;
+  }
+
+  const lines = [];
+
+  if (petterPoints > 0) {
+    lines.push(
+      `${result.petterDisplayName ?? "You"} earned **${petterPoints.toLocaleString()}** points.`,
+    );
+  }
+
+  if (targetPoints > 0) {
+    lines.push(
+      `${result.targetDisplayName ?? "They"} earned **${targetPoints.toLocaleString()}** points.`,
+    );
+  }
+
+  return lines.join("\n");
+}
+
 function buildPetEmbed(interaction, target, result, options = {}) {
   const combo = result.combo ?? {};
   const comboCount = Number(combo.count) || 0;
@@ -85,11 +118,11 @@ function buildPetEmbed(interaction, target, result, options = {}) {
   if (isComboStarted) {
     title = "✨ Combo started!";
     color = 0xa78bfa;
-    description = `A petting combo with ${target} has begun!`;
+    description = `${interaction.user} returned ${target}'s pet in time. A petting combo has begun!`;
   } else if (isCombo) {
     title = "✨ Petting combo!";
     color = 0xfbbf24;
-    description = `Your combo with ${target} is now **${comboCount}** pets.`;
+    description = `${interaction.user} returned ${target}'s pet. Your combo is now **${comboCount}** pets!`;
   }
 
   const fields = [];
@@ -99,19 +132,29 @@ function buildPetEmbed(interaction, target, result, options = {}) {
       name: "Combo",
       value: [
         `Count: **${comboCount}**`,
-        `Expires ${formatRelativeTime(combo.expiresAt, "at an unknown time")}`,
+        `Keep it going by returning the next pet ${formatRelativeTime(
+          combo.expiresAt,
+          "within 3 minutes",
+        )}.`,
+        "People in an active combo do not receive petting cooldowns.",
       ].join("\n"),
-      inline: true,
+      inline: false,
     });
   }
 
   if (isNormalPet && showReturnPet) {
+    const reciprocationWindowEndsAt =
+      result.reciprocationWindowEndsAt ?? Date.now() + RETURN_PET_WINDOW_MS;
+
     fields.push({
       name: "Return pet",
-      value: `Pet ${interaction.user} back ${formatRelativeTime(
-        result.reciprocationWindowEndsAt,
-        "within the combo window",
-      )} to start a combo.`,
+      value: [
+        `Pet ${interaction.user} back ${formatRelativeTime(
+          reciprocationWindowEndsAt,
+          "within 1 minute",
+        )} to start a combo.`,
+        "If no return pet is sent in time, no combo starts.",
+      ].join("\n"),
       inline: false,
     });
   }
@@ -146,12 +189,16 @@ function buildPetEmbed(interaction, target, result, options = {}) {
     });
   }
 
-  if (Number(result.rewards?.petterPoints) > 0) {
+  const rewardText = getRewardText({
+    ...result,
+    petterDisplayName: interaction.user.username,
+    targetDisplayName: target.username,
+  });
+
+  if (rewardText) {
     fields.push({
       name: "Reward",
-      value: `You earned **${Number(
-        result.rewards.petterPoints,
-      ).toLocaleString()}** points.`,
+      value: rewardText,
       inline: true,
     });
   }
@@ -307,6 +354,32 @@ async function createPetpetGif(target) {
   return Buffer.from(encoder.bytes());
 }
 
+function getCooldownMessage(interaction, target, result) {
+  const cooldownUntil = result.cooldownUntil;
+
+  if (result.reason === "UNANSWERED_PET") {
+    return [
+      `Your last pet was not returned in time, so you cannot pet anyone until ${formatRelativeTime(
+        cooldownUntil,
+        "later",
+      )}.`,
+      "The person you petted can still pet you if they are not on cooldown.",
+    ].join("\n");
+  }
+
+  if (result.reason === "TARGET_COOLDOWN") {
+    return `${target} cannot be petted right now. Try again ${formatRelativeTime(
+      cooldownUntil,
+      "later",
+    )}.`;
+  }
+
+  return `You cannot pet anyone again until ${formatRelativeTime(
+    cooldownUntil,
+    "later",
+  )}.`;
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("pet")
@@ -364,12 +437,28 @@ module.exports = {
 
         if (result.code === "COOLDOWN") {
           await interaction.editReply(
-            `You can pet ${target} again ${formatRelativeTime(
-              result.cooldownUntil,
-              "later",
-            )}.`,
+            getCooldownMessage(interaction, target, result),
           );
+          return;
+        }
 
+        if (result.code === "COMBO_EXPIRED") {
+          await interaction.editReply(
+            [
+              "That petting combo expired because nobody returned a pet in time.",
+              "Start a new one by petting them again.",
+            ].join("\n"),
+          );
+          return;
+        }
+
+        if (result.code === "RECIPROCATION_EXPIRED") {
+          await interaction.editReply(
+            [
+              "The one-minute return-pet window expired, so no combo was started.",
+              "You can still send a normal pet if you are not on cooldown.",
+            ].join("\n"),
+          );
           return;
         }
 
@@ -399,6 +488,12 @@ module.exports = {
       });
 
       if (result.type === "normal") {
+        const returnPetEndsAt =
+          Number(result.reciprocationWindowEndsAt) ||
+          Date.now() + RETURN_PET_FIELD_DURATION_MS;
+
+        const delay = Math.max(0, returnPetEndsAt - Date.now());
+
         setTimeout(() => {
           const expiredEmbed = buildPetEmbed(interaction, target, result, {
             showReturnPet: false,
@@ -414,7 +509,7 @@ module.exports = {
                 error,
               );
             });
-        }, RETURN_PET_FIELD_DURATION_MS);
+        }, delay);
       }
     } catch (error) {
       console.error(
