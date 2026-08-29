@@ -5,6 +5,7 @@ const {
   InteractionContextType,
   ApplicationIntegrationType,
 } = require("discord.js");
+
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const sharp = require("sharp");
@@ -16,7 +17,9 @@ const petting = require("../../../services/petting.cjs");
 const OUT_SIZE = 112;
 const FRAME_COUNT = 5;
 const GIF_DELAY = 60;
+
 const AVATAR_DIR = path.resolve(__dirname, "../../../services/avatars");
+
 const HAND_SPRITE_PATH = path.resolve(
   __dirname,
   "../../../assets/petpet/sprite.png",
@@ -30,51 +33,71 @@ const frameOffsets = [
   { x: -4, y: 0, w: 0, h: 0 },
 ];
 
-function getAchievementLines(achievements, userId) {
-  const userAchievements = achievements.filter(
-    (achievement) => achievement.userId === userId,
-  );
+function toUnixSeconds(timestamp) {
+  const milliseconds = Number(timestamp);
 
-  if (!userAchievements.length) {
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) {
     return null;
   }
 
-  return userAchievements
+  return Math.floor(milliseconds / 1000);
+}
+
+function formatRelativeTime(timestamp, fallback = "Unknown") {
+  const unixSeconds = toUnixSeconds(timestamp);
+
+  return unixSeconds ? `<t:${unixSeconds}:R>` : fallback;
+}
+
+function getUnlockedAchievementsForUser(achievements, userId) {
+  return achievements.filter(
+    (achievement) => achievement.userId === String(userId),
+  );
+}
+
+function formatAchievementLines(achievements) {
+  if (!achievements.length) {
+    return null;
+  }
+
+  return achievements
     .map(
-      (achievement) => `🏆 **${achievement.name}**: ${achievement.description}`,
+      (achievement) =>
+        `🏆 **${achievement.name}** — ${achievement.description}`,
     )
     .join("\n");
 }
 
 function buildPetEmbed(interaction, target, result) {
+  const combo = result.combo ?? {};
+  const comboCount = Number(combo.count) || 0;
+
   const isNormalPet = result.type === "normal";
   const isComboStarted = result.type === "comboStarted";
   const isCombo = result.type === "combo";
 
   let title = "🐾 Pet!";
   let color = 0xf472b6;
-  let description = `You petted ${target}!`;
+  let description = `${interaction.user} petted ${target}.`;
 
   if (isComboStarted) {
     title = "✨ Combo started!";
     color = 0xa78bfa;
-    description = `You've started a petting combo!`;
-  }
-
-  if (isCombo) {
+    description = `A petting combo with ${target} has begun!`;
+  } else if (isCombo) {
     title = "✨ Petting combo!";
     color = 0xfbbf24;
-    description = `Your petting combo is now **${result.combo.count}**.`;
+    description = `Your combo with ${target} is now **${comboCount}** pets.`;
   }
 
   const fields = [];
 
-  if (result.combo?.count > 0) {
+  if (comboCount > 0) {
     fields.push({
       name: "Combo",
       value: [
-        `Count: **${result.combo.count}**`,
-        `Expires <t:${Math.floor(result.combo.expiresAt / 1000)}:R>`,
+        `Count: **${comboCount}**`,
+        `Expires ${formatRelativeTime(combo.expiresAt, "at an unknown time")}`,
       ].join("\n"),
       inline: true,
     });
@@ -82,37 +105,52 @@ function buildPetEmbed(interaction, target, result) {
 
   if (isNormalPet) {
     fields.push({
-      name: "Pet them back",
-      value: `Return the pet <t:${Math.floor(
-        result.reciprocationWindowEndsAt / 1000,
-      )}:R> to start a combo.`,
+      name: "Return pet",
+      value: `Pet ${interaction.user} back ${formatRelativeTime(
+        result.reciprocationWindowEndsAt,
+        "within the combo window",
+      )} to start a combo.`,
       inline: false,
     });
   }
 
-  const petterAchievements = getAchievementLines(
-    result.unlockedAchievements,
-    interaction.user.id,
+  const petterAchievements = formatAchievementLines(
+    getUnlockedAchievementsForUser(
+      result.unlockedAchievements ?? [],
+      interaction.user.id,
+    ),
   );
 
   if (petterAchievements) {
     fields.push({
-      name: `${interaction.user.username}'s achievements unlocked`,
-      value: petterAchievements,
+      name: `🎖️ ${interaction.user.username} unlocked`,
+      value: petterAchievements.slice(0, 1024),
       inline: false,
     });
   }
 
-  const targetAchievements = getAchievementLines(
-    result.unlockedAchievements,
-    target.id,
+  const targetAchievements = formatAchievementLines(
+    getUnlockedAchievementsForUser(
+      result.unlockedAchievements ?? [],
+      target.id,
+    ),
   );
 
   if (targetAchievements) {
     fields.push({
-      name: `${target.username}'s achievements unlocked`,
-      value: targetAchievements,
+      name: `🎖️ ${target.username} unlocked`,
+      value: targetAchievements.slice(0, 1024),
       inline: false,
+    });
+  }
+
+  if (Number(result.rewards?.petterPoints) > 0) {
+    fields.push({
+      name: "Reward",
+      value: `You earned **${Number(
+        result.rewards.petterPoints,
+      ).toLocaleString()}** points.`,
+      inline: true,
     });
   }
 
@@ -122,6 +160,9 @@ function buildPetEmbed(interaction, target, result) {
     .setDescription(description)
     .addFields(fields)
     .setImage("attachment://petpet.gif")
+    .setFooter({
+      text: `Petting ${target.username}`,
+    })
     .setTimestamp();
 }
 
@@ -142,7 +183,9 @@ async function loadRemoteImage(url) {
 
   if (!contentType.startsWith("image/")) {
     throw new Error(
-      `Discord avatar response was not an image: ${contentType || "unknown content type"}`,
+      `Discord avatar response was not an image: ${
+        contentType || "unknown content type"
+      }`,
     );
   }
 
@@ -162,6 +205,7 @@ async function loadTargetPetImage(target) {
 
   try {
     await fs.access(localAvatarPath);
+
     return await loadWebpImage(localAvatarPath);
   } catch (error) {
     if (error.code !== "ENOENT") {
@@ -183,15 +227,19 @@ async function loadTargetPetImage(target) {
 
 function drawFrame(ctx, targetImage, handSprite, frame) {
   const offset = frameOffsets[frame];
+
   const squish = 1.25;
   const scale = 0.875;
+
   const spriteX = 14;
   const spriteY = 20;
   const spriteWidth = 112;
+
   const spriteHeight = spriteWidth * (targetImage.height / targetImage.width);
 
   const dx = Math.trunc(spriteX + offset.x * (squish * 0.4));
   const dy = Math.trunc(spriteY + offset.y * (squish * 0.9));
+
   const dw = Math.trunc((spriteWidth + offset.w * squish) * scale);
   const dh = Math.trunc((spriteHeight + offset.h * squish) * scale);
 
@@ -228,7 +276,9 @@ async function createPetpetGif(target) {
     handSprite.height < OUT_SIZE
   ) {
     throw new Error(
-      `Invalid petpet sprite sheet: expected at least ${OUT_SIZE * FRAME_COUNT}x${OUT_SIZE}, got ${handSprite.width}x${handSprite.height}.`,
+      `Invalid petpet sprite sheet: expected at least ${
+        OUT_SIZE * FRAME_COUNT
+      }x${OUT_SIZE}, got ${handSprite.width}x${handSprite.height}.`,
     );
   }
 
@@ -283,6 +333,7 @@ module.exports = {
         content: "You cannot pet yourself.",
         ephemeral: true,
       });
+
       return;
     }
 
@@ -291,6 +342,7 @@ module.exports = {
         content: "You can only pet real people.",
         ephemeral: true,
       });
+
       return;
     }
 
@@ -301,7 +353,6 @@ module.exports = {
         petterId: interaction.user.id,
         targetId: target.id,
       });
-      console.dir(result, { depth: null });
 
       if (!result.ok) {
         if (result.code === "SELF_PET") {
@@ -311,16 +362,19 @@ module.exports = {
 
         if (result.code === "COOLDOWN") {
           await interaction.editReply(
-            `You can pet ${target} again <t:${Math.floor(
-              result.cooldownUntil / 1000,
-            )}:R>.`,
+            `You can pet ${target} again ${formatRelativeTime(
+              result.cooldownUntil,
+              "later",
+            )}.`,
           );
+
           return;
         }
 
         await interaction.editReply(
           "I could not process that pet. Please try again later.",
         );
+
         return;
       }
 

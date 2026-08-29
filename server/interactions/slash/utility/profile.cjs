@@ -10,8 +10,13 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 
 const levels = require("../../../services/levels.cjs");
+const petting = require("../../../services/petting.cjs");
 
 const AVATAR_DIRECTORY = path.resolve(__dirname, "../../../services/avatars");
+
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString();
+}
 
 async function getCustomAvatarPath(userId) {
   const avatarPath = path.join(AVATAR_DIRECTORY, `${userId}.webp`);
@@ -34,9 +39,12 @@ async function getMemberInCurrentGuild(interaction, userId) {
 
 async function createProfileResponse(interaction, target) {
   const member = await getMemberInCurrentGuild(interaction, target.id);
+
   const levelUser = levels.getUser(target.id);
   const progress = levels.getProgress(levelUser);
   const rank = levels.getRank(levelUser.level);
+
+  const pettingStats = await petting.getUserStats(target.id);
 
   const progressText = progress.isMaxLevel
     ? "Maximum level reached. Points can still increase."
@@ -68,13 +76,23 @@ async function createProfileResponse(interaction, target) {
       inline: true,
     },
     {
-      name: "Progress",
-      value: progressText,
-      inline: false,
+      name: "Pets Given",
+      value: formatNumber(pettingStats.totalGiven),
+      inline: true,
     },
     {
-      name: "Account Created",
-      value: `<t:${Math.floor(target.createdTimestamp / 1000)}:F>`,
+      name: "Pets Received",
+      value: formatNumber(pettingStats.totalReceived),
+      inline: true,
+    },
+    {
+      name: "Max Combo",
+      value: formatNumber(pettingStats.bestCombo),
+      inline: true,
+    },
+    {
+      name: "Progress",
+      value: progressText,
       inline: false,
     },
   ];
@@ -88,7 +106,7 @@ async function createProfileResponse(interaction, target) {
         .join(", ") || "None";
 
     fields.splice(
-      4,
+      7,
       0,
       {
         name: "Roles",
@@ -156,8 +174,20 @@ module.exports = {
   async execute(interaction) {
     const target = interaction.options.getUser("user") ?? interaction.user;
 
-    const response = await createProfileResponse(interaction, target);
+    try {
+      const response = await createProfileResponse(interaction, target);
 
-    await interaction.reply(response);
+      await interaction.reply(response);
+    } catch (error) {
+      console.error(
+        `[profile] Failed to load profile for ${target.id}:`,
+        error,
+      );
+
+      await interaction.reply({
+        content: "I could not load this profile. Please try again later.",
+        ephemeral: true,
+      });
+    }
   },
 };

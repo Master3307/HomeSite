@@ -12,9 +12,11 @@ const COMBO_START_POINTS = 15;
 const COMBO_CONTINUE_POINTS = 3;
 
 const DATA_DIRECTORY = path.resolve(__dirname, "db");
+
 const STATS_FILE = path.join(DATA_DIRECTORY, "petting.csv");
 const PAIRS_FILE = path.join(DATA_DIRECTORY, "petting-pairs.json");
 const COMBOS_FILE = path.join(DATA_DIRECTORY, "petting-combos.json");
+
 const ACHIEVEMENTS_FILE = path.join(
   DATA_DIRECTORY,
   "petting-achievements.json",
@@ -111,7 +113,9 @@ let mutationQueue = Promise.resolve();
 
 function enqueueMutation(task) {
   const queuedTask = mutationQueue.then(task, task);
+
   mutationQueue = queuedTask.catch(() => {});
+
   return queuedTask;
 }
 
@@ -137,11 +141,13 @@ function createDefaultStats(userId) {
 
 function toNumber(value, fallback = 0) {
   const parsed = Number(value);
+
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function parseCsvLine(line) {
   const values = [];
+
   let currentValue = "";
   let quoted = false;
 
@@ -170,6 +176,7 @@ function parseCsvLine(line) {
   }
 
   values.push(currentValue);
+
   return values;
 }
 
@@ -202,6 +209,7 @@ function parseStatsCsv(contents) {
 
   for (const line of lines.slice(1)) {
     const values = parseCsvLine(line);
+
     const row = Object.fromEntries(
       headers.map((header, index) => [header, values[index] ?? ""]),
     );
@@ -273,6 +281,7 @@ async function loadJson(filePath) {
     return parsed;
   } catch (error) {
     console.error(`[petting] Invalid JSON in ${filePath}:`, error);
+
     return {};
   }
 }
@@ -309,13 +318,14 @@ function getOrCreateStats(statsByUserId, userId) {
 }
 
 function getUnlockedAchievementIds(achievementStore, userId) {
-  const unlocked = achievementStore[String(userId)];
+  const normalizedUserId = String(userId);
+  const unlocked = achievementStore[normalizedUserId];
 
   if (!Array.isArray(unlocked)) {
-    achievementStore[String(userId)] = [];
+    achievementStore[normalizedUserId] = [];
   }
 
-  return achievementStore[String(userId)];
+  return achievementStore[normalizedUserId];
 }
 
 function clearExpiredState({ pairs, combos, stats, now }) {
@@ -349,6 +359,7 @@ function clearExpiredState({ pairs, combos, stats, now }) {
 
     for (const userId of combo.users) {
       const userStats = getOrCreateStats(stats, userId);
+
       userStats.currentCombo = 0;
       userStats.updatedAt = now;
     }
@@ -373,6 +384,7 @@ function endOtherCombos({ combos, stats, userId, allowedPartnerId, now }) {
 
     for (const participantId of combo.users) {
       const participantStats = getOrCreateStats(stats, participantId);
+
       participantStats.currentCombo = 0;
       participantStats.updatedAt = now;
     }
@@ -409,6 +421,7 @@ function updateUniquePettingCounts({
 
   pair.pettedBy ??= {};
   pair.pettedBy[String(petterId)] = true;
+
   pairs[key] = pair;
 }
 
@@ -481,7 +494,10 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
   const normalizedTargetId = String(targetId);
 
   if (normalizedPetterId === normalizedTargetId) {
-    return { ok: false, code: "SELF_PET" };
+    return {
+      ok: false,
+      code: "SELF_PET",
+    };
   }
 
   return enqueueMutation(async () => {
@@ -492,15 +508,22 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
       loadJson(ACHIEVEMENTS_FILE),
     ]);
 
-    clearExpiredState({ pairs, combos, stats, now });
+    clearExpiredState({
+      pairs,
+      combos,
+      stats,
+      now,
+    });
 
     const petterStats = getOrCreateStats(stats, normalizedPetterId);
     const targetStats = getOrCreateStats(stats, normalizedTargetId);
 
     const key = pairKey(normalizedPetterId, normalizedTargetId);
     const previousPair = pairs[key] || {};
+
     const previousPetterId = String(previousPair.lastPetterId || "");
     const previousTargetId = String(previousPair.lastTargetId || "");
+
     const previousPetAt = toNumber(previousPair.lastPetAt);
     const cooldownUntil = toNumber(previousPair.cooldownUntil);
 
@@ -542,15 +565,19 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
     targetStats.updatedAt = now;
 
     const pair = pairs[key] || {};
+
     pair.pettedBy ??= {};
     pair.pettedBy[normalizedPetterId] = true;
+
     pair.lastPetterId = normalizedPetterId;
     pair.lastTargetId = normalizedTargetId;
     pair.lastPetAt = now;
 
     const unlockedAchievements = [];
+
     let type = "normal";
     let comboResult = null;
+
     let petterPoints = NORMAL_PET_POINTS;
     let targetPoints = 0;
 
@@ -558,6 +585,7 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
       pair.cooldownUntil = 0;
 
       const existingCombo = combos[key];
+
       const comboIsStillValid =
         existingCombo &&
         toNumber(existingCombo.expiresAt) > now &&
@@ -579,6 +607,7 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
           petterStats.bestCombo,
           existingCombo.count,
         );
+
         targetStats.bestCombo = Math.max(
           targetStats.bestCombo,
           existingCombo.count,
@@ -617,6 +646,7 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
         targetStats.currentCombo = combo.count;
 
         petterStats.bestCombo = Math.max(petterStats.bestCombo, combo.count);
+
         targetStats.bestCombo = Math.max(targetStats.bestCombo, combo.count);
 
         petterPoints = COMBO_START_POINTS;
@@ -668,7 +698,12 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
       })),
     );
 
-    await saveAll({ stats, pairs, combos, achievements });
+    await saveAll({
+      stats,
+      pairs,
+      combos,
+      achievements,
+    });
 
     awardLevelPoints(
       normalizedPetterId,
@@ -688,16 +723,29 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
       petterId: normalizedPetterId,
       targetId: normalizedTargetId,
       cooldownUntil: toNumber(pair.cooldownUntil),
+
+      /*
+       * This was missing before.
+       * It gives the other user 60 seconds to pet back and start a combo.
+       * It is 0 for combo responses because the combo is already active.
+       */
+      reciprocationWindowEndsAt:
+        type === "normal" ? now + COMBO_START_WINDOW_MS : 0,
+
       combo: comboResult,
+
       endedCombos,
+
       rewards: {
         petterPoints,
         targetPoints,
       },
+
       stats: {
         petter: { ...petterStats },
         target: { ...targetStats },
       },
+
       unlockedAchievements,
     };
   });
@@ -730,6 +778,7 @@ async function getUserStats(userId) {
           lastPetAt: toNumber(combo.lastPetAt),
           expiresAt: toNumber(combo.expiresAt),
         };
+
         break;
       }
     }
@@ -750,6 +799,7 @@ async function getLeaderboard({ sortBy = "totalGiven", limit = 10 } = {}) {
   ]);
 
   const normalizedSortBy = allowedSorts.has(sortBy) ? sortBy : "totalGiven";
+
   const normalizedLimit = Math.min(Math.max(Number(limit) || 10, 1), 100);
 
   return enqueueMutation(async () => {
@@ -774,6 +824,7 @@ async function getLeaderboard({ sortBy = "totalGiven", limit = 10 } = {}) {
 
 async function getRank(userId, sortBy = "totalGiven") {
   const normalizedUserId = String(userId);
+
   const leaderboard = await getLeaderboard({
     sortBy,
     limit: 100_000,
@@ -796,6 +847,7 @@ async function getUserAchievements(userId) {
     ]);
 
     const userStats = getOrCreateStats(stats, normalizedUserId);
+
     const unlockedIds = getUnlockedAchievementIds(
       achievements,
       normalizedUserId,
