@@ -33,6 +33,12 @@ const meows = [
   "<a:meow:1538086368457261126>",
   "Meow? <:Cato_Meow:1533618727990460437>",
   "See? See? This is me: <:Cultbot:1533609095444168826>\n:D",
+  "I'm a harmless robot cat ;3",
+  "<@817826076486139985> is so great!\nHe programmed me! :D",
+  "*innocent cat noises*",
+  "*mischievous cat sounds*",
+  "haha, look at *this* cute cat.\nhttps://old.master3307.org/jane/media/BlackCat.jpg",
+  "https://cataas.com/cat/cute/says/Meow!%20:3?width=400&height=300",
 ];
 
 module.exports = {
