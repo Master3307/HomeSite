@@ -15,7 +15,7 @@ const ITEMS_PER_PAGE = 10;
 const CUSTOM_ID_PREFIX = "birthday-list";
 
 const MONTH_ALIASES = new Map([
-  // English / German / Ukrainian — January
+  // English / German / Ukrainian
   ["january", 1],
   ["jan", 1],
   ["januar", 1],
@@ -367,7 +367,7 @@ function createListEmbed(entries, page) {
 
     const hasYear = birthday.year !== null && birthday.year !== undefined;
 
-    const ageText = hasYear ? ` — turns **${birthday.details.nextAge}**` : "";
+    const ageText = hasYear ? `turns **${birthday.details.nextAge}**` : "";
 
     const when = birthday.details.isToday
       ? "🎉 **today**"
@@ -375,7 +375,7 @@ function createListEmbed(entries, page) {
 
     return [
       `**${number}.** <@${birthday.userId}>`,
-      `${formatBirthday(birthday)}${ageText}・Next ${when}`,
+      `${formatBirthday(birthday)}・${ageText} ${when}`,
     ].join("\n");
   });
 
