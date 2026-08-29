@@ -14,9 +14,10 @@ const { GIFEncoder, quantize, applyPalette } = require("gifenc");
 
 const petting = require("../../../services/petting.cjs");
 
-const OUT_SIZE = 112;
+const OUT_SIZE = 256;
 const FRAME_COUNT = 5;
 const GIF_DELAY = 60;
+const RETURN_PET_FIELD_DURATION_MS = 60_000;
 
 const AVATAR_DIR = path.resolve(__dirname, "../../../services/avatars");
 
@@ -68,9 +69,10 @@ function formatAchievementLines(achievements) {
     .join("\n");
 }
 
-function buildPetEmbed(interaction, target, result) {
+function buildPetEmbed(interaction, target, result, options = {}) {
   const combo = result.combo ?? {};
   const comboCount = Number(combo.count) || 0;
+  const showReturnPet = options.showReturnPet ?? true;
 
   const isNormalPet = result.type === "normal";
   const isComboStarted = result.type === "comboStarted";
@@ -103,7 +105,7 @@ function buildPetEmbed(interaction, target, result) {
     });
   }
 
-  if (isNormalPet) {
+  if (isNormalPet && showReturnPet) {
     fields.push({
       name: "Return pet",
       value: `Pet ${interaction.user} back ${formatRelativeTime(
@@ -395,6 +397,25 @@ module.exports = {
           users: [target.id],
         },
       });
+
+      if (result.type === "normal") {
+        setTimeout(() => {
+          const expiredEmbed = buildPetEmbed(interaction, target, result, {
+            showReturnPet: false,
+          });
+
+          interaction
+            .editReply({
+              embeds: [expiredEmbed],
+            })
+            .catch((error) => {
+              console.error(
+                `[pet] Failed to remove expired return-pet field for ${interaction.user.id} -> ${target.id}:`,
+                error,
+              );
+            });
+        }, RETURN_PET_FIELD_DURATION_MS);
+      }
     } catch (error) {
       console.error(
         `[pet] Failed for ${interaction.user.id} -> ${target.id}:`,

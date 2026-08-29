@@ -16,11 +16,8 @@ const DATA_DIRECTORY = path.resolve(__dirname, "db");
 const STATS_FILE = path.join(DATA_DIRECTORY, "petting.csv");
 const PAIRS_FILE = path.join(DATA_DIRECTORY, "petting-pairs.json");
 const COMBOS_FILE = path.join(DATA_DIRECTORY, "petting-combos.json");
-
-const ACHIEVEMENTS_FILE = path.join(
-  DATA_DIRECTORY,
-  "petting-achievements.json",
-);
+const PETS_FILE = path.join(DATA_DIRECTORY, "pets.json");
+const ACHIEVEMENTS_FILE = path.join(DATA_DIRECTORY, "achievements.json");
 
 const CSV_HEADER = [
   "userId",
@@ -286,6 +283,24 @@ async function loadJson(filePath) {
   }
 }
 
+async function loadJsonArray(filePath) {
+  const contents = await readFileOrDefault(filePath, "[]");
+
+  try {
+    const parsed = JSON.parse(contents);
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error(`[petting] Invalid JSON array in ${filePath}:`, error);
+
+    return [];
+  }
+}
+
 async function writeFileAtomic(filePath, contents) {
   const temporaryPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
 
@@ -293,7 +308,7 @@ async function writeFileAtomic(filePath, contents) {
   await fs.rename(temporaryPath, filePath);
 }
 
-async function saveAll({ stats, pairs, combos, achievements }) {
+async function saveAll({ stats, pairs, combos, achievements, pets }) {
   await fs.mkdir(DATA_DIRECTORY, { recursive: true });
 
   await Promise.all([
@@ -304,6 +319,7 @@ async function saveAll({ stats, pairs, combos, achievements }) {
       ACHIEVEMENTS_FILE,
       `${JSON.stringify(achievements, null, 2)}\n`,
     ),
+    writeFileAtomic(PETS_FILE, `${JSON.stringify(pets, null, 2)}\n`),
   ]);
 }
 
@@ -501,11 +517,12 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
   }
 
   return enqueueMutation(async () => {
-    const [stats, pairs, combos, achievements] = await Promise.all([
+    const [stats, pairs, combos, achievements, pets] = await Promise.all([
       loadStats(),
       loadJson(PAIRS_FILE),
       loadJson(COMBOS_FILE),
       loadJson(ACHIEVEMENTS_FILE),
+      loadJsonArray(PETS_FILE),
     ]);
 
     clearExpiredState({
@@ -698,11 +715,36 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
       })),
     );
 
+    const reciprocationWindowEndsAt =
+      type === "normal" ? now + COMBO_START_WINDOW_MS : 0;
+
+    pets.push({
+      petterId: normalizedPetterId,
+      targetId: normalizedTargetId,
+      sentAt: now,
+      sentAtIso: new Date(now).toISOString(),
+      type,
+      combo: {
+        started: Boolean(comboResult?.started),
+        continued: Boolean(comboResult?.continued),
+        count: Number(comboResult?.count) || 0,
+        expiresAt: Number(comboResult?.expiresAt) || 0,
+        milestonePoints: Number(comboResult?.milestonePoints) || 0,
+      },
+      rewards: {
+        petterPoints,
+        targetPoints,
+      },
+      cooldownUntil: toNumber(pair.cooldownUntil),
+      reciprocationWindowEndsAt,
+    });
+
     await saveAll({
       stats,
       pairs,
       combos,
       achievements,
+      pets,
     });
 
     awardLevelPoints(
@@ -723,29 +765,17 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
       petterId: normalizedPetterId,
       targetId: normalizedTargetId,
       cooldownUntil: toNumber(pair.cooldownUntil),
-
-      /*
-       * This was missing before.
-       * It gives the other user 60 seconds to pet back and start a combo.
-       * It is 0 for combo responses because the combo is already active.
-       */
-      reciprocationWindowEndsAt:
-        type === "normal" ? now + COMBO_START_WINDOW_MS : 0,
-
+      reciprocationWindowEndsAt,
       combo: comboResult,
-
       endedCombos,
-
       rewards: {
         petterPoints,
         targetPoints,
       },
-
       stats: {
         petter: { ...petterStats },
         target: { ...targetStats },
       },
-
       unlockedAchievements,
     };
   });
