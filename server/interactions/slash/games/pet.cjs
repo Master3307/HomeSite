@@ -14,7 +14,7 @@ const { GIFEncoder, quantize, applyPalette } = require("gifenc");
 
 const petting = require("../../../services/petting.cjs");
 
-const OUT_SIZE = 256;
+const OUT_SIZE = 112;
 const FRAME_COUNT = 5;
 const GIF_DELAY = 60;
 const RETURN_PET_FIELD_DURATION_MS = 60_000;
