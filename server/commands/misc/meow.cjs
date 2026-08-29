@@ -35,8 +35,7 @@ const meows = [
   "<@817826076486139985> is so great!\nHe programmed me! :D",
   "*innocent cat noises*",
   "*mischievous cat sounds*",
-  "haha, look at *this* cute cat.\nhttps://old.master3307.org/jane/media/BlackCat.jpg",
-  "https://cataas.com/cat/cute/says/Meow!%20:3?width=400&height=300",
+  "haha, look at *this* cute cat.\nhttps://cataas.com/cat/cute/says/Meow!%20:3?width=400&height=300",
 ];
 
 module.exports = {
