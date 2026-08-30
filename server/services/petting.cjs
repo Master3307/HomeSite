@@ -12,19 +12,18 @@ const COMBO_START_WINDOW_MS = 60 * 1000;
 // Once a combo is active, the next expected return pet must happen within 3 minutes.
 const COMBO_TIMEOUT_MS = 3 * 60 * 1000;
 
-// Kept so stale pair history can eventually be cleaned up without removing useful data too quickly.
+// Stale pair history is retained for a day so unique-petting information survives.
 const PAIR_HISTORY_RETENTION_MS = 24 * 60 * 60 * 1000;
 
-// Balanced rewards:
-// - A normal pet gives a very small reward.
-// - A successful returned pet is worth more because it starts social interaction.
-// - Combo rewards taper over time to prevent easy point farming.
+// Normal pets give a very small reward.
 const NORMAL_PET_POINTS = 2;
 const NORMAL_TARGET_POINTS = 1;
 
+// Returning a pet successfully and starting a combo is more rewarding.
 const COMBO_START_PETTER_POINTS = 5;
 const COMBO_START_TARGET_POINTS = 3;
 
+// Combo rewards taper as the combo gets longer.
 const COMBO_EARLY_PETTER_POINTS = 3;
 const COMBO_EARLY_TARGET_POINTS = 2;
 
@@ -34,8 +33,7 @@ const COMBO_MID_TARGET_POINTS = 1;
 const COMBO_LATE_PETTER_POINTS = 1;
 const COMBO_LATE_TARGET_POINTS = 1;
 
-// After this many pets in the same continuous combo, it can still continue visually,
-// but no more level points are awarded until the combo ends.
+// The combo can continue after 30 pets, but it stops awarding level points.
 const COMBO_REWARD_CAP_COUNT = 30;
 
 const DATA_DIRECTORY = path.resolve(__dirname, "db");
@@ -428,17 +426,17 @@ function cleanupPairCooldowns(pair, now) {
 function expirePendingPet({ pair, now }) {
   const pendingPet = getPairPendingPet(pair);
 
-  if (!pendingPet) {
-    return null;
-  }
-
-  if (pendingPet.expiresAt > now) {
+  if (!pendingPet || pendingPet.expiresAt > now) {
     return null;
   }
 
   pair.pendingPet = null;
 
-  const cooldownUntil = now + PET_COOLDOWN_MS;
+  /*
+   * Start the 10-minute cooldown from the moment the 1-minute response
+   * window expired—not from whenever this cleanup function happens to run.
+   */
+  const cooldownUntil = pendingPet.expiresAt + PET_COOLDOWN_MS;
   const existingCooldownUntil = getUserCooldownUntil(
     pair,
     pendingPet.fromUserId,
@@ -459,14 +457,27 @@ function expirePendingPet({ pair, now }) {
 }
 
 function clearExpiredState({ pairs, combos, stats, now }) {
+  let didChange = false;
+
   for (const [key, pair] of Object.entries(pairs)) {
     if (!pair || typeof pair !== "object") {
       delete pairs[key];
+      didChange = true;
       continue;
     }
 
+    const cooldownsBeforeCleanup = JSON.stringify(pair.cooldowns ?? {});
     cleanupPairCooldowns(pair, now);
-    expirePendingPet({ pair, now });
+
+    if (JSON.stringify(pair.cooldowns ?? {}) !== cooldownsBeforeCleanup) {
+      didChange = true;
+    }
+
+    const expiredPendingPet = expirePendingPet({ pair, now });
+
+    if (expiredPendingPet) {
+      didChange = true;
+    }
 
     const hasActiveCooldown = Object.values(pair.cooldowns ?? {}).some(
       (cooldownUntil) => toNumber(cooldownUntil) > now,
@@ -482,12 +493,14 @@ function clearExpiredState({ pairs, combos, stats, now }) {
       lastPetAt + PAIR_HISTORY_RETENTION_MS < now
     ) {
       delete pairs[key];
+      didChange = true;
     }
   }
 
   for (const [key, combo] of Object.entries(combos)) {
     if (!combo || typeof combo !== "object" || !Array.isArray(combo.users)) {
       delete combos[key];
+      didChange = true;
       continue;
     }
 
@@ -503,7 +516,10 @@ function clearExpiredState({ pairs, combos, stats, now }) {
     }
 
     delete combos[key];
+    didChange = true;
   }
+
+  return didChange;
 }
 
 function getGlobalCooldownUntil(pairs, userId, now) {
@@ -523,6 +539,31 @@ function getGlobalCooldownUntil(pairs, userId, now) {
   }
 
   return latestCooldownUntil;
+}
+
+/*
+ * Finds a pending pet sent by this user to anybody.
+ *
+ * This is deliberately global rather than pair-specific. If A pets B and is
+ * waiting for B to return it, A cannot simply pet C instead and open another
+ * timer. It also prevents A from petting B again to reset the first timer.
+ */
+function getActiveOutgoingPendingPet(pairs, userId, now) {
+  const normalizedUserId = String(userId);
+
+  for (const pair of Object.values(pairs)) {
+    const pendingPet = getPairPendingPet(pair);
+
+    if (
+      pendingPet &&
+      pendingPet.fromUserId === normalizedUserId &&
+      pendingPet.expiresAt > now
+    ) {
+      return pendingPet;
+    }
+  }
+
+  return null;
 }
 
 function isActiveComboBetween(combos, userA, userB, now) {
@@ -796,9 +837,33 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
       pendingPet.toUserId === normalizedPetterId &&
       pendingPet.expiresAt > now;
 
-    // During a valid active combo response, both involved users bypass cooldowns.
-    // Otherwise, a user-level cooldown applies globally, no matter whom they pet.
+    /*
+     * A currently valid combo response is always allowed. The petter and
+     * target are both part of the active combo, which grants cooldown immunity.
+     *
+     * A valid response to a normal pet starts a combo and is also allowed.
+     *
+     * Every other request is rejected when this user is waiting for someone
+     * to return an earlier normal pet. This protects the original 1-minute
+     * expiry from being replaced or refreshed through command spam.
+     */
+    const activeOutgoingPendingPet = getActiveOutgoingPendingPet(
+      pairs,
+      normalizedPetterId,
+      now,
+    );
+
     if (!isValidComboResponse && !isValidComboStart) {
+      if (activeOutgoingPendingPet) {
+        return {
+          ok: false,
+          code: "AWAITING_RETURN_PET",
+          reason: "AWAITING_RETURN_PET",
+          targetId: activeOutgoingPendingPet.toUserId,
+          reciprocationWindowEndsAt: activeOutgoingPendingPet.expiresAt,
+        };
+      }
+
       const cooldownUntil = getGlobalCooldownUntil(
         pairs,
         normalizedPetterId,
@@ -942,11 +1007,12 @@ async function petUser({ petterId, targetId, now = Date.now() }) {
         rewardCapped: false,
       };
     } else {
-      // A normal pet starts a one-minute pending response window.
-      //
-      // No cooldown starts immediately. If the target does not return the pet
-      // before this pending window expires, clearExpiredState() gives the original
-      // petter a global ten-minute cooldown on their next petting request.
+      /*
+       * A normal pet opens one immutable 60-second return window.
+       *
+       * The activeOutgoingPendingPet check above ensures the same user cannot
+       * execute this path again until the current window is resolved or expires.
+       */
       pair.pendingPet = {
         fromUserId: normalizedPetterId,
         toUserId: normalizedTargetId,
@@ -1060,20 +1126,32 @@ async function getUserStats(userId) {
   const normalizedUserId = String(userId);
 
   return enqueueMutation(async () => {
-    const [stats, pairs, combos] = await Promise.all([
+    const [stats, pairs, combos, achievements, pets] = await Promise.all([
       loadStats(),
       loadJson(PAIRS_FILE),
       loadJson(COMBOS_FILE),
+      loadJson(ACHIEVEMENTS_FILE),
+      loadJsonArray(PETS_FILE),
     ]);
 
     const now = Date.now();
 
-    clearExpiredState({
+    const didChange = clearExpiredState({
       pairs,
       combos,
       stats,
       now,
     });
+
+    if (didChange) {
+      await saveAll({
+        stats,
+        pairs,
+        combos,
+        achievements,
+        pets,
+      });
+    }
 
     const userStats = getOrCreateStats(stats, normalizedUserId);
 
@@ -1099,9 +1177,16 @@ async function getUserStats(userId) {
       }
     }
 
+    const outgoingPendingPet = getActiveOutgoingPendingPet(
+      pairs,
+      normalizedUserId,
+      now,
+    );
+
     return {
       ...userStats,
       cooldownUntil: getGlobalCooldownUntil(pairs, normalizedUserId, now),
+      outgoingPendingPet,
       activeCombo,
     };
   });
@@ -1122,7 +1207,13 @@ async function getLeaderboard({ sortBy = "totalGiven", limit = 10 } = {}) {
   return enqueueMutation(async () => {
     const stats = await loadStats();
 
+    /*
+     * The petting leaderboard contains only people who have actually given
+     * at least one pet. Receiving a pet alone does not create a leaderboard
+     * entry or consume a rank position.
+     */
     return Object.values(stats)
+      .filter((user) => toNumber(user.totalGiven) > 0)
       .sort(
         (userA, userB) =>
           toNumber(userB[normalizedSortBy]) -
