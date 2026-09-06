@@ -107,6 +107,7 @@ settings:
 
 overrides:
   undici: ^6.28.0
+  qs: 6.16.0
 
 importers:
 
@@ -177,7 +178,7 @@ importers:
         version: 8.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       sharp:
         specifier: ^0.35.4
-        version: 0.35.4
+        version: 0.35.4(@types/node@26.4.1)
       use-scramble:
         specifier: ^2.2.15
         version: 2.2.15(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -196,13 +197,13 @@ importers:
         version: 19.2.7(@types/react@19.2.18)
       '@vitejs/plugin-react':
         specifier: ^6.1.1
-        version: 6.1.1(vite@8.2.2)
+        version: 6.1.1(vite@8.2.2(@types/node@26.4.1))
       oxlint:
         specifier: ^1.81.0
         version: 1.81.0
       vite:
         specifier: ^8.2.2
-        version: 8.2.2
+        version: 8.2.2(@types/node@26.4.1)
 
 packages:
 
@@ -1926,10 +1927,10 @@ snapshots:
     dependencies:
       '@types/node': 26.4.1
 
-  '@vitejs/plugin-react@6.1.1(vite@8.2.2)':
+  '@vitejs/plugin-react@6.1.1(vite@8.2.2(@types/node@26.4.1))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.2.2
+      vite: 8.2.2(@types/node@26.4.1)
 
   '@vladfrangu/async_event_emitter@2.4.7': {}
 
@@ -2579,7 +2580,7 @@ snapshots:
 
   shallowequal@1.1.0: {}
 
-  sharp@0.35.4:
+  sharp@0.35.4(@types/node@26.4.1):
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
@@ -2610,6 +2611,7 @@ snapshots:
       '@img/sharp-win32-arm64': 0.35.4
       '@img/sharp-win32-ia32': 0.35.4
       '@img/sharp-win32-x64': 0.35.4
+      '@types/node': 26.4.1
 
   side-channel-list@1.0.1:
     dependencies:
@@ -2728,7 +2730,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite@8.2.2:
+  vite@8.2.2(@types/node@26.4.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -2736,6 +2738,7 @@ snapshots:
       rolldown: 1.2.7
       tinyglobby: 0.2.17
     optionalDependencies:
+      '@types/node': 26.4.1
       fsevents: 2.3.3
 
   wrappy@1.0.2: {}
