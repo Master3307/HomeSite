@@ -12,6 +12,7 @@ const {
   postLobbyCode,
 } = require("../interactions/slash/utility/lobby-code.cjs");
 
+const birthdayCommand = require("../interactions/slash/misc/birthday.cjs");
 const petting = require("../services/petting.cjs");
 
 const PAGE = {
@@ -87,11 +88,7 @@ function createPettingButtons({ ownerId, targetId, activePage }) {
         .setCustomId(createPettingButtonId(ownerId, targetId, button.page))
         .setLabel(button.label)
         .setEmoji(button.emoji)
-        .setStyle(
-          activePage === button.page
-            ? 1 // ButtonStyle.Primary
-            : 2, // ButtonStyle.Secondary
-        )
+        .setStyle(activePage === button.page ? 1 : 2)
         .setDisabled(activePage === button.page),
     ),
   );
@@ -467,6 +464,25 @@ async function replyUnknownButton(interaction) {
     });
 }
 
+async function replyButtonError(interaction, message) {
+  if (interaction.replied || interaction.deferred) {
+    await interaction
+      .followUp({
+        content: message,
+        flags: MessageFlags.Ephemeral,
+      })
+      .catch(() => {});
+    return;
+  }
+
+  await interaction
+    .reply({
+      content: message,
+      flags: MessageFlags.Ephemeral,
+    })
+    .catch(() => {});
+}
+
 module.exports = {
   name: "interactionCreate",
 
@@ -488,6 +504,28 @@ module.exports = {
 
     if (interaction.customId.startsWith("petting:")) {
       await handlePettingButton(interaction);
+      return;
+    }
+
+    if (interaction.customId.startsWith("birthday-list:")) {
+      try {
+        const handled = await birthdayCommand.handleButton(interaction);
+
+        if (!handled) {
+          await replyUnknownButton(interaction);
+        }
+      } catch (error) {
+        console.error(
+          `[Birthday] Failed to handle button "${interaction.customId}":`,
+          error,
+        );
+
+        await replyButtonError(
+          interaction,
+          "I could not update this birthday list.",
+        );
+      }
+
       return;
     }
 
@@ -560,21 +598,10 @@ module.exports = {
         } catch (error) {
           console.error("[Lobby] Failed to approve lobby code:", error);
 
-          if (interaction.replied || interaction.deferred) {
-            await interaction
-              .followUp({
-                content: "Failed to approve and post the lobby code.",
-                flags: MessageFlags.Ephemeral,
-              })
-              .catch(() => {});
-          } else {
-            await interaction
-              .reply({
-                content: "Failed to approve and post the lobby code.",
-                flags: MessageFlags.Ephemeral,
-              })
-              .catch(() => {});
-          }
+          await replyButtonError(
+            interaction,
+            "Failed to approve and post the lobby code.",
+          );
         }
 
         return;
@@ -622,21 +649,7 @@ module.exports = {
         } catch (error) {
           console.error("[Lobby] Failed to deny lobby code:", error);
 
-          if (interaction.replied || interaction.deferred) {
-            await interaction
-              .followUp({
-                content: "Failed to deny the lobby code.",
-                flags: MessageFlags.Ephemeral,
-              })
-              .catch(() => {});
-          } else {
-            await interaction
-              .reply({
-                content: "Failed to deny the lobby code.",
-                flags: MessageFlags.Ephemeral,
-              })
-              .catch(() => {});
-          }
+          await replyButtonError(interaction, "Failed to deny the lobby code.");
         }
 
         return;
@@ -658,21 +671,10 @@ module.exports = {
         error,
       );
 
-      if (interaction.replied || interaction.deferred) {
-        await interaction
-          .followUp({
-            content: "There was an issue while executing that button.",
-            flags: MessageFlags.Ephemeral,
-          })
-          .catch(() => {});
-      } else {
-        await interaction
-          .reply({
-            content: "There was an issue while executing that button.",
-            flags: MessageFlags.Ephemeral,
-          })
-          .catch(() => {});
-      }
+      await replyButtonError(
+        interaction,
+        "There was an issue while executing that button.",
+      );
     }
   },
 };

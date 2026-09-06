@@ -206,7 +206,6 @@ function parseBirthdayDate(input) {
     );
   }
 
-  // Examples: 09.09, 9.9, 9.9., 09.09.2000
   const numericMatch = value.match(
     /^(\d{1,2})\s*\.\s*(\d{1,2})(?:\s*\.\s*(\d{4}))?\s*\.?$/,
   );
@@ -219,15 +218,6 @@ function parseBirthdayDate(input) {
     );
   }
 
-  // Examples:
-  // 9th September 2000
-  // 9th September
-  // 9 September
-  // 9. September
-  // 9th Sep
-  // 9th. Sep.
-  // 9er September
-  // 9 вересня
   const namedMonthMatch = value.match(
     /^(\d{1,2})(?:st|nd|rd|th|er)?\.?\s+([^\d\s.]+)\.?(?:\s+(\d{4}))?$/iu,
   );
@@ -311,6 +301,7 @@ function createBirthdayEmbed(memberOrUser, birthday) {
   const details = getBirthdayDetails(birthday);
   const user = memberOrUser.user ?? memberOrUser;
   const hasYear = birthday.year !== null && birthday.year !== undefined;
+
   const lines = [`**Birthday:** ${formatBirthday(birthday)}`];
 
   if (hasYear) {
@@ -353,9 +344,17 @@ function sortBirthdays(birthdays) {
     });
 }
 
+function getPageCount(entries) {
+  return Math.max(1, Math.ceil(entries.length / ITEMS_PER_PAGE));
+}
+
+function clampPage(page, pageCount) {
+  return Math.max(0, Math.min(page, pageCount - 1));
+}
+
 function createListEmbed(entries, page) {
-  const pageCount = Math.max(1, Math.ceil(entries.length / ITEMS_PER_PAGE));
-  const safePage = Math.max(0, Math.min(page, pageCount - 1));
+  const pageCount = getPageCount(entries);
+  const safePage = clampPage(page, pageCount);
 
   const pageEntries = entries.slice(
     safePage * ITEMS_PER_PAGE,
@@ -364,10 +363,9 @@ function createListEmbed(entries, page) {
 
   const description = pageEntries.map((birthday, index) => {
     const number = safePage * ITEMS_PER_PAGE + index + 1;
-
     const hasYear = birthday.year !== null && birthday.year !== undefined;
 
-    const ageText = hasYear ? `turns **${birthday.details.nextAge}**` : "";
+    const ageText = hasYear ? `・ turns **${birthday.details.nextAge}**` : "";
 
     const when = birthday.details.isToday
       ? "🎉 **today**"
@@ -375,33 +373,64 @@ function createListEmbed(entries, page) {
 
     return [
       `**${number}.** <@${birthday.userId}>`,
-      `${formatBirthday(birthday)}・${ageText} ${when}`,
+      `${formatBirthday(birthday)}${ageText} ・ ${when}`,
     ].join("\n");
   });
 
   return new EmbedBuilder()
     .setColor(0xe91e63)
     .setTitle("🎂 Birthday list")
-    .setDescription(description.join("\n\n"))
+    .setDescription(
+      description.join("\n\n") || "No birthdays have been saved yet.",
+    )
     .setFooter({
-      text: `Page ${safePage + 1}/${pageCount}・${entries.length} birthday${entries.length === 1 ? "" : "s"}`,
+      text: `Page ${safePage + 1}/${pageCount} ・ ${entries.length} birthday${entries.length === 1 ? "" : "s"}`,
     })
     .setTimestamp();
 }
 
 function createListButtons(page, pageCount, ownerId) {
+  const safePage = clampPage(page, pageCount);
+
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId(`${CUSTOM_ID_PREFIX}:previous:${ownerId}:${page}`)
+      .setCustomId(`${CUSTOM_ID_PREFIX}:previous:${ownerId}:${safePage}`)
       .setLabel("Previous")
       .setStyle(ButtonStyle.Secondary)
-      .setDisabled(page <= 0),
+      .setDisabled(safePage === 0),
+
     new ButtonBuilder()
-      .setCustomId(`${CUSTOM_ID_PREFIX}:next:${ownerId}:${page}`)
+      .setCustomId(`${CUSTOM_ID_PREFIX}:next:${ownerId}:${safePage}`)
       .setLabel("Next")
       .setStyle(ButtonStyle.Primary)
-      .setDisabled(page >= pageCount - 1),
+      .setDisabled(safePage >= pageCount - 1),
   );
+}
+
+function parseListButton(customId) {
+  const parts = customId.split(":");
+
+  if (parts.length !== 4 || parts[0] !== CUSTOM_ID_PREFIX) {
+    return null;
+  }
+
+  const [, direction, ownerId, pageString] = parts;
+  const page = Number(pageString);
+
+  if (
+    !["previous", "next"].includes(direction) ||
+    !ownerId ||
+    !Number.isSafeInteger(page) ||
+    page < 0
+  ) {
+    return null;
+  }
+
+  return {
+    direction,
+    ownerId,
+    page,
+  };
 }
 
 module.exports = {
@@ -463,7 +492,8 @@ module.exports = {
       );
 
       const details = getBirthdayDetails(savedBirthday);
-      const hasYear = savedBirthday.year !== null;
+      const hasYear =
+        savedBirthday.year !== null && savedBirthday.year !== undefined;
 
       if (details.isToday) {
         await birthdayCelebrations.announceBirthday(interaction.client, {
@@ -479,7 +509,7 @@ module.exports = {
             .setTitle("🎂 Birthday saved")
             .setDescription(
               [
-                `Your birthday has been set to **${formatBirthday(parsed.birthday)}**`,
+                `Your birthday has been set to **${formatBirthday(savedBirthday)}**`,
                 hasYear
                   ? `You are currently **${details.age}** and will turn **${details.nextAge}** on your next birthday.`
                   : "Your birth year was not saved, so no age is displayed.",
@@ -491,6 +521,7 @@ module.exports = {
         ],
         ephemeral: true,
       });
+
       return;
     }
 
@@ -507,12 +538,14 @@ module.exports = {
             : `${target} has not set a birthday yet.`,
           ephemeral: true,
         });
+
         return;
       }
 
       await interaction.reply({
         embeds: [createBirthdayEmbed(target, birthday)],
       });
+
       return;
     }
 
@@ -521,14 +554,15 @@ module.exports = {
 
       if (entries.length === 0) {
         await interaction.reply({
-          content: "No birthdays have been saved in this server yet.",
+          content: "No birthdays have been saved yet.",
           ephemeral: true,
         });
+
         return;
       }
 
       const page = 0;
-      const pageCount = Math.ceil(entries.length / ITEMS_PER_PAGE);
+      const pageCount = getPageCount(entries);
 
       await interaction.reply({
         embeds: [createListEmbed(entries, page)],
@@ -541,34 +575,23 @@ module.exports = {
   },
 
   async handleButton(interaction) {
-    if (
-      !interaction.isButton() ||
-      !interaction.customId.startsWith(`${CUSTOM_ID_PREFIX}:`)
-    ) {
+    if (!interaction.isButton()) {
       return false;
     }
 
-    const [, direction, ownerId, pageString] = interaction.customId.split(":");
-    const currentPage = Number(pageString);
+    const button = parseListButton(interaction.customId);
 
-    if (
-      !["previous", "next"].includes(direction) ||
-      !ownerId ||
-      !Number.isInteger(currentPage)
-    ) {
-      await interaction.reply({
-        content: "This birthday-list button is invalid.",
-        ephemeral: true,
-      });
-      return true;
+    if (!button) {
+      return false;
     }
 
-    if (interaction.user.id !== ownerId) {
+    if (interaction.user.id !== button.ownerId) {
       await interaction.reply({
         content:
           "Only the person who opened this birthday list can use these buttons.",
         ephemeral: true,
       });
+
       return true;
     }
 
@@ -576,22 +599,38 @@ module.exports = {
 
     if (entries.length === 0) {
       await interaction.update({
-        content: "No birthdays have been saved in this server yet.",
+        content: "No birthdays have been saved yet.",
         embeds: [],
         components: [],
       });
+
       return true;
     }
 
-    const pageCount = Math.ceil(entries.length / ITEMS_PER_PAGE);
+    const pageCount = getPageCount(entries);
+
+    // Reject stale/manually forged IDs instead of allowing an odd jump.
+    if (button.page >= pageCount) {
+      await interaction.reply({
+        content:
+          "This birthday list has changed. Please run `/birthday list` again.",
+        ephemeral: true,
+      });
+
+      return true;
+    }
+
     const requestedPage =
-      direction === "next" ? currentPage + 1 : currentPage - 1;
-    const page = Math.max(0, Math.min(requestedPage, pageCount - 1));
+      button.direction === "next" ? button.page + 1 : button.page - 1;
+
+    const page = clampPage(requestedPage, pageCount);
 
     await interaction.update({
       embeds: [createListEmbed(entries, page)],
       components:
-        pageCount > 1 ? [createListButtons(page, pageCount, ownerId)] : [],
+        pageCount > 1
+          ? [createListButtons(page, pageCount, button.ownerId)]
+          : [],
     });
 
     return true;
