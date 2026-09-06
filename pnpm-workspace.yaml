@@ -2,3 +2,4 @@ allowBuilds:
   canvas: true
 overrides:
   undici: "^6.28.0"
+  qs: "6.16.0"
