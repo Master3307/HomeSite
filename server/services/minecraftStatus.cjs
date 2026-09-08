@@ -1,8 +1,7 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
-const dns = require("node:dns").promises;
 
-const mcs = require("node-mcstatus");
+const { JavaPingClient } = require("craftping");
 const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
 
 const MINECRAFT_SERVER = {
@@ -74,88 +73,39 @@ function createMinecraftThumbnailAttachment() {
   });
 }
 
-/*
-  Resolve the Minecraft Java SRV record locally.
-
-  Aternos dynamically changes the backend port. Minecraft clients use
-  _minecraft._tcp.<hostname> to discover that port, so do the same here.
-*/
-async function resolveMinecraftServerAddress() {
-  const fallbackAddress = {
-    host: MINECRAFT_SERVER.host,
-    port: MINECRAFT_SERVER.port,
-  };
-
-  try {
-    const records = await dns.resolveSrv(
-      `_minecraft._tcp.${MINECRAFT_SERVER.host}`,
-    );
-
-    if (!records.length) {
-      return fallbackAddress;
-    }
-
-    /*
-      Choose the lowest priority record. If several records have the same
-      priority, prefer the largest weight for a deterministic simple choice.
-    */
-    records.sort((a, b) => {
-      if (a.priority !== b.priority) {
-        return a.priority - b.priority;
-      }
-
-      return b.weight - a.weight;
-    });
-
-    const record = records[0];
-
-    return {
-      host: record.name.replace(/\.$/, ""),
-      port: record.port,
-    };
-  } catch (error) {
-    console.warn(
-      "[Minecraft Status] SRV lookup failed; using default address:",
-      error.code ?? error.message,
-    );
-
-    return fallbackAddress;
-  }
-}
-
 async function fetchMinecraftStatus() {
   try {
-    const resolvedServer = await resolveMinecraftServerAddress();
+    const minecraftPing = new JavaPingClient();
 
     console.log(
-      `[Minecraft Status] Checking ${resolvedServer.host}:${resolvedServer.port}`,
+      `[Minecraft Status] Directly checking ${MINECRAFT_SERVER.host}:${MINECRAFT_SERVER.port}`,
     );
 
-    const result = await mcs.statusJava(
-      resolvedServer.host,
-      resolvedServer.port,
+    const result = await minecraftPing.ping(
+      MINECRAFT_SERVER.host,
+      MINECRAFT_SERVER.port,
       {
-        query: false,
+        resolveSrvRecords: true,
+        signal: AbortSignal.timeout(10_000),
       },
     );
 
     return {
-      online: result.online === true,
+      online: true,
       displayHost: MINECRAFT_SERVER.host,
       displayPort: MINECRAFT_SERVER.port,
-      motd: result.motd?.clean ?? "No MOTD configured",
+      motd: result.description?.text ?? "No MOTD configured",
       onlinePlayers: result.players?.online ?? 0,
       maxPlayers: result.players?.max ?? 0,
-      version:
-        result.version?.name_clean ?? result.version?.name_raw ?? "Unknown",
-      latency: result.round_trip_latency ?? null,
-      playerNames: (result.players?.list ?? [])
-        .map((player) => player.name_clean)
+      version: result.version?.name ?? "Unknown",
+      latency: null,
+      playerNames: (result.players?.sample ?? [])
+        .map((player) => player.name)
         .filter(Boolean),
       error: null,
     };
   } catch (error) {
-    console.error("[Minecraft Status] Lookup failed:", error);
+    console.error("[Minecraft Status] Direct ping failed:", error);
 
     return {
       online: false,
