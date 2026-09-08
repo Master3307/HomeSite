@@ -1,5 +1,6 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const dns = require("node:dns").promises;
 
 const { JavaPingClient } = require("craftping");
 const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
@@ -73,19 +74,66 @@ function createMinecraftThumbnailAttachment() {
   });
 }
 
-async function fetchMinecraftStatus() {
-  try {
-    const minecraftPing = new JavaPingClient();
+/*
+  Aternos uses a dynamic Java port, published through:
+  _minecraft._tcp.<server hostname>
 
-    console.log(
-      `[Minecraft Status] Directly checking ${MINECRAFT_SERVER.host}:${MINECRAFT_SERVER.port}`,
+  Resolve it before every ping. Never hard-code the result, because the
+  assigned port can change whenever the Aternos server is restarted.
+*/
+async function resolveMinecraftServerAddress() {
+  const fallbackAddress = {
+    host: MINECRAFT_SERVER.host,
+    port: MINECRAFT_SERVER.port,
+  };
+
+  try {
+    const records = await dns.resolveSrv(
+      `_minecraft._tcp.${MINECRAFT_SERVER.host}`,
     );
 
+    if (!records.length) {
+      return fallbackAddress;
+    }
+
+    records.sort((a, b) => {
+      if (a.priority !== b.priority) {
+        return a.priority - b.priority;
+      }
+
+      return b.weight - a.weight;
+    });
+
+    const record = records[0];
+
+    return {
+      host: record.name.replace(/\.$/, ""),
+      port: record.port,
+    };
+  } catch (error) {
+    console.warn(
+      "[Minecraft Status] SRV lookup failed; using default address:",
+      error.code ?? error.message,
+    );
+
+    return fallbackAddress;
+  }
+}
+
+async function fetchMinecraftStatus() {
+  try {
+    const resolvedServer = await resolveMinecraftServerAddress();
+
+    console.log(
+      `[Minecraft Status] Directly checking ${resolvedServer.host}:${resolvedServer.port}`,
+    );
+
+    const minecraftPing = new JavaPingClient();
+
     const result = await minecraftPing.ping(
-      MINECRAFT_SERVER.host,
-      MINECRAFT_SERVER.port,
+      resolvedServer.host,
+      resolvedServer.port,
       {
-        resolveSrvRecords: true,
         signal: AbortSignal.timeout(10_000),
       },
     );
