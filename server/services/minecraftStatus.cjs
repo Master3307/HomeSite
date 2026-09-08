@@ -185,12 +185,6 @@ async function updateMinecraftStatus(client) {
       );
     }
 
-    if (!thread.sendable) {
-      throw new Error(
-        "The bot cannot send messages in the configured Minecraft status thread.",
-      );
-    }
-
     if (thread.archived) {
       await thread.setArchived(
         false,
@@ -198,13 +192,15 @@ async function updateMinecraftStatus(client) {
       );
     }
 
+    if (!thread.sendable) {
+      throw new Error(
+        "The bot cannot send messages in the configured Minecraft status thread.",
+      );
+    }
+
     const status = await fetchMinecraftStatus();
     const embed = makeMinecraftStatusEmbed(status);
 
-    /*
-      Create a fresh AttachmentBuilder every time a message is sent or edited.
-      Attachment instances should not be reused across separate Discord requests.
-    */
     const createPayload = () => ({
       embeds: [embed],
       files: [createMinecraftThumbnailAttachment()],
@@ -233,22 +229,23 @@ async function updateMinecraftStatus(client) {
       newestMessage &&
       oldStatusMessage.id === newestMessage.id;
 
-    /*
-      The status card is already last, so edit it without creating
-      an additional thread message.
-    */
     if (statusIsAtBottom) {
-      await oldStatusMessage.edit(createPayload());
+      /*
+        Editing with a new uploaded attachment can leave old attachments on
+        the Discord message. Supplying attachments: [] replaces/removes the
+        existing attachment list before uploading the current thumbnail.
+      */
+      await oldStatusMessage.edit({
+        ...createPayload(),
+        attachments: [],
+      });
 
       return;
     }
 
     /*
-      The old card is not last, or it was deleted.
-
-      Send a new card first, write its ID second, and only then delete the old
-      card. This prevents a transient failure from leaving the thread without
-      any status card.
+      Send replacement before deleting old status card. This protects against
+      a temporary Discord/API failure leaving no status panel in the thread.
     */
     const newStatusMessage = await thread.send(createPayload());
 
@@ -281,10 +278,6 @@ function bumpMinecraftStatusSoon(client) {
     clearTimeout(bumpTimeout);
   }
 
-  /*
-    Wait until a message burst has settled. Each new human message in the
-    thread resets the timer, so one conversation burst produces one bump.
-  */
   bumpTimeout = setTimeout(() => {
     bumpTimeout = null;
 
@@ -308,10 +301,8 @@ function startMinecraftStatusUpdater(client) {
     });
   };
 
-  // Create or refresh the status card immediately after the bot is ready.
   refresh();
 
-  // Refresh the data every two minutes.
   intervalHandle = setInterval(refresh, 2 * 60 * 1000);
 
   return intervalHandle;
