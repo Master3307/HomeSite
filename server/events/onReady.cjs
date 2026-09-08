@@ -1,5 +1,6 @@
 const levels = require("../services/levels.cjs");
 const birthdayCelebrations = require("../services/birthdayCelebrations.cjs");
+const minecraftStatus = require("../services/minecraftStatus.cjs");
 
 module.exports = {
   name: "clientReady",
@@ -20,6 +21,13 @@ module.exports = {
       console.log("[Birthday] Celebration scheduler initialized.");
     } catch (error) {
       console.error("[Birthday] Failed to initialize scheduler:", error);
+    }
+
+    try {
+      minecraftStatus.startMinecraftStatusUpdater(client);
+      console.log("[Minecraft Status] Bottom-sticky updater initialized.");
+    } catch (error) {
+      console.error("[Minecraft Status] Failed to initialize updater:", error);
     }
   },
 };

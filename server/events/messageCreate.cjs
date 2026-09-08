@@ -1,10 +1,3 @@
-/**
- * @file Message Based Commands Handler
- * @author Naman Vrati
- * @since 1.0.0
- * @version 3.3.0
- */
-
 const {
   Collection,
   ChannelType,
@@ -15,6 +8,7 @@ const {
 } = require("discord.js");
 
 const levels = require("../services/levels.cjs");
+const minecraftStatus = require("../services/minecraftStatus.cjs");
 
 const prefix = process.env.BOT_PREFIX || "!";
 const owners = process.env.BOT_OWNERS ? process.env.BOT_OWNERS.split(",") : [];
@@ -28,6 +22,7 @@ const {
 const REVIEW_CHANNEL_ID = "1532015231671472399";
 const REVIEW_ROLE_ID = "1479193560778805300";
 const STICKY_CHANNEL_ID = "1479219328258674709";
+const MINECRAFT_STATUS_THREAD_ID = "1543613705651093624";
 
 const escapeRegex = (string) => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -56,6 +51,7 @@ module.exports = {
     /*
       Bots gain XP above, but never run normal message behavior below:
       - sticky reposting
+      - Minecraft-status reposting
       - lobby-code handling
       - mention responses
       - prefix commands
@@ -66,6 +62,28 @@ module.exports = {
       return;
     }
 
+    /*
+      Minecraft status thread:
+      - A human message makes the existing status card no longer be last.
+      - Queue a debounced refresh/repost after chat settles.
+      - The service deletes the old card and sends the replacement at bottom.
+    */
+    if (message.channelId === MINECRAFT_STATUS_THREAD_ID) {
+      try {
+        minecraftStatus.bumpMinecraftStatusSoon(client);
+      } catch (error) {
+        console.error(
+          "[Minecraft Status] Failed to queue bottom-status update:",
+          error,
+        );
+      }
+
+      return;
+    }
+
+    /*
+      Existing generic sticky-message channel behavior.
+    */
     if (message.channelId === STICKY_CHANNEL_ID) {
       try {
         await sendStickyMessageToChannel(client, message.channelId);
