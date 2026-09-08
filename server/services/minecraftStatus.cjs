@@ -2,7 +2,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 
 const mcs = require("node-mcstatus");
-const { EmbedBuilder } = require("discord.js");
+const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
 
 const MINECRAFT_SERVER = {
   host: "nigelserver2026.aternos.me",
@@ -10,6 +10,8 @@ const MINECRAFT_SERVER = {
 };
 
 const STATUS_FILE = path.join(__dirname, "db", "minecraft-status.json");
+
+const THUMBNAIL_FILE = path.join(__dirname, "db", "minecraft-server.png");
 
 const DEFAULT_STATE = {
   threadId: "1543613705651093624",
@@ -65,6 +67,12 @@ async function writeStatusState(state) {
   await fs.rename(temporaryFile, STATUS_FILE);
 }
 
+function createMinecraftThumbnailAttachment() {
+  return new AttachmentBuilder(THUMBNAIL_FILE, {
+    name: "minecraft-server.png",
+  });
+}
+
 async function fetchMinecraftStatus() {
   try {
     const result = await mcs.statusJava(
@@ -85,7 +93,6 @@ async function fetchMinecraftStatus() {
       version:
         result.version?.name_clean ?? result.version?.name_raw ?? "Unknown",
       latency: result.round_trip_latency ?? null,
-      icon: result.icon ?? null,
       playerNames: (result.players?.list ?? [])
         .map((player) => player.name_clean)
         .filter(Boolean),
@@ -127,6 +134,7 @@ function makeMinecraftStatusEmbed(status) {
       .setFooter({
         text: "Automatically refreshed every 2 minutes",
       })
+      .setThumbnail("attachment://minecraft-server.png")
       .setTimestamp();
   }
 
@@ -162,7 +170,7 @@ function makeMinecraftStatusEmbed(status) {
     inline: true,
   });
 
-  const embed = new EmbedBuilder()
+  return new EmbedBuilder()
     .setColor("#57F287")
     .setTitle("🟢 Online")
     .setDescription(status.motd || "No MOTD configured")
@@ -170,15 +178,8 @@ function makeMinecraftStatusEmbed(status) {
     .setFooter({
       text: "Automatically refreshed every 2 minutes",
     })
+    .setThumbnail("attachment://minecraft-server.png")
     .setTimestamp();
-
-  // The library returns a data:image/png;base64,... URL.
-  // If Discord does not render the thumbnail, remove this block.
-  if (status.icon?.startsWith("data:image/")) {
-    embed.setThumbnail(status.icon);
-  }
-
-  return embed;
 }
 
 async function getLatestThreadMessage(thread) {
@@ -211,6 +212,12 @@ async function updateMinecraftStatus(client) {
       );
     }
 
+    if (!thread.sendable) {
+      throw new Error(
+        "The bot cannot send messages in the configured Minecraft status thread.",
+      );
+    }
+
     if (thread.archived) {
       await thread.setArchived(
         false,
@@ -220,6 +227,15 @@ async function updateMinecraftStatus(client) {
 
     const status = await fetchMinecraftStatus();
     const embed = makeMinecraftStatusEmbed(status);
+
+    /*
+      Create a fresh AttachmentBuilder every time a message is sent or edited.
+      Attachment instances should not be reused across separate Discord requests.
+    */
+    const createPayload = () => ({
+      embeds: [embed],
+      files: [createMinecraftThumbnailAttachment()],
+    });
 
     let oldStatusMessage = null;
 
@@ -244,11 +260,12 @@ async function updateMinecraftStatus(client) {
       newestMessage &&
       oldStatusMessage.id === newestMessage.id;
 
-    // The status card is already last: update without creating notification spam.
+    /*
+      The status card is already last, so edit it without creating
+      an additional thread message.
+    */
     if (statusIsAtBottom) {
-      await oldStatusMessage.edit({
-        embeds: [embed],
-      });
+      await oldStatusMessage.edit(createPayload());
 
       return;
     }
@@ -256,13 +273,11 @@ async function updateMinecraftStatus(client) {
     /*
       The old card is not last, or it was deleted.
 
-      Send the new card first, save its ID second, then delete the old one.
-      This order means a transient Discord error cannot leave the thread
-      without a live status card.
+      Send a new card first, write its ID second, and only then delete the old
+      card. This prevents a transient failure from leaving the thread without
+      any status card.
     */
-    const newStatusMessage = await thread.send({
-      embeds: [embed],
-    });
+    const newStatusMessage = await thread.send(createPayload());
 
     await writeStatusState({
       threadId: thread.id,
@@ -293,7 +308,10 @@ function bumpMinecraftStatusSoon(client) {
     clearTimeout(bumpTimeout);
   }
 
-  // Wait for the discussion to settle. Every new human message resets this timer.
+  /*
+    Wait until a message burst has settled. Each new human message in the
+    thread resets the timer, so one conversation burst produces one bump.
+  */
   bumpTimeout = setTimeout(() => {
     bumpTimeout = null;
 
@@ -317,9 +335,10 @@ function startMinecraftStatusUpdater(client) {
     });
   };
 
-  // Create or refresh the card immediately after login.
+  // Create or refresh the status card immediately after the bot is ready.
   refresh();
 
+  // Refresh the data every two minutes.
   intervalHandle = setInterval(refresh, 2 * 60 * 1000);
 
   return intervalHandle;
