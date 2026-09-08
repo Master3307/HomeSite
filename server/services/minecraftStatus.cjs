@@ -119,20 +119,10 @@ function makeMinecraftStatusEmbed(status) {
       .setColor("#ED4245")
       .setTitle("🔴 Offline")
       .setDescription("The server did not respond to the latest status check.")
-      .addFields(
-        {
-          name: "Server address",
-          value: address,
-          inline: true,
-        },
-        {
-          name: "Last checked",
-          value: `<t:${updatedAt}:R>`,
-          inline: true,
-        },
-      )
-      .setFooter({
-        text: "Automatically refreshed every 2 minutes",
+      .addFields({
+        name: "Server address",
+        value: address,
+        inline: true,
       })
       .setThumbnail("attachment://minecraft-server.png")
       .setTimestamp();
@@ -156,28 +146,11 @@ function makeMinecraftStatusEmbed(status) {
     },
   ];
 
-  if (status.playerNames?.length) {
-    fields.push({
-      name: "Online now",
-      value: status.playerNames.join(", "),
-      inline: false,
-    });
-  }
-
-  fields.push({
-    name: "Updated",
-    value: `<t:${updatedAt}:R>`,
-    inline: true,
-  });
-
   return new EmbedBuilder()
     .setColor("#57F287")
     .setTitle("🟢 Online")
     .setDescription(status.motd || "No MOTD configured")
     .addFields(fields)
-    .setFooter({
-      text: "Automatically refreshed every 2 minutes",
-    })
     .setThumbnail("attachment://minecraft-server.png")
     .setTimestamp();
 }
