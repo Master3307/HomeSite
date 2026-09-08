@@ -1,5 +1,6 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const dns = require("node:dns").promises;
 
 const mcs = require("node-mcstatus");
 const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
@@ -73,11 +74,66 @@ function createMinecraftThumbnailAttachment() {
   });
 }
 
+/*
+  Resolve the Minecraft Java SRV record locally.
+
+  Aternos dynamically changes the backend port. Minecraft clients use
+  _minecraft._tcp.<hostname> to discover that port, so do the same here.
+*/
+async function resolveMinecraftServerAddress() {
+  const fallbackAddress = {
+    host: MINECRAFT_SERVER.host,
+    port: MINECRAFT_SERVER.port,
+  };
+
+  try {
+    const records = await dns.resolveSrv(
+      `_minecraft._tcp.${MINECRAFT_SERVER.host}`,
+    );
+
+    if (!records.length) {
+      return fallbackAddress;
+    }
+
+    /*
+      Choose the lowest priority record. If several records have the same
+      priority, prefer the largest weight for a deterministic simple choice.
+    */
+    records.sort((a, b) => {
+      if (a.priority !== b.priority) {
+        return a.priority - b.priority;
+      }
+
+      return b.weight - a.weight;
+    });
+
+    const record = records[0];
+
+    return {
+      host: record.name.replace(/\.$/, ""),
+      port: record.port,
+    };
+  } catch (error) {
+    console.warn(
+      "[Minecraft Status] SRV lookup failed; using default address:",
+      error.code ?? error.message,
+    );
+
+    return fallbackAddress;
+  }
+}
+
 async function fetchMinecraftStatus() {
   try {
+    const resolvedServer = await resolveMinecraftServerAddress();
+
+    console.log(
+      `[Minecraft Status] Checking ${resolvedServer.host}:${resolvedServer.port}`,
+    );
+
     const result = await mcs.statusJava(
-      MINECRAFT_SERVER.host,
-      MINECRAFT_SERVER.port,
+      resolvedServer.host,
+      resolvedServer.port,
       {
         query: false,
       },
@@ -230,11 +286,6 @@ async function updateMinecraftStatus(client) {
       oldStatusMessage.id === newestMessage.id;
 
     if (statusIsAtBottom) {
-      /*
-        Editing with a new uploaded attachment can leave old attachments on
-        the Discord message. Supplying attachments: [] replaces/removes the
-        existing attachment list before uploading the current thumbnail.
-      */
       await oldStatusMessage.edit({
         ...createPayload(),
         attachments: [],
@@ -243,10 +294,6 @@ async function updateMinecraftStatus(client) {
       return;
     }
 
-    /*
-      Send replacement before deleting old status card. This protects against
-      a temporary Discord/API failure leaving no status panel in the thread.
-    */
     const newStatusMessage = await thread.send(createPayload());
 
     await writeStatusState({
