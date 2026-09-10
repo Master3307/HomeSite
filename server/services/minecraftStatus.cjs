@@ -254,24 +254,14 @@ function makeMinecraftStatusEmbed(status) {
 
   if (!status.online) {
     return new EmbedBuilder()
-      .setColor("#ED4245")
+      .setColor("#DD2E44")
       .setTitle("🔴 Offline")
-      .setDescription(
-        status.error ??
-          "Aternos reports that the Minecraft server is currently offline.",
-      )
-      .addFields(
-        {
-          name: "Server address",
-          value: address,
-          inline: true,
-        },
-        {
-          name: "Last checked",
-          value: `<t:${updatedAt}:R>`,
-          inline: true,
-        },
-      )
+      .setDescription(status.error ?? "The Server is currently offline.")
+      .addFields({
+        name: "Server address",
+        value: address,
+        inline: true,
+      })
       .setThumbnail("attachment://minecraft-server.png")
       .setTimestamp();
   }
@@ -297,17 +287,12 @@ function makeMinecraftStatusEmbed(status) {
       value: address,
       inline: true,
     },
-    {
-      name: "Last checked",
-      value: `<t:${updatedAt}:R>`,
-      inline: true,
-    },
   ];
 
   return new EmbedBuilder()
-    .setColor("#57F287")
+    .setColor("#78B159")
     .setTitle("🟢 Online")
-    .setDescription(status.motd || "No MOTD configured")
+    .setDescription(status.motd || "")
     .addFields(fields)
     .setThumbnail("attachment://minecraft-server.png")
     .setTimestamp();
