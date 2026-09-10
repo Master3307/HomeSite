@@ -1,6 +1,7 @@
 const levels = require("../services/levels.cjs");
 const birthdayCelebrations = require("../services/birthdayCelebrations.cjs");
 const minecraftStatus = require("../services/minecraftStatus.cjs");
+const fdc = require("../interactions/slash/utility/fdc.cjs");
 
 module.exports = {
   name: "clientReady",
@@ -28,6 +29,13 @@ module.exports = {
       console.log("[Minecraft Status] Bottom-sticky updater initialized.");
     } catch (error) {
       console.error("[Minecraft Status] Failed to initialize updater:", error);
+    }
+
+    try {
+      await fdc.recover(client);
+      console.log("[FDC] Poll recovery initialized.");
+    } catch (error) {
+      console.error("[FDC] Failed to recover active polls:", error);
     }
   },
 };
