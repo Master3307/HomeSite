@@ -168,28 +168,23 @@ function parseEndTime(input) {
   const discordTimestamp = value.match(/^<t:(\d+)(?::[a-zA-Z])?>$/);
 
   if (discordTimestamp) {
-    const timestamp = Number(discordTimestamp[1]) * 1000;
-    const date = new Date(timestamp);
-
+    const date = new Date(Number(discordTimestamp[1]) * 1000);
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
   if (/^\d{10}$/.test(value)) {
     const date = new Date(Number(value) * 1000);
-
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
   if (/^\d{13}$/.test(value)) {
     const date = new Date(Number(value));
-
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
   const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?$/.test(value)
     ? value.replace(" ", "T")
     : value;
-
   const date = new Date(normalized);
 
   return Number.isNaN(date.getTime()) ? null : date;
@@ -366,9 +361,8 @@ async function fetchCompleteReaction(reaction) {
   return reaction;
 }
 
-async function fetchVotesFromReactions(message, options) {
-  const votes = new Map();
-  const reactionUsers = [];
+async function fetchPollReactionUsers(message, options) {
+  const usersByOption = new Map();
 
   for (let optionIndex = 0; optionIndex < options.length; optionIndex += 1) {
     let reaction = message.reactions.cache.find(
@@ -377,15 +371,18 @@ async function fetchVotesFromReactions(message, options) {
 
     reaction = reaction ? await fetchCompleteReaction(reaction) : null;
 
-    if (!reaction) continue;
+    if (!reaction) {
+      usersByOption.set(optionIndex, new Set());
+      continue;
+    }
+
+    const userIds = new Set();
 
     try {
       const users = await reaction.users.fetch({ limit: 100 });
 
       for (const user of users.values()) {
-        if (!user.bot) {
-          reactionUsers.push({ userId: user.id, optionIndex });
-        }
+        if (!user.bot) userIds.add(user.id);
       }
     } catch (error) {
       console.error(
@@ -393,13 +390,70 @@ async function fetchVotesFromReactions(message, options) {
         error,
       );
     }
+
+    usersByOption.set(optionIndex, userIds);
   }
 
-  for (const { userId, optionIndex } of reactionUsers) {
-    votes.set(userId, optionIndex);
+  return usersByOption;
+}
+
+function buildVotesFromReactionUsers(usersByOption, options) {
+  const votes = new Map();
+
+  for (let optionIndex = 0; optionIndex < options.length; optionIndex += 1) {
+    const userIds = usersByOption.get(optionIndex) ?? new Set();
+
+    for (const userId of userIds) {
+      // Discord does not expose a per-user reaction timestamp. Processing in
+      // option order makes recovery deterministic; the highest option index wins
+      // if an old duplicate reaction exists.
+      votes.set(userId, optionIndex);
+    }
   }
 
   return votes;
+}
+
+async function fetchVotesFromReactions(message, options) {
+  const usersByOption = await fetchPollReactionUsers(message, options);
+  return buildVotesFromReactionUsers(usersByOption, options);
+}
+
+async function removeDuplicateReactions(
+  message,
+  options,
+  votes,
+  usersByOption,
+) {
+  let removedCount = 0;
+
+  for (let optionIndex = 0; optionIndex < options.length; optionIndex += 1) {
+    const userIds = usersByOption.get(optionIndex) ?? new Set();
+
+    if (userIds.size === 0) continue;
+
+    const reaction = message.reactions.cache.find(
+      (candidate) => reactionKey(candidate) === options[optionIndex].key,
+    );
+
+    if (!reaction) continue;
+
+    for (const userId of userIds) {
+      if (votes.get(userId) === optionIndex) continue;
+
+      try {
+        await reaction.users.remove(userId);
+        removedCount += 1;
+      } catch (error) {
+        console.error(
+          `Failed to remove duplicate FDC reaction for ${userId} on ${message.id}:`,
+          error,
+        );
+      }
+    }
+  }
+
+  return removedCount;
 }
 
 function votesMatchEmbed(message, options, votes) {
@@ -438,6 +492,7 @@ function attachPollLifecycle({ message, channel, options, votes, endsAt }) {
   let updateQueued = false;
   let pollEnded = false;
   const internallyRemovedVotes = new Set();
+  let collector;
 
   const clearUpdateTimer = () => {
     if (updateTimer) {
@@ -481,12 +536,24 @@ function attachPollLifecycle({ message, channel, options, votes, endsAt }) {
     }, EMBED_UPDATE_INTERVAL);
   };
 
+  const removeUserReaction = async (reaction, userId, optionKey) => {
+    const removalKey = `${userId}:${optionKey}`;
+    internallyRemovedVotes.add(removalKey);
+
+    try {
+      await reaction.users.remove(userId);
+    } catch (error) {
+      internallyRemovedVotes.delete(removalKey);
+      throw error;
+    }
+  };
+
   const closePoll = async () => {
     if (pollEnded) return;
 
     pollEnded = true;
     clearUpdateTimer();
-    collector.stop("ended");
+    collector?.stop("ended");
 
     try {
       await message.edit({
@@ -509,7 +576,8 @@ function attachPollLifecycle({ message, channel, options, votes, endsAt }) {
   };
 
   const remainingDuration = Math.max(0, endsAt.getTime() - Date.now());
-  const collector = message.createReactionCollector({
+
+  collector = message.createReactionCollector({
     filter: async (reaction, user) => {
       if (user.bot) return false;
 
@@ -544,13 +612,13 @@ function attachPollLifecycle({ message, channel, options, votes, endsAt }) {
       );
 
       if (oldReaction) {
-        const removalKey = `${user.id}:${options[previousIndex].key}`;
-        internallyRemovedVotes.add(removalKey);
-
         try {
-          await oldReaction.users.remove(user.id);
+          await removeUserReaction(
+            oldReaction,
+            user.id,
+            options[previousIndex].key,
+          );
         } catch (error) {
-          internallyRemovedVotes.delete(removalKey);
           console.error(`Failed to remove old FDC vote for ${user.id}:`, error);
         }
       }
@@ -644,9 +712,20 @@ async function recoverPolls(client) {
           continue;
         }
 
-        const votes = await fetchVotesFromReactions(
+        const usersByOption = await fetchPollReactionUsers(
           message,
           parsedPoll.options,
+        );
+        const votes = buildVotesFromReactionUsers(
+          usersByOption,
+          parsedPoll.options,
+        );
+
+        const duplicateReactionCount = await removeDuplicateReactions(
+          message,
+          parsedPoll.options,
+          votes,
+          usersByOption,
         );
 
         if (!votesMatchEmbed(message, parsedPoll.options, votes)) {
@@ -666,7 +745,7 @@ async function recoverPolls(client) {
         });
 
         console.log(
-          `Recovered FDC poll ${message.id} with ${votes.size} current voter(s).`,
+          `Recovered FDC poll ${message.id} with ${votes.size} current voter(s) and removed ${duplicateReactionCount} duplicate reaction(s).`,
         );
       } catch (error) {
         console.error(`Failed to recover FDC poll ${poll.messageId}:`, error);
