@@ -24,11 +24,11 @@ const REVIEW_ROLE_ID = "1479193560778805300";
 const STICKY_CHANNEL_ID = "1479219328258674709";
 const MINECRAFT_STATUS_THREAD_ID = "1543613705651093624";
 
+const { sendStickyMessageToChannel } = require("../services/stickyMessage.cjs");
+
 const escapeRegex = (string) => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
-
-const { sendStickyMessageToChannel } = require("../services/stickyMessage.cjs");
 
 module.exports = {
   name: "messageCreate",
@@ -82,13 +82,19 @@ module.exports = {
     }
 
     /*
-      Existing generic sticky-message channel behavior.
+      Generic sticky-message channel behavior.
+
+      stickyMessage.cjs persists the precise sticky message ID in:
+      db/sticky-messages.json
+
+      It deletes only that recorded ID. It will never search for and delete
+      arbitrary messages authored by this bot.
     */
     if (message.channelId === STICKY_CHANNEL_ID) {
       try {
         await sendStickyMessageToChannel(client, message.channelId);
       } catch (error) {
-        console.error("Failed to send sticky message:", error);
+        console.error("[Sticky] Failed to send sticky message:", error);
       }
 
       return;
