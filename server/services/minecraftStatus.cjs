@@ -210,15 +210,13 @@ async function fetchMinecraftStatus() {
       so a successful craftping request alone must not mean "server online".
     */
     if (isAternosOfflineResponse(result)) {
-      console.log(
-        "[Minecraft Status] Aternos returned an offline status response.",
-      );
+      console.log("[Minecraft Status] returned an offline status response.");
 
       return {
         online: false,
         displayHost: MINECRAFT_SERVER.host,
         displayPort: MINECRAFT_SERVER.port,
-        error: "Aternos reports that the Minecraft server is offline.",
+        error: "The Server is offline.",
       };
     }
 
