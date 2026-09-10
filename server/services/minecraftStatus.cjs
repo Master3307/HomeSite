@@ -11,7 +11,6 @@ const MINECRAFT_SERVER = {
 };
 
 const STATUS_FILE = path.join(__dirname, "db", "minecraft-status.json");
-
 const THUMBNAIL_FILE = path.join(__dirname, "db", "minecraft-server.png");
 
 const DEFAULT_STATE = {
@@ -74,6 +73,52 @@ function createMinecraftThumbnailAttachment() {
   });
 }
 
+function flattenMinecraftText(component) {
+  if (component == null) {
+    return "";
+  }
+
+  if (typeof component === "string") {
+    return component;
+  }
+
+  if (Array.isArray(component)) {
+    return component.map(flattenMinecraftText).join("");
+  }
+
+  if (typeof component !== "object") {
+    return String(component);
+  }
+
+  const parts = [];
+
+  if (typeof component.text === "string") {
+    parts.push(component.text);
+  }
+
+  if (typeof component.translate === "string") {
+    parts.push(component.translate);
+  }
+
+  if (Array.isArray(component.extra)) {
+    parts.push(component.extra.map(flattenMinecraftText).join(""));
+  }
+
+  if (Array.isArray(component.with)) {
+    parts.push(component.with.map(flattenMinecraftText).join(""));
+  }
+
+  return parts.join("");
+}
+
+function stripMinecraftFormatting(text) {
+  return text
+    .replace(/§[0-9A-FK-OR]/gi, "")
+    .replace(/&[0-9A-FK-OR]/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /*
   Aternos uses a dynamic Java port, published through:
   _minecraft._tcp.<server hostname>
@@ -120,15 +165,28 @@ async function resolveMinecraftServerAddress() {
   }
 }
 
+function isAternosOfflineResponse(result) {
+  const motd = stripMinecraftFormatting(
+    flattenMinecraftText(result.description),
+  ).toLowerCase();
+
+  const version = stripMinecraftFormatting(
+    flattenMinecraftText(result.version?.name),
+  ).toLowerCase();
+
+  return motd.includes("this server is offline") || version.includes("offline");
+}
+
 async function fetchMinecraftStatus() {
   try {
     const resolvedServer = await resolveMinecraftServerAddress();
 
     console.log(
-      `[Minecraft Status] Directly checking ${resolvedServer.host}:${resolvedServer.port}`,
+      `[Minecraft Status] Checking ${resolvedServer.host}:${resolvedServer.port}`,
     );
 
     const minecraftPing = new JavaPingClient();
+    const startedAt = performance.now();
 
     const result = await minecraftPing.ping(
       resolvedServer.host,
@@ -138,15 +196,41 @@ async function fetchMinecraftStatus() {
       },
     );
 
+    const latency = Math.round(performance.now() - startedAt);
+    const motd = stripMinecraftFormatting(
+      flattenMinecraftText(result.description),
+    );
+    const version = stripMinecraftFormatting(
+      flattenMinecraftText(result.version?.name),
+    );
+
+    /*
+      Aternos can answer a regular Minecraft status ping while the actual
+      server is stopped. Its proxy returns an offline MOTD/version response,
+      so a successful craftping request alone must not mean "server online".
+    */
+    if (isAternosOfflineResponse(result)) {
+      console.log(
+        "[Minecraft Status] Aternos returned an offline status response.",
+      );
+
+      return {
+        online: false,
+        displayHost: MINECRAFT_SERVER.host,
+        displayPort: MINECRAFT_SERVER.port,
+        error: "Aternos reports that the Minecraft server is offline.",
+      };
+    }
+
     return {
       online: true,
       displayHost: MINECRAFT_SERVER.host,
       displayPort: MINECRAFT_SERVER.port,
-      motd: result.description?.text ?? "No MOTD configured",
+      motd: motd || "No MOTD configured",
       onlinePlayers: result.players?.online ?? 0,
       maxPlayers: result.players?.max ?? 0,
-      version: result.version?.name ?? "Unknown",
-      latency: null,
+      version: version || "Unknown",
+      latency,
       playerNames: (result.players?.sample ?? [])
         .map((player) => player.name)
         .filter(Boolean),
@@ -159,7 +243,7 @@ async function fetchMinecraftStatus() {
       online: false,
       displayHost: MINECRAFT_SERVER.host,
       displayPort: MINECRAFT_SERVER.port,
-      error: error.message,
+      error: error.message || "The Minecraft status check failed.",
     };
   }
 }
@@ -172,12 +256,22 @@ function makeMinecraftStatusEmbed(status) {
     return new EmbedBuilder()
       .setColor("#ED4245")
       .setTitle("🔴 Offline")
-      .setDescription("The server did not respond to the latest status check.")
-      .addFields({
-        name: "Server address",
-        value: address,
-        inline: true,
-      })
+      .setDescription(
+        status.error ??
+          "Aternos reports that the Minecraft server is currently offline.",
+      )
+      .addFields(
+        {
+          name: "Server address",
+          value: address,
+          inline: true,
+        },
+        {
+          name: "Last checked",
+          value: `<t:${updatedAt}:R>`,
+          inline: true,
+        },
+      )
       .setThumbnail("attachment://minecraft-server.png")
       .setTimestamp();
   }
@@ -194,9 +288,19 @@ function makeMinecraftStatusEmbed(status) {
       inline: true,
     },
     {
+      name: "Latency",
+      value: `📶 ${status.latency} ms`,
+      inline: true,
+    },
+    {
       name: "Server address",
       value: address,
-      inline: false,
+      inline: true,
+    },
+    {
+      name: "Last checked",
+      value: `<t:${updatedAt}:R>`,
+      inline: true,
     },
   ];
 
@@ -230,7 +334,6 @@ async function updateMinecraftStatus(client) {
 
   try {
     const state = await readStatusState();
-
     const thread = await client.channels.fetch(state.threadId);
 
     if (!thread?.isThread()) {
@@ -284,11 +387,11 @@ async function updateMinecraftStatus(client) {
       oldStatusMessage.id === newestMessage.id;
 
     if (statusIsAtBottom) {
-      await oldStatusMessage.edit({
-        ...createPayload(),
-        attachments: [],
-      });
-
+      /*
+        Do not pass attachments: [] here. That would explicitly remove the
+        thumbnail attachment during the edit. The new file replaces it.
+      */
+      await oldStatusMessage.edit(createPayload());
       return;
     }
 
