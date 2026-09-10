@@ -1,3 +1,5 @@
+const fs = require("node:fs/promises");
+const path = require("node:path");
 const {
   SlashCommandBuilder,
   EmbedBuilder,
@@ -10,6 +12,18 @@ const DEFAULT_CHANNEL_ID = "1479219328258674709";
 const DEFAULT_POLL_DURATION = 24 * 60 * 60 * 1000;
 const EMBED_UPDATE_INTERVAL = 1500;
 const DEFAULT_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"];
+const POLL_STATE_PATH = path.join(
+  __dirname,
+  "..",
+  "..",
+  "..",
+  "services",
+  "db",
+  "fdc-polls.json",
+);
+
+const activePolls = new Map();
+let recoveryPromise = null;
 
 const data = new SlashCommandBuilder()
   .setName("fdc")
@@ -243,9 +257,435 @@ function makeResultsEmbed(options, votes) {
     .setTimestamp();
 }
 
+async function loadPollState() {
+  try {
+    const raw = await fs.readFile(POLL_STATE_PATH, "utf8");
+    const state = JSON.parse(raw);
+
+    return {
+      version: 1,
+      polls: Array.isArray(state.polls)
+        ? state.polls.filter(
+            (poll) =>
+              poll &&
+              typeof poll.messageId === "string" &&
+              /^\d+$/.test(poll.messageId),
+          )
+        : [],
+    };
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return { version: 1, polls: [] };
+    }
+
+    throw error;
+  }
+}
+
+async function savePollState(state) {
+  await fs.mkdir(path.dirname(POLL_STATE_PATH), { recursive: true });
+
+  const temporaryPath = `${POLL_STATE_PATH}.tmp`;
+  const content = `${JSON.stringify(
+    {
+      version: 1,
+      polls: state.polls,
+    },
+    null,
+    2,
+  )}\n`;
+
+  await fs.writeFile(temporaryPath, content, "utf8");
+  await fs.rename(temporaryPath, POLL_STATE_PATH);
+}
+
+async function addPollState(messageId) {
+  const state = await loadPollState();
+
+  if (!state.polls.some((poll) => poll.messageId === messageId)) {
+    state.polls.push({ messageId });
+    await savePollState(state);
+  }
+}
+
+async function removePollState(messageId) {
+  const state = await loadPollState();
+  const previousLength = state.polls.length;
+
+  state.polls = state.polls.filter((poll) => poll.messageId !== messageId);
+
+  if (state.polls.length !== previousLength) {
+    await savePollState(state);
+  }
+}
+
+function parseOptionsFromEmbed(message) {
+  const embed = message.embeds.find(
+    (candidate) => candidate.title === "Friday Dress Code Poll",
+  );
+
+  if (!embed?.description) return null;
+
+  const endsMatch = embed.description.match(/Ends <t:(\d+):R>/);
+
+  if (!endsMatch) return null;
+
+  const optionPattern = /^(\d+)\. (.+?)・(.+)\n\s*└ \d+ votes? \([\d.]+%\)$/gm;
+  const options = [];
+  let match;
+
+  while ((match = optionPattern.exec(embed.description)) !== null) {
+    const [, number, emoji, description] = match;
+
+    options.push({
+      number: Number(number),
+      emoji,
+      description,
+      key: emojiKey(emoji),
+    });
+  }
+
+  if (options.length === 0) return null;
+
+  return {
+    options,
+    endsAt: new Date(Number(endsMatch[1]) * 1000),
+  };
+}
+
+async function fetchCompleteReaction(reaction) {
+  if (reaction.partial) {
+    try {
+      await reaction.fetch();
+    } catch (error) {
+      console.error("Failed to fetch partial FDC reaction:", error);
+      return null;
+    }
+  }
+
+  return reaction;
+}
+
+async function fetchVotesFromReactions(message, options) {
+  const votes = new Map();
+  const reactionUsers = [];
+
+  for (let optionIndex = 0; optionIndex < options.length; optionIndex += 1) {
+    let reaction = message.reactions.cache.find(
+      (candidate) => reactionKey(candidate) === options[optionIndex].key,
+    );
+
+    reaction = reaction ? await fetchCompleteReaction(reaction) : null;
+
+    if (!reaction) continue;
+
+    try {
+      const users = await reaction.users.fetch({ limit: 100 });
+
+      for (const user of users.values()) {
+        if (!user.bot) {
+          reactionUsers.push({ userId: user.id, optionIndex });
+        }
+      }
+    } catch (error) {
+      console.error(
+        `Failed to fetch users for FDC reaction ${reactionKey(reaction)} on ${message.id}:`,
+        error,
+      );
+    }
+  }
+
+  for (const { userId, optionIndex } of reactionUsers) {
+    votes.set(userId, optionIndex);
+  }
+
+  return votes;
+}
+
+function votesMatchEmbed(message, options, votes) {
+  const embed = message.embeds.find(
+    (candidate) => candidate.title === "Friday Dress Code Poll",
+  );
+
+  if (!embed?.description) return false;
+
+  const totalMatch = embed.description.match(/\*\*(\d+)\*\* voters?\./);
+
+  if (!totalMatch || Number(totalMatch[1]) !== votes.size) {
+    return false;
+  }
+
+  return options.every((option, index) => {
+    const pattern = new RegExp(
+      `^${index + 1}\\. ${escapeRegExp(option.emoji)}・[\\s\\S]*?\\n\\s*└ (\\d+) votes? \\([\\d.]+%\\)$`,
+      "m",
+    );
+    const match = embed.description.match(pattern);
+
+    return match && Number(match[1]) === countVotes(votes, index);
+  });
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function attachPollLifecycle({ message, channel, options, votes, endsAt }) {
+  if (activePolls.has(message.id)) return activePolls.get(message.id);
+
+  let updateTimer = null;
+  let updateInProgress = false;
+  let updateQueued = false;
+  let pollEnded = false;
+  const internallyRemovedVotes = new Set();
+
+  const clearUpdateTimer = () => {
+    if (updateTimer) {
+      clearTimeout(updateTimer);
+      updateTimer = null;
+    }
+  };
+
+  const editPollEmbed = async () => {
+    if (pollEnded) return;
+
+    if (updateInProgress) {
+      updateQueued = true;
+      return;
+    }
+
+    updateInProgress = true;
+
+    try {
+      await message.edit({
+        embeds: [makePollEmbed(options, votes, endsAt)],
+      });
+    } catch (error) {
+      console.error(`Failed to update FDC poll ${message.id}:`, error);
+    } finally {
+      updateInProgress = false;
+
+      if (updateQueued && !pollEnded) {
+        updateQueued = false;
+        queueEmbedUpdate();
+      }
+    }
+  };
+
+  const queueEmbedUpdate = () => {
+    if (pollEnded || updateTimer) return;
+
+    updateTimer = setTimeout(async () => {
+      updateTimer = null;
+      await editPollEmbed();
+    }, EMBED_UPDATE_INTERVAL);
+  };
+
+  const closePoll = async () => {
+    if (pollEnded) return;
+
+    pollEnded = true;
+    clearUpdateTimer();
+    collector.stop("ended");
+
+    try {
+      await message.edit({
+        embeds: [makePollEmbed(options, votes, endsAt, true)],
+      });
+
+      await channel.send({
+        embeds: [makeResultsEmbed(options, votes)],
+      });
+
+      await removePollState(message.id);
+    } catch (error) {
+      pollEnded = false;
+      console.error(`Failed to close FDC poll ${message.id}:`, error);
+    } finally {
+      if (pollEnded) {
+        activePolls.delete(message.id);
+      }
+    }
+  };
+
+  const remainingDuration = Math.max(0, endsAt.getTime() - Date.now());
+  const collector = message.createReactionCollector({
+    filter: async (reaction, user) => {
+      if (user.bot) return false;
+
+      const completeReaction = await fetchCompleteReaction(reaction);
+
+      return (
+        completeReaction &&
+        options.some((option) => option.key === reactionKey(completeReaction))
+      );
+    },
+    time: remainingDuration,
+    dispose: true,
+  });
+
+  collector.on("collect", async (reaction, user) => {
+    const completeReaction = await fetchCompleteReaction(reaction);
+
+    if (!completeReaction || pollEnded) return;
+
+    const selectedIndex = options.findIndex(
+      (option) => option.key === reactionKey(completeReaction),
+    );
+
+    if (selectedIndex === -1) return;
+
+    const previousIndex = votes.get(user.id);
+    votes.set(user.id, selectedIndex);
+
+    if (previousIndex !== undefined && previousIndex !== selectedIndex) {
+      const oldReaction = message.reactions.cache.find(
+        (candidate) => reactionKey(candidate) === options[previousIndex].key,
+      );
+
+      if (oldReaction) {
+        const removalKey = `${user.id}:${options[previousIndex].key}`;
+        internallyRemovedVotes.add(removalKey);
+
+        try {
+          await oldReaction.users.remove(user.id);
+        } catch (error) {
+          internallyRemovedVotes.delete(removalKey);
+          console.error(`Failed to remove old FDC vote for ${user.id}:`, error);
+        }
+      }
+    }
+
+    queueEmbedUpdate();
+  });
+
+  collector.on("remove", async (reaction, user) => {
+    const completeReaction = await fetchCompleteReaction(reaction);
+
+    if (!completeReaction || pollEnded) return;
+
+    const removedKey = reactionKey(completeReaction);
+    const removalKey = `${user.id}:${removedKey}`;
+
+    if (internallyRemovedVotes.delete(removalKey)) {
+      return;
+    }
+
+    const removedIndex = options.findIndex(
+      (option) => option.key === removedKey,
+    );
+
+    if (votes.get(user.id) === removedIndex) {
+      votes.delete(user.id);
+      queueEmbedUpdate();
+    }
+  });
+
+  collector.on("end", async () => {
+    if (!pollEnded && endsAt.getTime() <= Date.now()) {
+      await closePoll();
+    }
+  });
+
+  const lifecycle = {
+    message,
+    channel,
+    options,
+    votes,
+    endsAt,
+    collector,
+    closePoll,
+    queueEmbedUpdate,
+  };
+
+  activePolls.set(message.id, lifecycle);
+
+  if (remainingDuration === 0) {
+    closePoll().catch((error) => {
+      console.error(
+        `Failed to immediately close FDC poll ${message.id}:`,
+        error,
+      );
+    });
+  }
+
+  return lifecycle;
+}
+
+async function recoverPolls(client) {
+  if (recoveryPromise) return recoveryPromise;
+
+  recoveryPromise = (async () => {
+    const state = await loadPollState();
+
+    if (state.polls.length === 0) return;
+
+    const channel = await client.channels
+      .fetch(DEFAULT_CHANNEL_ID)
+      .catch(() => null);
+
+    if (!channel?.isTextBased() || !channel.messages?.fetch) {
+      throw new Error(
+        `Could not access FDC channel ${DEFAULT_CHANNEL_ID} while recovering polls.`,
+      );
+    }
+
+    for (const poll of state.polls) {
+      if (activePolls.has(poll.messageId)) continue;
+
+      try {
+        const message = await channel.messages.fetch(poll.messageId);
+        const parsedPoll = parseOptionsFromEmbed(message);
+
+        if (!parsedPoll) {
+          console.warn(
+            `FDC recovery skipped ${poll.messageId}: the message is not an active FDC poll embed.`,
+          );
+          continue;
+        }
+
+        const votes = await fetchVotesFromReactions(
+          message,
+          parsedPoll.options,
+        );
+
+        if (!votesMatchEmbed(message, parsedPoll.options, votes)) {
+          await message.edit({
+            embeds: [
+              makePollEmbed(parsedPoll.options, votes, parsedPoll.endsAt),
+            ],
+          });
+        }
+
+        attachPollLifecycle({
+          message,
+          channel,
+          options: parsedPoll.options,
+          votes,
+          endsAt: parsedPoll.endsAt,
+        });
+
+        console.log(
+          `Recovered FDC poll ${message.id} with ${votes.size} current voter(s).`,
+        );
+      } catch (error) {
+        console.error(`Failed to recover FDC poll ${poll.messageId}:`, error);
+      }
+    }
+  })().finally(() => {
+    recoveryPromise = null;
+  });
+
+  return recoveryPromise;
+}
+
 module.exports = {
   moderatorOnly: true,
   data,
+
+  async recover(client) {
+    await recoverPolls(client);
+  },
 
   async execute(interaction) {
     if (!interaction.inGuild()) {
@@ -295,8 +735,6 @@ module.exports = {
         ephemeral: true,
       });
     }
-
-    const pollDuration = endsAt.getTime() - Date.now();
 
     const me = await interaction.guild.members.fetchMe();
     const permissions = channel.permissionsFor(me);
@@ -415,118 +853,23 @@ module.exports = {
         embeds: [makePollEmbed(options, votes, endsAt)],
       });
 
-      for (const option of options) {
-        await pollMessage.react(emojiForReaction(option.emoji));
+      await addPollState(pollMessage.id);
+
+      try {
+        for (const option of options) {
+          await pollMessage.react(emojiForReaction(option.emoji));
+        }
+      } catch (error) {
+        await removePollState(pollMessage.id).catch(() => {});
+        throw error;
       }
 
-      let updateTimer = null;
-      let updateInProgress = false;
-      let updateQueued = false;
-      let pollEnded = false;
-
-      const editPollEmbed = async () => {
-        if (pollEnded) return;
-
-        if (updateInProgress) {
-          updateQueued = true;
-          return;
-        }
-
-        updateInProgress = true;
-
-        try {
-          await pollMessage.edit({
-            embeds: [makePollEmbed(options, votes, endsAt)],
-          });
-        } catch (error) {
-          console.error(`Failed to update FDC poll ${pollMessage.id}:`, error);
-        } finally {
-          updateInProgress = false;
-
-          if (updateQueued && !pollEnded) {
-            updateQueued = false;
-            queueEmbedUpdate();
-          }
-        }
-      };
-
-      const queueEmbedUpdate = () => {
-        if (pollEnded || updateTimer) return;
-
-        updateTimer = setTimeout(async () => {
-          updateTimer = null;
-          await editPollEmbed();
-        }, EMBED_UPDATE_INTERVAL);
-      };
-
-      const collector = pollMessage.createReactionCollector({
-        filter: (reaction, user) =>
-          !user.bot &&
-          options.some((option) => option.key === reactionKey(reaction)),
-        time: pollDuration,
-        dispose: true,
-      });
-
-      collector.on("collect", async (reaction, user) => {
-        const selectedIndex = options.findIndex(
-          (option) => option.key === reactionKey(reaction),
-        );
-
-        if (selectedIndex === -1) return;
-
-        const previousIndex = votes.get(user.id);
-
-        votes.set(user.id, selectedIndex);
-
-        if (previousIndex !== undefined && previousIndex !== selectedIndex) {
-          const oldReaction = pollMessage.reactions.cache.find(
-            (old) => reactionKey(old) === options[previousIndex].key,
-          );
-
-          try {
-            await oldReaction?.users.remove(user.id);
-          } catch (error) {
-            console.error(
-              `Failed to remove old FDC vote for ${user.id}:`,
-              error,
-            );
-          }
-        }
-
-        queueEmbedUpdate();
-      });
-
-      collector.on("remove", (reaction, user) => {
-        const removedIndex = options.findIndex(
-          (option) => option.key === reactionKey(reaction),
-        );
-
-        if (votes.get(user.id) === removedIndex) {
-          votes.delete(user.id);
-        }
-
-        queueEmbedUpdate();
-      });
-
-      collector.on("end", async () => {
-        pollEnded = true;
-
-        if (updateTimer) {
-          clearTimeout(updateTimer);
-          updateTimer = null;
-        }
-
-        try {
-          await pollMessage.edit({
-            embeds: [makePollEmbed(options, votes, endsAt, true)],
-          });
-
-          await channel.send({
-            embeds: [makeResultsEmbed(options, votes)],
-          });
-        } catch (error) {
-          console.error(`Failed to close FDC poll ${pollMessage.id}:`, error);
-        }
+      attachPollLifecycle({
+        message: pollMessage,
+        channel,
+        options,
+        votes,
+        endsAt,
       });
 
       await interaction.editReply({
