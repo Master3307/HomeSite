@@ -14,6 +14,10 @@ const birthdayCelebrations = require("../../../services/birthdayCelebrations.cjs
 const ITEMS_PER_PAGE = 10;
 const CUSTOM_ID_PREFIX = "birthday-list";
 
+const BIRTHDAY_HOUR = 10;
+const BIRTHDAY_MINUTE = 0;
+const BIRTHDAY_SECOND = 0;
+
 const MONTH_ALIASES = new Map([
   // English / German / Ukrainian
   ["january", 1],
@@ -125,13 +129,25 @@ function createDateAtMidnight(year, month, day) {
   return new Date(year, month - 1, day, 0, 0, 0, 0);
 }
 
+function createDateAtBirthdayTime(year, month, day) {
+  return new Date(
+    year,
+    month - 1,
+    day,
+    BIRTHDAY_HOUR,
+    BIRTHDAY_MINUTE,
+    BIRTHDAY_SECOND,
+    0,
+  );
+}
+
 function birthdayDateInYear(birthday, year) {
   const day =
     birthday.month === 2 && birthday.day === 29 && !isLeapYear(year)
       ? 28
       : birthday.day;
 
-  return createDateAtMidnight(year, birthday.month, day);
+  return createDateAtBirthdayTime(year, birthday.month, day);
 }
 
 function getMonthFromName(value) {
