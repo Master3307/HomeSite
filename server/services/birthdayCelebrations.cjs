@@ -4,6 +4,42 @@ const { EmbedBuilder } = require("discord.js");
 
 const BIRTHDAY_CHANNEL_ID = "1542832215195648030";
 
+/*
+ * Normal randomized birthday-message pool.
+ *
+ * Available placeholders:
+ * - {user} = Discord mention, for example <@123456789>
+ * - {age} = age they are turning (only when a birth year is configured)
+ *
+ * Add more strings here whenever you want:
+ * "Happy birthday, {user}! Hope you have a fantastic day! 🎉",
+ */
+const BIRTHDAY_MESSAGES = ["Happy birthday, {user}! 🎉"];
+
+/*
+ * Per-user personalized messages.
+ *
+ * These messages are ADDED to the normal pool and selected with double weight,
+ * which makes them more likely than a single normal message without making them
+ * guaranteed.
+ *
+ * Keep the array empty until you want to add an override:
+ *
+ * const PERSONALIZED_BIRTHDAY_MESSAGES = {};
+ *
+ * Example:
+ * "123456789012345678": [
+ *   "Happy birthday, {user}! Hope your day is full of games, snacks, and zero bugs! 🎂",
+ * ],
+ */
+const PERSONALIZED_BIRTHDAY_MESSAGES = {
+  "817826076486139985": [
+    "Happy birthday, my dearest creator! Cheers, father. 🎂",
+  ],
+};
+
+const PERSONALIZED_MESSAGE_WEIGHT = 3;
+
 const DATA_DIRECTORY = path.join(__dirname, "db");
 const CELEBRATION_STATE_FILE = path.join(
   DATA_DIRECTORY,
@@ -53,6 +89,52 @@ function getAgeTurning(birthday, now = new Date()) {
   }
 
   return now.getFullYear() - birthday.year;
+}
+
+/*
+ * Builds the message selection pool for one member.
+ *
+ * Normal messages have weight 1.
+ * Personalized messages have weight PERSONALIZED_MESSAGE_WEIGHT.
+ */
+function getBirthdayMessagePool(userId) {
+  const normalMessages = BIRTHDAY_MESSAGES.filter(
+    (message) => typeof message === "string" && message.trim().length > 0,
+  );
+
+  const personalizedMessages = (
+    PERSONALIZED_BIRTHDAY_MESSAGES[userId] ?? []
+  ).filter(
+    (message) => typeof message === "string" && message.trim().length > 0,
+  );
+
+  const weightedPersonalizedMessages = personalizedMessages.flatMap((message) =>
+    Array(PERSONALIZED_MESSAGE_WEIGHT).fill(message),
+  );
+
+  return [...normalMessages, ...weightedPersonalizedMessages];
+}
+
+function selectBirthdayMessage(userId) {
+  const messagePool = getBirthdayMessagePool(userId);
+
+  if (messagePool.length === 0) {
+    return "Happy birthday, {user}! 🎉";
+  }
+
+  return messagePool[Math.floor(Math.random() * messagePool.length)];
+}
+
+function formatBirthdayMessage(birthday, now = new Date()) {
+  const ageTurning = getAgeTurning(birthday, now);
+  const selectedMessage = selectBirthdayMessage(birthday.userId);
+
+  return selectedMessage
+    .replaceAll("{user}", `<@${birthday.userId}>`)
+    .replaceAll(
+      "{age}",
+      ageTurning === null ? "another year older" : ageTurning,
+    );
 }
 
 function ensureStateFile() {
@@ -269,12 +351,7 @@ async function announceBirthday(client, birthday) {
     return false;
   }
 
-  const ageTurning = getAgeTurning(birthday);
-
-  const description =
-    ageTurning === null
-      ? `Happy birthday, <@${birthday.userId}>! 🎉`
-      : `Happy birthday, <@${birthday.userId}>!\nYou are turning **${ageTurning}** today! 🎉`;
+  const description = formatBirthdayMessage(birthday);
 
   const embed = new EmbedBuilder()
     .setColor(0xf1c40f)
@@ -315,10 +392,11 @@ async function announceBirthdays(client, birthdays) {
 
   const birthdayLines = birthdays.map((birthday) => {
     const ageTurning = getAgeTurning(birthday);
+    const message = formatBirthdayMessage(birthday);
 
     return ageTurning === null
-      ? `🎉 <@${birthday.userId}>`
-      : `🎉 <@${birthday.userId}> is turning **${ageTurning}** today!`;
+      ? `🎉 ${message}`
+      : `🎉 ${message}\n   You are turning **${ageTurning}** today!`;
   });
 
   const embed = new EmbedBuilder()
