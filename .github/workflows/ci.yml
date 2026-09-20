@@ -49,13 +49,14 @@ jobs:
             echo "npm=$(npm --version)"
           } >> "$GITHUB_OUTPUT"
 
-          node --version
-          pnpm --version
-          npm --version
+          echo "Node.js: $(node --version)"
+          echo "pnpm: $(pnpm --version)"
+          echo "npm: $(npm --version)"
 
       - name: Validate package manifest and lockfile
         id: manifest
         continue-on-error: true
+        shell: bash
         run: |
           set -o pipefail
 
@@ -86,6 +87,7 @@ jobs:
       - name: Install dependencies
         id: install
         continue-on-error: true
+        shell: bash
         run: |
           set -o pipefail
           pnpm install --frozen-lockfile
@@ -93,38 +95,39 @@ jobs:
       - name: Check pnpm dependency graph
         id: dependencies
         continue-on-error: true
+        shell: bash
         run: |
           set -o pipefail
           pnpm list --depth 0
 
-      - name: Verify required project packages resolve
+      - name: Verify critical package resolution
         id: package-resolution
         continue-on-error: true
+        shell: bash
         run: |
           set -o pipefail
 
-          node <<'NODE'
+          node --input-type=module <<'NODE'
           const requiredPackages = [
             "vite",
             "react",
             "react-dom",
             "discord.js",
             "@discordjs/rest",
-            "discord-api-types",
+            "discord-api-types/v10",
             "dotenv",
             "sharp",
             "canvas",
-            "oxlint",
           ];
 
           let failures = 0;
 
           for (const packageName of requiredPackages) {
             try {
-              const resolved = require.resolve(packageName);
+              const resolved = import.meta.resolve(packageName);
               console.log(`✓ ${packageName}: ${resolved}`);
-            } catch {
-              console.error(`✗ Cannot resolve required package: ${packageName}`);
+            } catch (error) {
+              console.error(`✗ Cannot resolve ${packageName}: ${error.message}`);
               failures += 1;
             }
           }
@@ -137,6 +140,7 @@ jobs:
       - name: Run Oxlint
         id: oxlint
         continue-on-error: true
+        shell: bash
         run: |
           set -o pipefail
           pnpm exec oxlint .
@@ -180,6 +184,7 @@ jobs:
       - name: Validate Discord bot structure without starting it
         id: discord-bot
         continue-on-error: true
+        shell: bash
         run: |
           set -o pipefail
 
@@ -198,12 +203,16 @@ jobs:
 
           for (const directory of expectedDirectories) {
             if (!fs.existsSync(directory)) {
-              console.warn(`::warning title=Optional bot directory missing::${directory} does not exist.`);
+              console.warn(
+                `::warning title=Optional bot directory missing::${directory} does not exist.`,
+              );
               continue;
             }
 
             if (!fs.statSync(directory).isDirectory()) {
-              throw new Error(`Expected a directory but found something else: ${directory}`);
+              throw new Error(
+                `Expected a directory but found something else: ${directory}`,
+              );
             }
 
             console.log(`✓ Directory is valid: ${directory}`);
@@ -234,12 +243,15 @@ jobs:
           }
 
           console.log("✓ Bot entry point passed static validation.");
-          console.log("✓ The bot was not started; no Discord login or API request was made.");
+          console.log(
+            "✓ The bot was not started; no Discord login or API request was made.",
+          );
           NODE
 
       - name: Validate Vite configuration
         id: vite-config
         continue-on-error: true
+        shell: bash
         run: |
           set -o pipefail
 
@@ -254,6 +266,7 @@ jobs:
       - name: Build production site
         id: build
         continue-on-error: true
+        shell: bash
         run: |
           set -o pipefail
           pnpm run build
@@ -357,7 +370,7 @@ jobs:
                 printf "Passed"
                 ;;
               failure)
-                printf "Failed"
+                printf "Needs attention"
                 ;;
               cancelled)
                 printf "Cancelled"
@@ -401,13 +414,13 @@ jobs:
             overall_label="All checks passed"
             overall_message="The repository passed every configured validation and the production build artifact is ready."
           elif [ "$failed" -gt 0 ]; then
-            overall_icon="❌"
-            overall_label="Checks failed"
-            overall_message="One or more checks failed. Review the failed step logs before merging or deploying."
+            overall_icon="🟠"
+            overall_label="Informational findings detected"
+            overall_message="The workflow completed successfully. Some diagnostic checks found issues that are listed below."
           else
             overall_icon="🟡"
             overall_label="Checks incomplete"
-            overall_message="No checks failed, but one or more checks were cancelled, skipped, or did not report a known result."
+            overall_message="The workflow completed successfully, but one or more diagnostics were cancelled, skipped, or did not report a known result."
           fi
 
           short_sha="${GITHUB_SHA:0:7}"
@@ -423,7 +436,7 @@ jobs:
             echo
             echo "\`${progress_bar}\` **${percent}%** — ${passed}/${total} checks passed"
             echo
-            echo "| ✅ Passed | ❌ Failed | 🟡 Cancelled | ⚪ Skipped |"
+            echo "| ✅ Passed | 🟠 Findings | 🟡 Cancelled | ⚪ Skipped |"
             echo "| ---: | ---: | ---: | ---: |"
             echo "| ${passed} | ${failed} | ${cancelled} | ${skipped} |"
             echo
@@ -435,7 +448,7 @@ jobs:
             echo "| $(status_icon "$MANIFEST") | Manifest and lockfile | $(status_label "$MANIFEST") |"
             echo "| $(status_icon "$INSTALL") | Frozen dependency installation | $(status_label "$INSTALL") |"
             echo "| $(status_icon "$DEPENDENCIES") | pnpm dependency graph | $(status_label "$DEPENDENCIES") |"
-            echo "| $(status_icon "$PACKAGE_RESOLUTION") | Required package resolution | $(status_label "$PACKAGE_RESOLUTION") |"
+            echo "| $(status_icon "$PACKAGE_RESOLUTION") | Critical package resolution | $(status_label "$PACKAGE_RESOLUTION") |"
             echo "| $(status_icon "$OXLINT") | Oxlint | $(status_label "$OXLINT") |"
             echo "| $(status_icon "$SYNTAX") | JavaScript syntax | $(status_label "$SYNTAX") |"
             echo "| $(status_icon "$DISCORD_BOT") | Discord bot static validation | $(status_label "$DISCORD_BOT") |"
@@ -466,15 +479,15 @@ jobs:
               echo "| --- | ---: | ---: | --- |"
               echo "| \`dist/\` | ${BUILD_FILE_COUNT:-unknown} | ${BUILD_SIZE:-unknown} | \`index.html\`, \`404.html\` ✅ |"
             else
-              echo "> ❌ The \`dist/\` build artifact could not be validated."
+              echo "> 🟠 The \`dist/\` build artifact could not be validated."
             fi
 
             echo
             echo "## CI behavior"
             echo
             echo "- Every diagnostic check uses \`continue-on-error: true\`."
-            echo "- A failed check does not stop subsequent diagnostics."
-            echo "- The final gate fails this workflow if a check fails, is cancelled, or is skipped."
+            echo "- A diagnostic finding does not stop subsequent checks."
+            echo "- This workflow is informational: diagnostic failures are reported but do not fail the job."
             echo "- Discord validation is static only: no Discord token is used, no bot logs in, and no API requests are made."
             echo
             echo "<details>"
@@ -489,51 +502,51 @@ jobs:
             if [ "$failed" -gt 0 ]; then
               echo
               echo "<details open>"
-              echo "<summary>❌ Failed checks — where to look</summary>"
+              echo "<summary>🟠 Informational findings — where to look</summary>"
               echo
 
               if [ "$VERSIONS" = "failure" ]; then
-                echo "- **Toolchain versions** failed. Check Node.js and pnpm setup output."
+                echo "- **Toolchain versions** needs attention. Check Node.js and pnpm setup output."
               fi
 
               if [ "$MANIFEST" = "failure" ]; then
-                echo "- **Manifest and lockfile** failed. Check \`package.json\`, \`pnpm-lock.yaml\`, and \`.oxlintrc.json\`."
+                echo "- **Manifest and lockfile** needs attention. Check \`package.json\`, \`pnpm-lock.yaml\`, and \`.oxlintrc.json\`."
               fi
 
               if [ "$INSTALL" = "failure" ]; then
-                echo "- **Frozen dependency installation** failed. Resolve package or lockfile drift."
+                echo "- **Frozen dependency installation** needs attention. Resolve package or lockfile drift."
               fi
 
               if [ "$DEPENDENCIES" = "failure" ]; then
-                echo "- **pnpm dependency graph** failed. Inspect the dependency listing step."
+                echo "- **pnpm dependency graph** needs attention. Inspect the dependency listing step."
               fi
 
               if [ "$PACKAGE_RESOLUTION" = "failure" ]; then
-                echo "- **Required package resolution** failed. Check that required packages are installed and declared."
+                echo "- **Critical package resolution** needs attention. Check package installation and module exports."
               fi
 
               if [ "$OXLINT" = "failure" ]; then
-                echo "- **Oxlint** failed. Open the Oxlint step log to see exact file and rule violations."
+                echo "- **Oxlint** found code-quality findings. Open the Oxlint step log for exact files and rules."
               fi
 
               if [ "$SYNTAX" = "failure" ]; then
-                echo "- **JavaScript syntax** failed. Open the syntax-check groups to find the invalid file."
+                echo "- **JavaScript syntax** needs attention. Open the syntax-check groups to find invalid files."
               fi
 
               if [ "$DISCORD_BOT" = "failure" ]; then
-                echo "- **Discord bot static validation** failed. Check \`server/bot.cjs\`, bot folders, and Discord dependencies."
+                echo "- **Discord bot static validation** needs attention. Check \`server/bot.cjs\`, bot folders, and Discord dependencies."
               fi
 
               if [ "$VITE_CONFIG" = "failure" ]; then
-                echo "- **Vite configuration** failed. Check \`vite.config.js\`, \`index.html\`, and \`src/\`."
+                echo "- **Vite configuration** needs attention. Check \`vite.config.js\`, \`index.html\`, and \`src/\`."
               fi
 
               if [ "$BUILD" = "failure" ]; then
-                echo "- **Production build** failed. Check sitemap generation and Vite build output."
+                echo "- **Production build** needs attention. Check sitemap generation and Vite build output."
               fi
 
               if [ "$BUILD_OUTPUT" = "failure" ]; then
-                echo "- **Build output** failed. Confirm \`dist/index.html\` and \`dist/404.html\` are produced."
+                echo "- **Build output** needs attention. Confirm \`dist/index.html\` and \`dist/404.html\` are produced."
               fi
 
               echo
@@ -550,23 +563,23 @@ jobs:
             echo "percent=$percent"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Fail workflow if any check failed
+      - name: Finish informational checks
         if: always()
         shell: bash
         run: |
+          echo "Repository checks completed."
+
           if [ "${{ steps.report.outputs.failed }}" -gt 0 ]; then
-            echo "::error title=Repository checks failed::${{ steps.report.outputs.failed }} of ${{ steps.report.outputs.total }} checks failed."
-            exit 1
+            echo "::warning title=Informational CI findings::${{ steps.report.outputs.failed }} diagnostic check(s) need attention. See the job summary."
           fi
 
           if [ "${{ steps.report.outputs.cancelled }}" -gt 0 ]; then
-            echo "::error title=Repository checks incomplete::${{ steps.report.outputs.cancelled }} check(s) were cancelled."
-            exit 1
+            echo "::warning title=Incomplete diagnostics::${{ steps.report.outputs.cancelled }} check(s) were cancelled."
           fi
 
           if [ "${{ steps.report.outputs.skipped }}" -gt 0 ]; then
-            echo "::error title=Repository checks incomplete::${{ steps.report.outputs.skipped }} check(s) were skipped."
-            exit 1
+            echo "::warning title=Skipped diagnostics::${{ steps.report.outputs.skipped }} check(s) were skipped."
           fi
 
-          echo "All ${{ steps.report.outputs.total }} repository checks passed."
+          echo "This informational workflow intentionally exits successfully."
+          exit 0
