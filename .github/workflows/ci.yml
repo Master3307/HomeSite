@@ -42,10 +42,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      # Every non-fatal check writes its complete stdout/stderr to .ci-logs.
-      # The finalizer always runs, adds readable output to the workflow summary,
-      # and then fails the job if one or more checks failed.
+      # Every non-fatal check writes combined stdout/stderr to .ci-logs.
+      # The finalizer writes output for failed checks to the job summary,
+      # then fails the job if one or more checks have failed.
       - name: Create CI log directory
+        shell: bash
         run: mkdir -p .ci-logs
 
       - name: Show toolchain versions
@@ -54,11 +55,13 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+
           {
             echo "node=$(node --version)"
             echo "pnpm=$(pnpm --version)"
             echo "npm=$(npm --version)"
           } >> "$GITHUB_OUTPUT"
+
           {
             echo "Node.js: $(node --version)"
             echo "pnpm: $(pnpm --version)"
@@ -71,6 +74,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+
           node --input-type=module <<'NODE' 2>&1 | tee .ci-logs/manifest.log
           import fs from "node:fs";
 
@@ -117,6 +121,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+
           node --input-type=module <<'NODE' 2>&1 | tee .ci-logs/package-resolution.log
           const requiredPackages = [
             "vite",
@@ -161,6 +166,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+
           {
             mapfile -d '' files < <(
               find . \
@@ -178,11 +184,13 @@ jobs:
 
             for file in "${files[@]}"; do
               echo "::group::Syntax check: $file"
+
               if node --check "$file"; then
                 echo "✓ Valid syntax: $file"
               else
                 failures=1
               fi
+
               echo "::endgroup::"
             done
 
@@ -195,6 +203,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+
           {
             test -f server/bot.cjs
             node --check server/bot.cjs
@@ -263,10 +272,12 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+
           {
             node --check vite.config.js
             test -f index.html
             test -d src
+
             echo "✓ vite.config.js syntax is valid."
             echo "✓ index.html exists."
             echo "✓ src directory exists."
@@ -286,6 +297,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+
           {
             test -d dist
             test -f dist/index.html
@@ -343,18 +355,45 @@ jobs:
           }
 
           check_names=(
-            versions manifest install dependencies package-resolution oxlint syntax
-            discord-bot-static vite-config build build-output
+            versions
+            manifest
+            install
+            dependencies
+            package-resolution
+            oxlint
+            syntax
+            discord-bot-static
+            vite-config
+            build
+            build-output
           )
+
           check_labels=(
-            "Toolchain versions" "Package manifest and lockfile" "Dependency installation"
-            "pnpm dependency graph" "Critical package resolution" "Oxlint"
-            "JavaScript syntax" "Discord bot static validation" "Vite configuration"
-            "Production build" "Build output"
+            "Toolchain versions"
+            "Package manifest and lockfile"
+            "Dependency installation"
+            "pnpm dependency graph"
+            "Critical package resolution"
+            "Oxlint"
+            "JavaScript syntax"
+            "Discord bot static validation"
+            "Vite configuration"
+            "Production build"
+            "Build output"
           )
+
           check_outcomes=(
-            "$VERSIONS" "$MANIFEST" "$INSTALL" "$DEPENDENCIES" "$PACKAGE_RESOLUTION"
-            "$OXLINT" "$SYNTAX" "$DISCORD_BOT_STATIC" "$VITE_CONFIG" "$BUILD" "$BUILD_OUTPUT"
+            "$VERSIONS"
+            "$MANIFEST"
+            "$INSTALL"
+            "$DEPENDENCIES"
+            "$PACKAGE_RESOLUTION"
+            "$OXLINT"
+            "$SYNTAX"
+            "$DISCORD_BOT_STATIC"
+            "$VITE_CONFIG"
+            "$BUILD"
+            "$BUILD_OUTPUT"
           )
 
           {
@@ -362,12 +401,15 @@ jobs:
             echo
             echo "| Status | Check | Result |"
             echo "| :---: | --- | --- |"
+
             for index in "${!check_names[@]}"; do
               echo "| $(icon "${check_outcomes[$index]}") | ${check_labels[$index]} | $(label "${check_outcomes[$index]}") |"
             done
+
             echo
 
             has_failures=false
+
             for index in "${!check_names[@]}"; do
               if [ "${check_outcomes[$index]}" != "failure" ]; then
                 continue
@@ -375,14 +417,17 @@ jobs:
 
               has_failures=true
               log_file=".ci-logs/${check_names[$index]}.log"
+
               echo "## ❌ ${check_labels[$index]}"
               echo
               echo '```text'
+
               if [ -s "$log_file" ]; then
                 cat "$log_file"
               else
                 echo "No captured output was produced by this check."
               fi
+
               echo '```'
               echo
             done
@@ -411,9 +456,19 @@ jobs:
           BUILD_OUTPUT: ${{ steps.build-output.outcome }}
         run: |
           set -euo pipefail
+
           outcomes=(
-            "$VERSIONS" "$MANIFEST" "$INSTALL" "$DEPENDENCIES" "$PACKAGE_RESOLUTION"
-            "$OXLINT" "$SYNTAX" "$DISCORD_BOT_STATIC" "$VITE_CONFIG" "$BUILD" "$BUILD_OUTPUT"
+            "$VERSIONS"
+            "$MANIFEST"
+            "$INSTALL"
+            "$DEPENDENCIES"
+            "$PACKAGE_RESOLUTION"
+            "$OXLINT"
+            "$SYNTAX"
+            "$DISCORD_BOT_STATIC"
+            "$VITE_CONFIG"
+            "$BUILD"
+            "$BUILD_OUTPUT"
           )
 
           for outcome in "${outcomes[@]}"; do
@@ -427,8 +482,9 @@ jobs:
     name: Discord API smoke test
     needs: checks
     if: >-
-      github.event_name == 'workflow_dispatch' &&
-      inputs.discord_smoke_test == true
+      ${{ always() &&
+          github.event_name == 'workflow_dispatch' &&
+          inputs.discord_smoke_test == true }}
     runs-on: ubuntu-latest
     environment: github-pages
 
@@ -473,6 +529,7 @@ jobs:
           set -euo pipefail
 
           response="$(mktemp)"
+
           status="$(
             curl \
               --silent \
@@ -490,8 +547,17 @@ jobs:
             exit 1
           fi
 
-          bot_id="$(node -e 'const fs=require("fs"); console.log(JSON.parse(fs.readFileSync(process.argv[1], "utf8")).id)' "$response")"
-          bot_username="$(node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync(process.argv[1], "utf8")); console.log(d.username)' "$response")"
+          bot_id="$(
+            node -e \
+              'const fs=require("fs"); console.log(JSON.parse(fs.readFileSync(process.argv[1], "utf8")).id)' \
+              "$response"
+          )"
+
+          bot_username="$(
+            node -e \
+              'const fs=require("fs"); const d=JSON.parse(fs.readFileSync(process.argv[1], "utf8")); console.log(d.username)' \
+              "$response"
+          )"
 
           if [ "$bot_id" != "$EXPECTED_CLIENT_ID" ]; then
             echo "::error title=Discord application mismatch::Token belongs to application ${bot_id}, but DISCORD_CLIENT_ID is ${EXPECTED_CLIENT_ID}."
@@ -516,6 +582,7 @@ jobs:
           set -euo pipefail
 
           response="$(mktemp)"
+
           status="$(
             curl \
               --silent \
@@ -533,7 +600,11 @@ jobs:
             exit 1
           fi
 
-          username="$(node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync(process.argv[1], "utf8")); console.log(d.global_name || d.username)' "$response")"
+          username="$(
+            node -e \
+              'const fs=require("fs"); const d=JSON.parse(fs.readFileSync(process.argv[1], "utf8")); console.log(d.global_name || d.username)' \
+              "$response"
+          )"
 
           echo "username=$username" >> "$GITHUB_OUTPUT"
           echo "✓ Configured Discord user was fetched: ${username}."
