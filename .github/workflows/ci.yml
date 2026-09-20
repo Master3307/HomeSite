@@ -1,0 +1,514 @@
+name: Repository checks
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Node 22 · lint · syntax · build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.3.4
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Show toolchain versions
+        id: versions
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+
+          {
+            echo "node=$(node --version)"
+            echo "pnpm=$(pnpm --version)"
+            echo "npm=$(npm --version)"
+          } >> "$GITHUB_OUTPUT"
+
+          node --version
+          pnpm --version
+          npm --version
+
+      - name: Validate package manifest and lockfile
+        id: manifest
+        continue-on-error: true
+        run: |
+          set -o pipefail
+
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+
+          const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+
+          if (packageJson.packageManager !== "pnpm@12.3.4") {
+            throw new Error(
+              `Expected packageManager to be "pnpm@12.3.4", received "${packageJson.packageManager ?? "missing"}".`,
+            );
+          }
+
+          if (!fs.existsSync("pnpm-lock.yaml")) {
+            throw new Error("pnpm-lock.yaml is missing.");
+          }
+
+          if (!fs.existsSync(".oxlintrc.json")) {
+            throw new Error(".oxlintrc.json is missing.");
+          }
+
+          console.log("✓ package.json is valid.");
+          console.log("✓ pnpm-lock.yaml is present.");
+          console.log("✓ .oxlintrc.json is present.");
+          NODE
+
+      - name: Install dependencies
+        id: install
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          pnpm install --frozen-lockfile
+
+      - name: Check pnpm dependency graph
+        id: dependencies
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          pnpm list --depth 0
+
+      - name: Verify required project packages resolve
+        id: package-resolution
+        continue-on-error: true
+        run: |
+          set -o pipefail
+
+          node <<'NODE'
+          const requiredPackages = [
+            "vite",
+            "react",
+            "react-dom",
+            "discord.js",
+            "@discordjs/rest",
+            "discord-api-types",
+            "dotenv",
+            "sharp",
+            "canvas",
+            "oxlint",
+          ];
+
+          let failures = 0;
+
+          for (const packageName of requiredPackages) {
+            try {
+              const resolved = require.resolve(packageName);
+              console.log(`✓ ${packageName}: ${resolved}`);
+            } catch {
+              console.error(`✗ Cannot resolve required package: ${packageName}`);
+              failures += 1;
+            }
+          }
+
+          if (failures > 0) {
+            process.exitCode = 1;
+          }
+          NODE
+
+      - name: Run Oxlint
+        id: oxlint
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          pnpm exec oxlint .
+
+      - name: Check JavaScript syntax
+        id: syntax
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+
+          mapfile -d '' files < <(
+            find . \
+              -type d \( -name node_modules -o -name dist -o -name .git \) -prune -o \
+              -type f \( -name '*.js' -o -name '*.cjs' -o -name '*.mjs' \) -print0
+          )
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No JavaScript files found."
+            exit 0
+          fi
+
+          echo "Checking syntax for ${#files[@]} JavaScript files."
+
+          failures=0
+
+          for file in "${files[@]}"; do
+            echo "::group::Syntax check: $file"
+
+            if node --check "$file"; then
+              echo "✓ Valid syntax: $file"
+            else
+              failures=1
+            fi
+
+            echo "::endgroup::"
+          done
+
+          exit "$failures"
+
+      - name: Validate Discord bot structure without starting it
+        id: discord-bot
+        continue-on-error: true
+        run: |
+          set -o pipefail
+
+          test -f server/bot.cjs
+          node --check server/bot.cjs
+
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+
+          const expectedDirectories = [
+            "server/events",
+            "server/commands",
+            "server/interactions",
+          ];
+
+          for (const directory of expectedDirectories) {
+            if (!fs.existsSync(directory)) {
+              console.warn(`::warning title=Optional bot directory missing::${directory} does not exist.`);
+              continue;
+            }
+
+            if (!fs.statSync(directory).isDirectory()) {
+              throw new Error(`Expected a directory but found something else: ${directory}`);
+            }
+
+            console.log(`✓ Directory is valid: ${directory}`);
+          }
+
+          for (const dependency of [
+            "discord.js",
+            "@discordjs/rest",
+            "discord-api-types/v10",
+            "dotenv",
+          ]) {
+            require.resolve(dependency);
+            console.log(`✓ Resolved bot dependency: ${dependency}`);
+          }
+
+          const source = fs.readFileSync(path.join("server", "bot.cjs"), "utf8");
+
+          for (const expectedFragment of [
+            "DISCORD_BOT_TOKEN",
+            "DISCORD_CLIENT_ID",
+            "client.login(token)",
+          ]) {
+            if (!source.includes(expectedFragment)) {
+              throw new Error(
+                `server/bot.cjs is missing expected entry-point code: ${expectedFragment}`,
+              );
+            }
+          }
+
+          console.log("✓ Bot entry point passed static validation.");
+          console.log("✓ The bot was not started; no Discord login or API request was made.");
+          NODE
+
+      - name: Validate Vite configuration
+        id: vite-config
+        continue-on-error: true
+        run: |
+          set -o pipefail
+
+          node --check vite.config.js
+          test -f index.html
+          test -d src
+
+          echo "✓ vite.config.js syntax is valid."
+          echo "✓ index.html exists."
+          echo "✓ src directory exists."
+
+      - name: Build production site
+        id: build
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          pnpm run build
+
+      - name: Validate build output
+        id: build-output
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+
+          test -d dist
+          test -f dist/index.html
+          test -f dist/404.html
+
+          file_count="$(find dist -type f | wc -l | tr -d ' ')"
+          size_bytes="$(du -sb dist | awk '{print $1}')"
+          size_human="$(du -sh dist | awk '{print $1}')"
+
+          {
+            echo "file_count=$file_count"
+            echo "size_bytes=$size_bytes"
+            echo "size_human=$size_human"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "✓ dist contains $file_count files and occupies $size_human."
+
+      - name: Generate CI report
+        id: report
+        if: always()
+        shell: bash
+        env:
+          VERSIONS: ${{ steps.versions.outcome }}
+          MANIFEST: ${{ steps.manifest.outcome }}
+          INSTALL: ${{ steps.install.outcome }}
+          DEPENDENCIES: ${{ steps.dependencies.outcome }}
+          PACKAGE_RESOLUTION: ${{ steps.package-resolution.outcome }}
+          OXLINT: ${{ steps.oxlint.outcome }}
+          SYNTAX: ${{ steps.syntax.outcome }}
+          DISCORD_BOT: ${{ steps.discord-bot.outcome }}
+          VITE_CONFIG: ${{ steps.vite-config.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          BUILD_OUTPUT: ${{ steps.build-output.outcome }}
+          NODE_VERSION: ${{ steps.versions.outputs.node }}
+          PNPM_VERSION: ${{ steps.versions.outputs.pnpm }}
+          NPM_VERSION: ${{ steps.versions.outputs.npm }}
+          BUILD_FILE_COUNT: ${{ steps.build-output.outputs.file_count }}
+          BUILD_SIZE: ${{ steps.build-output.outputs.size_human }}
+        run: |
+          set -o pipefail
+
+          declare -a check_ids=(
+            "VERSIONS"
+            "MANIFEST"
+            "INSTALL"
+            "DEPENDENCIES"
+            "PACKAGE_RESOLUTION"
+            "OXLINT"
+            "SYNTAX"
+            "DISCORD_BOT"
+            "VITE_CONFIG"
+            "BUILD"
+            "BUILD_OUTPUT"
+          )
+
+          declare -a check_names=(
+            "Toolchain versions"
+            "Manifest and lockfile"
+            "Frozen dependency installation"
+            "pnpm dependency graph"
+            "Required package resolution"
+            "Oxlint"
+            "JavaScript syntax"
+            "Discord bot static validation"
+            "Vite configuration"
+            "Production build"
+            "Build output"
+          )
+
+          total="${#check_ids[@]}"
+          passed=0
+          failed=0
+          cancelled=0
+          skipped=0
+
+          status_icon() {
+            case "$1" in
+              success) echo "✅" ;;
+              failure) echo "❌" ;;
+              cancelled) echo "🟡" ;;
+              skipped) echo "⚪" ;;
+              *) echo "❔" ;;
+            esac
+          }
+
+          status_label() {
+            case "$1" in
+              success) echo "Passed" ;;
+              failure) echo "Failed" ;;
+              cancelled) echo "Cancelled" ;;
+              skipped) echo "Skipped" ;;
+              *) echo "Unknown" ;;
+            esac
+          }
+
+          for check_id in "${check_ids[@]}"; do
+            outcome="${!check_id}"
+
+            case "$outcome" in
+              success) ((passed += 1)) ;;
+              failure) ((failed += 1)) ;;
+              cancelled) ((cancelled += 1)) ;;
+              skipped) ((skipped += 1)) ;;
+            esac
+          done
+
+          percent=$((passed * 100 / total))
+          filled=$((percent / 5))
+          empty=$((20 - filled))
+
+          progress_bar="$(printf '█%.0s' $(seq 1 "$filled" 2>/dev/null || true))"
+          progress_bar="${progress_bar}$(printf '░%.0s' $(seq 1 "$empty" 2>/dev/null || true)}"
+
+          if [ "$failed" -eq 0 ] && [ "$cancelled" -eq 0 ] && [ "$skipped" -eq 0 ]; then
+            overall_icon="✅"
+            overall_label="All checks passed"
+            overall_message="The repository is healthy and the production build output is ready for deployment."
+          elif [ "$failed" -gt 0 ]; then
+            overall_icon="❌"
+            overall_label="Checks failed"
+            overall_message="Review the failed rows and the corresponding workflow logs before merging or deploying."
+          else
+            overall_icon="🟡"
+            overall_label="Checks incomplete"
+            overall_message="Some checks were cancelled or skipped. Review the workflow run before relying on this result."
+          fi
+
+          short_sha="${GITHUB_SHA:0:7}"
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          commit_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
+
+          {
+            echo "# ${overall_icon} Repository checks"
+            echo
+            echo "> **${overall_label}** — ${overall_message}"
+            echo
+            echo "## Overall progress"
+            echo
+            echo "\`${progress_bar}\` **${percent}%** — ${passed}/${total} checks passed"
+            echo
+            echo "| ✅ Passed | ❌ Failed | 🟡 Cancelled | ⚪ Skipped |"
+            echo "| ---: | ---: | ---: | ---: |"
+            echo "| ${passed} | ${failed} | ${cancelled} | ${skipped} |"
+            echo
+            echo "## Check matrix"
+            echo
+            echo "| Status | Check | Result |"
+            echo "| :---: | --- | --- |"
+
+            for index in "${!check_ids[@]}"; do
+              check_id="${check_ids[$index]}"
+              check_name="${check_names[$index]}"
+              outcome="${!check_id}"
+
+              echo "| $(status_icon "$outcome") | ${check_name} | $(status_label "$outcome") |"
+            done
+
+            echo
+            echo "## Environment"
+            echo
+            echo '```text'
+            echo "Repository : ${GITHUB_REPOSITORY}"
+            echo "Workflow   : ${GITHUB_WORKFLOW}"
+            echo "Event      : ${GITHUB_EVENT_NAME}"
+            echo "Ref        : ${GITHUB_REF_NAME}"
+            echo "Commit     : ${short_sha}"
+            echo "Actor      : ${GITHUB_ACTOR}"
+            echo "Runner     : ${RUNNER_OS} (${RUNNER_ARCH})"
+            echo "Node.js    : ${NODE_VERSION:-unavailable}"
+            echo "pnpm       : ${PNPM_VERSION:-unavailable}"
+            echo "npm        : ${NPM_VERSION:-unavailable}"
+            echo '```'
+            echo
+            echo "## Build artifact"
+            echo
+            if [ "${BUILD_OUTPUT}" = "success" ]; then
+              echo "| Output directory | Files | Total size | Required Pages files |"
+              echo "| --- | ---: | ---: | --- |"
+              echo "| \`dist/\` | ${BUILD_FILE_COUNT:-unknown} | ${BUILD_SIZE:-unknown} | \`index.html\`, \`404.html\` ✅ |"
+            else
+              echo "> ❌ The build output could not be validated. The \`dist/\` artifact is incomplete or unavailable."
+            fi
+
+            echo
+            echo "## CI behavior"
+            echo
+            echo "- Every diagnostic check uses \`continue-on-error: true\`."
+            echo "- A failed check does **not** stop later checks from running."
+            echo "- The final gate fails the workflow when one or more checks fail."
+            echo "- Discord bot validation is static only: no token is read, no bot login occurs, and no Discord API request is made."
+            echo
+            echo "<details>"
+            echo "<summary>Run metadata</summary>"
+            echo
+            echo "- [Open this workflow run](${run_url})"
+            echo "- [View commit \`${short_sha}\`](${commit_url})"
+            echo "- Triggered by \`${GITHUB_ACTOR}\` via \`${GITHUB_EVENT_NAME}\`"
+            echo "</details>"
+
+            if [ "$failed" -gt 0 ]; then
+              echo
+              echo "<details open>"
+              echo "<summary>❌ Failed checks — where to look</summary>"
+              echo
+
+              for index in "${!check_ids[@]}"; do
+                check_id="${check_ids[$index]}"
+                check_name="${check_names[$index]}"
+                outcome="${!check_id}"
+
+                if [ "$outcome" = "failure" ]; then
+                  echo "- **${check_name}** failed. Open its expanded step log in this workflow run for the exact command output."
+                fi
+              done
+
+              echo "</details>"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          {
+            echo "passed=$passed"
+            echo "failed=$failed"
+            echo "cancelled=$cancelled"
+            echo "skipped=$skipped"
+            echo "total=$total"
+            echo "percent=$percent"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Fail workflow if any check failed
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.report.outputs.failed }}" -gt 0 ]; then
+            echo "::error title=Repository checks failed::${{ steps.report.outputs.failed }} of ${{ steps.report.outputs.total }} checks failed."
+            exit 1
+          fi
+
+          if [ "${{ steps.report.outputs.cancelled }}" -gt 0 ]; then
+            echo "::error title=Repository checks incomplete::${{ steps.report.outputs.cancelled }} check(s) were cancelled."
+            exit 1
+          fi
+
+          if [ "${{ steps.report.outputs.skipped }}" -gt 0 ]; then
+            echo "::error title=Repository checks incomplete::${{ steps.report.outputs.skipped }} check(s) were skipped."
+            exit 1
+          fi
+
+          echo "All ${{ steps.report.outputs.total }} repository checks passed."
