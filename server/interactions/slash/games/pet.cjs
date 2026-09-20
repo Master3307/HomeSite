@@ -21,9 +21,6 @@ const GIF_DELAY = 60;
 // A recipient has one minute to return a pet and begin a combo.
 const RETURN_PET_WINDOW_MS = 60_000;
 
-// Once started, a combo expires after three minutes without the next returned pet.
-const COMBO_TIMEOUT_MS = 3 * 60_000;
-
 // The embed's "Return pet" prompt should disappear when the response window ends.
 const RETURN_PET_FIELD_DURATION_MS = RETURN_PET_WINDOW_MS;
 

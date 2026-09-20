@@ -105,7 +105,7 @@ module.exports = {
     let dmSent = true;
     try {
       await bannedUser.send({ embeds: [dmEmbed] });
-    } catch (err) {
+    } catch {
       dmSent = false;
     }
 

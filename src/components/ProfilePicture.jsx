@@ -54,6 +54,8 @@ export default function ProfilePicture({
   const [showGif, setShowGif] = useState(false)
   const [thumbFormat, setThumbFormat] = useState('webp')
   const [currentSrc, setCurrentSrc] = useState(avatarSrc || fallbackStaticSrc)
+  const [sourceKey, setSourceKey] = useState(avatarSrc)
+  const [fallbackKey, setFallbackKey] = useState(fallbackStaticSrc)
   const [randomDecorationSrc] = useState(() =>
     randomDecoration ? getRandomAvatarDecoration() : null
   )
@@ -67,12 +69,14 @@ export default function ProfilePicture({
 
   const presenceIcon = getPresenceIcon(presenceStatus)
 
-  useEffect(() => {
+  if (avatarSrc !== sourceKey || fallbackStaticSrc !== fallbackKey) {
+    setSourceKey(avatarSrc)
+    setFallbackKey(fallbackStaticSrc)
     setCurrentSrc(avatarSrc || fallbackStaticSrc)
     setThumbFormat('webp')
     setShowGif(false)
     setGifReady(false)
-  }, [avatarSrc, fallbackStaticSrc])
+  }
 
   useEffect(() => {
     if (!fallbackAnimatedSrc) return

@@ -61,7 +61,7 @@ module.exports = {
   description: "Send a random cat-related image.",
   usage: "random-cat",
 
-  async execute(message, args) {
+  async execute(message, _args) {
     const randomItem = getWeightedRandom(catImages);
     let randomImage = randomItem.url;
 

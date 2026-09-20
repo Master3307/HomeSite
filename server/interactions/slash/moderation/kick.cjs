@@ -97,7 +97,7 @@ module.exports = {
     let dmSent = true;
     try {
       await member.send({ embeds: [dmEmbed] });
-    } catch (err) {
+    } catch {
       dmSent = false;
     }
 

@@ -25,18 +25,6 @@ function progressBar(progress, length = 10) {
   return `<${"=".repeat(filled)}${"-".repeat(length - filled)}>`;
 }
 
-function formatUnlockedAchievements(achievements) {
-  if (!achievements.length) {
-    return "No achievements unlocked yet.";
-  }
-
-  return achievements
-    .map(
-      (achievement) => `🏆 **${achievement.name}**\n${achievement.description}`,
-    )
-    .join("\n\n");
-}
-
 function formatLockedAchievement(achievement) {
   return [
     `🔒 **${achievement.name}** — ${formatNumber(

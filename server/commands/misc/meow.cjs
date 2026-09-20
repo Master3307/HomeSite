@@ -52,7 +52,7 @@ module.exports = {
     "нявняв",
   ],
 
-  execute(message, args) {
+  execute(message, _args) {
     const randomMeow = meows[Math.floor(Math.random() * meows.length)];
 
     message.reply({

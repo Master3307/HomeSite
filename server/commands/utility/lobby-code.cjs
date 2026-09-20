@@ -59,7 +59,7 @@ async function clearChannel(channel, keepMessageId = null) {
     for (const oldMessage of oldMessages.values()) {
       try {
         await oldMessage.delete();
-      } catch (error) {
+      } catch {
         // Ignore deleted messages and messages the bot cannot delete.
       }
     }

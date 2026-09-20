@@ -51,7 +51,7 @@ async function clearChannel(channel, keepMessageId = null) {
     for (const msg of old.values()) {
       try {
         await msg.delete();
-      } catch (_) {
+      } catch {
         // Ignore undeletable, already deleted, or permission-related failures.
       }
     }

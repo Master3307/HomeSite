@@ -247,7 +247,6 @@ async function fetchMinecraftStatus() {
 }
 
 function makeMinecraftStatusEmbed(status) {
-  const updatedAt = Math.floor(Date.now() / 1000);
   const address = `\`${status.displayHost}\``;
 
   if (!status.online) {

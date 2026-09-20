@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const SGA_CHARS = [
   "ᔑ", "ʖ", "ᓵ", "↸", "ᒷ", "⎓", "⊣", "⍑", "╎", "⋮",
@@ -28,24 +28,23 @@ export default function EnchantParagraph({
   as: Tag = "p",
   preserveSpaces = true,
 }) {
-  const [displayText, setDisplayText] = useState(text);
+  const [, setScrambleTick] = useState(0);
 
-  const safeText = useMemo(() => text ?? "", [text]);
+  const safeText = text ?? "";
 
   useEffect(() => {
-    if (!obfuscated) {
-      setDisplayText(safeText);
-      return;
-    }
-
-    setDisplayText(obfuscateText(safeText, preserveSpaces));
+    if (!obfuscated) return undefined;
 
     const id = window.setInterval(() => {
-      setDisplayText(obfuscateText(safeText, preserveSpaces));
+      setScrambleTick((tick) => tick + 1);
     }, interval);
 
     return () => window.clearInterval(id);
-  }, [safeText, obfuscated, interval, preserveSpaces]);
+  }, [obfuscated, interval]);
+
+  const displayText = obfuscated
+    ? obfuscateText(safeText, preserveSpaces)
+    : safeText;
 
   return (
     <Tag className={`enchant-text ${className}`.trim()}>

@@ -414,11 +414,6 @@ function buildVotesFromReactionUsers(usersByOption, options) {
   return votes;
 }
 
-async function fetchVotesFromReactions(message, options) {
-  const usersByOption = await fetchPollReactionUsers(message, options);
-  return buildVotesFromReactionUsers(usersByOption, options);
-}
-
 async function removeDuplicateReactions(
   message,
   options,

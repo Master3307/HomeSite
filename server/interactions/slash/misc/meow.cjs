@@ -44,7 +44,7 @@ const meows = [
 module.exports = {
   data: new SlashCommandBuilder().setName("meow").setDescription("Meow?"),
 
-  execute(message, args) {
+  execute(message, _args) {
     const randomMeow = meows[Math.floor(Math.random() * meows.length)];
 
     message.reply({ content: randomMeow });

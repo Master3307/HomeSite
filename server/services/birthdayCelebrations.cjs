@@ -220,18 +220,6 @@ function getBirthdayKey(dateKey, userId) {
   return `${dateKey}:${userId}`;
 }
 
-function getBirthdayDateForYear(birthday, year) {
-  const birthdayDate = new Date(year, birthday.month - 1, birthday.day);
-
-  if (birthday.month === 2 && birthday.day === 29 && !isLeapYear(year)) {
-    birthdayDate.setMonth(1, 28);
-  }
-
-  birthdayDate.setHours(0, 0, 0, 0);
-
-  return birthdayDate;
-}
-
 function getUpcomingBirthdayEntries(birthdays, now = new Date()) {
   const entries = [];
   const today = new Date(now);
