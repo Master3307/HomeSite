@@ -738,7 +738,10 @@ async function fetchIgdbGameIcon(gameName) {
   const token = await getIgdbAccessToken();
   if (!token) return null;
   try {
-    const body = `fields name,cover.image_id; search "${String(gameName).replace(/"/g, '\\"')}"; limit 5;`;
+    const escapedGameName = String(gameName)
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"');
+    const body = `fields name,cover.image_id; search "${escapedGameName}"; limit 5;`;
     const response = await fetch("https://api.igdb.com/v4/games", {
       method: "POST",
       headers: {
