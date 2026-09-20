@@ -305,90 +305,109 @@ jobs:
         run: |
           set -o pipefail
 
-          declare -a check_ids=(
-            "VERSIONS"
-            "MANIFEST"
-            "INSTALL"
-            "DEPENDENCIES"
-            "PACKAGE_RESOLUTION"
-            "OXLINT"
-            "SYNTAX"
-            "DISCORD_BOT"
-            "VITE_CONFIG"
-            "BUILD"
-            "BUILD_OUTPUT"
-          )
-
-          declare -a check_names=(
-            "Toolchain versions"
-            "Manifest and lockfile"
-            "Frozen dependency installation"
-            "pnpm dependency graph"
-            "Required package resolution"
-            "Oxlint"
-            "JavaScript syntax"
-            "Discord bot static validation"
-            "Vite configuration"
-            "Production build"
-            "Build output"
-          )
-
-          total="${#check_ids[@]}"
           passed=0
           failed=0
           cancelled=0
           skipped=0
+          total=11
+
+          count_status() {
+            case "$1" in
+              success)
+                passed=$((passed + 1))
+                ;;
+              failure)
+                failed=$((failed + 1))
+                ;;
+              cancelled)
+                cancelled=$((cancelled + 1))
+                ;;
+              skipped)
+                skipped=$((skipped + 1))
+                ;;
+              *)
+                skipped=$((skipped + 1))
+                ;;
+            esac
+          }
 
           status_icon() {
             case "$1" in
-              success) echo "✅" ;;
-              failure) echo "❌" ;;
-              cancelled) echo "🟡" ;;
-              skipped) echo "⚪" ;;
-              *) echo "❔" ;;
+              success)
+                printf "✅"
+                ;;
+              failure)
+                printf "❌"
+                ;;
+              cancelled)
+                printf "🟡"
+                ;;
+              skipped)
+                printf "⚪"
+                ;;
+              *)
+                printf "❔"
+                ;;
             esac
           }
 
           status_label() {
             case "$1" in
-              success) echo "Passed" ;;
-              failure) echo "Failed" ;;
-              cancelled) echo "Cancelled" ;;
-              skipped) echo "Skipped" ;;
-              *) echo "Unknown" ;;
+              success)
+                printf "Passed"
+                ;;
+              failure)
+                printf "Failed"
+                ;;
+              cancelled)
+                printf "Cancelled"
+                ;;
+              skipped)
+                printf "Skipped"
+                ;;
+              *)
+                printf "Unknown"
+                ;;
             esac
           }
 
-          for check_id in "${check_ids[@]}"; do
-            outcome="${!check_id}"
-
-            case "$outcome" in
-              success) ((passed += 1)) ;;
-              failure) ((failed += 1)) ;;
-              cancelled) ((cancelled += 1)) ;;
-              skipped) ((skipped += 1)) ;;
-            esac
-          done
+          count_status "$VERSIONS"
+          count_status "$MANIFEST"
+          count_status "$INSTALL"
+          count_status "$DEPENDENCIES"
+          count_status "$PACKAGE_RESOLUTION"
+          count_status "$OXLINT"
+          count_status "$SYNTAX"
+          count_status "$DISCORD_BOT"
+          count_status "$VITE_CONFIG"
+          count_status "$BUILD"
+          count_status "$BUILD_OUTPUT"
 
           percent=$((passed * 100 / total))
           filled=$((percent / 5))
           empty=$((20 - filled))
 
-          progress_bar="$(printf '█%.0s' $(seq 1 "$filled" 2>/dev/null || true))"
-          progress_bar="${progress_bar}$(printf '░%.0s' $(seq 1 "$empty" 2>/dev/null || true)}"
+          progress_bar=""
+          for ((i = 0; i < filled; i++)); do
+            progress_bar="${progress_bar}█"
+          done
+
+          for ((i = 0; i < empty; i++)); do
+            progress_bar="${progress_bar}░"
+          done
 
           if [ "$failed" -eq 0 ] && [ "$cancelled" -eq 0 ] && [ "$skipped" -eq 0 ]; then
             overall_icon="✅"
             overall_label="All checks passed"
-            overall_message="The repository is healthy and the production build output is ready for deployment."
+            overall_message="The repository passed every configured validation and the production build artifact is ready."
           elif [ "$failed" -gt 0 ]; then
             overall_icon="❌"
             overall_label="Checks failed"
-            overall_message="Review the failed rows and the corresponding workflow logs before merging or deploying."
+            overall_message="One or more checks failed. Review the failed step logs before merging or deploying."
           else
             overall_icon="🟡"
             overall_label="Checks incomplete"
-            overall_message="Some checks were cancelled or skipped. Review the workflow run before relying on this result."
+            overall_message="No checks failed, but one or more checks were cancelled, skipped, or did not report a known result."
           fi
 
           short_sha="${GITHUB_SHA:0:7}"
@@ -412,15 +431,17 @@ jobs:
             echo
             echo "| Status | Check | Result |"
             echo "| :---: | --- | --- |"
-
-            for index in "${!check_ids[@]}"; do
-              check_id="${check_ids[$index]}"
-              check_name="${check_names[$index]}"
-              outcome="${!check_id}"
-
-              echo "| $(status_icon "$outcome") | ${check_name} | $(status_label "$outcome") |"
-            done
-
+            echo "| $(status_icon "$VERSIONS") | Toolchain versions | $(status_label "$VERSIONS") |"
+            echo "| $(status_icon "$MANIFEST") | Manifest and lockfile | $(status_label "$MANIFEST") |"
+            echo "| $(status_icon "$INSTALL") | Frozen dependency installation | $(status_label "$INSTALL") |"
+            echo "| $(status_icon "$DEPENDENCIES") | pnpm dependency graph | $(status_label "$DEPENDENCIES") |"
+            echo "| $(status_icon "$PACKAGE_RESOLUTION") | Required package resolution | $(status_label "$PACKAGE_RESOLUTION") |"
+            echo "| $(status_icon "$OXLINT") | Oxlint | $(status_label "$OXLINT") |"
+            echo "| $(status_icon "$SYNTAX") | JavaScript syntax | $(status_label "$SYNTAX") |"
+            echo "| $(status_icon "$DISCORD_BOT") | Discord bot static validation | $(status_label "$DISCORD_BOT") |"
+            echo "| $(status_icon "$VITE_CONFIG") | Vite configuration | $(status_label "$VITE_CONFIG") |"
+            echo "| $(status_icon "$BUILD") | Production build | $(status_label "$BUILD") |"
+            echo "| $(status_icon "$BUILD_OUTPUT") | Build output | $(status_label "$BUILD_OUTPUT") |"
             echo
             echo "## Environment"
             echo
@@ -439,21 +460,22 @@ jobs:
             echo
             echo "## Build artifact"
             echo
-            if [ "${BUILD_OUTPUT}" = "success" ]; then
+
+            if [ "$BUILD_OUTPUT" = "success" ]; then
               echo "| Output directory | Files | Total size | Required Pages files |"
               echo "| --- | ---: | ---: | --- |"
               echo "| \`dist/\` | ${BUILD_FILE_COUNT:-unknown} | ${BUILD_SIZE:-unknown} | \`index.html\`, \`404.html\` ✅ |"
             else
-              echo "> ❌ The build output could not be validated. The \`dist/\` artifact is incomplete or unavailable."
+              echo "> ❌ The \`dist/\` build artifact could not be validated."
             fi
 
             echo
             echo "## CI behavior"
             echo
             echo "- Every diagnostic check uses \`continue-on-error: true\`."
-            echo "- A failed check does **not** stop later checks from running."
-            echo "- The final gate fails the workflow when one or more checks fail."
-            echo "- Discord bot validation is static only: no token is read, no bot login occurs, and no Discord API request is made."
+            echo "- A failed check does not stop subsequent diagnostics."
+            echo "- The final gate fails this workflow if a check fails, is cancelled, or is skipped."
+            echo "- Discord validation is static only: no Discord token is used, no bot logs in, and no API requests are made."
             echo
             echo "<details>"
             echo "<summary>Run metadata</summary>"
@@ -461,6 +483,7 @@ jobs:
             echo "- [Open this workflow run](${run_url})"
             echo "- [View commit \`${short_sha}\`](${commit_url})"
             echo "- Triggered by \`${GITHUB_ACTOR}\` via \`${GITHUB_EVENT_NAME}\`"
+            echo
             echo "</details>"
 
             if [ "$failed" -gt 0 ]; then
@@ -469,16 +492,51 @@ jobs:
               echo "<summary>❌ Failed checks — where to look</summary>"
               echo
 
-              for index in "${!check_ids[@]}"; do
-                check_id="${check_ids[$index]}"
-                check_name="${check_names[$index]}"
-                outcome="${!check_id}"
+              if [ "$VERSIONS" = "failure" ]; then
+                echo "- **Toolchain versions** failed. Check Node.js and pnpm setup output."
+              fi
 
-                if [ "$outcome" = "failure" ]; then
-                  echo "- **${check_name}** failed. Open its expanded step log in this workflow run for the exact command output."
-                fi
-              done
+              if [ "$MANIFEST" = "failure" ]; then
+                echo "- **Manifest and lockfile** failed. Check \`package.json\`, \`pnpm-lock.yaml\`, and \`.oxlintrc.json\`."
+              fi
 
+              if [ "$INSTALL" = "failure" ]; then
+                echo "- **Frozen dependency installation** failed. Resolve package or lockfile drift."
+              fi
+
+              if [ "$DEPENDENCIES" = "failure" ]; then
+                echo "- **pnpm dependency graph** failed. Inspect the dependency listing step."
+              fi
+
+              if [ "$PACKAGE_RESOLUTION" = "failure" ]; then
+                echo "- **Required package resolution** failed. Check that required packages are installed and declared."
+              fi
+
+              if [ "$OXLINT" = "failure" ]; then
+                echo "- **Oxlint** failed. Open the Oxlint step log to see exact file and rule violations."
+              fi
+
+              if [ "$SYNTAX" = "failure" ]; then
+                echo "- **JavaScript syntax** failed. Open the syntax-check groups to find the invalid file."
+              fi
+
+              if [ "$DISCORD_BOT" = "failure" ]; then
+                echo "- **Discord bot static validation** failed. Check \`server/bot.cjs\`, bot folders, and Discord dependencies."
+              fi
+
+              if [ "$VITE_CONFIG" = "failure" ]; then
+                echo "- **Vite configuration** failed. Check \`vite.config.js\`, \`index.html\`, and \`src/\`."
+              fi
+
+              if [ "$BUILD" = "failure" ]; then
+                echo "- **Production build** failed. Check sitemap generation and Vite build output."
+              fi
+
+              if [ "$BUILD_OUTPUT" = "failure" ]; then
+                echo "- **Build output** failed. Confirm \`dist/index.html\` and \`dist/404.html\` are produced."
+              fi
+
+              echo
               echo "</details>"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
