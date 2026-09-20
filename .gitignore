@@ -19,6 +19,7 @@ update.sh
 /server/services/*.json
 /server/services/avatars/
 /server/services/db/
+.logs/
 
 /config.json
 .node-version

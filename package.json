@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "checks": "node scripts/checks.cjs",
     "dev": "vite",
     "git-sync": "node scripts/sync.cjs",
     "bot": "node server/bot.cjs",
