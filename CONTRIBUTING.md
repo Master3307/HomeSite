@@ -100,12 +100,12 @@ git checkout -b fix/mobile-navigation-overflow
 Before opening a pull request, install dependencies and run the checks defined by the project:
 
 ```bash
-pnpm install
-pnpm dev
+pnpm checks
 pnpm build
+pnpm dev
 ```
 
-Make sure the site works locally and that your changes do not introduce browser-console errors.
+Make sure the site works locally.
 
 ## Commit Messages
 
