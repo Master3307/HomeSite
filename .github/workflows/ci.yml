@@ -1,3 +1,4 @@
+# .github/workflows/ci.yml
 name: Repository checks
 
 on:
@@ -6,6 +7,12 @@ on:
   pull_request:
     branches: ["master"]
   workflow_dispatch:
+    inputs:
+      discord_smoke_test:
+        description: Run the live Discord API smoke test using github-pages environment secrets
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -26,7 +33,6 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 12.3.4
           run_install: false
 
       - name: Set up Node.js
@@ -36,22 +42,28 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      # Every non-fatal check writes its complete stdout/stderr to .ci-logs.
+      # The finalizer always runs, adds readable output to the workflow summary,
+      # and then fails the job if one or more checks failed.
+      - name: Create CI log directory
+        run: mkdir -p .ci-logs
+
       - name: Show toolchain versions
         id: versions
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
-
           {
             echo "node=$(node --version)"
             echo "pnpm=$(pnpm --version)"
             echo "npm=$(npm --version)"
           } >> "$GITHUB_OUTPUT"
-
-          echo "Node.js: $(node --version)"
-          echo "pnpm: $(pnpm --version)"
-          echo "npm: $(npm --version)"
+          {
+            echo "Node.js: $(node --version)"
+            echo "pnpm: $(pnpm --version)"
+            echo "npm: $(npm --version)"
+          } 2>&1 | tee .ci-logs/versions.log
 
       - name: Validate package manifest and lockfile
         id: manifest
@@ -59,15 +71,14 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-
-          node --input-type=module <<'NODE'
+          node --input-type=module <<'NODE' 2>&1 | tee .ci-logs/manifest.log
           import fs from "node:fs";
 
           const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 
-          if (packageJson.packageManager !== "pnpm@12.3.4") {
+          if (!packageJson.packageManager?.startsWith("pnpm@")) {
             throw new Error(
-              `Expected packageManager to be "pnpm@12.3.4", received "${packageJson.packageManager ?? "missing"}".`,
+              `Expected a pnpm packageManager field, received "${packageJson.packageManager ?? "missing"}".`,
             );
           }
 
@@ -79,7 +90,7 @@ jobs:
             throw new Error(".oxlintrc.json is missing.");
           }
 
-          console.log("✓ package.json is valid.");
+          console.log(`✓ packageManager: ${packageJson.packageManager}`);
           console.log("✓ pnpm-lock.yaml is present.");
           console.log("✓ .oxlintrc.json is present.");
           NODE
@@ -90,7 +101,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          pnpm install --frozen-lockfile
+          pnpm install --frozen-lockfile 2>&1 | tee .ci-logs/install.log
 
       - name: Check pnpm dependency graph
         id: dependencies
@@ -98,7 +109,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          pnpm list --depth 0
+          pnpm list --depth 0 2>&1 | tee .ci-logs/dependencies.log
 
       - name: Verify critical package resolution
         id: package-resolution
@@ -106,8 +117,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-
-          node --input-type=module <<'NODE'
+          node --input-type=module <<'NODE' 2>&1 | tee .ci-logs/package-resolution.log
           const requiredPackages = [
             "vite",
             "react",
@@ -143,7 +153,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          pnpm exec oxlint .
+          pnpm exec oxlint . 2>&1 | tee .ci-logs/oxlint.log
 
       - name: Check JavaScript syntax
         id: syntax
@@ -151,47 +161,45 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+          {
+            mapfile -d '' files < <(
+              find . \
+                -type d \( -name node_modules -o -name dist -o -name .git \) -prune -o \
+                -type f \( -name '*.js' -o -name '*.cjs' -o -name '*.mjs' \) -print0
+            )
 
-          mapfile -d '' files < <(
-            find . \
-              -type d \( -name node_modules -o -name dist -o -name .git \) -prune -o \
-              -type f \( -name '*.js' -o -name '*.cjs' -o -name '*.mjs' \) -print0
-          )
-
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "No JavaScript files found."
-            exit 0
-          fi
-
-          echo "Checking syntax for ${#files[@]} JavaScript files."
-
-          failures=0
-
-          for file in "${files[@]}"; do
-            echo "::group::Syntax check: $file"
-
-            if node --check "$file"; then
-              echo "✓ Valid syntax: $file"
-            else
-              failures=1
+            if [ "${#files[@]}" -eq 0 ]; then
+              echo "No JavaScript files found."
+              exit 0
             fi
 
-            echo "::endgroup::"
-          done
+            echo "Checking syntax for ${#files[@]} JavaScript files."
+            failures=0
 
-          exit "$failures"
+            for file in "${files[@]}"; do
+              echo "::group::Syntax check: $file"
+              if node --check "$file"; then
+                echo "✓ Valid syntax: $file"
+              else
+                failures=1
+              fi
+              echo "::endgroup::"
+            done
+
+            exit "$failures"
+          } 2>&1 | tee .ci-logs/syntax.log
 
       - name: Validate Discord bot structure without starting it
-        id: discord-bot
+        id: discord-bot-static
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
+          {
+            test -f server/bot.cjs
+            node --check server/bot.cjs
 
-          test -f server/bot.cjs
-          node --check server/bot.cjs
-
-          node <<'NODE'
+            node <<'NODE'
           const fs = require("node:fs");
           const path = require("node:path");
 
@@ -247,6 +255,7 @@ jobs:
             "✓ The bot was not started; no Discord login or API request was made.",
           );
           NODE
+          } 2>&1 | tee .ci-logs/discord-bot-static.log
 
       - name: Validate Vite configuration
         id: vite-config
@@ -254,14 +263,14 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-
-          node --check vite.config.js
-          test -f index.html
-          test -d src
-
-          echo "✓ vite.config.js syntax is valid."
-          echo "✓ index.html exists."
-          echo "✓ src directory exists."
+          {
+            node --check vite.config.js
+            test -f index.html
+            test -d src
+            echo "✓ vite.config.js syntax is valid."
+            echo "✓ index.html exists."
+            echo "✓ src directory exists."
+          } 2>&1 | tee .ci-logs/vite-config.log
 
       - name: Build production site
         id: build
@@ -269,7 +278,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          pnpm run build
+          pnpm run build 2>&1 | tee .ci-logs/build.log
 
       - name: Validate build output
         id: build-output
@@ -277,25 +286,25 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-
-          test -d dist
-          test -f dist/index.html
-          test -f dist/404.html
-
-          file_count="$(find dist -type f | wc -l | tr -d ' ')"
-          size_bytes="$(du -sb dist | awk '{print $1}')"
-          size_human="$(du -sh dist | awk '{print $1}')"
-
           {
-            echo "file_count=$file_count"
-            echo "size_bytes=$size_bytes"
-            echo "size_human=$size_human"
-          } >> "$GITHUB_OUTPUT"
+            test -d dist
+            test -f dist/index.html
+            test -f dist/404.html
 
-          echo "✓ dist contains $file_count files and occupies $size_human."
+            file_count="$(find dist -type f | wc -l | tr -d ' ')"
+            size_bytes="$(du -sb dist | awk '{print $1}')"
+            size_human="$(du -sh dist | awk '{print $1}')"
 
-      - name: Generate CI report
-        id: report
+            {
+              echo "file_count=$file_count"
+              echo "size_bytes=$size_bytes"
+              echo "size_human=$size_human"
+            } >> "$GITHUB_OUTPUT"
+
+            echo "✓ dist contains $file_count files and occupies $size_human."
+          } 2>&1 | tee .ci-logs/build-output.log
+
+      - name: Write repository-check summary
         if: always()
         shell: bash
         env:
@@ -306,280 +315,280 @@ jobs:
           PACKAGE_RESOLUTION: ${{ steps.package-resolution.outcome }}
           OXLINT: ${{ steps.oxlint.outcome }}
           SYNTAX: ${{ steps.syntax.outcome }}
-          DISCORD_BOT: ${{ steps.discord-bot.outcome }}
+          DISCORD_BOT_STATIC: ${{ steps.discord-bot-static.outcome }}
           VITE_CONFIG: ${{ steps.vite-config.outcome }}
           BUILD: ${{ steps.build.outcome }}
           BUILD_OUTPUT: ${{ steps.build-output.outcome }}
-          NODE_VERSION: ${{ steps.versions.outputs.node }}
-          PNPM_VERSION: ${{ steps.versions.outputs.pnpm }}
-          NPM_VERSION: ${{ steps.versions.outputs.npm }}
-          BUILD_FILE_COUNT: ${{ steps.build-output.outputs.file_count }}
-          BUILD_SIZE: ${{ steps.build-output.outputs.size_human }}
         run: |
-          set -o pipefail
+          set -euo pipefail
 
-          passed=0
-          failed=0
-          cancelled=0
-          skipped=0
-          total=11
-
-          count_status() {
+          icon() {
             case "$1" in
-              success)
-                passed=$((passed + 1))
-                ;;
-              failure)
-                failed=$((failed + 1))
-                ;;
-              cancelled)
-                cancelled=$((cancelled + 1))
-                ;;
-              skipped)
-                skipped=$((skipped + 1))
-                ;;
-              *)
-                skipped=$((skipped + 1))
-                ;;
+              success) printf "✅" ;;
+              failure) printf "❌" ;;
+              cancelled) printf "🟡" ;;
+              skipped) printf "⚪" ;;
+              *) printf "❔" ;;
             esac
           }
 
-          status_icon() {
+          label() {
             case "$1" in
-              success)
-                printf "✅"
-                ;;
-              failure)
-                printf "❌"
-                ;;
-              cancelled)
-                printf "🟡"
-                ;;
-              skipped)
-                printf "⚪"
-                ;;
-              *)
-                printf "❔"
-                ;;
+              success) printf "Passed" ;;
+              failure) printf "Failed" ;;
+              cancelled) printf "Cancelled" ;;
+              skipped) printf "Skipped" ;;
+              *) printf "Unknown" ;;
             esac
           }
 
-          status_label() {
-            case "$1" in
-              success)
-                printf "Passed"
-                ;;
-              failure)
-                printf "Needs attention"
-                ;;
-              cancelled)
-                printf "Cancelled"
-                ;;
-              skipped)
-                printf "Skipped"
-                ;;
-              *)
-                printf "Unknown"
-                ;;
-            esac
-          }
-
-          count_status "$VERSIONS"
-          count_status "$MANIFEST"
-          count_status "$INSTALL"
-          count_status "$DEPENDENCIES"
-          count_status "$PACKAGE_RESOLUTION"
-          count_status "$OXLINT"
-          count_status "$SYNTAX"
-          count_status "$DISCORD_BOT"
-          count_status "$VITE_CONFIG"
-          count_status "$BUILD"
-          count_status "$BUILD_OUTPUT"
-
-          percent=$((passed * 100 / total))
-          filled=$((percent / 5))
-          empty=$((20 - filled))
-
-          progress_bar=""
-          for ((i = 0; i < filled; i++)); do
-            progress_bar="${progress_bar}█"
-          done
-
-          for ((i = 0; i < empty; i++)); do
-            progress_bar="${progress_bar}░"
-          done
-
-          if [ "$failed" -eq 0 ] && [ "$cancelled" -eq 0 ] && [ "$skipped" -eq 0 ]; then
-            overall_icon="✅"
-            overall_label="All checks passed"
-            overall_message="The repository passed every configured validation and the production build artifact is ready."
-          elif [ "$failed" -gt 0 ]; then
-            overall_icon="🟠"
-            overall_label="Informational findings detected"
-            overall_message="The workflow completed successfully. Some diagnostic checks found issues that are listed below."
-          else
-            overall_icon="🟡"
-            overall_label="Checks incomplete"
-            overall_message="The workflow completed successfully, but one or more diagnostics were cancelled, skipped, or did not report a known result."
-          fi
-
-          short_sha="${GITHUB_SHA:0:7}"
-          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          commit_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
+          check_names=(
+            versions manifest install dependencies package-resolution oxlint syntax
+            discord-bot-static vite-config build build-output
+          )
+          check_labels=(
+            "Toolchain versions" "Package manifest and lockfile" "Dependency installation"
+            "pnpm dependency graph" "Critical package resolution" "Oxlint"
+            "JavaScript syntax" "Discord bot static validation" "Vite configuration"
+            "Production build" "Build output"
+          )
+          check_outcomes=(
+            "$VERSIONS" "$MANIFEST" "$INSTALL" "$DEPENDENCIES" "$PACKAGE_RESOLUTION"
+            "$OXLINT" "$SYNTAX" "$DISCORD_BOT_STATIC" "$VITE_CONFIG" "$BUILD" "$BUILD_OUTPUT"
+          )
 
           {
-            echo "# ${overall_icon} Repository checks"
-            echo
-            echo "> **${overall_label}** — ${overall_message}"
-            echo
-            echo "## Overall progress"
-            echo
-            echo "\`${progress_bar}\` **${percent}%** — ${passed}/${total} checks passed"
-            echo
-            echo "| ✅ Passed | 🟠 Findings | 🟡 Cancelled | ⚪ Skipped |"
-            echo "| ---: | ---: | ---: | ---: |"
-            echo "| ${passed} | ${failed} | ${cancelled} | ${skipped} |"
-            echo
-            echo "## Check matrix"
+            echo "# Repository checks"
             echo
             echo "| Status | Check | Result |"
             echo "| :---: | --- | --- |"
-            echo "| $(status_icon "$VERSIONS") | Toolchain versions | $(status_label "$VERSIONS") |"
-            echo "| $(status_icon "$MANIFEST") | Manifest and lockfile | $(status_label "$MANIFEST") |"
-            echo "| $(status_icon "$INSTALL") | Frozen dependency installation | $(status_label "$INSTALL") |"
-            echo "| $(status_icon "$DEPENDENCIES") | pnpm dependency graph | $(status_label "$DEPENDENCIES") |"
-            echo "| $(status_icon "$PACKAGE_RESOLUTION") | Critical package resolution | $(status_label "$PACKAGE_RESOLUTION") |"
-            echo "| $(status_icon "$OXLINT") | Oxlint | $(status_label "$OXLINT") |"
-            echo "| $(status_icon "$SYNTAX") | JavaScript syntax | $(status_label "$SYNTAX") |"
-            echo "| $(status_icon "$DISCORD_BOT") | Discord bot static validation | $(status_label "$DISCORD_BOT") |"
-            echo "| $(status_icon "$VITE_CONFIG") | Vite configuration | $(status_label "$VITE_CONFIG") |"
-            echo "| $(status_icon "$BUILD") | Production build | $(status_label "$BUILD") |"
-            echo "| $(status_icon "$BUILD_OUTPUT") | Build output | $(status_label "$BUILD_OUTPUT") |"
-            echo
-            echo "## Environment"
-            echo
-            echo '```text'
-            echo "Repository : ${GITHUB_REPOSITORY}"
-            echo "Workflow   : ${GITHUB_WORKFLOW}"
-            echo "Event      : ${GITHUB_EVENT_NAME}"
-            echo "Ref        : ${GITHUB_REF_NAME}"
-            echo "Commit     : ${short_sha}"
-            echo "Actor      : ${GITHUB_ACTOR}"
-            echo "Runner     : ${RUNNER_OS} (${RUNNER_ARCH})"
-            echo "Node.js    : ${NODE_VERSION:-unavailable}"
-            echo "pnpm       : ${PNPM_VERSION:-unavailable}"
-            echo "npm        : ${NPM_VERSION:-unavailable}"
-            echo '```'
-            echo
-            echo "## Build artifact"
+            for index in "${!check_names[@]}"; do
+              echo "| $(icon "${check_outcomes[$index]}") | ${check_labels[$index]} | $(label "${check_outcomes[$index]}") |"
+            done
             echo
 
-            if [ "$BUILD_OUTPUT" = "success" ]; then
-              echo "| Output directory | Files | Total size | Required Pages files |"
-              echo "| --- | ---: | ---: | --- |"
-              echo "| \`dist/\` | ${BUILD_FILE_COUNT:-unknown} | ${BUILD_SIZE:-unknown} | \`index.html\`, \`404.html\` ✅ |"
-            else
-              echo "> 🟠 The \`dist/\` build artifact could not be validated."
-            fi
+            has_failures=false
+            for index in "${!check_names[@]}"; do
+              if [ "${check_outcomes[$index]}" != "failure" ]; then
+                continue
+              fi
 
-            echo
-            echo "## CI behavior"
-            echo
-            echo "- Every diagnostic check uses \`continue-on-error: true\`."
-            echo "- A diagnostic finding does not stop subsequent checks."
-            echo "- This workflow is informational: diagnostic failures are reported but do not fail the job."
-            echo "- Discord validation is static only: no Discord token is used, no bot logs in, and no API requests are made."
-            echo
-            echo "<details>"
-            echo "<summary>Run metadata</summary>"
-            echo
-            echo "- [Open this workflow run](${run_url})"
-            echo "- [View commit \`${short_sha}\`](${commit_url})"
-            echo "- Triggered by \`${GITHUB_ACTOR}\` via \`${GITHUB_EVENT_NAME}\`"
-            echo
-            echo "</details>"
-
-            if [ "$failed" -gt 0 ]; then
+              has_failures=true
+              log_file=".ci-logs/${check_names[$index]}.log"
+              echo "## ❌ ${check_labels[$index]}"
               echo
-              echo "<details open>"
-              echo "<summary>🟠 Informational findings — where to look</summary>"
+              echo '```text'
+              if [ -s "$log_file" ]; then
+                cat "$log_file"
+              else
+                echo "No captured output was produced by this check."
+              fi
+              echo '```'
               echo
+            done
 
-              if [ "$VERSIONS" = "failure" ]; then
-                echo "- **Toolchain versions** needs attention. Check Node.js and pnpm setup output."
-              fi
-
-              if [ "$MANIFEST" = "failure" ]; then
-                echo "- **Manifest and lockfile** needs attention. Check \`package.json\`, \`pnpm-lock.yaml\`, and \`.oxlintrc.json\`."
-              fi
-
-              if [ "$INSTALL" = "failure" ]; then
-                echo "- **Frozen dependency installation** needs attention. Resolve package or lockfile drift."
-              fi
-
-              if [ "$DEPENDENCIES" = "failure" ]; then
-                echo "- **pnpm dependency graph** needs attention. Inspect the dependency listing step."
-              fi
-
-              if [ "$PACKAGE_RESOLUTION" = "failure" ]; then
-                echo "- **Critical package resolution** needs attention. Check package installation and module exports."
-              fi
-
-              if [ "$OXLINT" = "failure" ]; then
-                echo "- **Oxlint** found code-quality findings. Open the Oxlint step log for exact files and rules."
-              fi
-
-              if [ "$SYNTAX" = "failure" ]; then
-                echo "- **JavaScript syntax** needs attention. Open the syntax-check groups to find invalid files."
-              fi
-
-              if [ "$DISCORD_BOT" = "failure" ]; then
-                echo "- **Discord bot static validation** needs attention. Check \`server/bot.cjs\`, bot folders, and Discord dependencies."
-              fi
-
-              if [ "$VITE_CONFIG" = "failure" ]; then
-                echo "- **Vite configuration** needs attention. Check \`vite.config.js\`, \`index.html\`, and \`src/\`."
-              fi
-
-              if [ "$BUILD" = "failure" ]; then
-                echo "- **Production build** needs attention. Check sitemap generation and Vite build output."
-              fi
-
-              if [ "$BUILD_OUTPUT" = "failure" ]; then
-                echo "- **Build output** needs attention. Confirm \`dist/index.html\` and \`dist/404.html\` are produced."
-              fi
-
+            if [ "$has_failures" = false ]; then
+              echo "## ✅ All repository checks passed"
               echo
-              echo "</details>"
+              echo "No failed-check output to report."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-          {
-            echo "passed=$passed"
-            echo "failed=$failed"
-            echo "cancelled=$cancelled"
-            echo "skipped=$skipped"
-            echo "total=$total"
-            echo "percent=$percent"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Finish informational checks
+      - name: Fail when a repository check failed
         if: always()
         shell: bash
+        env:
+          VERSIONS: ${{ steps.versions.outcome }}
+          MANIFEST: ${{ steps.manifest.outcome }}
+          INSTALL: ${{ steps.install.outcome }}
+          DEPENDENCIES: ${{ steps.dependencies.outcome }}
+          PACKAGE_RESOLUTION: ${{ steps.package-resolution.outcome }}
+          OXLINT: ${{ steps.oxlint.outcome }}
+          SYNTAX: ${{ steps.syntax.outcome }}
+          DISCORD_BOT_STATIC: ${{ steps.discord-bot-static.outcome }}
+          VITE_CONFIG: ${{ steps.vite-config.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          BUILD_OUTPUT: ${{ steps.build-output.outcome }}
         run: |
-          echo "Repository checks completed."
+          set -euo pipefail
+          outcomes=(
+            "$VERSIONS" "$MANIFEST" "$INSTALL" "$DEPENDENCIES" "$PACKAGE_RESOLUTION"
+            "$OXLINT" "$SYNTAX" "$DISCORD_BOT_STATIC" "$VITE_CONFIG" "$BUILD" "$BUILD_OUTPUT"
+          )
 
-          if [ "${{ steps.report.outputs.failed }}" -gt 0 ]; then
-            echo "::warning title=Informational CI findings::${{ steps.report.outputs.failed }} diagnostic check(s) need attention. See the job summary."
+          for outcome in "${outcomes[@]}"; do
+            if [ "$outcome" = "failure" ]; then
+              echo "One or more repository checks failed. See the job summary for complete captured output."
+              exit 1
+            fi
+          done
+
+  discord-smoke-test:
+    name: Discord API smoke test
+    needs: checks
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.discord_smoke_test == true
+    runs-on: ubuntu-latest
+    environment: github-pages
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Validate configured Discord secrets and variables
+        id: configuration
+        shell: bash
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_USER_ID: ${{ vars.DISCORD_USER_ID }}
+          DISCORD_REDIRECT_URI: ${{ vars.DISCORD_REDIRECT_URI }}
+          VITE_DISCORD_API_URL: ${{ vars.VITE_DISCORD_API_URL }}
+        run: |
+          set -euo pipefail
+
+          test -n "$DISCORD_BOT_TOKEN"
+          test -n "$DISCORD_CLIENT_ID"
+          test -n "$DISCORD_USER_ID"
+
+          {
+            echo "discord_user_id=$DISCORD_USER_ID"
+            echo "discord_redirect_uri=${DISCORD_REDIRECT_URI:-not configured}"
+            echo "discord_api_url=${VITE_DISCORD_API_URL:-not configured}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "✓ DISCORD_BOT_TOKEN is available."
+          echo "✓ DISCORD_CLIENT_ID is available."
+          echo "✓ DISCORD_USER_ID is available."
+          echo "✓ Environment variables were loaded."
+
+      - name: Verify bot token with Discord
+        id: bot-identity
+        shell: bash
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          EXPECTED_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+
+          response="$(mktemp)"
+          status="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "$response" \
+              --write-out "%{http_code}" \
+              --header "Authorization: Bot ${DISCORD_BOT_TOKEN}" \
+              --header "User-Agent: HomeSite-CI-Discord-Smoke-Test (https://github.com/Master3307/HomeSite, 1.0)" \
+              "https://discord.com/api/v10/users/@me"
+          )"
+
+          if [ "$status" != "200" ]; then
+            echo "::error title=Discord bot token rejected::Discord returned HTTP ${status} for GET /users/@me."
+            cat "$response"
+            exit 1
           fi
 
-          if [ "${{ steps.report.outputs.cancelled }}" -gt 0 ]; then
-            echo "::warning title=Incomplete diagnostics::${{ steps.report.outputs.cancelled }} check(s) were cancelled."
+          bot_id="$(node -e 'const fs=require("fs"); console.log(JSON.parse(fs.readFileSync(process.argv[1], "utf8")).id)' "$response")"
+          bot_username="$(node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync(process.argv[1], "utf8")); console.log(d.username)' "$response")"
+
+          if [ "$bot_id" != "$EXPECTED_CLIENT_ID" ]; then
+            echo "::error title=Discord application mismatch::Token belongs to application ${bot_id}, but DISCORD_CLIENT_ID is ${EXPECTED_CLIENT_ID}."
+            exit 1
           fi
 
-          if [ "${{ steps.report.outputs.skipped }}" -gt 0 ]; then
-            echo "::warning title=Skipped diagnostics::${{ steps.report.outputs.skipped }} check(s) were skipped."
+          {
+            echo "bot_id=$bot_id"
+            echo "bot_username=$bot_username"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "✓ Bot token is valid."
+          echo "✓ Authenticated bot: ${bot_username} (${bot_id})."
+
+      - name: Verify configured Discord user can be fetched
+        id: user-lookup
+        shell: bash
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_USER_ID: ${{ vars.DISCORD_USER_ID }}
+        run: |
+          set -euo pipefail
+
+          response="$(mktemp)"
+          status="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "$response" \
+              --write-out "%{http_code}" \
+              --header "Authorization: Bot ${DISCORD_BOT_TOKEN}" \
+              --header "User-Agent: HomeSite-CI-Discord-Smoke-Test (https://github.com/Master3307/HomeSite, 1.0)" \
+              "https://discord.com/api/v10/users/${DISCORD_USER_ID}"
+          )"
+
+          if [ "$status" != "200" ]; then
+            echo "::error title=Discord user lookup failed::Discord returned HTTP ${status} for the configured DISCORD_USER_ID."
+            cat "$response"
+            exit 1
           fi
 
-          echo "This informational workflow intentionally exits successfully."
-          exit 0
+          username="$(node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync(process.argv[1], "utf8")); console.log(d.global_name || d.username)' "$response")"
+
+          echo "username=$username" >> "$GITHUB_OUTPUT"
+          echo "✓ Configured Discord user was fetched: ${username}."
+
+      - name: Write Discord smoke-test summary
+        if: always()
+        shell: bash
+        env:
+          CONFIGURATION: ${{ steps.configuration.outcome }}
+          BOT_IDENTITY: ${{ steps.bot-identity.outcome }}
+          USER_LOOKUP: ${{ steps.user-lookup.outcome }}
+          BOT_ID: ${{ steps.bot-identity.outputs.bot_id }}
+          BOT_USERNAME: ${{ steps.bot-identity.outputs.bot_username }}
+          DISCORD_USER_ID: ${{ steps.configuration.outputs.discord_user_id }}
+          DISCORD_USERNAME: ${{ steps.user-lookup.outputs.username }}
+        run: |
+          set -o pipefail
+
+          icon() {
+            case "$1" in
+              success) printf "✅" ;;
+              failure) printf "❌" ;;
+              cancelled) printf "🟡" ;;
+              skipped) printf "⚪" ;;
+              *) printf "❔" ;;
+            esac
+          }
+
+          label() {
+            case "$1" in
+              success) printf "Passed" ;;
+              failure) printf "Needs attention" ;;
+              cancelled) printf "Cancelled" ;;
+              skipped) printf "Skipped" ;;
+              *) printf "Unknown" ;;
+            esac
+          }
+
+          {
+            echo "# 🤖 Discord API smoke test"
+            echo
+            echo "> Uses the protected \`github-pages\` environment. Secret values are never displayed."
+            echo
+            echo "| Status | Check | Result |"
+            echo "| :---: | --- | --- |"
+            echo "| $(icon "$CONFIGURATION") | Environment configuration | $(label "$CONFIGURATION") |"
+            echo "| $(icon "$BOT_IDENTITY") | Bot token and application identity | $(label "$BOT_IDENTITY") |"
+            echo "| $(icon "$USER_LOOKUP") | Configured user lookup | $(label "$USER_LOOKUP") |"
+            echo
+            echo "## Verified data"
+            echo
+            echo '```text'
+            echo "Bot         : ${BOT_USERNAME:-unavailable} (${BOT_ID:-unavailable})"
+            echo "Discord user: ${DISCORD_USERNAME:-unavailable} (${DISCORD_USER_ID:-unavailable})"
+            echo "Environment : github-pages"
+            echo '```'
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
