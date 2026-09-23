@@ -22,7 +22,7 @@ function progressBar(progress, length = 10) {
   const safeProgress = Math.max(0, Math.min(1, Number(progress) || 0));
   const filled = Math.round(safeProgress * length);
 
-  return `[${"-".repeat(filled)}${" ".repeat(length - filled)}]`;
+  return `[${"-".repeat(filled)}${" ".repeat(length - filled)}]`;
 }
 
 function formatLockedAchievement(achievement) {
