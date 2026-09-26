@@ -14,11 +14,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 function makeProgressBar(current, total) {
   const percentage = total === 0 ? 100 : Math.floor((current / total) * 100);
   const filled = Math.round((percentage / 100) * PROGRESS_BAR_LENGTH);
-  const empty = PROGRESS_BAR_LENGTH - filled;
 
   return {
     percentage,
-    bar: `\`${"█".repeat(filled)}${"░".repeat(empty)}\``,
+    bar: `[${"-".repeat(filled)}${" ".repeat(PROGRESS_BAR_LENGTH - filled)}]`,
   };
 }
 
