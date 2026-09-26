@@ -1,4 +1,3 @@
-// commands/role-all.cjs
 const {
   SlashCommandBuilder,
   PermissionFlagsBits,
@@ -7,14 +6,82 @@ const {
 
 const BATCH_SIZE = 5;
 const BATCH_DELAY_MS = 1_000;
+const PROGRESS_BAR_LENGTH = 20;
+const PROGRESS_UPDATE_INTERVAL_MS = 1_500;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function makeProgressBar(current, total) {
+  const percentage = total === 0 ? 100 : Math.floor((current / total) * 100);
+  const filled = Math.round((percentage / 100) * PROGRESS_BAR_LENGTH);
+  const empty = PROGRESS_BAR_LENGTH - filled;
+
+  return {
+    percentage,
+    bar: `\`${"█".repeat(filled)}${"░".repeat(empty)}\``,
+  };
+}
+
+function buildProgressEmbed({
+  action,
+  role,
+  processed,
+  total,
+  succeeded,
+  failed,
+  startedAt,
+}) {
+  const { percentage, bar } = makeProgressBar(processed, total);
+  const actionText = action === "add" ? "Adding" : "Removing";
+  const elapsedSeconds = Math.max(
+    1,
+    Math.floor((Date.now() - startedAt) / 1_000),
+  );
+  const rate = processed / elapsedSeconds;
+  const remaining = Math.max(0, total - processed);
+  const etaSeconds = rate > 0 ? Math.ceil(remaining / rate) : 0;
+
+  return new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle(`${actionText} role for all members`)
+    .setDescription(`${actionText} ${role} for eligible members…`)
+    .addFields(
+      {
+        name: "Progress",
+        value: `${bar} **${percentage}%**\n${processed.toLocaleString()} / ${total.toLocaleString()} members`,
+        inline: false,
+      },
+      {
+        name: "Successful",
+        value: String(succeeded),
+        inline: true,
+      },
+      {
+        name: "Failed",
+        value: String(failed),
+        inline: true,
+      },
+      {
+        name: "Estimated remaining",
+        value:
+          etaSeconds > 0
+            ? `<t:${Math.floor(Date.now() / 1_000) + etaSeconds}:R>`
+            : "Finishing…",
+        inline: true,
+      },
+    )
+    .setFooter({
+      text: "Please wait — do not run this command again.",
+    })
+    .setTimestamp();
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("role-all")
     .setDescription("Add or remove a role for every member in this server.")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDMPermission(false)
     .addSubcommand((subcommand) =>
       subcommand
         .setName("add")
@@ -49,7 +116,6 @@ module.exports = {
     const action = interaction.options.getSubcommand();
     const role = interaction.options.getRole("role", true);
     const guild = interaction.guild;
-
     const botMember = await guild.members.fetchMe();
 
     if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
@@ -95,13 +161,12 @@ module.exports = {
     let members;
 
     try {
-      // Requires GuildMembers intent in your client configuration and Developer Portal.
       members = await guild.members.fetch();
     } catch (error) {
       console.error("Could not fetch guild members:", error);
 
       return interaction.editReply(
-        "I could not fetch all members. Make sure the **GuildMembers** intent is enabled both in your bot code and in the Discord Developer Portal.",
+        "I could not fetch all members. Make sure the **GuildMembers** intent is enabled in both your bot code and the Discord Developer Portal.",
       );
     }
 
@@ -130,50 +195,89 @@ module.exports = {
       );
     }
 
-    await interaction.editReply(
-      `${action === "add" ? "Adding" : "Removing"} ${role} for **${eligibleMembers.size}** member(s)…`,
-    );
-
     let succeeded = 0;
     let failed = 0;
+    let processed = 0;
+    let lastProgressUpdate = 0;
     const failures = [];
-
     const membersToProcess = [...eligibleMembers.values()];
+    const total = membersToProcess.length;
+    const startedAt = Date.now();
+
+    await interaction.editReply({
+      content: null,
+      embeds: [
+        buildProgressEmbed({
+          action,
+          role,
+          processed,
+          total,
+          succeeded,
+          failed,
+          startedAt,
+        }),
+      ],
+    });
 
     for (let i = 0; i < membersToProcess.length; i += BATCH_SIZE) {
       const batch = membersToProcess.slice(i, i + BATCH_SIZE);
 
       const results = await Promise.allSettled(
         batch.map(async (member) => {
-          const reason = `${action === "add" ? "Added" : "Removed"} via /role-all by ${interaction.user.tag} (${interaction.user.id})`;
+          const reason =
+            `${action === "add" ? "Added" : "Removed"} via /role-all by ` +
+            `${interaction.user.tag} (${interaction.user.id})`;
 
           if (action === "add") {
             await member.roles.add(role, reason);
           } else {
             await member.roles.remove(role, reason);
           }
-
-          return member;
         }),
       );
 
       for (const result of results) {
+        processed++;
+
         if (result.status === "fulfilled") {
           succeeded++;
-        } else {
-          failed++;
-
-          const message =
-            result.reason instanceof Error
-              ? result.reason.message
-              : String(result.reason);
-
-          failures.push(message);
-          console.error("Failed to update a member role:", result.reason);
+          continue;
         }
+
+        failed++;
+
+        const message =
+          result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason);
+
+        failures.push(message);
+        console.error("Failed to update a member role:", result.reason);
       }
 
-      // Prevents aggressively hammering Discord's API on larger servers.
+      const isFinished = processed >= total;
+      const enoughTimePassed =
+        Date.now() - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL_MS;
+
+      if (isFinished || enoughTimePassed) {
+        lastProgressUpdate = Date.now();
+
+        await interaction.editReply({
+          content: null,
+          embeds: [
+            buildProgressEmbed({
+              action,
+              role,
+              processed,
+              total,
+              succeeded,
+              failed,
+              startedAt,
+            }),
+          ],
+        });
+      }
+
       if (i + BATCH_SIZE < membersToProcess.length) {
         await sleep(BATCH_DELAY_MS);
       }
