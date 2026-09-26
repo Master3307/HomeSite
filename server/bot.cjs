@@ -38,6 +38,7 @@ const INTERACTIONS_DIR = path.join(__dirname, "interactions");
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMessageReactions,
