@@ -4,7 +4,7 @@ const otherImageWeight = 13 / 6;
 
 const catImages = [
   {
-    code: "nigel",
+    code: "hamster",
     url: "https://user.uploads.dev/file/54555bce94eadf99978a9249778ac2da.webp",
     description: "Nigel's Hamster. Not a Cat but a Hamster to remember.",
     weight: otherImageWeight,
@@ -28,7 +28,7 @@ const catImages = [
     weight: otherImageWeight,
   },
   {
-    code: "spooky",
+    code: "bongo",
     url: "https://user.uploads.dev/file/74ceb65265ec16df78a2b048df3c1856.png",
     description: "Bongo Cat Jumpscare!",
     weight: otherImageWeight,
@@ -40,7 +40,7 @@ const catImages = [
     weight: otherImageWeight,
   },
   {
-    code: "max",
+    code: "submitted-cat",
     url: "https://user.uploads.dev/file/7cf4129ce93b02040d47167c6e7dea99.jpg",
     description: "<@1322220385411928136> sent this one :D",
     weight: otherImageWeight,
@@ -65,7 +65,6 @@ function getWeightedRandom(items) {
 function getImageUrl(image) {
   let imageUrl = image.url;
 
-  // Prevent Discord/CDN caching the same Cataas result.
   if (imageUrl.includes("cataas.com/cat")) {
     const url = new URL(imageUrl);
     url.searchParams.set("ts", Date.now().toString());
@@ -82,7 +81,7 @@ module.exports = {
     .addStringOption((option) =>
       option
         .setName("code")
-        .setDescription("Send a specific image by its code.")
+        .setDescription("Enter a secret image code.")
         .setRequired(false),
     ),
 
@@ -97,12 +96,8 @@ module.exports = {
       : getWeightedRandom(catImages);
 
     if (!selectedImage) {
-      const availableCodes = catImages
-        .map((image) => `\`${image.code}\``)
-        .join(", ");
-
       await interaction.reply({
-        content: `Unknown image code: \`${requestedCode}\`\nAvailable codes: ${availableCodes}`,
+        content: "That code is invalid.",
         ephemeral: true,
       });
 
@@ -111,9 +106,7 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setTitle("Here is your random cat related Image!")
-      .setDescription(
-        `${selectedImage.description}\n\n**Code:** \`${selectedImage.code}\``,
-      )
+      .setDescription(selectedImage.description)
       .setImage(getImageUrl(selectedImage));
 
     await interaction.reply({ embeds: [embed] });
