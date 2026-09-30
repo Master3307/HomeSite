@@ -4,8 +4,8 @@ const otherImageWeight = 13 / 6;
 
 const catImages = [
   {
-    url: "https://cdn.discordapp.com/avatars/815532619831574538/a52c158fe145686419c5aa347930b920.webp?size=1024",
-    description: "Nigel Secret",
+    url: "https://user.uploads.dev/file/54555bce94eadf99978a9249778ac2da.webp",
+    description: "Nigel's Hamster. Not a Cat but a Hamster to remember.",
     weight: otherImageWeight,
   },
   {
