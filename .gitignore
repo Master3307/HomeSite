@@ -19,6 +19,11 @@ update.sh
 /server/services/*.json
 /server/services/avatars/
 /server/services/db/
+accounts.sqlite
+accounts.sqlite-shm
+accounts.sqlite-wal
+note.md
+
 .logs/
 
 /config.json

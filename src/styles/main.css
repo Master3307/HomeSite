@@ -740,3 +740,37 @@ button:hover {
 
 }
 
+
+.login-below-head {
+  position: fixed;
+  top: 4.26px; /* directly below the fixed header */
+  right: 16px;
+  z-index: 1000;
+
+  display: flex;
+  justify-content: flex-end;
+}
+
+.loginButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 9px 16px;
+
+  color: var(--text-primary);
+  background-color: #00000000;
+  border-radius: 13px;
+
+  font-size: 1rem;
+  text-decoration: none;
+
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.loginButton:hover {
+  color: var(--text-primary);
+  background-color: var(--accent-hover);
+}

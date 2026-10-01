@@ -1,4 +1,5 @@
 allowBuilds:
+  better-sqlite3: true
   canvas: true
 overrides:
   undici: "^6.28.0"

@@ -50,7 +50,10 @@ export default function Home() {
         </h1>
       </header>
 
-      <Login />
+      <div className="login-below-head">
+        <Login />
+      </div>
+
       <CultCard />
     </>
   )
