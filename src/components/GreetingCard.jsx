@@ -8,10 +8,14 @@ export default function Greeting() {
   return (
     <div id="card" className="card">
       <h2>{t('header')}</h2>
-      <button onClick={() => navigate('/card')}>
+      <p>{t('welcome')}</p>
+      <br />
+      {t('viewCardPretext')}
+      <br />
+      <button className='viewCard' onClick={() => navigate('/card')}>
         {t('viewCard')}
         <span className="material-symbols-outlined">id_card</span>
-      </button>
+      </button>  {/* NOTE: Make this Button a Card visually maybe */}
     </div>
   )
 }

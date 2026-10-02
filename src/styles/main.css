@@ -185,6 +185,21 @@ button:hover {
     inset 0 1px 0 rgba(255, 255, 255, 0.047);
 }
 
+.viewCard {
+  padding: 10px 12px;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 0px solid var(--accent);
+  border-radius: 13px;
+  background-color: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
+  backdrop-filter: blur(13px);
+  -webkit-backdrop-filter: blur(13px); /* Safari */
+  box-shadow:
+  0 10px 30px rgba(0, 0, 0, 0.14),
+  inset 0 1px 0 rgba(255, 255, 255, 0.047);
+
+}
+
 .about-card {
   margin-top: auto;
   margin-bottom: 32px;
@@ -743,8 +758,8 @@ button:hover {
 
 .login-below-head {
   position: fixed;
-  top: 4.26px; /* directly below the fixed header */
-  right: 16px;
+  top: 5px; /* directly below the fixed header */
+  right: 5px;
   z-index: 1000;
 
   display: flex;
