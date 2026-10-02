@@ -26,10 +26,15 @@ export default function Card() {
       <p>{t("line2")}</p>
 
  
-   {/*<br />
-      <h3>{t("buttons")}</h3>*/}
+   {
+   /*
+   <br />
+      <h3>{t("buttons")}</h3>
 
-      {/* add more info here */}
+      add more info here
+    */
+    }
     </div>
+    // NOTE: make card display even when offline and make profile picture display next to card maybe
   );
 }

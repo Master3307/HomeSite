@@ -8,6 +8,7 @@ export default function Cult() {
       <h2>{t('header', { user: t('stranger') })}</h2>
       <br />
       <img src='/discordpic.webp' className='discordpic' title='hehehehehe' alt='Some Funny Cat Greeting You' />
+      {/* NOTE: add automatic seasonal images here (for example halloween) */}
     </div>
   )
 }
