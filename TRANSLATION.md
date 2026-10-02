@@ -6,12 +6,12 @@ Project: [**HomeSite**](https://weblate.master3307.org/projects/homesite/)
 
 | Language | Code | Progress | Translated strings | Total strings |
 | --- | --- | ---: | ---: | ---: |
-| Bavarian | `bar` | 100.0% | 0 | 0 |
-| German | `de` | 100.0% | 0 | 0 |
-| English | `en` | 100.0% | 0 | 0 |
-| Spanish | `es` | 100.0% | 0 | 0 |
-| French | `fr` | 100.0% | 0 | 0 |
-| Croatian | `hr` | 100.0% | 0 | 0 |
-| Italian | `it` | 100.0% | 0 | 0 |
-| Latvian | `lv` | 100.0% | 0 | 0 |
-| Ukrainian | `uk` | 100.0% | 0 | 0 |
+| Bavarian | `bar` | 100.0% | 2 | 2 |
+| German | `de` | 100.0% | 2 | 2 |
+| English | `en` | 100.0% | 2 | 2 |
+| Spanish | `es` | 0.0% | 0 | 2 |
+| French | `fr` | 0.0% | 0 | 2 |
+| Croatian | `hr` | 100.0% | 2 | 2 |
+| Italian | `it` | 100.0% | 2 | 2 |
+| Latvian | `lv` | 0.0% | 0 | 2 |
+| Ukrainian | `uk` | 100.0% | 2 | 2 |
