@@ -93,7 +93,7 @@ git checkout -b fix/mobile-navigation-overflow
 - Prefer clear names and straightforward logic over clever abstractions.
 - Update documentation when you change user-facing behavior, setup instructions, configuration, or public APIs.
 - Add or update tests when the project has relevant test coverage.
-- Do not commit secrets, `.env` files, credentials, API keys, or private configuration.
+- Do not commit secrets, `.env` files, credentials, API keys, or private configuration (already in `.gitignore`).
 
 ## Checks Before Submitting
 
@@ -163,4 +163,4 @@ Please do not report security vulnerabilities in public issues. Contact the repo
 
 ## License
 
-By contributing to HomeSite, you agree that your contributions will be licensed under the repository's existing license.
+By contributing to HomeSite, you agree that your contributions will be licensed under the repository's existing license, [MIT](./LICENSE).
