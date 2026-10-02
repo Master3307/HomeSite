@@ -1,4 +1,6 @@
 {
     "viewCard": "View User Card",
-    "header": "Greetings!"
+    "header": "Greetings!",
+    "welcome": "Welcome to my Website! Hope you like it here :P",
+    "viewCardPretext": "My Personal User Card:"
 }
