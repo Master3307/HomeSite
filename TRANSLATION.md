@@ -6,6 +6,7 @@ Project: [**HomeSite**](https://weblate.master3307.org/projects/homesite/)
 
 | Language | Code | Progress | Translated strings | Total strings |
 | --- | --- | ---: | ---: | ---: |
+<<<<<<< HEAD
 | Bavarian | `bar` | 100.0% | 4 | 4 |
 | German | `de` | 100.0% | 4 | 4 |
 | English | `en` | 100.0% | 4 | 4 |
@@ -15,3 +16,14 @@ Project: [**HomeSite**](https://weblate.master3307.org/projects/homesite/)
 | Italian | `it` | 100.0% | 4 | 4 |
 | Latvian | `lv` | 0.0% | 0 | 4 |
 | Ukrainian | `uk` | 0.0% | 0 | 4 |
+=======
+| Bavarian | `bar` | 100.0% | 5 | 5 |
+| German | `de` | 100.0% | 5 | 5 |
+| English | `en` | 100.0% | 5 | 5 |
+| Spanish | `es` | 0.0% | 0 | 5 |
+| French | `fr` | 0.0% | 0 | 5 |
+| Croatian | `hr` | 60.0% | 3 | 5 |
+| Italian | `it` | 100.0% | 5 | 5 |
+| Latvian | `lv` | 100.0% | 5 | 5 |
+| Ukrainian | `uk` | 60.0% | 3 | 5 |
+>>>>>>> bd92fe5 (chore(i18n): sync Weblate translations)
