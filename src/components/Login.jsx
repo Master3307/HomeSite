@@ -94,7 +94,7 @@ export default function Login() {
         onClick={handleLogout}
         disabled={isLoggingOut}
       >
-        {isLoggingOut ? '…' : 'Logout'}
+        {isLoggingOut ? '…' : t('logout')}
       </button>
     </div>
   )
