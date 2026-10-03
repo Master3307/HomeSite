@@ -1,7 +1,6 @@
 import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
-import CultCard from '/src/components/cult/Card'
 import Login from '/src/components/Login'
 import {
   getDiscordPicSrc,
@@ -9,14 +8,20 @@ import {
 } from '/src/lib/seasonalAssets'
 import '/src/styles/cult.css'
 
+const SITE_URL = 'https://home.master3307.org'
+
 export default function Home() {
   const { t } = useTranslation('title')
 
   const title = 'Cult of Black Cats'
   const description = 'Be a part of the Cult of black Cats!'
+  const url = `${SITE_URL}/`
 
   const discordPicSrc = getDiscordPicSrc()
   const faviconSrc = getFaviconSrc()
+
+  // Open Graph and Twitter require full absolute URLs.
+  const image = `${SITE_URL}${discordPicSrc}`
 
   useEffect(() => {
     document.body.classList.add('cult-page')
@@ -37,14 +42,15 @@ export default function Home() {
         <meta property="og:type" content="website" />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
-        <meta property="og:image" content={discordPicSrc} />
+        <meta property="og:url" content={url} />
+        <meta property="og:image" content={image} />
         <meta property="og:image:type" content="image/webp" />
         <meta property="og:site_name" content="Cult of Black Cats" />
 
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
-        <meta name="twitter:image" content={discordPicSrc} />
+        <meta name="twitter:image" content={image} />
       </Helmet>
 
       <header className="head">
@@ -57,7 +63,6 @@ export default function Home() {
         <Login />
       </div>
 
-      <CultCard />
     </>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getDiscordPicSrc } from '../lib/seasonalAssets'
+import { getDiscordPicSrc } from '/src/lib/seasonalAssets'
 
 const ACCOUNT_API_URL = 'https://accounts-api.master3307.org'
 
