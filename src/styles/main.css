@@ -756,6 +756,8 @@ button:hover {
 }
 
 
+/* Account / Login */
+
 .login-below-head {
   position: fixed;
   top: 5px; /* directly below the fixed header */
@@ -788,4 +790,88 @@ button:hover {
 .loginButton:hover {
   color: var(--text-primary);
   background-color: var(--accent-hover);
+}
+
+
+
+.accountMenu {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(86vw, 360px);
+  min-height: 42px;
+  padding: 4px 5px 4px 7px;
+  gap: 8px;
+
+  color: var(--text-primary);
+  background-color: color-mix(
+    in srgb,
+    var(--bg-secondary) 40%,
+    transparent
+  );
+  border-radius: 13px;
+
+  backdrop-filter: blur(13px);
+  -webkit-backdrop-filter: blur(13px);
+
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.047);
+}
+
+.accountAvatar {
+  display: block;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+
+  object-fit: cover;
+  border-radius: 50%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.accountName {
+  min-width: 0;
+  overflow: hidden;
+
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountLogoutButton {
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 10px;
+
+  font-size: 0.78rem;
+}
+
+.accountLogoutButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+@media (max-width: 420px) {
+  .accountMenu {
+    max-width: 68vw;
+    gap: 6px;
+  }
+
+  .accountAvatar {
+    width: 30px;
+    height: 30px;
+  }
+
+  .accountName {
+    max-width: 100px;
+    font-size: 0.8rem;
+  }
+
+  .accountLogoutButton {
+    padding: 6px 8px;
+    font-size: 0.72rem;
+  }
 }
