@@ -49,10 +49,10 @@ export default function Login() {
 
     try {
       await logoutAccount()
-      setUser(null)
+
+      window.location.reload()
     } catch (error) {
       console.error('Could not log out:', error)
-    } finally {
       setIsLoggingOut(false)
     }
   }
