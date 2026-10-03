@@ -39,6 +39,8 @@ const meows = [
   "*mischievous cat sounds*",
   "haha, look at *this* cute cat.\nhttps://cataas.com/cat/cute/says/Meow!%20:3?width=400&height=300",
   "My life is a simulation, help <:BongoFear:1498042504329691216>",
+  "Spooky Meow… 🎃",
+  "Boo 👻",
 ];
 
 module.exports = {
