@@ -523,7 +523,9 @@ function registerDiscordOAuth(app) {
 
       await destroyOAuthSession(req);
 
-      return res.redirect(process.env.FRONTEND_ORIGIN);
+      return res.redirect(
+        process.env.FRONTEND_REDIRECT_URL || process.env.FRONTEND_ORIGIN,
+      );
     } catch (error) {
       console.error("[OAuth] Discord callback error:", error);
 
