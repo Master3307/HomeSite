@@ -42,16 +42,30 @@ function isUuid(value) {
   );
 }
 
-function getDiscordAvatarUrl(discordUser) {
-  if (!discordUser?.avatar) {
-    const index = Number(discordUser?.discriminator || 0) % 5;
+function getDefaultDiscordAvatarUrl(discordUser) {
+  const index = Number(discordUser?.discriminator || 0) % 5;
 
-    return `${DISCORD_CDN}/embed/avatars/${index}.png`;
+  return `${DISCORD_CDN}/embed/avatars/${index}.png`;
+}
+
+function getGlobalDiscordAvatarUrl(discordUser) {
+  if (!discordUser?.avatar) {
+    return getDefaultDiscordAvatarUrl(discordUser);
   }
 
   const extension = discordUser.avatar.startsWith("a_") ? "gif" : "webp";
 
   return `${DISCORD_CDN}/avatars/${discordUser.id}/${discordUser.avatar}.${extension}?size=256`;
+}
+
+function getGuildDiscordAvatarUrl(discordUserId, guildAvatarHash) {
+  if (!guildAvatarHash) {
+    return null;
+  }
+
+  const extension = guildAvatarHash.startsWith("a_") ? "gif" : "webp";
+
+  return `${DISCORD_CDN}/guilds/${process.env.DISCORD_GUILD_ID}/users/${discordUserId}/avatars/${guildAvatarHash}.${extension}?size=256`;
 }
 
 async function ensureStorageDirectories() {
@@ -115,13 +129,73 @@ function openDatabase() {
   return db;
 }
 
+async function fetchGuildMember(discordUserId) {
+  const botToken = process.env.DISCORD_BOT_TOKEN;
+  const guildId = process.env.DISCORD_GUILD_ID;
+
+  if (!botToken || !guildId) {
+    return null;
+  }
+
+  const response = await fetch(
+    `${DISCORD_API}/guilds/${guildId}/members/${discordUserId}`,
+    {
+      headers: {
+        Authorization: `Bot ${botToken}`,
+      },
+    },
+  );
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `Discord guild-member lookup failed with HTTP ${response.status}.`,
+    );
+  }
+
+  return response.json();
+}
+
+async function getPreferredDiscordAvatarUrl(discordUser) {
+  try {
+    const guildMember = await fetchGuildMember(discordUser.id);
+
+    if (guildMember?.avatar) {
+      const guildAvatarUrl = getGuildDiscordAvatarUrl(
+        discordUser.id,
+        guildMember.avatar,
+      );
+
+      if (guildAvatarUrl) {
+        return {
+          source: "guild",
+          url: guildAvatarUrl,
+        };
+      }
+    }
+  } catch (error) {
+    console.warn(
+      `[OAuth] Guild avatar lookup failed for Discord user ${discordUser.id}:`,
+      error.message,
+    );
+  }
+
+  return {
+    source: "global",
+    url: getGlobalDiscordAvatarUrl(discordUser),
+  };
+}
+
 async function downloadAndSaveAvatar(discordUser, userId) {
-  const remoteAvatarUrl = getDiscordAvatarUrl(discordUser);
+  const preferredAvatar = await getPreferredDiscordAvatarUrl(discordUser);
 
   const finalPath = path.join(AVATAR_DIR, `${userId}.webp`);
   const temporaryPath = `${finalPath}.${crypto.randomUUID()}.tmp`;
 
-  const avatarResponse = await fetch(remoteAvatarUrl, {
+  const avatarResponse = await fetch(preferredAvatar.url, {
     headers: {
       Accept: "image/avif,image/webp,image/png,image/jpeg,image/gif,*/*",
     },
@@ -129,7 +203,7 @@ async function downloadAndSaveAvatar(discordUser, userId) {
 
   if (!avatarResponse.ok) {
     throw new Error(
-      `Discord avatar download failed with HTTP ${avatarResponse.status}.`,
+      `Discord ${preferredAvatar.source} avatar download failed with HTTP ${avatarResponse.status}.`,
     );
   }
 
@@ -160,6 +234,10 @@ async function downloadAndSaveAvatar(discordUser, userId) {
 
     throw error;
   }
+
+  console.log(
+    `[OAuth] Updated ${preferredAvatar.source} avatar for local user ${userId}.`,
+  );
 
   return `avatars/${userId}.webp`;
 }
@@ -313,6 +391,7 @@ function registerDiscordOAuth(app) {
 
     const rawToken = createRandomToken();
     const createdAt = new Date();
+
     const expiresAt = new Date(
       createdAt.getTime() + getSessionMaxAgeMs(),
     ).toISOString();
