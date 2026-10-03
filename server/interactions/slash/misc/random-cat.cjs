@@ -100,7 +100,14 @@ module.exports = {
       ?.trim()
       .toLowerCase();
 
-    const selectedImage = requestedCode
+    // No option, empty input, or "none" all mean: pick a weighted random image.
+    const hasValidRequestedCode =
+      requestedCode !== null &&
+      requestedCode !== undefined &&
+      requestedCode !== "" &&
+      requestedCode !== "none";
+
+    const selectedImage = hasValidRequestedCode
       ? catImages.find((image) => image.code.toLowerCase() === requestedCode)
       : getWeightedRandom(catImages);
 

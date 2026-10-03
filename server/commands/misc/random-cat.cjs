@@ -96,7 +96,14 @@ module.exports = {
   async execute(message, args) {
     const requestedCode = args.join(" ").trim().toLowerCase();
 
-    const selectedImage = requestedCode
+    // No argument, blank argument, or "none" picks a weighted random image.
+    const hasValidRequestedCode =
+      requestedCode !== null &&
+      requestedCode !== undefined &&
+      requestedCode !== "" &&
+      requestedCode !== "none";
+
+    const selectedImage = hasValidRequestedCode
       ? catImages.find((image) => image.code.toLowerCase() === requestedCode)
       : getWeightedRandom(catImages);
 
