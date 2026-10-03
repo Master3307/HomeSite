@@ -2,6 +2,10 @@ const levels = require("../services/levels.cjs");
 const birthdayCelebrations = require("../services/birthdayCelebrations.cjs");
 const minecraftStatus = require("../services/minecraftStatus.cjs");
 const fdc = require("../interactions/slash/utility/fdc.cjs");
+const {
+  registerEmojiSync,
+  runEmojiSync,
+} = require("../services/emojiSync.cjs");
 
 module.exports = {
   name: "clientReady",
@@ -36,6 +40,30 @@ module.exports = {
       console.log("[FDC] Poll recovery initialized.");
     } catch (error) {
       console.error("[FDC] Failed to recover active polls:", error);
+    }
+
+    try {
+      registerEmojiSync(client);
+      console.log("[Emoji Sync] Source-guild event listener initialized.");
+    } catch (error) {
+      console.error("[Emoji Sync] Failed to register event listener:", error);
+    }
+
+    try {
+      const result = await runEmojiSync(client);
+
+      if (result) {
+        console.log(
+          `[Emoji Sync] Initial sync complete: ` +
+            `${result.created} created, ` +
+            `${result.renamed} renamed, ` +
+            `${result.adopted} adopted, ` +
+            `${result.deleted} deleted, ` +
+            `${result.failed} failed.`,
+        );
+      }
+    } catch (error) {
+      console.error("[Emoji Sync] Initial sync failed:", error);
     }
   },
 };

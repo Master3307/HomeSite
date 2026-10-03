@@ -23,6 +23,8 @@ accounts.sqlite
 accounts.sqlite-shm
 accounts.sqlite-wal
 note.md
+server/services/db/emoji-sync.json
+server/services/db/emoji-sync.json.tmp
 
 .logs/
 
