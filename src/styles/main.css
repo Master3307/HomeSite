@@ -875,3 +875,30 @@ button:hover {
     font-size: 0.72rem;
   }
 }
+
+
+/* Yellow/black construction-style text */
+.constructionText {
+  display: inline-block;
+
+  /* Wide traditional black/yellow construction stripes */
+  background: repeating-linear-gradient(
+    135deg,
+    #ffd500 0,
+    #ffd500 18px,
+    #111 18px,
+    #111 36px,
+    #111 13px
+  );
+  margin-top: 50px;
+  /* Text on top */
+  color: white;
+  -webkit-text-stroke: 1px #111;
+  paint-order: stroke fill;
+
+  text-align: center;
+  font-size: 1.3rem;
+
+  font-weight: 900;
+  padding: 0.25em 0.8em;
+}

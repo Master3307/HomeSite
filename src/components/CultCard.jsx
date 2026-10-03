@@ -57,6 +57,7 @@ export default function Cult() {
         title="hehehehehe"
         alt="Some Funny Cat Greeting You"
       />
+      <br />
     </div>
   )
 }
