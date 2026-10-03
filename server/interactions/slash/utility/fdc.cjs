@@ -100,6 +100,99 @@ function reactionKey(reaction) {
     : `unicode:${reaction.emoji.name}`;
 }
 
+function parseCustomEmoji(emoji) {
+  const match = emoji.match(/^<(a?):([a-zA-Z0-9_]{2,32}):(\d+)>$/);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    animated: match[1] === "a",
+    name: match[2],
+    id: match[3],
+  };
+}
+
+function emojiMarkup(emoji) {
+  return emoji.animated
+    ? `<a:${emoji.name}:${emoji.id}>`
+    : `<:${emoji.name}:${emoji.id}>`;
+}
+
+/**
+ * Resolves a poll emoji into something usable in the poll's guild.
+ *
+ * Priority:
+ * 1. Unicode emoji: used as-is.
+ * 2. A custom emoji already available in the poll guild: used as-is.
+ * 3. A matching application emoji:
+ *    - Exact application emoji ID, then
+ *    - Same name and animated/static type.
+ *
+ * Application emoji IDs differ from source-guild emoji IDs after syncing,
+ * so matching by name + animation state is intentional.
+ */
+async function resolvePollEmoji(client, guild, requestedEmoji) {
+  const customEmoji = parseCustomEmoji(requestedEmoji);
+
+  if (!customEmoji) {
+    return {
+      emoji: requestedEmoji,
+      key: emojiKey(requestedEmoji),
+      reaction: emojiForReaction(requestedEmoji),
+      source: "unicode",
+    };
+  }
+
+  const guildEmoji = await guild.emojis.fetch(customEmoji.id).catch(() => null);
+
+  if (guildEmoji) {
+    const emoji = emojiMarkup(guildEmoji);
+
+    return {
+      emoji,
+      key: emojiKey(emoji),
+      reaction: emojiForReaction(emoji),
+      source: "guild",
+    };
+  }
+
+  if (!client.application?.emojis) {
+    throw new Error(
+      "The bot application emoji manager is unavailable. Restart the bot after it is fully ready.",
+    );
+  }
+
+  const applicationEmojis = await client.application.emojis.fetch();
+
+  let applicationEmoji = applicationEmojis.get(customEmoji.id) ?? null;
+
+  if (!applicationEmoji) {
+    applicationEmoji =
+      applicationEmojis.find(
+        (candidate) =>
+          candidate.name === customEmoji.name &&
+          candidate.animated === customEmoji.animated,
+      ) ?? null;
+  }
+
+  if (!applicationEmoji) {
+    throw new Error(
+      `The custom emoji \`${customEmoji.name}\` is not available in this server and no matching bot application emoji was found.`,
+    );
+  }
+
+  const emoji = emojiMarkup(applicationEmoji);
+
+  return {
+    emoji,
+    key: emojiKey(emoji),
+    reaction: emojiForReaction(emoji),
+    source: "application",
+  };
+}
+
 function isImageOrGif(attachment) {
   if (attachment.contentType?.startsWith("image/")) return true;
 
@@ -337,6 +430,7 @@ function parseOptionsFromEmbed(message) {
       emoji,
       description,
       key: emojiKey(emoji),
+      reaction: emojiForReaction(emoji),
     });
   }
 
@@ -404,9 +498,6 @@ function buildVotesFromReactionUsers(usersByOption, options) {
     const userIds = usersByOption.get(optionIndex) ?? new Set();
 
     for (const userId of userIds) {
-      // Discord does not expose a per-user reaction timestamp. Processing in
-      // option order makes recovery deterministic; the highest option index wins
-      // if an old duplicate reaction exists.
       votes.set(userId, optionIndex);
     }
   }
@@ -860,7 +951,7 @@ module.exports = {
         `${number}_description`,
       );
 
-      const emoji =
+      const requestedEmoji =
         interaction.options.getString(`${number}_emoji`)?.trim() ||
         DEFAULT_EMOJIS[number - 1];
 
@@ -880,9 +971,24 @@ module.exports = {
         });
       }
 
-      if (/\s/.test(emoji) || emoji.length === 0) {
+      if (/\s/.test(requestedEmoji) || requestedEmoji.length === 0) {
         return interaction.reply({
           content: `Option ${number}'s emoji must be one emoji, with no spaces.`,
+          ephemeral: true,
+        });
+      }
+
+      let resolvedEmoji;
+
+      try {
+        resolvedEmoji = await resolvePollEmoji(
+          interaction.client,
+          interaction.guild,
+          requestedEmoji,
+        );
+      } catch (error) {
+        return interaction.reply({
+          content: `Option ${number}: ${error.message}`,
           ephemeral: true,
         });
       }
@@ -891,8 +997,10 @@ module.exports = {
         number,
         media,
         description,
-        emoji,
-        key: emojiKey(emoji),
+        emoji: resolvedEmoji.emoji,
+        key: resolvedEmoji.key,
+        reaction: resolvedEmoji.reaction,
+        emojiSource: resolvedEmoji.source,
       });
     }
 
@@ -931,7 +1039,7 @@ module.exports = {
 
       try {
         for (const option of options) {
-          await pollMessage.react(emojiForReaction(option.emoji));
+          await pollMessage.react(option.reaction);
         }
       } catch (error) {
         await removePollState(pollMessage.id).catch(() => {});
@@ -962,8 +1070,10 @@ module.exports = {
       console.error("Failed to create FDC poll:", error);
 
       await interaction.editReply({
-        content:
-          "I could not create the FDC poll. Check the bot console and its permissions in the FDC channel.",
+        content: [
+          "I could not create the FDC poll.",
+          "Check the bot console, its permissions in the FDC channel, and whether the selected custom emoji can be used as a message reaction.",
+        ].join(" "),
       });
     }
   },
