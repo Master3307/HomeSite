@@ -159,20 +159,18 @@ async function fetchGuildMember(discordUserId) {
   return response.json();
 }
 
-async function getPreferredDiscordAvatarUrl(discordUser) {
+async function getPreferredDiscordAvatar(discordUser) {
   try {
     const guildMember = await fetchGuildMember(discordUser.id);
 
     if (guildMember?.avatar) {
-      const guildAvatarUrl = getGuildDiscordAvatarUrl(
-        discordUser.id,
-        guildMember.avatar,
-      );
+      const url = getGuildDiscordAvatarUrl(discordUser.id, guildMember.avatar);
 
-      if (guildAvatarUrl) {
+      if (url) {
         return {
           source: "guild",
-          url: guildAvatarUrl,
+          url,
+          isAnimated: guildMember.avatar.startsWith("a_"),
         };
       }
     }
@@ -186,11 +184,12 @@ async function getPreferredDiscordAvatarUrl(discordUser) {
   return {
     source: "global",
     url: getGlobalDiscordAvatarUrl(discordUser),
+    isAnimated: Boolean(discordUser.avatar?.startsWith("a_")),
   };
 }
 
 async function downloadAndSaveAvatar(discordUser, userId) {
-  const preferredAvatar = await getPreferredDiscordAvatarUrl(discordUser);
+  const preferredAvatar = await getPreferredDiscordAvatar(discordUser);
 
   const finalPath = path.join(AVATAR_DIR, `${userId}.webp`);
   const temporaryPath = `${finalPath}.${crypto.randomUUID()}.tmp`;
@@ -210,9 +209,19 @@ async function downloadAndSaveAvatar(discordUser, userId) {
   const avatarBuffer = Buffer.from(await avatarResponse.arrayBuffer());
 
   try {
-    await sharp(avatarBuffer, {
-      animated: false,
-    })
+    const image = sharp(avatarBuffer, {
+      animated: preferredAvatar.isAnimated,
+    });
+
+    const metadata = await image.metadata();
+
+    const animationDelay = Array.isArray(metadata.delay)
+      ? metadata.delay
+      : undefined;
+
+    const animationLoop = Number.isInteger(metadata.loop) ? metadata.loop : 0;
+
+    await image
       .rotate()
       .resize(256, 256, {
         fit: "cover",
@@ -221,6 +230,9 @@ async function downloadAndSaveAvatar(discordUser, userId) {
       })
       .webp({
         quality: 88,
+        effort: 4,
+        loop: animationLoop,
+        delay: animationDelay,
       })
       .toFile(temporaryPath);
 
@@ -236,7 +248,7 @@ async function downloadAndSaveAvatar(discordUser, userId) {
   }
 
   console.log(
-    `[OAuth] Updated ${preferredAvatar.source} avatar for local user ${userId}.`,
+    `[OAuth] Updated ${preferredAvatar.isAnimated ? "animated " : ""}${preferredAvatar.source} avatar for local user ${userId}.`,
   );
 
   return `avatars/${userId}.webp`;
