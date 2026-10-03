@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getDiscordPicSrc } from '../lib/seasonalAssets'
 
 const ACCOUNT_API_URL = 'https://accounts-api.master3307.org'
 
@@ -42,6 +43,7 @@ export default function Cult() {
   }, [])
 
   const user = displayName || t('stranger')
+  const discordPicSrc = getDiscordPicSrc()
 
   return (
     <div id="card" className="card">
@@ -50,13 +52,11 @@ export default function Cult() {
       <br />
 
       <img
-        src="/discordpic.webp"
+        src={discordPicSrc}
         className="discordpic"
         title="hehehehehe"
         alt="Some Funny Cat Greeting You"
       />
-
-      {/* NOTE: add automatic seasonal images here (for example halloween) */}
     </div>
   )
 }

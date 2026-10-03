@@ -3,16 +3,26 @@ import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
 import CultCard from '../components/CultCard'
 import Login from '../components/Login'
+import {
+  getDiscordPicSrc,
+  getFaviconSrc,
+} from '../lib/seasonalAssets'
 import '../styles/cult.css'
+
+const SITE_URL = 'https://home.master3307.org'
 
 export default function Home() {
   const { t } = useTranslation('title')
 
   const title = 'Cult of Black Cats'
-  const description =
-    'Be a part of the Cult of black Cats!'
-  const image = 'https://home.master3307.org/discordpic-zoomed.webp'
-  const url = 'https://home.master3307.org/'
+  const description = 'Be a part of the Cult of black Cats!'
+  const url = `${SITE_URL}/`
+
+  const discordPicSrc = getDiscordPicSrc()
+  const faviconSrc = getFaviconSrc()
+
+  // Open Graph and Twitter require absolute URLs.
+  const image = `${SITE_URL}${discordPicSrc}`
 
   useEffect(() => {
     document.body.classList.add('cult-page')
@@ -28,7 +38,7 @@ export default function Home() {
         <title>{title}</title>
         <meta name="description" content={description} />
 
-        <link rel="icon" type="image/webp" href="/discordpic-zoomed.webp" />
+        <link rel="icon" type="image/webp" href={faviconSrc} />
 
         <meta property="og:type" content="website" />
         <meta property="og:title" content={title} />
