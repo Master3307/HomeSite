@@ -4,36 +4,52 @@ const otherImageWeight = 13 / 6;
 
 const catImages = [
   {
-    url: "https://cdn.discordapp.com/avatars/815532619831574538/a52c158fe145686419c5aa347930b920.webp?size=1024",
-    description: "Nigel Secret",
+    code: "nigel",
+    url: "https://user.uploads.dev/file/54555bce94eadf99978a9249778ac2da.webp",
+    description: "Nigel's Hamster. Not a Cat but a Hamster to remember.",
     weight: otherImageWeight,
   },
   {
+    code: "cataas",
     url: "https://cataas.com/cat/cute/says/Meow%20Meow!?width=400&height=300",
-    description: 'A random cat from "Cataas"!',
+    description: 'A random Cat from "[Cataas](https://cataas.com)"!',
     weight: 87,
   },
   {
+    code: "kwl",
+    url: () => {
+      const imageIndex = Math.floor(Math.random() * 135);
+      return `https://kwl.sh/cpics/${imageIndex}l.jpg`;
+    },
+    description: 'A random cat from "[kwl.sh](https://kwl.sh)"!',
+    weight: 29,
+  },
+  {
+    code: "crimson-crew",
     url: "https://user.uploads.dev/file/4f588aa32b1fcbaae594574504f917f0.png",
     description: "The Crimson Crew!",
     weight: otherImageWeight,
   },
   {
+    code: "surprised",
     url: "https://user.uploads.dev/file/f5b189f29cc78e699040fe8fa4ea2abc.gif",
     description: "<:surprised:1534166841151197338>",
     weight: otherImageWeight,
   },
   {
+    code: "spooky",
     url: "https://user.uploads.dev/file/74ceb65265ec16df78a2b048df3c1856.png",
     description: "Bongo Cat Jumpscare!",
     weight: otherImageWeight,
   },
   {
+    code: "beetle",
     url: "https://user.uploads.dev/file/e9055ed59969899ca050073e4f925abe.jpg",
     description: "this is beetle :3",
     weight: otherImageWeight,
   },
   {
+    code: "max",
     url: "https://user.uploads.dev/file/7cf4129ce93b02040d47167c6e7dea99.jpg",
     description: "<@1322220385411928136> sent this one :D",
     weight: otherImageWeight,
@@ -55,44 +71,50 @@ function getWeightedRandom(items) {
   return items.at(-1);
 }
 
+function getImageUrl(image) {
+  let imageUrl = typeof image.url === "function" ? image.url() : image.url;
+
+  if (imageUrl.includes("cataas.com/cat")) {
+    const url = new URL(imageUrl);
+    url.searchParams.set("ts", Date.now().toString());
+    imageUrl = url.toString();
+  }
+
+  return imageUrl;
+}
+
 module.exports = {
   name: "random-cat",
   aliases: ["cat", "randomcat"],
   description: "Send a random cat-related image.",
-  usage: "random-cat",
+  usage: "random-cat [code]",
 
-  async execute(message, _args) {
-    const randomItem = getWeightedRandom(catImages);
-    let randomImage = randomItem.url;
+  /**
+   * @param {import("discord.js").Message} message
+   * @param {string[]} args
+   */
+  async execute(message, args) {
+    const requestedCode = args.join(" ").trim().toLowerCase();
 
-    // Bust Cataas caching so it can return a fresh image.
-    if (randomImage.includes("cataas.com/cat")) {
-      const url = new URL(randomImage);
-      url.searchParams.set("ts", Date.now().toString());
-      randomImage = url.toString();
+    const selectedImage = requestedCode
+      ? catImages.find((image) => image.code.toLowerCase() === requestedCode)
+      : getWeightedRandom(catImages);
+
+    if (!selectedImage) {
+      await message.reply(
+        `That code is invalid. Available codes: ${catImages
+          .map((image) => `\`${image.code}\``)
+          .join(", ")}`,
+      );
+
+      return;
     }
 
     const embed = new EmbedBuilder()
-      .setColor(0xffa7c4)
-      .setAuthor({
-        name: `${message.author.username}'s random cat`,
-        iconURL: message.author.displayAvatarURL(),
-      })
-      .setTitle("🐱 Random Cat Image")
-      .setDescription(randomItem.description)
-      .setImage(randomImage)
-      .setFooter({
-        text: `Requested by ${message.author.username}`,
-        iconURL: message.author.displayAvatarURL(),
-      })
-      .setTimestamp();
+      .setTitle("Here is your random cat related Image!")
+      .setDescription(selectedImage.description)
+      .setImage(getImageUrl(selectedImage));
 
-    await message.reply({
-      embeds: [embed],
-      allowedMentions: {
-        repliedUser: false,
-        users: [],
-      },
-    });
+    await message.reply({ embeds: [embed] });
   },
 };

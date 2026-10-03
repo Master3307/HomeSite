@@ -12,8 +12,17 @@ const catImages = [
   {
     code: "cataas",
     url: "https://cataas.com/cat/cute/says/Meow%20Meow!?width=400&height=300",
-    description: 'A random Cat from "Cataas"!',
+    description: 'A random Cat from "[Cataas](https://cataas.com)"!',
     weight: 87,
+  },
+  {
+    code: "kwl",
+    url: () => {
+      const imageIndex = Math.floor(Math.random() * 135);
+      return `https://kwl.sh/cpics/${imageIndex}l.jpg`;
+    },
+    description: 'A random cat from "[kwl.sh](https://kwl.sh)"!',
+    weight: 29,
   },
   {
     code: "crimson-crew",
@@ -63,7 +72,7 @@ function getWeightedRandom(items) {
 }
 
 function getImageUrl(image) {
-  let imageUrl = image.url;
+  let imageUrl = typeof image.url === "function" ? image.url() : image.url;
 
   if (imageUrl.includes("cataas.com/cat")) {
     const url = new URL(imageUrl);
