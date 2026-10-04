@@ -902,3 +902,46 @@ button:hover {
   font-weight: 900;
   padding: 0.25em 0.8em;
 }
+
+/* Twemoji */
+
+img.discord-emoji {
+  width: 1em;
+  height: 1em;
+  margin: 0 0.04em;
+  vertical-align: -0.12em;
+  display: inline-block;
+  object-fit: contain;
+}
+
+
+.language-picker {
+  position: relative;
+}
+
+.language-select-trigger {
+  width: 100%;
+  appearance: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.language-select-menu {
+  position: absolute;
+  z-index: 1000;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  min-width: 100%;
+  overflow: hidden;
+}
+
+.language-select-option {
+  width: 100%;
+  display: block;
+  text-align: left;
+  cursor: pointer;
+}
+
+.language-select-option[aria-selected='true'] {
+  font-weight: 700;
+}

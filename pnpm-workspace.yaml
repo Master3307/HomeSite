@@ -1,6 +1,7 @@
 allowBuilds:
   better-sqlite3: true
   canvas: true
+  twemoji-emojis: true
 overrides:
   undici: "^6.28.0"
   qs: "6.16.0"

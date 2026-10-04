@@ -46,6 +46,7 @@
     "react-powerglitch": "^1.1.0",
     "react-router": "^8.4.0",
     "sharp": "^0.35.5",
+    "twemoji-emojis": "^14.1.0",
     "use-scramble": "^2.2.15",
     "uuid": "^14.0.2"
   },
