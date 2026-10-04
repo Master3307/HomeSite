@@ -273,6 +273,9 @@ importers:
       oxlint:
         specifier: ^1.86.0
         version: 1.86.0
+      undici:
+        specifier: ^6.28.0
+        version: 6.29.0
       vite:
         specifier: ^8.3.2
         version: 8.3.2(@types/node@26.6.4)
