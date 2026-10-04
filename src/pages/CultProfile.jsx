@@ -61,7 +61,7 @@ export default function Home() {
 
       <div className="login-below-head">
         <Login />
-        <span class="material-symbols-outlined">favorite</span>
+        <span className="material-symbols-outlined">favorite</span>
       </div>
 
     </>
