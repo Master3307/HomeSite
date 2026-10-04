@@ -32,7 +32,11 @@ pnpm run build
 
 test -f "${REPO_DIR}/dist/index.html"
 
-echo "Restarting HomeSite service..."
-/usr/bin/systemctl restart homesite.service
+echo "Restarting application services..."
+/usr/bin/systemctl restart \
+  homesite.service \
+  accounts-api.service \
+  discord-bot.service \
+  discord-profile.service
 
 echo "HomeSite deployment completed successfully."
