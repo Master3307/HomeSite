@@ -11,6 +11,7 @@ flock -n 9 || {
     exit 75
 }
 
+
 cd "$REPO_DIR"
 
 echo "Fetching origin/${BRANCH}..."
