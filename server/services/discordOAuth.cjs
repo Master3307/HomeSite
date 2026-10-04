@@ -1,6 +1,7 @@
 const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const rateLimit = require("express-rate-limit");
 
 const Database = require("better-sqlite3");
 const sharp = require("sharp");
@@ -352,6 +353,46 @@ async function downloadAndSaveAvatar(discordUser, userId) {
 }
 
 function registerDiscordOAuth(app) {
+  const authRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: {
+      error: "Too many authentication requests. Please try again later.",
+    },
+  });
+
+  const accountReadRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 120,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: {
+      error: "Too many account requests. Please try again later.",
+    },
+  });
+
+  const accountMutationRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 60,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: {
+      error: "Too many account changes. Please try again later.",
+    },
+  });
+
+  const avatarRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 120,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: {
+      error: "Too many avatar requests. Please try again later.",
+    },
+  });
+
   let db = null;
 
   const storageReady = ensureStorageDirectories().then(() => {
@@ -553,7 +594,7 @@ function registerDiscordOAuth(app) {
 
     const now = nowIso();
 
-    const session = db
+    const accountSession = db
       .prepare(
         `
         SELECT
@@ -574,7 +615,7 @@ function registerDiscordOAuth(app) {
       )
       .get(hashToken(rawToken), now);
 
-    if (!session) {
+    if (!accountSession) {
       return null;
     }
 
@@ -584,9 +625,9 @@ function registerDiscordOAuth(app) {
       SET last_seen_at = ?
       WHERE id = ?
     `,
-    ).run(now, session.session_id);
+    ).run(now, accountSession.session_id);
 
-    return session;
+    return accountSession;
   }
 
   function deletePersistentSession(rawToken) {
@@ -637,17 +678,17 @@ function registerDiscordOAuth(app) {
     });
   }
 
-  function toPublicUser(session) {
+  function toPublicUser(accountSession) {
     const apiOrigin = String(process.env.API_ORIGIN || "").replace(/\/$/, "");
 
     return {
-      id: session.user_id,
-      username: session.username,
-      displayName: session.display_name,
-      avatarUrl: session.avatar_path
-        ? `${apiOrigin}/${session.avatar_path}`
+      id: accountSession.user_id,
+      username: accountSession.username,
+      displayName: accountSession.display_name,
+      avatarUrl: accountSession.avatar_path
+        ? `${apiOrigin}/${accountSession.avatar_path}`
         : null,
-      settings: parseSettings(session.settings_json),
+      settings: parseSettings(accountSession.settings_json),
     };
   }
 
@@ -668,7 +709,7 @@ function registerDiscordOAuth(app) {
     return next();
   }
 
-  app.get("/auth/discord", requireStorage, (_req, res) => {
+  app.get("/auth/discord", authRateLimiter, requireStorage, (_req, res) => {
     const state = createRandomToken();
 
     setOAuthStateCookie(res, state);
@@ -687,99 +728,106 @@ function registerDiscordOAuth(app) {
     );
   });
 
-  app.get("/auth/discord/callback", requireStorage, async (req, res) => {
-    const code = typeof req.query.code === "string" ? req.query.code : "";
-    const state = typeof req.query.state === "string" ? req.query.state : "";
-    const expectedState = req.cookies?.[OAUTH_STATE_COOKIE_NAME];
+  app.get(
+    "/auth/discord/callback",
+    authRateLimiter,
+    requireStorage,
+    async (req, res) => {
+      const code = typeof req.query.code === "string" ? req.query.code : "";
+      const state = typeof req.query.state === "string" ? req.query.state : "";
+      const expectedState = req.cookies?.[OAUTH_STATE_COOKIE_NAME];
 
-    clearOAuthStateCookie(res);
+      clearOAuthStateCookie(res);
 
-    if (!code || !state || !safeTokenEqual(expectedState, state)) {
-      return res.status(400).send("Invalid or expired Discord login request.");
-    }
-
-    try {
-      const tokenResponse = await fetch(`${DISCORD_API}/oauth2/token`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          client_id: process.env.DISCORD_CLIENT_ID,
-          client_secret: process.env.DISCORD_CLIENT_SECRET,
-          grant_type: "authorization_code",
-          code,
-          redirect_uri: process.env.DISCORD_REDIRECT_URI,
-        }),
-      });
-
-      if (!tokenResponse.ok) {
-        console.error(
-          "[OAuth] Discord token exchange failed:",
-          await tokenResponse.text(),
-        );
-
-        return res.status(401).send("Discord login failed.");
-      }
-
-      const tokens = await tokenResponse.json();
-
-      const userResponse = await fetch(`${DISCORD_API}/users/@me`, {
-        headers: {
-          Authorization: `Bearer ${tokens.access_token}`,
-        },
-      });
-
-      if (!userResponse.ok) {
-        console.error(
-          "[OAuth] Discord user fetch failed:",
-          await userResponse.text(),
-        );
-
-        return res.status(401).send("Could not load Discord user.");
-      }
-
-      const discordUser = await userResponse.json();
-
-      if (!discordUser?.id || !discordUser?.username) {
+      if (!code || !state || !safeTokenEqual(expectedState, state)) {
         return res
-          .status(401)
-          .send("Discord returned an invalid user profile.");
+          .status(400)
+          .send("Invalid or expired Discord login request.");
       }
-
-      let user = upsertUserFromDiscord(discordUser);
 
       try {
-        const avatarPath = await downloadAndSaveAvatar(discordUser, user.id);
-        user = updateAvatarPath(user.id, avatarPath);
-      } catch (avatarError) {
-        console.warn(
-          `[OAuth] Avatar update failed for user ${user.id}:`,
-          avatarError.message,
+        const tokenResponse = await fetch(`${DISCORD_API}/oauth2/token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            client_id: process.env.DISCORD_CLIENT_ID,
+            client_secret: process.env.DISCORD_CLIENT_SECRET,
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: process.env.DISCORD_REDIRECT_URI,
+          }),
+        });
+
+        if (!tokenResponse.ok) {
+          console.error(
+            "[OAuth] Discord token exchange failed:",
+            await tokenResponse.text(),
+          );
+
+          return res.status(401).send("Discord login failed.");
+        }
+
+        const tokens = await tokenResponse.json();
+
+        const userResponse = await fetch(`${DISCORD_API}/users/@me`, {
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`,
+          },
+        });
+
+        if (!userResponse.ok) {
+          console.error(
+            "[OAuth] Discord user fetch failed:",
+            await userResponse.text(),
+          );
+
+          return res.status(401).send("Could not load Discord user.");
+        }
+
+        const discordUser = await userResponse.json();
+
+        if (!discordUser?.id || !discordUser?.username) {
+          return res
+            .status(401)
+            .send("Discord returned an invalid user profile.");
+        }
+
+        let user = upsertUserFromDiscord(discordUser);
+
+        try {
+          const avatarPath = await downloadAndSaveAvatar(discordUser, user.id);
+          user = updateAvatarPath(user.id, avatarPath);
+        } catch (avatarError) {
+          console.warn(
+            `[OAuth] Avatar update failed for user ${user.id}:`,
+            avatarError.message,
+          );
+        }
+
+        const oldToken = req.cookies?.[AUTH_COOKIE_NAME];
+
+        if (oldToken) {
+          deletePersistentSession(oldToken);
+        }
+
+        const persistentSession = createPersistentSession(user.id);
+
+        setAuthCookie(res, persistentSession.token);
+
+        return res.redirect(
+          process.env.FRONTEND_REDIRECT_URL || process.env.FRONTEND_ORIGIN,
         );
+      } catch (error) {
+        console.error("[OAuth] Discord callback error:", error);
+
+        return res.status(500).send("An internal server error occurred.");
       }
+    },
+  );
 
-      const oldToken = req.cookies?.[AUTH_COOKIE_NAME];
-
-      if (oldToken) {
-        deletePersistentSession(oldToken);
-      }
-
-      const persistentSession = createPersistentSession(user.id);
-
-      setAuthCookie(res, persistentSession.token);
-
-      return res.redirect(
-        process.env.FRONTEND_REDIRECT_URL || process.env.FRONTEND_ORIGIN,
-      );
-    } catch (error) {
-      console.error("[OAuth] Discord callback error:", error);
-
-      return res.status(500).send("An internal server error occurred.");
-    }
-  });
-
-  app.get("/auth/me", requireStorage, (req, res) => {
+  app.get("/auth/me", accountReadRateLimiter, requireStorage, (req, res) => {
     const rawToken = req.cookies?.[AUTH_COOKIE_NAME];
     const accountSession = getAuthenticatedUser(rawToken);
 
@@ -799,6 +847,7 @@ function registerDiscordOAuth(app) {
 
   app.patch(
     "/account/settings",
+    accountMutationRateLimiter,
     requireStorage,
     requireAuthenticatedUser,
     (req, res) => {
@@ -845,35 +894,45 @@ function registerDiscordOAuth(app) {
     },
   );
 
-  app.post("/auth/logout", requireStorage, (req, res) => {
-    const rawToken = req.cookies?.[AUTH_COOKIE_NAME];
+  app.post(
+    "/auth/logout",
+    accountMutationRateLimiter,
+    requireStorage,
+    (req, res) => {
+      const rawToken = req.cookies?.[AUTH_COOKIE_NAME];
 
-    deletePersistentSession(rawToken);
-    clearAuthCookie(res);
+      deletePersistentSession(rawToken);
+      clearAuthCookie(res);
 
-    return res.status(204).end();
-  });
+      return res.status(204).end();
+    },
+  );
 
-  app.get("/avatars/:userId.webp", requireStorage, async (req, res) => {
-    const userId = String(req.params.userId || "");
+  app.get(
+    "/avatars/:userId.webp",
+    avatarRateLimiter,
+    requireStorage,
+    async (req, res) => {
+      const userId = String(req.params.userId || "");
 
-    if (!isUuid(userId)) {
-      return res.status(400).send("Invalid avatar ID.");
-    }
+      if (!isUuid(userId)) {
+        return res.status(400).send("Invalid avatar ID.");
+      }
 
-    const avatarPath = path.join(AVATAR_DIR, `${userId}.webp`);
+      const avatarPath = path.join(AVATAR_DIR, `${userId}.webp`);
 
-    try {
-      await fs.access(avatarPath);
+      try {
+        await fs.access(avatarPath);
 
-      res.setHeader("Content-Type", "image/webp");
-      res.setHeader("Cache-Control", "public, max-age=3600");
+        res.setHeader("Content-Type", "image/webp");
+        res.setHeader("Cache-Control", "public, max-age=3600");
 
-      return res.sendFile(avatarPath);
-    } catch {
-      return res.status(404).send("Avatar not found.");
-    }
-  });
+        return res.sendFile(avatarPath);
+      } catch {
+        return res.status(404).send("Avatar not found.");
+      }
+    },
+  );
 }
 
 module.exports = {
