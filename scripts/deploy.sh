@@ -12,7 +12,6 @@ if ! flock -n 9; then
   exit 75
 fi
 
-
 cd "$REPO_DIR"
 
 echo "Fetching origin/${BRANCH}..."
