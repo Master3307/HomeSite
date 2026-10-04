@@ -16,7 +16,7 @@ function isDiscordSnowflake(value) {
 }
 
 export function registerLiveUserRoute(app, { client }) {
-  app.get("/api/:discordUserId", async (req, res) => {
+  app.get("/:discordUserId", async (req, res) => {
     const discordUserId = String(req.params.discordUserId || "").trim();
 
     if (!isDiscordSnowflake(discordUserId)) {

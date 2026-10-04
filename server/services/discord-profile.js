@@ -162,7 +162,7 @@ registerProfileRoutes(app, {
 
 app.listen(PORT, "127.0.0.1", () => {
   console.log(`Discord profile API listening on 127.0.0.1:${PORT}`);
-  console.log("Live guild member endpoint: /api/:discordUserId");
+  console.log("Live guild member endpoint: /:discordUserId");
   console.log(`Activity polling interval: ${ACTIVITY_POLL_INTERVAL_MS}ms`);
   console.log(
     `SteamGridDB enabled: ${enrichment.steamGridDbEnabled ? "yes" : "no"}`,
