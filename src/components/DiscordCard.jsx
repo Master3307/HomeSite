@@ -106,6 +106,95 @@ function shouldAcceptSpotifyTimestamps(
   return Math.abs(nextPosition - currentPosition) > thresholdMs
 }
 
+function isValidHttpUrl(value) {
+  if (typeof value !== 'string' || !value.trim()) return false
+
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+function getArtists(artistLine) {
+  if (typeof artistLine !== 'string') return []
+
+  return artistLine
+    .split(',')
+    .map(artist => artist.trim())
+    .filter(Boolean)
+}
+
+function getFirstArtist(activity) {
+  return getArtists(activity?.state)[0] ?? ''
+}
+
+function getLastFmTrackUrl(activity) {
+  const title = activity?.details?.trim()
+  const firstArtist = getFirstArtist(activity)
+
+  if (!title) return null
+
+  if (firstArtist) {
+    return `https://www.last.fm/music/${encodeURIComponent(
+      firstArtist,
+    )}/_/${encodeURIComponent(title)}`
+  }
+
+  return `https://www.last.fm/search?q=${encodeURIComponent(title)}`
+}
+
+function getLastFmArtistUrl(artist) {
+  const trimmedArtist = artist?.trim()
+
+  if (!trimmedArtist) return null
+
+  return `https://www.last.fm/music/${encodeURIComponent(trimmedArtist)}`
+}
+
+function getLastFmAlbumUrl(activity) {
+  const album = activity?.assets?.large_text?.trim()
+  const firstArtist = getFirstArtist(activity)
+
+  if (!album) return null
+
+  if (firstArtist) {
+    return `https://www.last.fm/music/${encodeURIComponent(
+      firstArtist,
+    )}/${encodeURIComponent(album)}`
+  }
+
+  return `https://www.last.fm/search?q=${encodeURIComponent(album)}`
+}
+
+function getSpotifyActivityUrl(activity) {
+  const mediaLinks = [
+    activity?.url,
+    activity?.link,
+    activity?.external_url,
+    activity?.track_url,
+    activity?.spotify_url,
+    activity?.metadata?.url,
+    activity?.metadata?.link,
+    activity?.metadata?.external_url,
+    activity?.metadata?.track_url,
+    activity?.metadata?.spotify_url,
+  ]
+
+  const mediaLink = mediaLinks.find(isValidHttpUrl)
+
+  if (mediaLink) return mediaLink
+
+  if (activity?.sync_id) {
+    return `https://open.spotify.com/track/${encodeURIComponent(
+      activity.sync_id,
+    )}`
+  }
+
+  return getLastFmTrackUrl(activity)
+}
+
 function getActivitySignature(activity) {
   return {
     type: activity?.type ?? null,
@@ -116,6 +205,18 @@ function getActivitySignature(activity) {
     details: activity?.details ?? '',
     state: activity?.state ?? '',
     image_url: activity?.image_url ?? '',
+    url: activity?.url ?? '',
+    link: activity?.link ?? '',
+    external_url: activity?.external_url ?? '',
+    track_url: activity?.track_url ?? '',
+    spotify_url: activity?.spotify_url ?? '',
+    metadata: {
+      url: activity?.metadata?.url ?? '',
+      link: activity?.metadata?.link ?? '',
+      external_url: activity?.metadata?.external_url ?? '',
+      track_url: activity?.metadata?.track_url ?? '',
+      spotify_url: activity?.metadata?.spotify_url ?? '',
+    },
     assets: {
       large_image: activity?.assets?.large_image ?? '',
       small_image: activity?.assets?.small_image ?? '',
@@ -295,6 +396,81 @@ function StatusDot({ status }) {
   )
 }
 
+function SpotifyLink({
+  href,
+  className,
+  title,
+  ariaLabel,
+  children,
+}) {
+  if (!href) {
+    return children
+  }
+
+  return (
+    <a
+      className={className}
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      title={title}
+      aria-label={ariaLabel}
+    >
+      {children}
+    </a>
+  )
+}
+
+function ArtistLinks({ artistLine, t }) {
+  const artists = getArtists(artistLine)
+
+  if (!artists.length) {
+    return (
+      <OverflowPan
+        className="discord-presence__line-wrap discord-presence__subtitle-wrap"
+        innerClassName="discord-presence__line-inner discord-presence__subtitle"
+        title={artistLine}
+        contentKey={`spotify-artists:${artistLine}`}
+        content={artistLine}
+      />
+    )
+  }
+
+  return (
+    <div
+      className="discord-presence__line-wrap discord-presence__subtitle-wrap discord-presence__artists-wrap"
+      title={artistLine}
+    >
+      <span className="discord-presence__line-inner discord-presence__subtitle discord-presence__artists">
+        {artists.map((artist, index) => (
+          <span
+            className="discord-presence__artist-item"
+            key={`${artist}-${index}`}
+          >
+            {index > 0 ? (
+              <span
+                className="discord-presence__artist-separator"
+                aria-hidden="true"
+              >
+                ,{' '}
+              </span>
+            ) : null}
+
+            <SpotifyLink
+              href={getLastFmArtistUrl(artist)}
+              className="discord-presence__music-link discord-presence__artist-link"
+              title={t('discord.openArtist', `Open ${artist} on Last.fm`)}
+              ariaLabel={t('discord.openArtist', `Open ${artist} on Last.fm`)}
+            >
+              {artist}
+            </SpotifyLink>
+          </span>
+        ))}
+      </span>
+    </div>
+  )
+}
+
 function PresenceCard({ activity, t }) {
   const resolvedImage = getBestActivityImage(activity)
   const isSpotify = isSpotifyActivity(activity)
@@ -339,6 +515,8 @@ function PresenceCard({ activity, t }) {
     const songTitle = activity?.details || 'Unknown song'
     const artistLine = activity?.state || 'Unknown artist'
     const albumLabel = activity?.assets?.large_text || ''
+    const trackUrl = getSpotifyActivityUrl(activity)
+    const albumUrl = getLastFmAlbumUrl(activity)
 
     return (
       <div className="discord-presence-card discord-presence-card--music">
@@ -353,30 +531,53 @@ function PresenceCard({ activity, t }) {
             {t('discord.listening', 'Listening to Spotify')}
           </span>
 
-          <OverflowPan
-            className="discord-presence__line-wrap discord-presence__title-wrap"
-            innerClassName="discord-presence__line-inner discord-presence__title"
-            title={songTitle}
-            contentKey={`spotify-title:${songTitle}`}
-            content={songTitle}
-          />
+          <SpotifyLink
+            href={trackUrl}
+            className="discord-presence__music-link discord-presence__track-link"
+            title={t(
+              'discord.openTrack',
+              'Open this track on Spotify or Last.fm',
+            )}
+            ariaLabel={t(
+              'discord.openTrack',
+              `Open ${songTitle} by ${getFirstArtist(activity) || artistLine}`,
+            )}
+          >
+            <OverflowPan
+              className="discord-presence__line-wrap discord-presence__title-wrap"
+              innerClassName="discord-presence__line-inner discord-presence__title"
+              title={songTitle}
+              contentKey={`spotify-title:${songTitle}`}
+              content={songTitle}
+            />
+          </SpotifyLink>
 
-          <OverflowPan
-            className="discord-presence__line-wrap discord-presence__subtitle-wrap"
-            innerClassName="discord-presence__line-inner discord-presence__subtitle"
-            title={artistLine}
-            contentKey={`spotify-artists:${artistLine}`}
-            content={artistLine}
+          <ArtistLinks
+            artistLine={artistLine}
+            t={t}
           />
 
           {albumLabel ? (
-            <OverflowPan
-              className="discord-presence__line-wrap discord-presence__album-wrap"
-              innerClassName="discord-presence__line-inner discord-presence__album"
-              title={albumLabel}
-              contentKey={`spotify-album:${albumLabel}`}
-              content={albumLabel}
-            />
+            <SpotifyLink
+              href={albumUrl}
+              className="discord-presence__music-link discord-presence__album-link"
+              title={t(
+                'discord.openAlbum',
+                `Open ${albumLabel} on Last.fm`,
+              )}
+              ariaLabel={t(
+                'discord.openAlbum',
+                `Open ${albumLabel} on Last.fm`,
+              )}
+            >
+              <OverflowPan
+                className="discord-presence__line-wrap discord-presence__album-wrap"
+                innerClassName="discord-presence__line-inner discord-presence__album"
+                title={albumLabel}
+                contentKey={`spotify-album:${albumLabel}`}
+                content={albumLabel}
+              />
+            </SpotifyLink>
           ) : null}
 
           {duration ? (
@@ -446,7 +647,8 @@ function PresenceCard({ activity, t }) {
           {elapsedGameTime !== null ? (
             <div className="discord-presence__meta-row">
               <span className="discord-presence__meta-pill">
-                {t('discord.playingFor', 'Playing for')} {formatDuration(elapsedGameTime)}
+                {t('discord.playingFor', 'Playing for')}{' '}
+                {formatDuration(elapsedGameTime)}
               </span>
             </div>
           ) : null}

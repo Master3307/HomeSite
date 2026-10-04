@@ -975,3 +975,70 @@ img.discord-emoji {
 .language-select-option[aria-selected='true'] {
   font-weight: 700;
 }
+
+
+
+
+.discord-presence__music-link {
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  vertical-align: baseline;
+  text-decoration: none;
+}
+
+/* Song and album remain block-width items, preserving OverflowPan sizing. */
+.discord-presence__track-link,
+.discord-presence__album-link {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  line-height: inherit;
+}
+
+/* Artists must remain inline so commas and artists share exactly one text line. */
+.discord-presence__artist-link {
+  display: inline;
+  line-height: inherit;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+/*
+ * This replaces OverflowPan only for the multi-link artist row.
+ * It deliberately clips long artist lists instead of wrapping them.
+ */
+.discord-presence__artists-wrap {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  line-height: inherit;
+}
+
+.discord-presence__artists {
+  display: inline;
+  line-height: inherit;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.discord-presence__artist-item,
+.discord-presence__artist-separator {
+  display: inline;
+  line-height: inherit;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.discord-presence__music-link:hover,
+.discord-presence__music-link:focus-visible {
+  text-decoration: underline;
+}
+
+.discord-presence__music-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
