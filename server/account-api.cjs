@@ -2,7 +2,6 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-const session = require("express-session");
 const cookieParser = require("cookie-parser");
 
 const { registerDiscordOAuth } = require("./services/discordOAuth.cjs");
@@ -14,14 +13,8 @@ const FRONTEND_ORIGIN = String(process.env.FRONTEND_ORIGIN || "").replace(
   "",
 );
 
-const SESSION_SECRET = process.env.SESSION_SECRET;
-
 if (!FRONTEND_ORIGIN) {
   throw new Error("Missing FRONTEND_ORIGIN");
-}
-
-if (!SESSION_SECRET) {
-  throw new Error("Missing SESSION_SECRET");
 }
 
 const allowedOrigins = new Set([
@@ -29,6 +22,8 @@ const allowedOrigins = new Set([
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ]);
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 function corsOrigin(origin, callback) {
   if (!origin || allowedOrigins.has(origin)) {
@@ -44,9 +39,31 @@ const corsOptions = {
   origin: corsOrigin,
   credentials: true,
   methods: ["GET", "POST", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type"],
+  allowedHeaders: ["Content-Type", "X-Requested-With"],
   optionsSuccessStatus: 204,
 };
+
+function requireTrustedMutation(req, res, next) {
+  if (SAFE_METHODS.has(req.method)) {
+    return next();
+  }
+
+  const origin = req.get("Origin");
+
+  if (!origin || !allowedOrigins.has(origin)) {
+    return res.status(403).json({
+      error: "Invalid request origin.",
+    });
+  }
+
+  if (req.get("X-Requested-With") !== "homesite-web") {
+    return res.status(403).json({
+      error: "Missing or invalid CSRF request header.",
+    });
+  }
+
+  return next();
+}
 
 const app = express();
 
@@ -60,20 +77,7 @@ app.use(express.json());
 
 app.use(cookieParser());
 
-app.use(
-  session({
-    name: "homesite_oauth",
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      maxAge: 10 * 60 * 1000,
-    },
-  }),
-);
+app.use(requireTrustedMutation);
 
 registerDiscordOAuth(app);
 

@@ -14,6 +14,9 @@ const DB_PATH = path.join(DB_DIR, "accounts.sqlite");
 const AVATAR_DIR = path.join(__dirname, "avatars");
 
 const AUTH_COOKIE_NAME = "__Secure-homesite_auth";
+const OAUTH_STATE_COOKIE_NAME = "__Secure-homesite_oauth_state";
+
+const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
 
 const SESSION_TTL_DAYS = Math.max(
   1,
@@ -48,6 +51,21 @@ function createRandomToken() {
 
 function hashToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function safeTokenEqual(expected, received) {
+  if (typeof expected !== "string" || typeof received !== "string") {
+    return false;
+  }
+
+  const expectedBuffer = Buffer.from(expected, "utf8");
+  const receivedBuffer = Buffer.from(received, "utf8");
+
+  if (expectedBuffer.length !== receivedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
 }
 
 function isUuid(value) {
@@ -139,6 +157,21 @@ function ensureSettingsColumn(db) {
   }
 }
 
+function ensureRoleColumn(db) {
+  const columns = db.prepare("PRAGMA table_info(users)").all();
+
+  const hasRoleColumn = columns.some((column) => column.name === "role");
+
+  if (!hasRoleColumn) {
+    db.exec(`
+      ALTER TABLE users
+      ADD COLUMN role TEXT NOT NULL DEFAULT 'user'
+    `);
+
+    console.log("[Accounts] Added users.role column.");
+  }
+}
+
 function openDatabase() {
   const db = new Database(DB_PATH);
 
@@ -153,6 +186,8 @@ function openDatabase() {
       username TEXT NOT NULL,
       display_name TEXT NOT NULL,
       email TEXT,
+      role TEXT NOT NULL DEFAULT 'user',
+      settings_json TEXT NOT NULL DEFAULT '{}',
 
       avatar_path TEXT,
       avatar_updated_at TEXT,
@@ -186,6 +221,7 @@ function openDatabase() {
   `);
 
   ensureSettingsColumn(db);
+  ensureRoleColumn(db);
 
   return db;
 }
@@ -315,17 +351,6 @@ async function downloadAndSaveAvatar(discordUser, userId) {
   return `avatars/${userId}.webp`;
 }
 
-function destroyOAuthSession(req) {
-  return new Promise((resolve) => {
-    if (!req.session) {
-      resolve();
-      return;
-    }
-
-    req.session.destroy(() => resolve());
-  });
-}
-
 function registerDiscordOAuth(app) {
   let db = null;
 
@@ -396,7 +421,7 @@ function registerDiscordOAuth(app) {
         @username,
         @displayName,
         @email,
-        @role
+        @role,
         @settingsJson,
         @createdAt,
         @updatedAt,
@@ -491,7 +516,6 @@ function registerDiscordOAuth(app) {
 
     const rawToken = createRandomToken();
     const createdAt = new Date();
-
     const expiresAt = new Date(
       createdAt.getTime() + getSessionMaxAgeMs(),
     ).toISOString();
@@ -594,6 +618,25 @@ function registerDiscordOAuth(app) {
     });
   }
 
+  function setOAuthStateCookie(res, state) {
+    res.cookie(OAUTH_STATE_COOKIE_NAME, state, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/auth/discord",
+      maxAge: OAUTH_STATE_MAX_AGE_MS,
+    });
+  }
+
+  function clearOAuthStateCookie(res) {
+    res.clearCookie(OAUTH_STATE_COOKIE_NAME, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/auth/discord",
+    });
+  }
+
   function toPublicUser(session) {
     const apiOrigin = String(process.env.API_ORIGIN || "").replace(/\/$/, "");
 
@@ -610,9 +653,9 @@ function registerDiscordOAuth(app) {
 
   function requireAuthenticatedUser(req, res, next) {
     const rawToken = req.cookies?.[AUTH_COOKIE_NAME];
-    const session = getAuthenticatedUser(rawToken);
+    const accountSession = getAuthenticatedUser(rawToken);
 
-    if (!session) {
+    if (!accountSession) {
       clearAuthCookie(res);
 
       return res.status(401).json({
@@ -620,15 +663,15 @@ function registerDiscordOAuth(app) {
       });
     }
 
-    req.accountSession = session;
+    req.accountSession = accountSession;
 
     return next();
   }
 
-  app.get("/auth/discord", requireStorage, (req, res) => {
-    const state = crypto.randomBytes(32).toString("base64url");
+  app.get("/auth/discord", requireStorage, (_req, res) => {
+    const state = createRandomToken();
 
-    req.session.oauthState = state;
+    setOAuthStateCookie(res, state);
 
     const query = new URLSearchParams({
       client_id: process.env.DISCORD_CLIENT_ID,
@@ -647,12 +690,13 @@ function registerDiscordOAuth(app) {
   app.get("/auth/discord/callback", requireStorage, async (req, res) => {
     const code = typeof req.query.code === "string" ? req.query.code : "";
     const state = typeof req.query.state === "string" ? req.query.state : "";
+    const expectedState = req.cookies?.[OAUTH_STATE_COOKIE_NAME];
 
-    if (!code || !state || state !== req.session?.oauthState) {
+    clearOAuthStateCookie(res);
+
+    if (!code || !state || !safeTokenEqual(expectedState, state)) {
       return res.status(400).send("Invalid or expired Discord login request.");
     }
-
-    delete req.session.oauthState;
 
     try {
       const tokenResponse = await fetch(`${DISCORD_API}/oauth2/token`, {
@@ -715,11 +759,15 @@ function registerDiscordOAuth(app) {
         );
       }
 
+      const oldToken = req.cookies?.[AUTH_COOKIE_NAME];
+
+      if (oldToken) {
+        deletePersistentSession(oldToken);
+      }
+
       const persistentSession = createPersistentSession(user.id);
 
       setAuthCookie(res, persistentSession.token);
-
-      await destroyOAuthSession(req);
 
       return res.redirect(
         process.env.FRONTEND_REDIRECT_URL || process.env.FRONTEND_ORIGIN,
@@ -733,9 +781,9 @@ function registerDiscordOAuth(app) {
 
   app.get("/auth/me", requireStorage, (req, res) => {
     const rawToken = req.cookies?.[AUTH_COOKIE_NAME];
-    const session = getAuthenticatedUser(rawToken);
+    const accountSession = getAuthenticatedUser(rawToken);
 
-    if (!session) {
+    if (!accountSession) {
       clearAuthCookie(res);
 
       return res.status(401).json({
@@ -745,7 +793,7 @@ function registerDiscordOAuth(app) {
 
     return res.json({
       authenticated: true,
-      user: toPublicUser(session),
+      user: toPublicUser(accountSession),
     });
   });
 
@@ -755,7 +803,6 @@ function registerDiscordOAuth(app) {
     requireAuthenticatedUser,
     (req, res) => {
       const body = req.body && typeof req.body === "object" ? req.body : {};
-
       const updates = {};
 
       if (Object.prototype.hasOwnProperty.call(body, "theme")) {
@@ -798,13 +845,11 @@ function registerDiscordOAuth(app) {
     },
   );
 
-  app.post("/auth/logout", requireStorage, async (req, res) => {
+  app.post("/auth/logout", requireStorage, (req, res) => {
     const rawToken = req.cookies?.[AUTH_COOKIE_NAME];
 
     deletePersistentSession(rawToken);
     clearAuthCookie(res);
-
-    await destroyOAuthSession(req);
 
     return res.status(204).end();
   });

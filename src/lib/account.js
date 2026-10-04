@@ -1,9 +1,26 @@
 export const ACCOUNT_API_URL = "https://accounts-api.master3307.org";
 
-export async function getCurrentAccount() {
-  const response = await fetch(`${ACCOUNT_API_URL}/auth/me`, {
+const CSRF_HEADER_NAME = "X-Requested-With";
+const CSRF_HEADER_VALUE = "homesite-web";
+
+async function accountFetch(path, options = {}) {
+  const method = String(options.method || "GET").toUpperCase();
+  const headers = new Headers(options.headers || {});
+
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+    headers.set(CSRF_HEADER_NAME, CSRF_HEADER_VALUE);
+  }
+
+  return fetch(`${ACCOUNT_API_URL}${path}`, {
+    ...options,
+    method,
+    headers,
     credentials: "include",
   });
+}
+
+export async function getCurrentAccount() {
+  const response = await accountFetch("/auth/me");
 
   if (response.status === 401) {
     return null;
@@ -19,9 +36,8 @@ export async function getCurrentAccount() {
 }
 
 export async function updateAccountSettings(settings) {
-  const response = await fetch(`${ACCOUNT_API_URL}/account/settings`, {
+  const response = await accountFetch("/account/settings", {
     method: "PATCH",
-    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
@@ -46,9 +62,8 @@ export async function updateAccountSettings(settings) {
 }
 
 export async function logoutAccount() {
-  const response = await fetch(`${ACCOUNT_API_URL}/auth/logout`, {
+  const response = await accountFetch("/auth/logout", {
     method: "POST",
-    credentials: "include",
   });
 
   if (!response.ok && response.status !== 204) {
