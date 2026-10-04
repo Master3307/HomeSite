@@ -28,6 +28,6 @@ pnpm run build
 test -f "${REPO_DIR}/dist/index.html"
 
 echo "Restarting HomeSite service..."
-sudo /usr/bin/systemctl restart homesite.service
+/usr/bin/systemctl restart homesite.service
 
 echo "HomeSite deployment completed successfully."
