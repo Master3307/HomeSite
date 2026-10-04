@@ -8,7 +8,7 @@ import {
 
 
 const OVERFLOW_TOLERANCE_PX = 2
-const MIN_DURATION_SECONDS = 2.5
+const MIN_DURATION_SECONDS = 5
 const PIXELS_PER_SECOND = 50
 
 

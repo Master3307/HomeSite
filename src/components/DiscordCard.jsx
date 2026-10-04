@@ -1,12 +1,11 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import ProfilePicture from './ProfilePicture.jsx'
 import OverflowPan from './OverflowPan.jsx'
 import { useTranslation } from 'react-i18next'
 
-
+const DISCORD_USER_ID = '817826076486139985'
 const SPOTIFY_PROGRESS_DRIFT_MS = 10_000
 const PROFILE_POLL_INTERVAL_MS = 6_500
-
 
 const AlbumArt = memo(function AlbumArt({
   src,
@@ -29,44 +28,21 @@ const AlbumArt = memo(function AlbumArt({
   )
 })
 
-
-const ExternalTextLink = memo(function ExternalTextLink({
-  href,
-  children,
-  className = '',
-}) {
-  if (!href || !children) return <>{children}</>
-
-  return (
-    <a
-      href={href}
-      className={className}
-      target="_blank"
-      rel="noreferrer noopener"
-    >
-      {children}
-    </a>
-  )
-})
-
-
 function isSpotifyActivity(activity) {
   return activity?.type === 2 || activity?.name === 'Spotify'
 }
-
 
 function isGameActivity(activity) {
   return activity?.type === 0
 }
 
-
 function getTimestampMs(value) {
   if (!value) return null
 
   const timestamp = new Date(value).getTime()
+
   return Number.isFinite(timestamp) ? timestamp : null
 }
-
 
 function getSpotifyPosition(activity, now = Date.now()) {
   const start = getTimestampMs(activity?.timestamps?.start)
@@ -76,7 +52,6 @@ function getSpotifyPosition(activity, now = Date.now()) {
 
   return Math.max(0, Math.min(now - start, end - start))
 }
-
 
 function getSpotifyTrackIdentity(activity) {
   if (!isSpotifyActivity(activity)) return null
@@ -89,7 +64,6 @@ function getSpotifyTrackIdentity(activity) {
     image: activity?.image_url ?? activity?.assets?.large_image ?? '',
   }
 }
-
 
 function isSameSpotifyTrack(currentActivity, nextActivity) {
   if (!isSpotifyActivity(currentActivity) || !isSpotifyActivity(nextActivity)) {
@@ -113,7 +87,6 @@ function isSameSpotifyTrack(currentActivity, nextActivity) {
   )
 }
 
-
 function shouldAcceptSpotifyTimestamps(
   currentActivity,
   nextActivity,
@@ -126,7 +99,6 @@ function shouldAcceptSpotifyTimestamps(
   const currentPosition = getSpotifyPosition(currentActivity)
   const nextPosition = getSpotifyPosition(nextActivity)
 
-  // If either response lacks usable timestamps, use the newest API data.
   if (currentPosition === null || nextPosition === null) {
     return true
   }
@@ -134,33 +106,12 @@ function shouldAcceptSpotifyTimestamps(
   return Math.abs(nextPosition - currentPosition) > thresholdMs
 }
 
-
 function getActivitySignature(activity) {
-  if (isSpotifyActivity(activity)) {
-    return {
-      type: 'spotify',
-      sync_id: activity?.sync_id ?? '',
-      name: activity?.name ?? '',
-      details: activity?.details ?? '',
-      state: activity?.state ?? '',
-      song_url: activity?.song_url ?? '',
-      album_url: activity?.album_url ?? '',
-      artist_links: activity?.artist_links ?? [],
-      artist_links_json: activity?.artist_links_json ?? '',
-      image_url: activity?.image_url ?? '',
-      assets: {
-        large_image: activity?.assets?.large_image ?? '',
-        small_image: activity?.assets?.small_image ?? '',
-        large_text: activity?.assets?.large_text ?? '',
-        small_text: activity?.assets?.small_text ?? '',
-      },
-    }
-  }
-
   return {
     type: activity?.type ?? null,
     type_label: activity?.type_label ?? '',
     application_id: activity?.application_id ?? '',
+    sync_id: activity?.sync_id ?? '',
     name: activity?.name ?? '',
     details: activity?.details ?? '',
     state: activity?.state ?? '',
@@ -178,34 +129,76 @@ function getActivitySignature(activity) {
   }
 }
 
-
 function getProfileSignature(data) {
   return JSON.stringify({
+    id: data?.id ?? '',
     username: data?.username ?? '',
     global_name: data?.global_name ?? '',
     avatar: data?.avatar ?? '',
     avatar_decoration: data?.avatar_decoration ?? '',
     guild_badge: data?.guild_badge ?? '',
-    guild_tag: data?.primary_guild?.tag ?? '',
+    nickname: data?.member?.nickname ?? '',
+    display_name: data?.member?.display_name ?? '',
     status: data?.presence?.status ?? '',
     activities: (data?.presence?.activities ?? []).map(getActivitySignature),
-    activity_history: (data?.activity_history ?? []).map(item => ({
-      key: item?.key ?? '',
-      image_url: item?.image_url ?? '',
-      is_active: item?.is_active ?? false,
-      last_active_at: item?.last_active_at ?? '',
-      total_active_ms: item?.total_active_ms ?? 0,
-      streak: item?.streak ?? null,
-      song_url: item?.song_url ?? '',
-      album_url: item?.album_url ?? '',
-      artist_links: item?.artist_links ?? [],
-      artist_links_json: item?.artist_links_json ?? '',
-      large_text: item?.large_text ?? '',
-      state: item?.state ?? '',
-    })),
   })
 }
 
+function normalizeLiveDiscordProfile(data) {
+  const user = data?.user ?? {}
+  const member = data?.member ?? {}
+  const guild = data?.guild ?? {}
+
+  return {
+    id: user.id ?? '',
+    username: user.username ?? '',
+    global_name: user.global_name ?? null,
+    discriminator: user.discriminator ?? null,
+    avatar: user.avatar ?? '',
+    banner: user.banner ?? null,
+    avatar_decoration: user.avatar_decoration ?? null,
+    guild_badge: user.guild_badge ?? null,
+    badges: Array.isArray(user.badges) ? user.badges : [],
+    public_flags: user.public_flags ?? 0,
+    primary_guild: user.primary_guild ?? null,
+    collectibles: user.collectibles ?? null,
+    created_at: user.created_at ?? null,
+
+    guild: {
+      id: guild.id ?? null,
+      name: guild.name ?? null,
+      icon: guild.icon ?? null,
+      member_count: guild.member_count ?? null,
+    },
+
+    member: {
+      id: member.id ?? user.id ?? null,
+      nickname: member.nickname ?? null,
+      display_name: member.display_name ?? null,
+      avatar: member.avatar ?? null,
+      banner: member.banner ?? null,
+      joined_at: member.joined_at ?? null,
+      premium_since: member.premium_since ?? null,
+      communication_disabled_until:
+        member.communication_disabled_until ?? null,
+      roles: Array.isArray(member.roles) ? member.roles : [],
+      role_ids: Array.isArray(member.role_ids) ? member.role_ids : [],
+      highest_role: member.highest_role ?? null,
+      permissions: member.permissions ?? '0',
+      permissions_in_guild: Array.isArray(member.permissions_in_guild)
+        ? member.permissions_in_guild
+        : [],
+    },
+
+    presence: data?.presence ?? {
+      status: 'offline',
+      client_status: {},
+      activities: [],
+    },
+
+    fetched_at: data?.fetched_at ?? null,
+  }
+}
 
 function mergeProfileUpdate(currentProfile, incomingProfile) {
   const currentActivities = currentProfile?.presence?.activities ?? []
@@ -232,8 +225,6 @@ function mergeProfileUpdate(currentProfile, incomingProfile) {
       incomingActivity,
     )
 
-    // Keep the existing timestamps when this is still the same track and
-    // the API-reported progress is within the allowed drift tolerance.
     if (isSameTrack && !shouldUpdateTimestamps) {
       return {
         ...incomingActivity,
@@ -253,14 +244,12 @@ function mergeProfileUpdate(currentProfile, incomingProfile) {
   }
 }
 
-
 const STATUS_LABELS = {
   online: 'Online',
   idle: 'Idle',
   dnd: 'Do Not Disturb',
   offline: 'Offline',
 }
-
 
 function formatMs(ms) {
   if (!ms || ms < 0) return '0:00'
@@ -271,80 +260,31 @@ function formatMs(ms) {
   return `${minutes}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-
 function formatDuration(ms) {
-  const totalMinutes = Math.floor(Number(ms || 0) / 60000)
+  const safeMs = Math.max(0, Number(ms || 0))
+  const totalMinutes = Math.floor(safeMs / 60000)
   const hours = Math.floor(totalMinutes / 60)
   const minutes = totalMinutes % 60
 
-  if (hours <= 0) return `${minutes} min`
-  if (minutes === 0) return `${hours} h`
-
-  return `${hours} h ${minutes} min`
-}
-
-
-function formatArtists(value) {
-  return String(value || '')
-    .split(';')
-    .map(part => part.trim())
-    .filter(Boolean)
-    .join(', ')
-}
-
-
-function normalizeArtistLinks(activity) {
-  if (Array.isArray(activity?.artist_links)) {
-    return activity.artist_links.filter(artist => artist?.name && artist?.url)
+  if (hours <= 0) {
+    return `${minutes} min`
   }
 
-  if (
-    typeof activity?.artist_links_json === 'string' &&
-    activity.artist_links_json.trim()
-  ) {
-    try {
-      const parsed = JSON.parse(activity.artist_links_json)
-
-      return Array.isArray(parsed)
-        ? parsed.filter(artist => artist?.name && artist?.url)
-        : []
-    } catch {
-      return []
-    }
+  if (minutes === 0) {
+    return `${hours} h`
   }
 
-  return []
+  return `${hours} h ${String(minutes).padStart(2, '0')} min`
 }
 
-
-function getActivityKey(activity) {
-  const isMusic = isSpotifyActivity(activity)
-  const isGame = isGameActivity(activity)
-
-  if (isMusic) return `music:${activity?.name || 'unknown'}`
-  if (isGame) return `game:${activity?.name || 'unknown'}`
-
-  return `activity:${activity?.type ?? 'unknown'}:${activity?.application_id || 'na'}:${activity?.name || 'unknown'}`
-}
-
-
-function getHistoryItemForActivity(activity, activityHistory = []) {
-  const key = getActivityKey(activity)
-
-  return activityHistory.find(item => item?.key === key) ?? null
-}
-
-
-function getBestActivityImage(activity, historyItem) {
+function getBestActivityImage(activity) {
   return (
     activity?.image_url ||
     activity?.assets?.large_image ||
     activity?.assets?.small_image ||
-    historyItem?.image_url ||
     null
   )
 }
-
 
 function StatusDot({ status }) {
   return (
@@ -355,10 +295,8 @@ function StatusDot({ status }) {
   )
 }
 
-
-function PresenceCard({ activity, activityHistory, t }) {
-  const historyItem = getHistoryItemForActivity(activity, activityHistory)
-  const resolvedImage = getBestActivityImage(activity, historyItem)
+function PresenceCard({ activity, t }) {
+  const resolvedImage = getBestActivityImage(activity)
   const isSpotify = isSpotifyActivity(activity)
   const isGame = isGameActivity(activity)
 
@@ -369,22 +307,11 @@ function PresenceCard({ activity, activityHistory, t }) {
   const end = getTimestampMs(activity?.timestamps?.end)
   const duration = start && end && end > start ? end - start : null
 
-  const resolvedSpotifyMeta = useMemo(() => {
-    const artistLinks = normalizeArtistLinks(activity)
-    const historyArtistLinks = normalizeArtistLinks(historyItem)
-
-    return {
-      songUrl: activity?.song_url || historyItem?.song_url || null,
-      albumUrl: activity?.album_url || historyItem?.album_url || null,
-      artistLinks: artistLinks.length ? artistLinks : historyArtistLinks,
-      albumLabel: activity?.assets?.large_text || historyItem?.large_text || '',
-      fallbackArtists: formatArtists(activity?.state || historyItem?.state),
+  useEffect(() => {
+    if (resolvedImage) {
+      setDisplayedArt(resolvedImage)
     }
-  }, [activity, historyItem])
-
-  if (resolvedImage && resolvedImage !== displayedArt) {
-    setDisplayedArt(resolvedImage)
-  }
+  }, [resolvedImage])
 
   useEffect(() => {
     const needsClock = (isSpotify && start && end) || (isGame && start)
@@ -400,268 +327,199 @@ function PresenceCard({ activity, activityHistory, t }) {
     }
   }, [isSpotify, isGame, start, end])
 
+  const elapsed = start && duration
+    ? Math.min(Math.max(0, now - start), duration)
+    : 0
 
-    const elapsed = start && duration
-      ? Math.min(Math.max(0, now - start), duration)
-      : 0
+  const progress = duration
+    ? Math.min(Math.max(elapsed / duration, 0), 1)
+    : 0
 
-    const progress = duration
-      ? Math.min(Math.max(elapsed / duration, 0), 1)
-      : 0
-
-
-    if (isSpotify) {
-      const {
-        songUrl,
-        albumUrl,
-        artistLinks,
-        albumLabel,
-        fallbackArtists,
-      } = resolvedSpotifyMeta
-
-      const songTitle = activity?.details || 'Unknown song'
-      const artistLine = fallbackArtists || 'Unknown artist'
-
-      const artistKey = artistLinks?.length
-        ? artistLinks
-          .map(artist => `${artist.id || artist.name}:${artist.name}:${artist.url}`)
-          .join('|')
-        : artistLine
-
-      const songContent = (
-        <ExternalTextLink
-          href={songUrl}
-          className="discord-presence__link discord-presence__link--title"
-        >
-          {songTitle}
-        </ExternalTextLink>
-      )
-
-      const artistContent = artistLinks.length > 0
-        ? artistLinks.map((artist, index) => (
-            <span key={`${artist.id || artist.name}-${index}`}>
-              {index > 0 ? ', ' : ''}
-              <ExternalTextLink
-                href={artist.url}
-                className="discord-presence__link discord-presence__link--artist"
-              >
-                {artist.name}
-              </ExternalTextLink>
-            </span>
-          ))
-        : artistLine
-
-      const albumContent = albumLabel ? (
-        <ExternalTextLink
-          href={albumUrl}
-          className="discord-presence__link discord-presence__link--album"
-        >
-          {albumLabel}
-        </ExternalTextLink>
-      ) : null
-
-
-      return (
-        <div className="discord-presence-card discord-presence-card--music">
-          <AlbumArt
-            src={displayedArt}
-            alt={albumLabel || songTitle || 'Album art'}
-            className="discord-presence__image discord-presence__image--music"
-          />
-
-          <div className="discord-presence__content">
-            <span className="discord-presence__eyebrow">
-              {t('discord.listening', 'Listening to Spotify')}
-            </span>
-
-            <OverflowPan
-              className="discord-presence__line-wrap discord-presence__title-wrap"
-              innerClassName="discord-presence__line-inner discord-presence__title"
-              title={songTitle}
-              contentKey={`spotify-title:${songTitle}:${songUrl || ''}`}
-              content={songContent}
-            />
-
-            <OverflowPan
-              className="discord-presence__line-wrap discord-presence__subtitle-wrap"
-              innerClassName="discord-presence__line-inner discord-presence__subtitle"
-              title={artistLine}
-              contentKey={`spotify-artists:${artistKey}`}
-              content={artistContent}
-            />
-
-            {albumContent ? (
-              <OverflowPan
-                className="discord-presence__line-wrap discord-presence__album-wrap"
-                innerClassName="discord-presence__line-inner discord-presence__album"
-                title={albumLabel}
-                contentKey={`spotify-album:${albumLabel}:${albumUrl || ''}`}
-                content={albumContent}
-              />
-            ) : null}
-
-            {duration ? (
-              <div className="discord-presence__progress-wrap">
-                <div
-                  className="discord-presence__progress"
-                  role="progressbar"
-                  aria-valuenow={Math.round(progress * 100)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                >
-                  <div
-                    className="discord-presence__progress-bar"
-                    style={{ width: `${progress * 100}%` }}
-                  />
-                </div>
-
-                <div className="discord-presence__times">
-                  <span>{formatMs(elapsed)}</span>
-                  <span>{formatMs(duration)}</span>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      )
-    }
-
-
-    if (isGame) {
-      const subtitle = activity?.details || activity?.state || ''
-      const streak = historyItem?.streak ?? null
-
-      const elapsedGameTime = start
-        ? Math.max(0, now - start)
-        : 0
-
-      const gameTitle = activity?.name || 'Unknown game'
-
-      const gameSubtitleText = subtitle ||
-        (elapsedGameTime > 0
-          ? formatDuration(elapsedGameTime)
-          : 'In game')
-
-      const gameSubtitleKey = subtitle
-        ? `game-subtitle:${subtitle}`
-        : 'game-subtitle:fallback'
-
-      return (
-        <div className="discord-presence-card discord-presence-card--game">
-          <AlbumArt
-            src={displayedArt}
-            alt={`${gameTitle} cover`}
-            className="discord-presence__image discord-presence__image--game"
-          />
-
-          <div className="discord-presence__content">
-            <span className="discord-presence__eyebrow">
-              {t('discord.playing', 'Playing')}
-            </span>
-
-            <OverflowPan
-              className="discord-presence__line-wrap discord-presence__title-wrap"
-              innerClassName="discord-presence__line-inner discord-presence__title"
-              title={gameTitle}
-              contentKey={`game-title:${gameTitle}`}
-              content={gameTitle}
-            />
-
-            <OverflowPan
-              className="discord-presence__line-wrap discord-presence__subtitle-wrap"
-              innerClassName="discord-presence__line-inner discord-presence__subtitle"
-              title={gameSubtitleText}
-              contentKey={gameSubtitleKey}
-              content={gameSubtitleText}
-            />
-
-            <div className="discord-presence__meta-row">
-              {typeof streak === 'number' && streak > 0 ? (
-                <span className="discord-presence__meta-pill">
-                  <span
-                    className="material-symbols-outlined streak"
-                    style={{ userSelect: 'none' }}
-                  >
-                    bolt
-                  </span>
-                  {' '}
-                  {streak}x {t('discord.streak', 'Streak')}
-                </span>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      )
-    }
-
-
-    const genericTitle = activity?.name || 'Unknown activity'
-    const genericDetails = activity?.details || ''
-    const genericState = activity?.state || ''
+  if (isSpotify) {
+    const songTitle = activity?.details || 'Unknown song'
+    const artistLine = activity?.state || 'Unknown artist'
+    const albumLabel = activity?.assets?.large_text || ''
 
     return (
-      <div className="discord-presence-card discord-presence-card--generic">
+      <div className="discord-presence-card discord-presence-card--music">
         <AlbumArt
           src={displayedArt}
-          alt={activity?.name || 'Activity image'}
-          className="discord-presence__image"
+          alt={albumLabel || songTitle || 'Album art'}
+          className="discord-presence__image discord-presence__image--music"
         />
 
         <div className="discord-presence__content">
           <span className="discord-presence__eyebrow">
-            {activity?.type_label || 'Activity'}
+            {t('discord.listening', 'Listening to Spotify')}
           </span>
 
           <OverflowPan
             className="discord-presence__line-wrap discord-presence__title-wrap"
             innerClassName="discord-presence__line-inner discord-presence__title"
-            title={genericTitle}
-            contentKey={`generic-title:${genericTitle}`}
-            content={genericTitle}
+            title={songTitle}
+            contentKey={`spotify-title:${songTitle}`}
+            content={songTitle}
           />
 
-          {genericDetails ? (
+          <OverflowPan
+            className="discord-presence__line-wrap discord-presence__subtitle-wrap"
+            innerClassName="discord-presence__line-inner discord-presence__subtitle"
+            title={artistLine}
+            contentKey={`spotify-artists:${artistLine}`}
+            content={artistLine}
+          />
+
+          {albumLabel ? (
             <OverflowPan
-              className="discord-presence__line-wrap discord-presence__subtitle-wrap"
-              innerClassName="discord-presence__line-inner discord-presence__subtitle"
-              title={genericDetails}
-              contentKey={`generic-details:${genericDetails}`}
-              content={genericDetails}
+              className="discord-presence__line-wrap discord-presence__album-wrap"
+              innerClassName="discord-presence__line-inner discord-presence__album"
+              title={albumLabel}
+              contentKey={`spotify-album:${albumLabel}`}
+              content={albumLabel}
             />
           ) : null}
 
-          {genericState ? (
-            <OverflowPan
-              className="discord-presence__line-wrap discord-presence__subtitle-wrap"
-              innerClassName="discord-presence__line-inner discord-presence__subtitle"
-              title={genericState}
-              contentKey={`generic-state:${genericState}`}
-              content={genericState}
-            />
+          {duration ? (
+            <div className="discord-presence__progress-wrap">
+              <div
+                className="discord-presence__progress"
+                role="progressbar"
+                aria-valuenow={Math.round(progress * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <div
+                  className="discord-presence__progress-bar"
+                  style={{ width: `${progress * 100}%` }}
+                />
+              </div>
+
+              <div className="discord-presence__times">
+                <span>{formatMs(elapsed)}</span>
+                <span>{formatMs(duration)}</span>
+              </div>
+            </div>
           ) : null}
         </div>
       </div>
     )
   }
 
+  if (isGame) {
+    const gameTitle = activity?.name || 'Unknown game'
+    const gameDetails = activity?.details || activity?.state || ''
+    const elapsedGameTime = start
+      ? Math.max(0, now - start)
+      : null
 
-function Activity({ activities, activityHistory, t }) {
+    const gameSubtitleText = gameDetails || 'In game'
+
+    return (
+      <div className="discord-presence-card discord-presence-card--game">
+        <AlbumArt
+          src={displayedArt}
+          alt={`${gameTitle} cover`}
+          className="discord-presence__image discord-presence__image--game"
+        />
+
+        <div className="discord-presence__content">
+          <span className="discord-presence__eyebrow">
+            {t('discord.playing', 'Playing')}
+          </span>
+
+          <OverflowPan
+            className="discord-presence__line-wrap discord-presence__title-wrap"
+            innerClassName="discord-presence__line-inner discord-presence__title"
+            title={gameTitle}
+            contentKey={`game-title:${gameTitle}`}
+            content={gameTitle}
+          />
+
+          <OverflowPan
+            className="discord-presence__line-wrap discord-presence__subtitle-wrap"
+            innerClassName="discord-presence__line-inner discord-presence__subtitle"
+            title={gameSubtitleText}
+            contentKey={`game-details:${gameSubtitleText}`}
+            content={gameSubtitleText}
+          />
+
+          {elapsedGameTime !== null ? (
+            <div className="discord-presence__meta-row">
+              <span className="discord-presence__meta-pill">
+                {t('discord.playingFor', 'Playing for')} {formatDuration(elapsedGameTime)}
+              </span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
+
+  const genericTitle = activity?.name || 'Unknown activity'
+  const genericDetails = activity?.details || ''
+  const genericState = activity?.state || ''
+
+  return (
+    <div className="discord-presence-card discord-presence-card--generic">
+      <AlbumArt
+        src={displayedArt}
+        alt={activity?.name || 'Activity image'}
+        className="discord-presence__image"
+      />
+
+      <div className="discord-presence__content">
+        <span className="discord-presence__eyebrow">
+          {activity?.type_label || 'Activity'}
+        </span>
+
+        <OverflowPan
+          className="discord-presence__line-wrap discord-presence__title-wrap"
+          innerClassName="discord-presence__line-inner discord-presence__title"
+          title={genericTitle}
+          contentKey={`generic-title:${genericTitle}`}
+          content={genericTitle}
+        />
+
+        {genericDetails ? (
+          <OverflowPan
+            className="discord-presence__line-wrap discord-presence__subtitle-wrap"
+            innerClassName="discord-presence__line-inner discord-presence__subtitle"
+            title={genericDetails}
+            contentKey={`generic-details:${genericDetails}`}
+            content={genericDetails}
+          />
+        ) : null}
+
+        {genericState ? (
+          <OverflowPan
+            className="discord-presence__line-wrap discord-presence__subtitle-wrap"
+            innerClassName="discord-presence__line-inner discord-presence__subtitle"
+            title={genericState}
+            contentKey={`generic-state:${genericState}`}
+            content={genericState}
+          />
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function Activity({ activities, t }) {
   if (!activities?.length) return null
 
   const spotify = activities.find(isSpotifyActivity)
-  const selected = spotify
-    || activities.find(isGameActivity)
-    || activities[0]
+
+  const selected = spotify ||
+    activities.find(isGameActivity) ||
+    activities[0]
 
   return (
     <PresenceCard
       activity={selected}
-      activityHistory={activityHistory}
       t={t}
     />
   )
 }
-
 
 export default function DiscordProfileCard() {
   const [profile, setProfile] = useState(null)
@@ -670,6 +528,7 @@ export default function DiscordProfileCard() {
   const [error, setError] = useState('')
   const [avatarSrc, setAvatarSrc] = useState('')
   const [avatarState, setAvatarState] = useState('unknown')
+
   const { t } = useTranslation('discord')
 
   const DISCORD_API_URL =
@@ -690,15 +549,19 @@ export default function DiscordProfileCard() {
           setRefreshing(true)
         }
 
-        const res = await fetch(`${DISCORD_API_URL}/`)
+        const response = await fetch(
+          `${DISCORD_API_URL}/${DISCORD_USER_ID}`,
+        )
 
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`)
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
         }
 
-        const incomingProfile = await res.json()
+        const rawProfile = await response.json()
 
         if (cancelled) return
+
+        const incomingProfile = normalizeLiveDiscordProfile(rawProfile)
 
         const mergedProfile = mergeProfileUpdate(
           profileRef.current,
@@ -744,7 +607,6 @@ export default function DiscordProfileCard() {
     }
   }, [DISCORD_API_URL, t])
 
-
   if (loading && !profile && !avatarSrc) {
     return (
       <div className="discord-card discord-card--loading">
@@ -754,7 +616,6 @@ export default function DiscordProfileCard() {
       </div>
     )
   }
-
 
   const shouldShowError =
     !!error &&
@@ -774,14 +635,14 @@ export default function DiscordProfileCard() {
     )
   }
 
-
   const displayName =
+    profile?.member?.display_name ??
     profile?.global_name ??
     profile?.username ??
     'MrKoby07'
 
   const username = profile?.username ?? 'master3307'
-  const status = profile?.presence?.status ?? profile?.status ?? 'offline'
+  const status = profile?.presence?.status ?? 'offline'
 
   return (
     <article
@@ -834,7 +695,7 @@ export default function DiscordProfileCard() {
           <i>
             <a
               className="username"
-              href="https://discord.com/users/817826076486139985"
+              href={`https://discord.com/users/${DISCORD_USER_ID}`}
               target="_blank"
               rel="noreferrer noopener"
             >
@@ -845,7 +706,6 @@ export default function DiscordProfileCard() {
 
         <Activity
           activities={profile?.presence?.activities}
-          activityHistory={profile?.activity_history ?? []}
           t={t}
         />
 
