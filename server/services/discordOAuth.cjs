@@ -20,6 +20,20 @@ const SESSION_TTL_DAYS = Math.max(
   Number(process.env.SESSION_TTL_DAYS || 30),
 );
 
+const ALLOWED_THEMES = new Set(["dark", "light"]);
+
+const ALLOWED_LANGUAGES = new Set([
+  "bar",
+  "de",
+  "en",
+  "es",
+  "fr",
+  "hr",
+  "it",
+  "lv",
+  "uk",
+]);
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -40,6 +54,34 @@ function isUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
     value,
   );
+}
+
+function parseSettings(value) {
+  if (!value || typeof value !== "string") {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+
+    const settings = {};
+
+    if (ALLOWED_THEMES.has(parsed.theme)) {
+      settings.theme = parsed.theme;
+    }
+
+    if (ALLOWED_LANGUAGES.has(parsed.language)) {
+      settings.language = parsed.language;
+    }
+
+    return settings;
+  } catch {
+    return {};
+  }
 }
 
 function getDefaultDiscordAvatarUrl(discordUser) {
@@ -78,6 +120,23 @@ async function ensureStorageDirectories() {
     recursive: true,
     mode: 0o700,
   });
+}
+
+function ensureSettingsColumn(db) {
+  const columns = db.prepare("PRAGMA table_info(users)").all();
+
+  const hasSettingsColumn = columns.some(
+    (column) => column.name === "settings_json",
+  );
+
+  if (!hasSettingsColumn) {
+    db.exec(`
+      ALTER TABLE users
+      ADD COLUMN settings_json TEXT NOT NULL DEFAULT '{}'
+    `);
+
+    console.log("[Accounts] Added users.settings_json column.");
+  }
 }
 
 function openDatabase() {
@@ -125,6 +184,8 @@ function openDatabase() {
     CREATE INDEX IF NOT EXISTS sessions_expires_at_idx
       ON sessions(expires_at);
   `);
+
+  ensureSettingsColumn(db);
 
   return db;
 }
@@ -309,6 +370,7 @@ function registerDiscordOAuth(app) {
         discordUser.global_name || discordUser.username || "Unknown user",
       ),
       email: discordUser.email ? String(discordUser.email) : null,
+      settingsJson: "{}",
       createdAt: now,
       updatedAt: now,
       lastLoginAt: now,
@@ -322,6 +384,7 @@ function registerDiscordOAuth(app) {
         username,
         display_name,
         email,
+        settings_json,
         created_at,
         updated_at,
         last_login_at
@@ -331,6 +394,7 @@ function registerDiscordOAuth(app) {
         @username,
         @displayName,
         @email,
+        @settingsJson,
         @createdAt,
         @updatedAt,
         @lastLoginAt
@@ -394,6 +458,27 @@ function registerDiscordOAuth(app) {
     return getUserById(userId);
   }
 
+  function updateUserSettings(userId, currentSettings, updates) {
+    const nextSettings = {
+      ...currentSettings,
+      ...updates,
+    };
+
+    const now = nowIso();
+
+    db.prepare(
+      `
+      UPDATE users
+      SET
+        settings_json = ?,
+        updated_at = ?
+      WHERE id = ?
+    `,
+    ).run(JSON.stringify(nextSettings), now, userId);
+
+    return nextSettings;
+  }
+
   function deleteExpiredSessions() {
     db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(nowIso());
   }
@@ -451,7 +536,8 @@ function registerDiscordOAuth(app) {
           users.id AS user_id,
           users.username,
           users.display_name,
-          users.avatar_path
+          users.avatar_path,
+          users.settings_json
         FROM sessions
         INNER JOIN users ON users.id = sessions.user_id
         WHERE sessions.token_hash = ?
@@ -515,7 +601,25 @@ function registerDiscordOAuth(app) {
       avatarUrl: session.avatar_path
         ? `${apiOrigin}/${session.avatar_path}`
         : null,
+      settings: parseSettings(session.settings_json),
     };
+  }
+
+  function requireAuthenticatedUser(req, res, next) {
+    const rawToken = req.cookies?.[AUTH_COOKIE_NAME];
+    const session = getAuthenticatedUser(rawToken);
+
+    if (!session) {
+      clearAuthCookie(res);
+
+      return res.status(401).json({
+        authenticated: false,
+      });
+    }
+
+    req.accountSession = session;
+
+    return next();
   }
 
   app.get("/auth/discord", requireStorage, (req, res) => {
@@ -641,6 +745,55 @@ function registerDiscordOAuth(app) {
       user: toPublicUser(session),
     });
   });
+
+  app.patch(
+    "/account/settings",
+    requireStorage,
+    requireAuthenticatedUser,
+    (req, res) => {
+      const body = req.body && typeof req.body === "object" ? req.body : {};
+
+      const updates = {};
+
+      if (Object.prototype.hasOwnProperty.call(body, "theme")) {
+        if (!ALLOWED_THEMES.has(body.theme)) {
+          return res.status(400).json({
+            error: "Invalid theme.",
+          });
+        }
+
+        updates.theme = body.theme;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(body, "language")) {
+        if (!ALLOWED_LANGUAGES.has(body.language)) {
+          return res.status(400).json({
+            error: "Invalid language.",
+          });
+        }
+
+        updates.language = body.language;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({
+          error: "No valid settings were provided.",
+        });
+      }
+
+      const currentSettings = parseSettings(req.accountSession.settings_json);
+
+      const settings = updateUserSettings(
+        req.accountSession.user_id,
+        currentSettings,
+        updates,
+      );
+
+      return res.json({
+        settings,
+      });
+    },
+  );
 
   app.post("/auth/logout", requireStorage, async (req, res) => {
     const rawToken = req.cookies?.[AUTH_COOKIE_NAME];

@@ -1,29 +1,16 @@
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-const THEME_KEY = 'preferredTheme'
+import { useAccountSettings } from '../lib/accountSettings.jsx'
 
 export default function ThemeSwitch() {
   const { t } = useTranslation('themeswitch')
-
-  const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem(THEME_KEY)
-    return savedTheme === 'light' ? 'light' : 'dark'
-  })
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem(THEME_KEY, theme)
-  }, [theme])
-
+  const { theme, setTheme } = useAccountSettings()
 
   return (
-    <div className="picker" style={{ left: '16px'}}>
-
+    <div className="picker" style={{ left: '16px' }}>
       <select
         id="theme-select"
         value={theme}
-        onChange={(e) => setTheme(e.target.value)}
+        onChange={(event) => setTheme(event.target.value)}
       >
         <option value="dark">{t('dark')}</option>
         <option value="light">{t('light')}</option>
@@ -34,7 +21,6 @@ export default function ThemeSwitch() {
           palette
         </span>
       </label>
-
     </div>
   )
 }

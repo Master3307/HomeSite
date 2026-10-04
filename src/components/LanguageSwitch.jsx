@@ -1,16 +1,18 @@
 import { useTranslation } from 'react-i18next'
 import { supportedLngs } from '../lib/i18n'
+import { useAccountSettings } from '../lib/accountSettings.jsx'
 
 export default function LanguageSwitch() {
-  const { t, i18n } = useTranslation('language')
+  const { t } = useTranslation('language')
+  const { language, setLanguage } = useAccountSettings()
 
   return (
     <div className="picker">
       <div className="select-box">
         <select
           id="language-select"
-          value={i18n.resolvedLanguage ?? i18n.language}
-          onChange={(e) => i18n.changeLanguage(e.target.value)}
+          value={language}
+          onChange={(event) => setLanguage(event.target.value)}
         >
           {supportedLngs.map((code) => (
             <option key={code} value={code}>
