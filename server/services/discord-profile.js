@@ -1644,8 +1644,10 @@ app.post("/auth/logout", (req, res, next) => {
  * - returns all visible server roles and member metadata
  * - does not create, modify, or use activity history / cache files
  */
-app.get("/api/:discordUserId", async (req, res) => {
-  const discordUserId = String(req.params.discordUserId || "").trim();
+app.get(/^\/api\/(?<discordUserId>\d{17,20})$/, async (req, res) => {
+  const discordUserId = String(
+    req.params.discordUserId ?? req.params[0] ?? "",
+  ).trim();
 
   if (!/^\d{17,20}$/.test(discordUserId)) {
     return res.status(400).json({
