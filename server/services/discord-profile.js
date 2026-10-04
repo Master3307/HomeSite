@@ -42,16 +42,16 @@ if (!SESSION_SECRET) throw new Error("Missing SESSION_SECRET");
 const app = express();
 
 const allowedOrigins = new Set([
-  FRONTEND_ORIGIN, // https://home.master3307.org
-  "http://localhost:5173", // Vite development server
+  FRONTEND_ORIGIN,
+  "http://localhost:5173",
   "http://127.0.0.1:5173",
 ]);
 
 app.set("trust proxy", 1);
+
 app.use(
   cors({
     origin(origin, callback) {
-      // Requests from browsers include Origin; CLI tools commonly do not.
       if (!origin || allowedOrigins.has(origin)) {
         return callback(null, true);
       }
@@ -61,6 +61,7 @@ app.use(
     credentials: true,
   }),
 );
+
 app.use(
   session({
     name: "homesite_session",
@@ -184,33 +185,88 @@ function hasFlag(bits = 0, flag) {
 
 function mapBadges(publicFlags = 0) {
   const badges = [];
-  if (hasFlag(publicFlags, USER_FLAGS.STAFF))
+
+  if (hasFlag(publicFlags, USER_FLAGS.STAFF)) {
     badges.push({ key: "staff", label: "Discord Staff" });
-  if (hasFlag(publicFlags, USER_FLAGS.PARTNER))
-    badges.push({ key: "partner", label: "Partnered Server Owner" });
-  if (hasFlag(publicFlags, USER_FLAGS.HYPESQUAD))
-    badges.push({ key: "hypesquad", label: "HypeSquad Events" });
-  if (hasFlag(publicFlags, USER_FLAGS.BUG_HUNTER_LEVEL_1))
-    badges.push({ key: "bug-hunter-1", label: "Bug Hunter Lv1" });
-  if (hasFlag(publicFlags, USER_FLAGS.HYPESQUAD_ONLINE_HOUSE_1))
-    badges.push({ key: "bravery", label: "House Bravery" });
-  if (hasFlag(publicFlags, USER_FLAGS.HYPESQUAD_ONLINE_HOUSE_2))
-    badges.push({ key: "brilliance", label: "House Brilliance" });
-  if (hasFlag(publicFlags, USER_FLAGS.HYPESQUAD_ONLINE_HOUSE_3))
-    badges.push({ key: "balance", label: "House Balance" });
-  if (hasFlag(publicFlags, USER_FLAGS.PREMIUM_EARLY_SUPPORTER))
-    badges.push({ key: "early-supporter", label: "Early Supporter" });
-  if (hasFlag(publicFlags, USER_FLAGS.BUG_HUNTER_LEVEL_2))
-    badges.push({ key: "bug-hunter-2", label: "Bug Hunter Lv2" });
-  if (hasFlag(publicFlags, USER_FLAGS.VERIFIED_DEVELOPER))
+  }
+
+  if (hasFlag(publicFlags, USER_FLAGS.PARTNER)) {
+    badges.push({
+      key: "partner",
+      label: "Partnered Server Owner",
+    });
+  }
+
+  if (hasFlag(publicFlags, USER_FLAGS.HYPESQUAD)) {
+    badges.push({
+      key: "hypesquad",
+      label: "HypeSquad Events",
+    });
+  }
+
+  if (hasFlag(publicFlags, USER_FLAGS.BUG_HUNTER_LEVEL_1)) {
+    badges.push({
+      key: "bug-hunter-1",
+      label: "Bug Hunter Lv1",
+    });
+  }
+
+  if (hasFlag(publicFlags, USER_FLAGS.HYPESQUAD_ONLINE_HOUSE_1)) {
+    badges.push({
+      key: "bravery",
+      label: "House Bravery",
+    });
+  }
+
+  if (hasFlag(publicFlags, USER_FLAGS.HYPESQUAD_ONLINE_HOUSE_2)) {
+    badges.push({
+      key: "brilliance",
+      label: "House Brilliance",
+    });
+  }
+
+  if (hasFlag(publicFlags, USER_FLAGS.HYPESQUAD_ONLINE_HOUSE_3)) {
+    badges.push({
+      key: "balance",
+      label: "House Balance",
+    });
+  }
+
+  if (hasFlag(publicFlags, USER_FLAGS.PREMIUM_EARLY_SUPPORTER)) {
+    badges.push({
+      key: "early-supporter",
+      label: "Early Supporter",
+    });
+  }
+
+  if (hasFlag(publicFlags, USER_FLAGS.BUG_HUNTER_LEVEL_2)) {
+    badges.push({
+      key: "bug-hunter-2",
+      label: "Bug Hunter Lv2",
+    });
+  }
+
+  if (hasFlag(publicFlags, USER_FLAGS.VERIFIED_DEVELOPER)) {
     badges.push({
       key: "verified-developer",
       label: "Early Verified Bot Developer",
     });
-  if (hasFlag(publicFlags, USER_FLAGS.CERTIFIED_MODERATOR))
-    badges.push({ key: "moderator", label: "Moderator Programs Alumni" });
-  if (hasFlag(publicFlags, USER_FLAGS.ACTIVE_DEVELOPER))
-    badges.push({ key: "active-developer", label: "Active Developer" });
+  }
+
+  if (hasFlag(publicFlags, USER_FLAGS.CERTIFIED_MODERATOR)) {
+    badges.push({
+      key: "moderator",
+      label: "Moderator Programs Alumni",
+    });
+  }
+
+  if (hasFlag(publicFlags, USER_FLAGS.ACTIVE_DEVELOPER)) {
+    badges.push({
+      key: "active-developer",
+      label: "Active Developer",
+    });
+  }
+
   return badges;
 }
 
@@ -219,32 +275,92 @@ function avatarUrl(user) {
     const index = Number(user.discriminator || 0) % 5;
     return `${CDN}/embed/avatars/${index}.png`;
   }
+
   const isGif = user.avatar.startsWith("a_");
-  return `${CDN}/avatars/${user.id}/${user.avatar}.${isGif ? "gif" : "webp"}?size=256`;
+
+  return `${CDN}/avatars/${user.id}/${user.avatar}.${
+    isGif ? "gif" : "webp"
+  }?size=256`;
 }
 
 function bannerUrl(user) {
   if (!user.banner) return null;
+
   const isGif = user.banner.startsWith("a_");
-  return `${CDN}/banners/${user.id}/${user.banner}.${isGif ? "gif" : "webp"}?size=512`;
+
+  return `${CDN}/banners/${user.id}/${user.banner}.${
+    isGif ? "gif" : "webp"
+  }?size=512`;
 }
 
 function avatarDecorationUrl(user) {
   const asset = user.avatar_decoration_data?.asset;
+
   if (!asset) return null;
+
   return `${CDN}/avatar-decoration-presets/${asset}.png`;
 }
 
 function guildBadgeUrl(user) {
   const guildId = user.primary_guild?.identity_guild_id;
   const badge = user.primary_guild?.badge;
+
   if (!guildId || !badge) return null;
+
   return `${CDN}/guild-tag-badges/${guildId}/${badge}.png`;
+}
+
+function snowflakeToTimestamp(snowflake) {
+  try {
+    const discordEpoch = 1420070400000n;
+    const timestamp = (BigInt(snowflake) >> 22n) + discordEpoch;
+    return new Date(Number(timestamp)).toISOString();
+  } catch {
+    return null;
+  }
+}
+
+function memberAvatarUrl(member) {
+  if (!member?.avatar) return null;
+
+  const isGif = member.avatar.startsWith("a_");
+
+  return `${CDN}/guilds/${member.guild.id}/users/${member.id}/avatars/${
+    member.avatar
+  }.${isGif ? "gif" : "webp"}?size=256`;
+}
+
+function memberBannerUrl(member) {
+  if (!member?.banner) return null;
+
+  const isGif = member.banner.startsWith("a_");
+
+  return `${CDN}/guilds/${member.guild.id}/users/${member.id}/banners/${
+    member.banner
+  }.${isGif ? "gif" : "webp"}?size=512`;
+}
+
+function formatRole(role) {
+  return {
+    id: role.id,
+    name: role.name,
+    color: role.hexColor,
+    color_value: role.color,
+    position: role.position,
+    hoist: role.hoist,
+    managed: role.managed,
+    mentionable: role.mentionable,
+    icon: role.iconURL({ extension: "webp", size: 128 }) ?? null,
+    unicode_emoji: role.unicodeEmoji ?? null,
+    permissions: role.permissions.bitfield.toString(),
+    created_at: snowflakeToTimestamp(role.id),
+  };
 }
 
 function formatActivity(activity) {
   const largeImage = activity.assets?.largeImageURL() ?? null;
   const smallImage = activity.assets?.smallImageURL() ?? null;
+
   return {
     name: activity.name,
     type: activity.type,
@@ -295,15 +411,56 @@ function formatActivity(activity) {
 
 function formatPresence(presence) {
   if (!presence) return null;
+
   return {
     status: presence.status ?? "offline",
+    client_status: presence.clientStatus ?? {},
     activities: (presence.activities ?? []).map(formatActivity),
+  };
+}
+
+function formatLiveGuildMember(member) {
+  const roles = member.roles.cache
+    .filter((role) => role.id !== member.guild.id)
+    .sort((a, b) => b.position - a.position)
+    .map(formatRole);
+
+  return {
+    guild_id: member.guild.id,
+    guild_name: member.guild.name,
+    id: member.id,
+    nickname: member.nickname ?? null,
+    display_name:
+      member.displayName ?? member.user.globalName ?? member.user.username,
+    avatar: memberAvatarUrl(member),
+    banner: memberBannerUrl(member),
+    joined_at: member.joinedAt ? member.joinedAt.toISOString() : null,
+    premium_since: member.premiumSince
+      ? member.premiumSince.toISOString()
+      : null,
+    communication_disabled_until:
+      member.communicationDisabledUntil?.toISOString() ?? null,
+    pending: member.pending ?? false,
+    deaf: member.deaf ?? false,
+    mute: member.mute ?? false,
+    flags: member.flags?.bitfield?.toString?.() ?? "0",
+    roles,
+    role_ids: roles.map((role) => role.id),
+    highest_role: member.roles.highest
+      ? formatRole(member.roles.highest)
+      : null,
+    permissions: member.permissions.bitfield.toString(),
+    permissions_in_guild: member.permissions.toArray(),
   };
 }
 
 function csvEscape(value) {
   const stringValue = value == null ? "" : String(value);
-  if (/[",\n]/.test(stringValue)) return `"${stringValue.replace(/"/g, '""')}"`;
+
+  if (/[",\n]/.test(stringValue)) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+
   return stringValue;
 }
 
@@ -311,8 +468,10 @@ function parseCsvLine(line) {
   const values = [];
   let current = "";
   let inQuotes = false;
+
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
+
     if (char === '"') {
       if (inQuotes && line[i + 1] === '"') {
         current += '"';
@@ -327,16 +486,21 @@ function parseCsvLine(line) {
       current += char;
     }
   }
+
   values.push(current);
   return values;
 }
 
 function parseCsv(content) {
   const lines = content.split(/\r?\n/).filter(Boolean);
+
   if (!lines.length) return [];
+
   const headers = parseCsvLine(lines[0]);
+
   return lines.slice(1).map((line) => {
     const cells = parseCsvLine(line);
+
     return Object.fromEntries(
       headers.map((header, index) => [header, cells[index] ?? ""]),
     );
@@ -377,7 +541,9 @@ async function writeCsvRows(filePath, headers, rows) {
 
 async function appendCsvRow(filePath, headers, row) {
   await ensureCsvFile(filePath, headers);
+
   const line = headers.map((header) => csvEscape(row[header] ?? "")).join(",");
+
   await fs.appendFile(filePath, `${line}\n`, "utf8");
 }
 
@@ -395,6 +561,7 @@ async function ensureJsonFile(filePath, fallbackValue) {
 
 async function readJsonFile(filePath, fallbackValue) {
   await ensureJsonFile(filePath, fallbackValue);
+
   try {
     const raw = await fs.readFile(filePath, "utf8");
     return JSON.parse(raw);
@@ -408,17 +575,31 @@ async function writeJsonFile(filePath, value) {
 }
 
 function normalizeActivityKind(activity) {
-  if (activity.type === ActivityType.Listening || activity.name === "Spotify")
+  if (activity.type === ActivityType.Listening || activity.name === "Spotify") {
     return "music";
-  if (activity.type === ActivityType.Playing) return "game";
+  }
+
+  if (activity.type === ActivityType.Playing) {
+    return "game";
+  }
+
   return "activity";
 }
 
 function activityKey(activity) {
   const kind = normalizeActivityKind(activity);
-  if (kind === "music") return `music:${activity.name || "unknown"}`;
-  if (kind === "game") return `game:${activity.name || "unknown"}`;
-  return `activity:${activity.type}:${activity.application_id || "na"}:${activity.name || "unknown"}`;
+
+  if (kind === "music") {
+    return `music:${activity.name || "unknown"}`;
+  }
+
+  if (kind === "game") {
+    return `game:${activity.name || "unknown"}`;
+  }
+
+  return `activity:${activity.type}:${activity.application_id || "na"}:${
+    activity.name || "unknown"
+  }`;
 }
 
 function sameUtcDay(a, b) {
@@ -433,7 +614,9 @@ function yesterdayUtc(date) {
   const d = new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
   );
+
   d.setUTCDate(d.getUTCDate() - 1);
+
   return d;
 }
 
@@ -442,14 +625,17 @@ function updateGameStreak(existing, nowIso) {
   const last = existing.last_active_at
     ? new Date(existing.last_active_at)
     : null;
+
   if (!last) return 1;
   if (sameUtcDay(last, now)) return existing.streak || 1;
   if (sameUtcDay(last, yesterdayUtc(now))) return (existing.streak || 1) + 1;
+
   return 1;
 }
 
 function safeJsonParseArray(value) {
   if (!value) return [];
+
   try {
     const parsed = JSON.parse(value);
     return Array.isArray(parsed) ? parsed : [];
@@ -464,6 +650,7 @@ function toActivityRow(
   nowIso = new Date().toISOString(),
 ) {
   const kind = normalizeActivityKind(activity);
+
   return {
     key: activityKey(activity),
     kind,
@@ -521,12 +708,16 @@ function toActivityRow(
 function sessionFromSummary(summary, endedAtIso) {
   const startedAtIso =
     summary.active_session_started_at || summary.last_started_at || endedAtIso;
+
   const durationMs = Math.max(
     0,
     new Date(endedAtIso).getTime() - new Date(startedAtIso).getTime(),
   );
+
   return {
-    session_id: `${summary.key}:${new Date(startedAtIso).getTime()}:${new Date(endedAtIso).getTime()}`,
+    session_id: `${summary.key}:${new Date(startedAtIso).getTime()}:${new Date(
+      endedAtIso,
+    ).getTime()}`,
     key: summary.key,
     kind: summary.kind,
     name: summary.name,
@@ -562,19 +753,29 @@ function sessionFromSummary(summary, endedAtIso) {
   };
 }
 
-let spotifyTokenCache = { access_token: null, expires_at: 0 };
+let spotifyTokenCache = {
+  access_token: null,
+  expires_at: 0,
+};
 
 async function getSpotifyAccessToken() {
   const now = Date.now();
+
   if (
     spotifyTokenCache.access_token &&
     spotifyTokenCache.expires_at > now + 60000
-  )
+  ) {
     return spotifyTokenCache.access_token;
-  if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) return null;
+  }
+
+  if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
+    return null;
+  }
+
   const basic = Buffer.from(
     `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`,
   ).toString("base64");
+
   const response = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
     headers: {
@@ -583,19 +784,28 @@ async function getSpotifyAccessToken() {
     },
     body: "grant_type=client_credentials",
   });
-  if (!response.ok) return null;
+
+  if (!response.ok) {
+    return null;
+  }
+
   const data = await response.json();
+
   spotifyTokenCache = {
     access_token: data.access_token,
     expires_at: Date.now() + Number(data.expires_in || 0) * 1000,
   };
+
   return spotifyTokenCache.access_token;
 }
 
 async function fetchSpotifyTrackMeta(trackId) {
   if (!trackId) return null;
+
   const token = await getSpotifyAccessToken();
+
   if (!token) return null;
+
   try {
     const response = await fetch(
       `https://api.spotify.com/v1/tracks/${encodeURIComponent(trackId)}`,
@@ -606,8 +816,13 @@ async function fetchSpotifyTrackMeta(trackId) {
         },
       },
     );
-    if (!response.ok) return null;
+
+    if (!response.ok) {
+      return null;
+    }
+
     const track = await response.json();
+
     return {
       song_url:
         track?.external_urls?.spotify ??
@@ -632,6 +847,7 @@ async function fetchSpotifyTrackMeta(trackId) {
       `Failed Spotify metadata lookup for track ${trackId}:`,
       error.message,
     );
+
     return null;
   }
 }
@@ -641,10 +857,13 @@ async function enrichSpotifyActivityLinks(row) {
     row.kind === "music" ||
     row.name === "Spotify" ||
     Number(row.type) === ActivityType.Listening;
+
   if (!isSpotify) return row;
+
   const currentSyncId = row.sync_id || null;
   const previousSyncId = row.last_sync_id || null;
   const trackChanged = !!currentSyncId && currentSyncId !== previousSyncId;
+
   if (!currentSyncId) {
     row.song_url = row.song_url || null;
     row.album_url = row.album_url || null;
@@ -652,12 +871,16 @@ async function enrichSpotifyActivityLinks(row) {
     row.last_sync_id = previousSyncId;
     return row;
   }
+
   const alreadyEnriched =
     !trackChanged &&
     row.song_url &&
     safeJsonParseArray(row.artist_links_json).length > 0;
+
   if (alreadyEnriched) return row;
+
   const meta = await fetchSpotifyTrackMeta(currentSyncId);
+
   if (!meta) {
     row.song_url = `https://open.spotify.com/track/${currentSyncId}`;
     row.album_url = null;
@@ -665,16 +888,21 @@ async function enrichSpotifyActivityLinks(row) {
     row.last_sync_id = currentSyncId;
     return row;
   }
+
   row.song_url =
     meta.song_url || `https://open.spotify.com/track/${currentSyncId}`;
   row.album_url = meta.album_url || null;
   row.artist_links_json = JSON.stringify(meta.artists || []);
   row.last_sync_id = currentSyncId;
+
   return row;
 }
 
 let gameImageCache = {};
-let igdbTokenCache = { access_token: null, expires_at: 0 };
+let igdbTokenCache = {
+  access_token: null,
+  expires_at: 0,
+};
 
 async function loadGameImageCache() {
   gameImageCache = await readJsonFile(GAME_IMAGE_CACHE_PATH, {});
@@ -686,6 +914,7 @@ async function saveGameImageCache() {
 
 function buildIgdbImageUrl(imageId, size = "cover_small") {
   if (!imageId) return null;
+
   return `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg`;
 }
 
@@ -702,46 +931,74 @@ function normalizeName(value) {
 function scoreNameMatch(query, candidate) {
   const q = normalizeName(query);
   const c = normalizeName(candidate);
+
   if (!q || !c) return 0;
   if (q === c) return 100;
   if (c.startsWith(q)) return 90;
   if (q.startsWith(c)) return 85;
   if (c.includes(q) || q.includes(c)) return 75;
+
   const qWords = new Set(q.split(" ").filter(Boolean));
   const cWords = new Set(c.split(" ").filter(Boolean));
+
   let overlap = 0;
-  for (const word of qWords) if (cWords.has(word)) overlap++;
+
+  for (const word of qWords) {
+    if (cWords.has(word)) overlap++;
+  }
+
   return overlap * 10;
 }
 
 async function getIgdbAccessToken() {
   const now = Date.now();
-  if (igdbTokenCache.access_token && igdbTokenCache.expires_at > now + 60000)
+
+  if (igdbTokenCache.access_token && igdbTokenCache.expires_at > now + 60000) {
     return igdbTokenCache.access_token;
-  if (!IGDB_CLIENT_ID || !IGDB_CLIENT_SECRET) return null;
+  }
+
+  if (!IGDB_CLIENT_ID || !IGDB_CLIENT_SECRET) {
+    return null;
+  }
+
   const tokenUrl = new URL("https://id.twitch.tv/oauth2/token");
+
   tokenUrl.searchParams.set("client_id", IGDB_CLIENT_ID);
   tokenUrl.searchParams.set("client_secret", IGDB_CLIENT_SECRET);
   tokenUrl.searchParams.set("grant_type", "client_credentials");
-  const response = await fetch(tokenUrl, { method: "POST" });
-  if (!response.ok) return null;
+
+  const response = await fetch(tokenUrl, {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
   const data = await response.json();
+
   igdbTokenCache = {
     access_token: data.access_token,
     expires_at: Date.now() + Number(data.expires_in || 0) * 1000,
   };
+
   return igdbTokenCache.access_token;
 }
 
 async function fetchIgdbGameIcon(gameName) {
   if (!gameName) return null;
+
   const token = await getIgdbAccessToken();
+
   if (!token) return null;
+
   try {
     const escapedGameName = String(gameName)
       .replace(/\\/g, "\\\\")
       .replace(/"/g, '\\"');
+
     const body = `fields name,cover.image_id; search "${escapedGameName}"; limit 5;`;
+
     const response = await fetch("https://api.igdb.com/v4/games", {
       method: "POST",
       headers: {
@@ -752,12 +1009,24 @@ async function fetchIgdbGameIcon(gameName) {
       },
       body,
     });
-    if (!response.ok) return null;
+
+    if (!response.ok) {
+      return null;
+    }
+
     const results = await response.json();
-    if (!Array.isArray(results) || !results.length) return null;
+
+    if (!Array.isArray(results) || !results.length) {
+      return null;
+    }
+
     const chosen = [...results]
-      .map((item) => ({ item, score: scoreNameMatch(gameName, item?.name) }))
+      .map((item) => ({
+        item,
+        score: scoreNameMatch(gameName, item?.name),
+      }))
       .sort((a, b) => b.score - a.score)[0]?.item;
+
     return buildIgdbImageUrl(chosen?.cover?.image_id ?? null, "cover_small");
   } catch (error) {
     console.warn(`Failed IGDB fallback for ${gameName}:`, error.message);
@@ -767,33 +1036,48 @@ async function fetchIgdbGameIcon(gameName) {
 
 async function sgdbRequest(endpoint, query = {}) {
   if (!STEAMGRIDDB_API_KEY) return null;
+
   const url = new URL(`${STEAMGRIDDB_API}${endpoint}`);
+
   for (const [key, value] of Object.entries(query)) {
-    if (value != null && value !== "") url.searchParams.set(key, String(value));
+    if (value != null && value !== "") {
+      url.searchParams.set(key, String(value));
+    }
   }
+
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${STEAMGRIDDB_API_KEY}`,
       Accept: "application/json",
     },
   });
+
   if (!response.ok) return null;
+
   return response.json();
 }
 
 async function searchSteamGridDbGame(gameName) {
   if (!gameName) return null;
+
   try {
     const data = await sgdbRequest(
       `/search/autocomplete/${encodeURIComponent(gameName)}`,
     );
+
     const list = Array.isArray(data?.data) ? data.data : [];
+
     if (!list.length) return null;
+
     return (
       [...list]
         .map((item) => {
           const game = item?.data ?? item;
-          return { game, score: scoreNameMatch(gameName, game?.name) };
+
+          return {
+            game,
+            score: scoreNameMatch(gameName, game?.name),
+          };
         })
         .sort((a, b) => b.score - a.score)[0]?.game ?? null
     );
@@ -805,26 +1089,37 @@ async function searchSteamGridDbGame(gameName) {
 
 function pickBestSteamGridDbAsset(items, preferredStyles = []) {
   if (!Array.isArray(items) || !items.length) return null;
+
   const styleRank = new Map(
     preferredStyles.map((style, index) => [style, index]),
   );
+
   const scored = items.map((item) => ({
     item,
     score:
       (styleRank.has(item.style) ? 100 - styleRank.get(item.style) : 0) +
       Number(item.score || 0),
   }));
+
   scored.sort((a, b) => b.score - a.score);
+
   return scored[0]?.item ?? null;
 }
 
 async function fetchSteamGridDbGameImage(gameName) {
   if (!gameName) return null;
+
   const cacheKey = `game:${normalizeName(gameName)}`;
-  if (gameImageCache[cacheKey]) return gameImageCache[cacheKey];
+
+  if (gameImageCache[cacheKey]) {
+    return gameImageCache[cacheKey];
+  }
+
   try {
     const game = await searchSteamGridDbGame(gameName);
+
     if (!game?.id) return null;
+
     const icons = await sgdbRequest(`/icons/game/${game.id}`, {
       styles: "official,custom",
       dimensions: "512,1024",
@@ -835,10 +1130,12 @@ async function fetchSteamGridDbGameImage(gameName) {
       epilepsy: "false",
       limit: 50,
     });
+
     const bestIcon = pickBestSteamGridDbAsset(icons?.data, [
       "official",
       "custom",
     ]);
+
     if (bestIcon?.url) {
       const payload = {
         url: bestIcon.url,
@@ -847,10 +1144,13 @@ async function fetchSteamGridDbGameImage(gameName) {
         game_id: game.id,
         matched_name: game.name,
       };
+
       gameImageCache[cacheKey] = payload;
       await saveGameImageCache();
+
       return payload;
     }
+
     const grids = await sgdbRequest(`/grids/game/${game.id}`, {
       styles: "alternate,no_logo,material,blurred,white_logo",
       dimensions: "512x512,1024x1024",
@@ -861,6 +1161,7 @@ async function fetchSteamGridDbGameImage(gameName) {
       epilepsy: "false",
       limit: 50,
     });
+
     const bestGrid = pickBestSteamGridDbAsset(grids?.data, [
       "alternate",
       "no_logo",
@@ -868,6 +1169,7 @@ async function fetchSteamGridDbGameImage(gameName) {
       "blurred",
       "white_logo",
     ]);
+
     if (bestGrid?.url) {
       const payload = {
         url: bestGrid.url,
@@ -876,10 +1178,13 @@ async function fetchSteamGridDbGameImage(gameName) {
         game_id: game.id,
         matched_name: game.name,
       };
+
       gameImageCache[cacheKey] = payload;
       await saveGameImageCache();
+
       return payload;
     }
+
     return null;
   } catch (error) {
     console.warn(`Failed SteamGridDB lookup for ${gameName}:`, error.message);
@@ -889,41 +1194,65 @@ async function fetchSteamGridDbGameImage(gameName) {
 
 async function fetchBestGameImage(gameName) {
   if (!gameName) return null;
+
   const cacheKey = `game:${normalizeName(gameName)}`;
-  if (gameImageCache[cacheKey]) return gameImageCache[cacheKey];
+
+  if (gameImageCache[cacheKey]) {
+    return gameImageCache[cacheKey];
+  }
+
   const sgdb = await fetchSteamGridDbGameImage(gameName);
-  if (sgdb?.url) return sgdb;
+
+  if (sgdb?.url) {
+    return sgdb;
+  }
+
   const igdbUrl = await fetchIgdbGameIcon(gameName);
+
   if (igdbUrl) {
-    const payload = { url: igdbUrl, thumb: igdbUrl, source: "igdb-cover" };
+    const payload = {
+      url: igdbUrl,
+      thumb: igdbUrl,
+      source: "igdb-cover",
+    };
+
     gameImageCache[cacheKey] = payload;
     await saveGameImageCache();
+
     return payload;
   }
+
   return null;
 }
 
 async function enrichRow(row) {
   await enrichSpotifyActivityLinks(row);
+
   const hasDiscordImage = !!(row.small_image || row.large_image);
+
   if (hasDiscordImage) {
     row.image_source = row.image_source || "discord";
     return row.small_image || row.large_image || null;
   }
+
   if (row.kind === "game") {
     const result = await fetchBestGameImage(row.name);
+
     if (result?.url) {
       row.small_image = result.url;
       row.image_source = result.source || null;
+
       return result.url;
     }
   }
+
   return null;
 }
 
 function summaryForApi(summary) {
   const { active_session_started_at, ...row } = summary;
   const image_url = row.small_image || row.large_image || null;
+
   return {
     ...row,
     type: row.type === "" ? null : Number(row.type),
@@ -947,6 +1276,7 @@ function summaryForApi(summary) {
 
 function historyRowForApi(row) {
   const image_url = row.small_image || row.large_image || null;
+
   return {
     ...row,
     type: row.type === "" ? null : Number(row.type),
@@ -976,8 +1306,10 @@ const client = new Client({
 async function loadActivityStore() {
   const rows = await readCsvRows(ACTIVITY_CSV_PATH, ACTIVITY_HEADERS);
   const map = new Map();
+
   for (const row of rows) {
     await enrichRow(row);
+
     map.set(row.key, {
       ...row,
       total_active_ms: Number(row.total_active_ms || 0),
@@ -989,7 +1321,9 @@ async function loadActivityStore() {
       last_sync_id: row.last_sync_id || null,
     });
   }
+
   await writeCsvRows(ACTIVITY_CSV_PATH, ACTIVITY_HEADERS, [...map.values()]);
+
   return map;
 }
 
@@ -999,13 +1333,18 @@ async function persistActivityStore() {
       new Date(b.last_active_at || 0).getTime() -
       new Date(a.last_active_at || 0).getTime(),
   );
-  for (const row of rows) await enrichRow(row);
+
+  for (const row of rows) {
+    await enrichRow(row);
+  }
+
   const output = rows.map((row) => ({
     ...row,
     total_active_seconds: Math.floor(Number(row.total_active_ms || 0) / 1000),
     total_active_minutes: Math.floor(Number(row.total_active_ms || 0) / 60000),
     is_active: row.is_active ? "true" : "false",
   }));
+
   await writeCsvRows(ACTIVITY_CSV_PATH, ACTIVITY_HEADERS, output);
 }
 
@@ -1013,109 +1352,148 @@ function queueWrite(task) {
   writeQueue = writeQueue
     .then(task)
     .catch((err) => console.error("Activity write failed:", err));
+
   return writeQueue;
 }
 
 async function closeInactiveActivities(liveKeys, nowIso) {
   for (const [key, summary] of activityStore.entries()) {
     if (!summary.is_active || liveKeys.has(key)) continue;
+
     const sessionRow = sessionFromSummary(summary, nowIso);
+
     await enrichRow(sessionRow);
+
     summary.total_active_ms =
       Number(summary.total_active_ms || 0) + sessionRow.duration_ms;
+
     summary.total_active_seconds = Math.floor(summary.total_active_ms / 1000);
     summary.total_active_minutes = Math.floor(summary.total_active_ms / 60000);
     summary.session_count = Number(summary.session_count || 0) + 1;
     summary.last_ended_at = nowIso;
     summary.is_active = false;
     summary.active_session_started_at = null;
+
     activityStore.set(key, summary);
+
     await appendCsvRow(ACTIVITY_SESSIONS_CSV_PATH, SESSION_HEADERS, sessionRow);
   }
 }
 
 async function syncPresenceActivities(reason = "poll") {
   if (!trackingReady) return;
+
   const nowIso = new Date().toISOString();
   const activities = formatPresence(cachedPresence)?.activities ?? [];
   const liveKeys = new Set();
+
   for (const activity of activities) {
     const key = activityKey(activity);
+
     liveKeys.add(key);
+
     const existing = activityStore.get(key);
     const next = toActivityRow(activity, existing, nowIso);
+
     if (!existing || !existing.is_active) {
       next.active_session_started_at = activity.timestamps?.start || nowIso;
-      if (next.kind === "game")
+
+      if (next.kind === "game") {
         next.streak = updateGameStreak(existing || {}, nowIso);
+      }
     } else {
       next.active_session_started_at =
         existing.active_session_started_at ||
         existing.last_started_at ||
         activity.timestamps?.start ||
         nowIso;
+
       next.streak = existing.streak ?? next.streak;
     }
+
     next.total_active_ms = Number(existing?.total_active_ms || 0);
     next.total_active_seconds = Math.floor(next.total_active_ms / 1000);
     next.total_active_minutes = Math.floor(next.total_active_ms / 60000);
     next.session_count = Number(existing?.session_count || 0);
     next.last_ended_at = existing?.last_ended_at ?? null;
     next.is_active = true;
+
     await enrichRow(next);
+
     activityStore.set(key, next);
   }
+
   await closeInactiveActivities(liveKeys, nowIso);
-  if (reason !== "silent") await queueWrite(() => persistActivityStore());
+
+  if (reason !== "silent") {
+    await queueWrite(() => persistActivityStore());
+  }
 }
 
 async function getActivityHistory(limit = 100) {
   const rows = await readCsvRows(ACTIVITY_SESSIONS_CSV_PATH, SESSION_HEADERS);
   let touched = false;
+
   for (const row of rows) {
     const beforeImage = row.small_image || row.large_image || "";
     const beforeSong = row.song_url || "";
     const beforeArtists = row.artist_links_json || "";
     const beforeSync = row.last_sync_id || "";
+
     await enrichRow(row);
+
     if (
       beforeImage !== (row.small_image || row.large_image || "") ||
       beforeSong !== (row.song_url || "") ||
       beforeArtists !== (row.artist_links_json || "") ||
       beforeSync !== (row.last_sync_id || "")
-    )
+    ) {
       touched = true;
+    }
   }
-  if (touched)
+
+  if (touched) {
     await writeCsvRows(ACTIVITY_SESSIONS_CSV_PATH, SESSION_HEADERS, rows);
+  }
+
   const sorted = rows.sort(
     (a, b) =>
       new Date(b.ended_at || b.started_at || 0).getTime() -
       new Date(a.ended_at || a.started_at || 0).getTime(),
   );
+
   let latestMusicIncluded = false;
+
   const filtered = sorted.filter((row) => {
     if (row.kind !== "music") return true;
     if (latestMusicIncluded) return false;
+
     latestMusicIncluded = true;
     return true;
   });
+
   return filtered.slice(0, limit).map(historyRowForApi);
 }
 
 client.on("ready", async () => {
   console.log(`Bot ready: ${client.user.tag}`);
+
   try {
     await loadGameImageCache();
+
     const guild = await client.guilds.fetch(DISCORD_GUILD_ID);
+
     const member = await guild.members.fetch({
       user: DISCORD_USER_ID,
       withPresences: true,
     });
+
     cachedPresence = member.presence ?? null;
     activityStore = await loadActivityStore();
     trackingReady = true;
+
     await syncPresenceActivities("ready");
+
     console.log(`Seeded presence: ${cachedPresence?.status ?? "offline"}`);
   } catch (err) {
     console.warn("Could not seed presence on ready:", err.message);
@@ -1129,7 +1507,10 @@ client.on("presenceUpdate", async (_old, newPresence) => {
   }
 });
 
-client.on("error", (err) => console.error("Discord client error:", err));
+client.on("error", (err) => {
+  console.error("Discord client error:", err);
+});
+
 client.login(DISCORD_BOT_TOKEN);
 
 setInterval(async () => {
@@ -1146,9 +1527,11 @@ app.get("/health", (_req, res) => {
 
 app.get("/auth/discord", (req, res) => {
   const state = crypto.randomBytes(32).toString("base64url");
+
   req.session.oauthState = state;
 
   const authorizeUrl = new URL("https://discord.com/oauth2/authorize");
+
   authorizeUrl.searchParams.set("client_id", DISCORD_CLIENT_ID);
   authorizeUrl.searchParams.set("redirect_uri", DISCORD_REDIRECT_URI);
   authorizeUrl.searchParams.set("response_type", "code");
@@ -1172,7 +1555,9 @@ app.get("/auth/discord/callback", async (req, res) => {
   try {
     const tokenResponse = await fetch(`${DISCORD_API}/oauth2/token`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
       body: new URLSearchParams({
         client_id: DISCORD_CLIENT_ID,
         client_secret: DISCORD_CLIENT_SECRET,
@@ -1187,12 +1572,16 @@ app.get("/auth/discord/callback", async (req, res) => {
         "Discord OAuth token exchange failed:",
         await tokenResponse.text(),
       );
+
       return res.status(401).send("Discord login failed.");
     }
 
     const tokens = await tokenResponse.json();
+
     const userResponse = await fetch(`${DISCORD_API}/users/@me`, {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`,
+      },
     });
 
     if (!userResponse.ok) {
@@ -1200,10 +1589,12 @@ app.get("/auth/discord/callback", async (req, res) => {
         "Discord OAuth profile fetch failed:",
         await userResponse.text(),
       );
+
       return res.status(401).send("Could not retrieve Discord profile.");
     }
 
     const user = await userResponse.json();
+
     req.session.discordUser = {
       id: user.id,
       username: user.username,
@@ -1214,48 +1605,193 @@ app.get("/auth/discord/callback", async (req, res) => {
     return res.redirect(FRONTEND_ORIGIN);
   } catch (error) {
     console.error("Discord OAuth callback error:", error);
+
     return res.status(500).send("Server error during Discord login.");
   }
 });
 
 app.get("/auth/me", (req, res) => {
   if (!req.session.discordUser) {
-    return res.status(401).json({ authenticated: false });
+    return res.status(401).json({
+      authenticated: false,
+    });
   }
-  return res.json({ authenticated: true, user: req.session.discordUser });
+
+  return res.json({
+    authenticated: true,
+    user: req.session.discordUser,
+  });
 });
 
 app.post("/auth/logout", (req, res, next) => {
   req.session.destroy((error) => {
     if (error) return next(error);
+
     res.clearCookie("homesite_session");
+
     return res.status(204).end();
   });
+});
+
+/*
+ * Live Discord user lookup.
+ *
+ * GET /api/:discordUserId
+ *
+ * This route:
+ * - fetches the requested member from DISCORD_GUILD_ID
+ * - returns current gateway presence/activity data
+ * - returns all visible server roles and member metadata
+ * - does not create, modify, or use activity history / cache files
+ */
+app.get("/api/:discordUserId", async (req, res) => {
+  const discordUserId = String(req.params.discordUserId || "").trim();
+
+  if (!/^\d{17,20}$/.test(discordUserId)) {
+    return res.status(400).json({
+      error: "Invalid Discord user ID",
+    });
+  }
+
+  try {
+    const guild = await client.guilds.fetch(DISCORD_GUILD_ID);
+
+    let member;
+
+    try {
+      member = await guild.members.fetch({
+        user: discordUserId,
+        withPresences: true,
+      });
+    } catch (error) {
+      if (error?.code === 10007 || error?.status === 404) {
+        return res.status(404).json({
+          error: "Discord user is not a member of this server",
+          guild_id: DISCORD_GUILD_ID,
+          user_id: discordUserId,
+        });
+      }
+
+      throw error;
+    }
+
+    let apiUser = null;
+
+    try {
+      const userResponse = await fetch(
+        `${DISCORD_API}/users/${discordUserId}`,
+        {
+          headers: {
+            Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+          },
+        },
+      );
+
+      if (userResponse.ok) {
+        apiUser = await userResponse.json();
+      } else {
+        console.warn(
+          `Discord REST user fetch failed for ${discordUserId}:`,
+          userResponse.status,
+          await userResponse.text(),
+        );
+      }
+    } catch (error) {
+      console.warn(
+        `Discord REST user fetch threw for ${discordUserId}:`,
+        error.message,
+      );
+    }
+
+    const user = apiUser ?? member.user;
+    const publicFlags =
+      apiUser?.public_flags ?? member.user.flags?.bitfield ?? 0;
+
+    const fetchedAt = new Date().toISOString();
+    const presence = formatPresence(member.presence) ?? {
+      status: "offline",
+      client_status: {},
+      activities: [],
+    };
+
+    return res.json({
+      fetched_at: fetchedAt,
+      guild: {
+        id: guild.id,
+        name: guild.name,
+        icon: guild.iconURL({
+          extension: "webp",
+          size: 256,
+        }),
+        member_count: guild.memberCount,
+      },
+      user: {
+        id: user.id,
+        username: user.username,
+        global_name: user.global_name ?? member.user.globalName ?? null,
+        discriminator: user.discriminator ?? member.user.discriminator ?? null,
+        bot: user.bot ?? member.user.bot ?? false,
+        system: user.system ?? member.user.system ?? false,
+        avatar: avatarUrl(user),
+        banner: bannerUrl(user),
+        accent_color: user.accent_color ?? null,
+        avatar_decoration: avatarDecorationUrl(user),
+        guild_badge: guildBadgeUrl(user),
+        badges: mapBadges(publicFlags),
+        public_flags: publicFlags,
+        primary_guild: user.primary_guild ?? null,
+        collectibles: user.collectibles ?? null,
+        created_at: snowflakeToTimestamp(user.id),
+      },
+      member: formatLiveGuildMember(member),
+      presence,
+    });
+  } catch (error) {
+    console.error(`Failed live Discord lookup for ${discordUserId}:`, error);
+
+    return res.status(500).json({
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch Discord user from guild",
+    });
+  }
 });
 
 app.get("/", async (_req, res) => {
   try {
     const response = await fetch(`${DISCORD_API}/users/${DISCORD_USER_ID}`, {
-      headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}` },
+      headers: {
+        Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+      },
     });
-    if (!response.ok)
-      return res
-        .status(response.status)
-        .json({ error: "Failed to fetch Discord user" });
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: "Failed to fetch Discord user",
+      });
+    }
+
     const user = await response.json();
+
     const presence = formatPresence(cachedPresence) ?? {
       status: "offline",
       activities: [],
     };
+
     for (const activity of presence.activities) {
       const existing = activityStore.get(activityKey(activity));
       const row = toActivityRow(activity, existing);
+
       row.kind = normalizeActivityKind(activity);
+
       await enrichSpotifyActivityLinks(row);
+
       activity.song_url = row.song_url || null;
       activity.album_url = row.album_url || null;
       activity.artist_links = safeJsonParseArray(row.artist_links_json);
     }
+
     const activity_history = [...activityStore.values()]
       .sort(
         (a, b) =>
@@ -1263,6 +1799,7 @@ app.get("/", async (_req, res) => {
           new Date(a.last_active_at || 0).getTime(),
       )
       .map(summaryForApi);
+
     res.json({
       id: user.id,
       username: user.username,
@@ -1289,7 +1826,9 @@ app.get("/", async (_req, res) => {
 app.get("/history", async (req, res) => {
   try {
     const limit = Math.max(1, Math.min(500, Number(req.query.limit || 1000)));
+
     const rows = await getActivityHistory(limit);
+
     res.json(rows);
   } catch (error) {
     res.status(500).json({
@@ -1304,22 +1843,40 @@ app.get("/history", async (req, res) => {
 app.get("/api/discord-profile/avatar", async (_req, res) => {
   try {
     const response = await fetch(`${DISCORD_API}/users/${DISCORD_USER_ID}`, {
-      headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}` },
+      headers: {
+        Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+      },
     });
-    if (!response.ok)
+
+    if (!response.ok) {
       return res.status(response.status).send("Failed to fetch Discord user");
+    }
+
     const user = await response.json();
-    if (!user.avatar) return res.status(404).send("No avatar");
+
+    if (!user.avatar) {
+      return res.status(404).send("No avatar");
+    }
+
     const isGif = user.avatar.startsWith("a_");
-    const url = `${CDN}/avatars/${user.id}/${user.avatar}.${isGif ? "gif" : "png"}?size=256`;
+
+    const url = `${CDN}/avatars/${user.id}/${user.avatar}.${
+      isGif ? "gif" : "png"
+    }?size=256`;
+
     const imageRes = await fetch(url);
-    if (!imageRes.ok)
+
+    if (!imageRes.ok) {
       return res.status(imageRes.status).send("Failed to fetch avatar image");
+    }
+
     res.setHeader(
       "Content-Type",
       imageRes.headers.get("content-type") || "image/png",
     );
+
     res.setHeader("Cache-Control", "public, max-age=300");
+
     res.send(Buffer.from(await imageRes.arrayBuffer()));
   } catch (error) {
     res
@@ -1330,15 +1887,20 @@ app.get("/api/discord-profile/avatar", async (_req, res) => {
 
 app.listen(PORT, "127.0.0.1", () => {
   console.log(`Discord profile API listening on 127.0.0.1:${PORT}`);
+  console.log(`Live guild member endpoint: /api/:discordUserId`);
   console.log(`Activity summary file: ${ACTIVITY_CSV_PATH}`);
   console.log(`Activity sessions file: ${ACTIVITY_SESSIONS_CSV_PATH}`);
   console.log(`Game image cache file: ${GAME_IMAGE_CACHE_PATH}`);
   console.log(`Activity polling interval: ${ACTIVITY_POLL_INTERVAL_MS}ms`);
   console.log(`SteamGridDB enabled: ${STEAMGRIDDB_API_KEY ? "yes" : "no"}`);
   console.log(
-    `IGDB fallback enabled: ${IGDB_CLIENT_ID && IGDB_CLIENT_SECRET ? "yes" : "no"}`,
+    `IGDB fallback enabled: ${
+      IGDB_CLIENT_ID && IGDB_CLIENT_SECRET ? "yes" : "no"
+    }`,
   );
   console.log(
-    `Spotify enrichment enabled: ${SPOTIFY_CLIENT_ID && SPOTIFY_CLIENT_SECRET ? "yes" : "no"}`,
+    `Spotify enrichment enabled: ${
+      SPOTIFY_CLIENT_ID && SPOTIFY_CLIENT_SECRET ? "yes" : "no"
+    }`,
   );
 });
