@@ -16,7 +16,8 @@
     "build": "pnpm run sitemap && vite build && cp dist/index.html dist/404.html",
     "preview": "vite preview",
     "images": "node scripts/generate-images.mjs",
-    "serve": "serve -s dist -l tcp://127.0.0.1:8081"
+    "serve": "serve -s dist -l tcp://127.0.0.1:8081",
+    "deploy:local": "bash scripts/deploy.sh"
   },
   "packageManager": "pnpm@12.8.1",
   "engines": {
