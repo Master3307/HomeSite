@@ -366,6 +366,7 @@ function registerDiscordOAuth(app) {
       id: uuidv7(),
       discordUserId: String(discordUser.id),
       username: String(discordUser.username || "unknown"),
+      role: "user",
       displayName: String(
         discordUser.global_name || discordUser.username || "Unknown user",
       ),
@@ -384,6 +385,7 @@ function registerDiscordOAuth(app) {
         username,
         display_name,
         email,
+        role,
         settings_json,
         created_at,
         updated_at,
@@ -394,6 +396,7 @@ function registerDiscordOAuth(app) {
         @username,
         @displayName,
         @email,
+        @role
         @settingsJson,
         @createdAt,
         @updatedAt,
