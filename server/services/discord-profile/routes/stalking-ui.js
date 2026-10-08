@@ -10,7 +10,7 @@ function escapeAttribute(value) {
 }
 
 export function registerStalkingUiRoute(app) {
-  app.get("/stalking-ui", (_req, res) => {
+  app.get("/stalker-ui", (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
 
     res.type("html").send(`<!doctype html>
