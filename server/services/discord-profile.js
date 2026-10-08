@@ -32,6 +32,7 @@ import { createPresenceTracker } from "./discord-profile/presence-tracker.js";
 import { registerAuthRoutes } from "./discord-profile/routes/auth.js";
 import { registerLiveUserRoute } from "./discord-profile/routes/live-user.js";
 import { registerProfileRoutes } from "./discord-profile/routes/profile.js";
+import { registerStalkingUiRoute } from "./discord-profile/routes/stalking-ui.js";
 
 assertRequiredEnvironment();
 
@@ -187,7 +188,6 @@ registerAuthRoutes(app);
 
 app.get("/stalking", (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
-
   return res.json(presenceTracker.getSnapshot());
 });
 
@@ -207,8 +207,7 @@ app.get("/stalking-history", async (_req, res) => {
     const generatedAt = new Date();
     const cutoff = generatedAt.getTime() - STALKING_HISTORY_RETENTION_MS;
 
-    // Every completed log entry ends with a newline.
-    // Ignore an unfinished final line if this read overlaps an append.
+    // Ignore an unfinished final line if a read overlaps an append.
     const lines = content.split("\n");
     lines.pop();
 
@@ -264,6 +263,8 @@ app.get("/stalking-history", async (_req, res) => {
   }
 });
 
+registerStalkingUiRoute(app);
+
 registerLiveUserRoute(app, {
   client,
 });
@@ -285,6 +286,7 @@ const server = app.listen(PORT, "127.0.0.1", () => {
   console.log(`Presence storage directory: ${STALKING_DIRECTORY}`);
   console.log("Presence JSON endpoint: /stalking");
   console.log("Presence history endpoint: /stalking-history");
+  console.log("Presence UI endpoint: /stalking-ui");
   console.log(
     `Presence history retention: ${STALKING_HISTORY_RETENTION_DAYS} days`,
   );

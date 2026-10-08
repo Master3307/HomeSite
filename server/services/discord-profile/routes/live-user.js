@@ -13,6 +13,8 @@ import {
   snowflakeToTimestamp,
 } from "../discord-formatters.js";
 
+import { registerLiveUserUiRoute } from "./live-user-ui.js";
+
 function isDiscordSnowflake(value) {
   return /^\d{17,20}$/.test(value);
 }
@@ -32,6 +34,8 @@ function describeError(error) {
 }
 
 export function registerLiveUserRoute(app, { client }) {
+  registerLiveUserUiRoute(app);
+
   app.get("/:discordUserId", async (req, res, next) => {
     const discordUserId = String(req.params.discordUserId || "").trim();
 
