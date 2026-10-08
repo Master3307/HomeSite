@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 concurrency:
   group: update-self-hosted-fonts
@@ -53,9 +52,3 @@ jobs:
           file_pattern: |
             public/fonts/**
             src/styles/google-sans-flex.css
-
-      - name: Deploy updated font assets
-        if: steps.commit.outputs.changes_detected == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy.yml --ref master
