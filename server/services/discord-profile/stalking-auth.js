@@ -25,22 +25,20 @@ function readAuthToken(cookieHeader) {
     if (name !== AUTH_COOKIE_NAME) continue;
 
     try {
-      const value = decodeURIComponent(part.slice(separator + 1).trim());
-
-      values.push(value);
+      values.push(decodeURIComponent(part.slice(separator + 1).trim()));
     } catch {
       return null;
     }
   }
 
-  // Reject duplicate auth cookies rather than guessing which scope wins.
+  // Duplicate cookie scopes must be resolved by logging in again,
+  // rather than guessing which token is intended.
   if (values.length !== 1) {
     return null;
   }
 
   const token = values[0];
 
-  // Matches your accounts service's randomBytes(32).toString("base64url").
   if (!/^[A-Za-z0-9_-]{43}$/.test(token)) {
     return null;
   }
@@ -55,19 +53,35 @@ function deny(res, status, error) {
   });
 }
 
+function describeFailure(error) {
+  const cause = error?.cause;
+
+  return {
+    name: error?.name ?? null,
+    message: error?.message ?? String(error),
+    cause: cause
+      ? {
+          name: cause.name ?? null,
+          code: cause.code ?? null,
+          message: cause.message ?? null,
+          errors: Array.isArray(cause.errors)
+            ? cause.errors.map((item) => ({
+                code: item.code ?? null,
+                message: item.message ?? null,
+              }))
+            : undefined,
+        }
+      : null,
+  };
+}
+
 export function registerStalkingAuthentication(app) {
   app.use(async (req, res, next) => {
-    // Covers existing routes and future stalking-prefixed routes:
-    // /stalking
-    // /stalking-history
-    // /stalking-ui
-    // /stalking-users
-    // /stalking/...
-    //
-    // Case-insensitive to match Express's default route behavior.
-    const isStalkingRoute = /^\/stalking(?:$|[-/])/i.test(req.path);
+    const protectedRoute = /^\/(?:stalking(?:$|[-/])|stalker-ui(?:$|\/))/i.test(
+      req.path,
+    );
 
-    if (!isStalkingRoute) {
+    if (!protectedRoute) {
       return next();
     }
 
@@ -97,12 +111,12 @@ export function registerStalkingAuthentication(app) {
           "Cache-Control": "no-cache",
         },
         signal: controller.signal,
-
-        // Do not follow redirects with authentication credentials.
         redirect: "error",
       });
 
       if (response.status === 401 || response.status === 403) {
+        await response.body?.cancel();
+
         return deny(
           res,
           401,
@@ -111,6 +125,13 @@ export function registerStalkingAuthentication(app) {
       }
 
       if (!response.ok) {
+        console.warn(
+          "[Stalking auth] Accounts endpoint returned HTTP",
+          response.status,
+        );
+
+        await response.body?.cancel();
+
         return deny(
           res,
           503,
@@ -139,7 +160,6 @@ export function registerStalkingAuthentication(app) {
         );
       }
 
-      // Only retain the verified identity needed by downstream handlers.
       req.stalkingAccount = {
         id: account.user.id,
         username: account.user.username ?? null,
@@ -148,10 +168,9 @@ export function registerStalkingAuthentication(app) {
 
       return next();
     } catch (error) {
-      // Do not log the cookie or authentication token.
       console.warn(
         "[Stalking auth] Account verification failed:",
-        error instanceof Error ? error.message : String(error),
+        JSON.stringify(describeFailure(error)),
       );
 
       return deny(res, 503, "Account verification is temporarily unavailable.");
