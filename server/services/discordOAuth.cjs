@@ -15,8 +15,9 @@ const DB_PATH = path.join(DB_DIR, "accounts.sqlite");
 const AVATAR_DIR = path.join(__dirname, "avatars");
 
 const AUTH_COOKIE_NAME = "__Secure-homesite_auth";
-const OAUTH_STATE_COOKIE_NAME = "__Secure-homesite_oauth_state";
+const AUTH_COOKIE_DOMAIN = "master3307.org";
 
+const OAUTH_STATE_COOKIE_NAME = "__Secure-homesite_oauth_state";
 const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
 
 const SESSION_TTL_DAYS = Math.max(
@@ -557,6 +558,7 @@ function registerDiscordOAuth(app) {
 
     const rawToken = createRandomToken();
     const createdAt = new Date();
+
     const expiresAt = new Date(
       createdAt.getTime() + getSessionMaxAgeMs(),
     ).toISOString();
@@ -640,26 +642,55 @@ function registerDiscordOAuth(app) {
     );
   }
 
-  function setAuthCookie(res, rawToken) {
-    res.cookie(AUTH_COOKIE_NAME, rawToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: getSessionMaxAgeMs(),
-    });
-  }
-
-  function clearAuthCookie(res) {
+  function clearLegacyHostAuthCookie(res) {
+    // Clear the previous host-only cookie issued by the accounts service.
     res.clearCookie(AUTH_COOKIE_NAME, {
       httpOnly: true,
       secure: true,
       sameSite: "lax",
       path: "/",
     });
+
+    // Also clear an explicitly accounts-scoped version, if present.
+    res.clearCookie(AUTH_COOKIE_NAME, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      domain: "accounts-api.master3307.org",
+      path: "/",
+    });
+  }
+
+  function setAuthCookie(res, rawToken) {
+    // Prevent old and new scopes from retaining the same cookie name.
+    clearLegacyHostAuthCookie(res);
+
+    res.cookie(AUTH_COOKIE_NAME, rawToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      domain: AUTH_COOKIE_DOMAIN,
+      path: "/",
+      maxAge: getSessionMaxAgeMs(),
+    });
+  }
+
+  function clearAuthCookie(res) {
+    // Clear the new shared-domain cookie.
+    res.clearCookie(AUTH_COOKIE_NAME, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      domain: AUTH_COOKIE_DOMAIN,
+      path: "/",
+    });
+
+    // Clear the old accounts-only cookie as well.
+    clearLegacyHostAuthCookie(res);
   }
 
   function setOAuthStateCookie(res, state) {
+    // OAuth state remains scoped to the accounts host.
     res.cookie(OAUTH_STATE_COOKIE_NAME, state, {
       httpOnly: true,
       secure: true,

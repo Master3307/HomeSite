@@ -29,6 +29,8 @@ import { createEnrichmentService } from "./discord-profile/enrichment.js";
 
 import { createPresenceTracker } from "./discord-profile/presence-tracker.js";
 
+import { registerStalkingAuthentication } from "./discord-profile/stalking-auth.js";
+
 import { registerAuthRoutes } from "./discord-profile/routes/auth.js";
 import { registerLiveUserRoute } from "./discord-profile/routes/live-user.js";
 import { registerProfileRoutes } from "./discord-profile/routes/profile.js";
@@ -48,6 +50,7 @@ const STALKING_HISTORY_PATH = path.join(
 );
 
 const STALKING_HISTORY_RETENTION_DAYS = 30;
+
 const STALKING_HISTORY_RETENTION_MS =
   STALKING_HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
@@ -88,6 +91,9 @@ app.use(
     },
   }),
 );
+
+// Enforce account authorization before any stalking route is handled.
+registerStalkingAuthentication(app);
 
 const client = createDiscordClient();
 
@@ -168,31 +174,23 @@ const activityTimer = setInterval(async () => {
 }, ACTIVITY_POLL_INTERVAL_MS);
 
 app.get("/health", (_req, res) => {
-  const presenceState = presenceTracker.getSnapshot();
-
   res.json({
     ok: true,
     discord_ready: client.isReady(),
     activity_tracking_ready: trackingReady,
-    presence_tracking: {
-      user_id: STALKING_USER_ID,
-      connected: presenceState.tracking.connected,
-      membership_verified: presenceState.tracking.membership_verified,
-      presence_available: presenceState.tracking.presence_available,
-      last_error: presenceState.tracking.last_error,
-    },
   });
 });
 
 registerAuthRoutes(app);
 
 app.get("/stalking", (_req, res) => {
-  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Cache-Control", "private, no-store");
+
   return res.json(presenceTracker.getSnapshot());
 });
 
 app.get("/stalking-history", async (_req, res) => {
-  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Cache-Control", "private, no-store");
 
   try {
     let content;
@@ -205,9 +203,10 @@ app.get("/stalking-history", async (_req, res) => {
     }
 
     const generatedAt = new Date();
+
     const cutoff = generatedAt.getTime() - STALKING_HISTORY_RETENTION_MS;
 
-    // Ignore an unfinished final line if a read overlaps an append.
+    // Ignore an unfinished final line if this read overlaps an append.
     const lines = content.split("\n");
     lines.pop();
 
@@ -284,9 +283,11 @@ const server = app.listen(PORT, "127.0.0.1", () => {
   console.log(`Presence tracker target: ${STALKING_USER_ID}`);
   console.log("Presence tracking mode: event-driven (no polling)");
   console.log(`Presence storage directory: ${STALKING_DIRECTORY}`);
-  console.log("Presence JSON endpoint: /stalking");
-  console.log("Presence history endpoint: /stalking-history");
-  console.log("Presence UI endpoint: /stalking-ui");
+  console.log("Presence JSON endpoint: /stalking (account-protected)");
+  console.log(
+    "Presence history endpoint: /stalking-history (account-protected)",
+  );
+  console.log("Presence UI endpoint: /stalking-ui (account-protected)");
   console.log(
     `Presence history retention: ${STALKING_HISTORY_RETENTION_DAYS} days`,
   );
