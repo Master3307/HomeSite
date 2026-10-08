@@ -185,36 +185,15 @@ app.get("/health", (_req, res) => {
 
 registerAuthRoutes(app);
 
-function requireLocalStalkingAccess(req, res, next) {
+app.get("/stalking", (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
 
-  const remoteAddress = req.socket.remoteAddress;
-
-  const isLoopback = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(
-    remoteAddress,
-  );
-
-  const hasForwardedHeaders = [
-    "forwarded",
-    "x-forwarded-for",
-    "x-real-ip",
-    "cf-connecting-ip",
-  ].some((header) => req.headers[header] !== undefined);
-
-  if (!isLoopback || hasForwardedHeaders) {
-    return res.status(403).json({
-      error: "Presence tracking is available through local access only.",
-    });
-  }
-
-  return next();
-}
-
-app.get("/stalking", requireLocalStalkingAccess, (_req, res) => {
   return res.json(presenceTracker.getSnapshot());
 });
 
-app.get("/stalking-history", requireLocalStalkingAccess, async (_req, res) => {
+app.get("/stalking-history", async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+
   try {
     let content;
 
@@ -228,8 +207,8 @@ app.get("/stalking-history", requireLocalStalkingAccess, async (_req, res) => {
     const generatedAt = new Date();
     const cutoff = generatedAt.getTime() - STALKING_HISTORY_RETENTION_MS;
 
-    // The writer terminates every entry with a newline.
-    // Ignore an unfinished final line if a read overlaps an append.
+    // Every completed log entry ends with a newline.
+    // Ignore an unfinished final line if this read overlaps an append.
     const lines = content.split("\n");
     lines.pop();
 
@@ -257,8 +236,6 @@ app.get("/stalking-history", requireLocalStalkingAccess, async (_req, res) => {
         throw new Error(`Invalid history entry at line ${index + 1}.`);
       }
 
-      // Filter at request time too, even if no tracker event
-      // has recently triggered on-disk retention cleanup.
       if (eventTime >= cutoff) {
         events.push(event);
       }
@@ -306,8 +283,8 @@ const server = app.listen(PORT, "127.0.0.1", () => {
   console.log(`Presence tracker target: ${STALKING_USER_ID}`);
   console.log("Presence tracking mode: event-driven (no polling)");
   console.log(`Presence storage directory: ${STALKING_DIRECTORY}`);
-  console.log("Presence JSON endpoint: /stalking (local-only)");
-  console.log("Presence history endpoint: /stalking-history (local-only)");
+  console.log("Presence JSON endpoint: /stalking");
+  console.log("Presence history endpoint: /stalking-history");
   console.log(
     `Presence history retention: ${STALKING_HISTORY_RETENTION_DAYS} days`,
   );
