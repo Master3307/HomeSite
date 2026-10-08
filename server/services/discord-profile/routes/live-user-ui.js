@@ -10,7 +10,6 @@ function escapeAttribute(value) {
 }
 
 export function registerLiveUserUiRoute(app) {
-  // Regex routing avoids version-specific string route syntax.
   app.get(/^\/(\d{17,20})-ui\/?$/, (req, res) => {
     const discordUserId = req.params[0];
 
@@ -135,9 +134,7 @@ export function registerLiveUserUiRoute(app) {
       gap: 10px;
     }
 
-    .user-ui .toolbar {
-      justify-content: space-between;
-    }
+    .user-ui .toolbar { justify-content: space-between; }
 
     .user-ui label {
       display: flex;
@@ -179,9 +176,7 @@ export function registerLiveUserUiRoute(app) {
       background: var(--bg-primary);
     }
 
-    .user-ui .profile-content {
-      padding: 28px 26px;
-    }
+    .user-ui .profile-content { padding: 28px 26px; }
 
     .user-ui .avatar-wrap {
       position: relative;
@@ -219,7 +214,6 @@ export function registerLiveUserUiRoute(app) {
     }
 
     .user-ui .profile-meta { margin-top: 8px; }
-
     .user-ui .pills { margin-top: 16px; }
 
     .user-ui .pill {
@@ -263,20 +257,26 @@ export function registerLiveUserUiRoute(app) {
       overflow-wrap: anywhere;
     }
 
-    .user-ui .activities {
+    .user-ui .activities,
+    .user-ui .guild-list {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 14px;
       margin-top: 18px;
     }
 
-    .user-ui .activity {
+    .user-ui .activity,
+    .user-ui .shared-guild {
       padding: 18px;
       border-radius: 13px;
       background: #ffffff08;
       border: 1px solid var(--border);
       min-width: 0;
       overflow-wrap: anywhere;
+    }
+
+    .user-ui .shared-guild.is-primary {
+      border-color: var(--link);
     }
 
     .user-ui .activity p { margin-top: 7px; }
@@ -334,7 +334,8 @@ export function registerLiveUserUiRoute(app) {
       .user-ui .profile-content { padding: 22px 18px; }
       .user-ui dl { grid-template-columns: 1fr; gap: 4px; }
       .user-ui dd { margin-bottom: 12px; }
-      .user-ui .activities { grid-template-columns: 1fr; }
+      .user-ui .activities,
+      .user-ui .guild-list { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -401,12 +402,19 @@ export function registerLiveUserUiRoute(app) {
 
     <section class="card">
       <h2>Presence & activities</h2>
+      <p class="muted notice" id="presence-source"></p>
       <div id="presence"></div>
     </section>
 
     <section class="card">
-      <h2>Configured server</h2>
+      <h2>Selected shared server</h2>
       <div class="section-body" id="guild"></div>
+    </section>
+
+    <section class="card">
+      <h2>All shared servers</h2>
+      <p class="muted notice" id="guild-scan-summary"></p>
+      <div class="guild-list" id="mutual-guilds"></div>
     </section>
 
     <section class="card">
@@ -425,7 +433,6 @@ export function registerLiveUserUiRoute(app) {
       const USER_ID = "${discordUserId}";
       const REFRESH_MS = 30000;
 
-      // Strip the optional trailing slash before resolving sibling routes.
       const pageUrl = new URL(window.location.href);
       pageUrl.pathname = pageUrl.pathname.replace(/\\/$/, "");
       pageUrl.search = "";
@@ -436,7 +443,8 @@ export function registerLiveUserUiRoute(app) {
       const ids = [
         "lookup-form", "lookup-id", "refresh", "auto-refresh",
         "theme", "updated", "error", "warnings", "profile",
-        "account", "json-link", "presence", "guild", "additional"
+        "account", "json-link", "presence", "guild", "additional",
+        "presence-source", "guild-scan-summary", "mutual-guilds"
       ];
 
       const elements = Object.fromEntries(
@@ -518,9 +526,7 @@ export function registerLiveUserUiRoute(app) {
           return '<span class="muted">Not available</span>';
         }
 
-        if (typeof value === "boolean") {
-          return value ? "Yes" : "No";
-        }
+        if (typeof value === "boolean") return value ? "Yes" : "No";
 
         if (typeof value === "object") {
           return '<pre>' + esc(JSON.stringify(value, null, 2)) + '</pre>';
@@ -555,17 +561,26 @@ export function registerLiveUserUiRoute(app) {
           esc(statusNames[status]) + '</span>';
       }
 
-      function membershipText(value) {
-        return {
-          member: "Member of the configured server",
-          not_member: "Not a member of the configured server",
-          unavailable: "Membership information unavailable"
-        }[value] ?? "Membership information unavailable";
+      function selectionText(data) {
+        if (data.guild) {
+          return (data.lookup?.selected_guild_source === "configured"
+            ? "Preferred server: "
+            : "Fallback server: ") + data.guild.name;
+        }
+
+        if (data.mutual_guilds?.length) {
+          return "Shared servers found; none currently available for selection";
+        }
+
+        return data.guild_scan?.complete
+          ? "No shared servers found"
+          : "Shared-server scan incomplete";
       }
 
       function render(data) {
         const user = data.user ?? {};
         const name = user.global_name || user.username || USER_ID;
+
         const username = user.username
           ? "@" + user.username +
             (user.discriminator && user.discriminator !== "0"
@@ -574,14 +589,12 @@ export function registerLiveUserUiRoute(app) {
           : USER_ID;
 
         const presence = data.presence;
-        const status = presence?.status ?? "unknown";
         const avatar = safeUrl(user.avatar);
-        const banner = imageHtml(user.banner, "banner", "Profile banner");
 
         document.title = name + " · Discord profile";
 
         elements.profile.innerHTML =
-          banner +
+          imageHtml(user.banner, "banner", "Profile banner") +
           '<div class="profile-content">' +
           '<div class="avatar-wrap">' +
           (avatar
@@ -590,15 +603,16 @@ export function registerLiveUserUiRoute(app) {
               esc(Array.from(name)[0] ?? "?") + '</div>') +
           imageHtml(user.avatar_decoration, "decoration", "") +
           '</div><div class="name-row"><h1>' + esc(name) + '</h1>' +
-          badgeHtml(status) + '</div>' +
+          badgeHtml(presence?.status ?? "unknown") + '</div>' +
           '<p class="muted profile-meta">' + esc(username) + '</p>' +
           '<p class="muted profile-meta">User ' + esc(user.id ?? USER_ID) +
           '</p><div class="pills">' +
           (user.bot ? '<span class="pill">Bot</span>' : "") +
           (user.system ? '<span class="pill">System account</span>' : "") +
-          '<span class="pill">' +
-          esc(membershipText(data.lookup?.membership_status)) +
-          '</span></div></div>';
+          '<span class="pill">' + esc(selectionText(data)) +
+          '</span><span class="pill">' +
+          esc(data.mutual_guilds?.length ?? 0) +
+          ' verified shared servers</span></div></div>';
 
         elements.account.innerHTML = fieldsHtml([
           ["User ID", user.id],
@@ -611,13 +625,20 @@ export function registerLiveUserUiRoute(app) {
           ["Badges", user.badges]
         ]);
 
+        elements["presence-source"].textContent = data.guild
+          ? "Gateway presence from " + data.guild.name +
+            " · " + data.guild.id
+          : "No available verified shared server selected.";
+
         renderPresence(presence);
         renderGuild(data);
+        renderMutualGuilds(data);
 
         elements.additional.innerHTML =
           detailsHtml("Lookup information", data.lookup) +
+          detailsHtml("Guild scan information", data.guild_scan) +
           detailsHtml("Formatted user", user) +
-          detailsHtml("Primary guild", user.primary_guild) +
+          detailsHtml("User's primary guild identity", user.primary_guild) +
           detailsHtml("Collectibles", user.collectibles) +
           detailsHtml("Raw Discord user", data.raw_user);
 
@@ -633,7 +654,6 @@ export function registerLiveUserUiRoute(app) {
           "Fetched " + dateText(data.fetched_at) +
           " · Times use your browser's local timezone.";
 
-        // Broken images should not leave large browser error placeholders.
         document.querySelectorAll(".user-ui img").forEach((image) => {
           image.addEventListener("error", () => {
             image.hidden = true;
@@ -645,30 +665,19 @@ export function registerLiveUserUiRoute(app) {
         if (!presence) {
           elements.presence.innerHTML =
             '<p class="muted notice">' +
-            'Presence unavailable. This does not mean offline.' +
-            '</p>';
+            'Presence unavailable. This does not mean offline.</p>';
           return;
         }
 
-        const clients =
-          presence.client_status ??
-          presence.clientStatus ??
-          presence.clients ??
-          null;
-
+        const clients = presence.client_status ?? {};
         let html = '<div class="pills">' +
           badgeHtml(presence.status, "Overall");
 
-        if (clients && typeof clients === "object") {
-          for (const platform of ["desktop", "mobile", "web"]) {
-            const raw = clients[platform];
-            const status = typeof raw === "object" && raw !== null
-              ? raw.status
-              : raw;
-
-            // An absent field is not silently relabeled offline here.
-            html += badgeHtml(status ?? "unknown", platform);
-          }
+        for (const platform of ["desktop", "mobile", "web"]) {
+          html += badgeHtml(
+            clients[platform] ?? "unknown",
+            platform
+          );
         }
 
         html += '</div>';
@@ -682,7 +691,7 @@ export function registerLiveUserUiRoute(app) {
             activities.map((activity) => {
               const type =
                 activityTypes[activity.type] ??
-                activity.type ??
+                activity.type_label ??
                 "Activity";
 
               return '<article class="activity">' +
@@ -696,16 +705,13 @@ export function registerLiveUserUiRoute(app) {
                   : "") +
                 detailsHtml("Activity data", activity) +
                 '</article>';
-            }).join("") +
-            '</div>';
+            }).join("") + '</div>';
         } else {
           html += '<p class="muted notice">' +
-            'No activities exposed in the formatted presence.' +
-            '</p>';
+            'No activities exposed in the formatted presence.</p>';
         }
 
         html += detailsHtml("Complete formatted presence", presence);
-
         elements.presence.innerHTML = html;
       }
 
@@ -713,33 +719,94 @@ export function registerLiveUserUiRoute(app) {
         const guild = data.guild;
         const member = data.member;
 
-        let html = '<p class="muted">' +
-          esc(membershipText(data.lookup?.membership_status)) +
-          '</p>';
-
-        if (guild) {
-          html += '<div class="guild-heading notice">' +
-            imageHtml(guild.icon, "guild-icon", "") +
-            '<h3>' + esc(guild.name ?? "Configured server") + '</h3>' +
-            '</div><div class="section-body">' +
-            fieldsHtml([
-              ["Guild ID", guild.id],
-              ["Member count", guild.member_count]
-            ]) + '</div>';
+        if (!guild || !member) {
+          elements.guild.innerHTML =
+            '<p class="muted">' + esc(selectionText(data)) + '</p>';
+          return;
         }
 
-        if (member && typeof member === "object") {
-          html += '<div class="section-body">' +
-            fieldsHtml(
-              Object.entries(member).map(([key, value]) => [
-                key.replaceAll("_", " "),
-                value
-              ])
-            ) + '</div>';
-        }
+        let html =
+          '<p class="muted">' +
+          (data.lookup?.selected_guild_source === "configured"
+            ? "The user belongs to the preferred server."
+            : "Using the first available verified shared server as fallback.") +
+          '</p><div class="guild-heading notice">' +
+          imageHtml(guild.icon, "guild-icon", "") +
+          '<h3>' + esc(guild.name) + '</h3>' +
+          '</div><div class="section-body">' +
+          fieldsHtml([
+            ["Guild ID", guild.id],
+            ["Member count", guild.member_count]
+          ]) + '</div>';
+
+        html += '<div class="section-body">' +
+          fieldsHtml(
+            Object.entries(member).map(([key, value]) => [
+              key.replaceAll("_", " "),
+              value
+            ])
+          ) + '</div>';
 
         html += detailsHtml("Complete member data", member);
         elements.guild.innerHTML = html;
+      }
+
+      function renderMutualGuilds(data) {
+        const guilds = data.mutual_guilds ?? [];
+        const scan = data.guild_scan ?? {};
+
+        elements["guild-scan-summary"].textContent =
+          guilds.length + " verified shared servers · " +
+          (scan.complete
+            ? "All enumerated bot guilds checked successfully"
+            : "Incomplete scan: some guilds could not be listed or checked") +
+          " · " + (scan.bot_guild_count ?? 0) + " bot guilds enumerated";
+
+        if (!guilds.length) {
+          elements["mutual-guilds"].innerHTML =
+            '<p class="muted">' +
+            (scan.complete
+              ? "No servers shared with this bot were found."
+              : "No shared servers verified yet. Failed checks may hide additional matches.") +
+            '</p>';
+          return;
+        }
+
+        elements["mutual-guilds"].innerHTML = guilds.map((guild) => {
+          const member = guild.member ?? {};
+          const roles = Array.isArray(member.roles)
+            ? member.roles.map((role) => role.name).join(", ")
+            : "";
+
+          return '<article class="shared-guild' +
+            (guild.is_primary ? ' is-primary' : '') + '">' +
+            '<div class="guild-heading">' +
+            imageHtml(guild.icon, "guild-icon", "") +
+            '<h3>' + esc(guild.name) + '</h3></div>' +
+            '<div class="pills">' +
+            (guild.is_primary
+              ? '<span class="pill">Selected server</span>'
+              : "") +
+            (guild.is_configured
+              ? '<span class="pill">Preferred server</span>'
+              : "") +
+            (!guild.available
+              ? '<span class="pill">Currently unavailable</span>'
+              : "") +
+            badgeHtml(guild.presence?.status ?? "unknown") +
+            '</div><div class="section-body">' +
+            fieldsHtml([
+              ["Guild ID", guild.id],
+              ["Member count", guild.member_count],
+              ["Display name", member.display_name],
+              ["Nickname", member.nickname],
+              ["Joined", dateText(member.joined_at)],
+              ["Roles", roles || "None"]
+            ]) + '</div>' +
+            detailsHtml("Member details", guild.member) +
+            detailsHtml("Presence details", guild.presence) +
+            '</article>';
+        }).join("");
       }
 
       async function refresh() {
@@ -755,10 +822,12 @@ export function registerLiveUserUiRoute(app) {
 
         loading = true;
         elements.refresh.disabled = true;
-        elements.refresh.textContent = "Refreshing…";
+        elements.refresh.textContent = "Scanning guilds…";
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 20000);
+
+        // Full guild scans can take longer than a single-user lookup.
+        const timeout = setTimeout(() => controller.abort(), 120000);
 
         try {
           const response = await fetch(apiUrl, {
@@ -797,7 +866,7 @@ export function registerLiveUserUiRoute(app) {
           elements.error.hidden = false;
           elements.error.textContent =
             (error.name === "AbortError"
-              ? "The API request timed out."
+              ? "The guild scan request timed out."
               : error.message) +
             " Any previously displayed profile may be out of date.";
         } finally {
