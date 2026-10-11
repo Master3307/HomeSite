@@ -17,10 +17,10 @@ const PRIVILEGED_ROLE_IDS = [
   "1479222319711780904",
 ];
 
-const LOBBY_CODE_FILE = path.resolve(
-  __dirname,
-  "../../../services/db/lobby-code.json",
-);
+const LOBBY_CODE_FILES = [
+  path.resolve(__dirname, "../../../services/db/lobby-code.json"),
+  path.resolve(__dirname, "../../../../public/lobby-code.json"),
+];
 
 // Keep simultaneous updates from interleaving.
 let lobbyUpdateQueue = Promise.resolve();
@@ -32,22 +32,21 @@ function hasPrivilegedRole(member) {
 }
 
 async function saveLobbyCode(data) {
-  await fs.mkdir(path.dirname(LOBBY_CODE_FILE), {
-    recursive: true,
-  });
+  const json = `${JSON.stringify(data, null, 2)}\n`;
 
-  const temporaryFile = `${LOBBY_CODE_FILE}.${randomUUID()}.tmp`;
+  for (const file of LOBBY_CODE_FILES) {
+    await fs.mkdir(path.dirname(file), {
+      recursive: true,
+    });
 
-  try {
-    await fs.writeFile(
-      temporaryFile,
-      `${JSON.stringify(data, null, 2)}\n`,
-      "utf8",
-    );
+    const temporaryFile = `${file}.${randomUUID()}.tmp`;
 
-    await fs.rename(temporaryFile, LOBBY_CODE_FILE);
-  } finally {
-    await fs.unlink(temporaryFile).catch(() => null);
+    try {
+      await fs.writeFile(temporaryFile, json, "utf8");
+      await fs.rename(temporaryFile, file);
+    } finally {
+      await fs.unlink(temporaryFile).catch(() => null);
+    }
   }
 }
 
