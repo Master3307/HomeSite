@@ -5,6 +5,10 @@ const {
   MessageFlags,
 } = require("discord.js");
 
+const fs = require("node:fs/promises");
+const path = require("node:path");
+const { randomUUID } = require("node:crypto");
+
 const TARGET_CHANNEL_ID = "1479194712111059137";
 const PING_ROLE_ID = "1487023716658319400";
 const PRIVILEGED_ROLE_IDS = [
@@ -13,10 +17,38 @@ const PRIVILEGED_ROLE_IDS = [
   "1479222319711780904",
 ];
 
+const LOBBY_CODE_FILE = path.resolve(
+  __dirname,
+  "../../../services/db/lobby-code.json",
+);
+
+// Keep simultaneous updates from interleaving.
+let lobbyUpdateQueue = Promise.resolve();
+
 function hasPrivilegedRole(member) {
   return PRIVILEGED_ROLE_IDS.some((roleId) =>
     member?.roles?.cache?.has(roleId),
   );
+}
+
+async function saveLobbyCode(data) {
+  await fs.mkdir(path.dirname(LOBBY_CODE_FILE), {
+    recursive: true,
+  });
+
+  const temporaryFile = `${LOBBY_CODE_FILE}.${randomUUID()}.tmp`;
+
+  try {
+    await fs.writeFile(
+      temporaryFile,
+      `${JSON.stringify(data, null, 2)}\n`,
+      "utf8",
+    );
+
+    await fs.rename(temporaryFile, LOBBY_CODE_FILE);
+  } finally {
+    await fs.unlink(temporaryFile).catch(() => null);
+  }
 }
 
 async function clearChannel(channel, keepMessageId = null) {
@@ -64,7 +96,12 @@ async function clearChannel(channel, keepMessageId = null) {
   }
 }
 
-async function postLobbyCode(client, code, desc = null, updatedById = null) {
+async function performLobbyUpdate(
+  client,
+  code,
+  desc = null,
+  updatedById = null,
+) {
   const channel = await client.channels
     .fetch(TARGET_CHANNEL_ID)
     .catch(() => null);
@@ -79,9 +116,14 @@ async function postLobbyCode(client, code, desc = null, updatedById = null) {
     );
   }
 
+  const user = updatedById
+    ? await client.users.fetch(updatedById).catch(() => null)
+    : null;
+
   await clearChannel(channel);
 
-  const unixTimestamp = Math.floor(Date.now() / 1000);
+  const updatedAt = new Date();
+  const unixTimestamp = Math.floor(updatedAt.getTime() / 1000);
 
   const updatedValue = updatedById
     ? `Updated by <@${updatedById}>\n<t:${unixTimestamp}:R>`
@@ -100,7 +142,7 @@ async function postLobbyCode(client, code, desc = null, updatedById = null) {
     embed.setDescription(desc);
   }
 
-  return channel.send({
+  const sentMessage = await channel.send({
     content: `||<@&${PING_ROLE_ID}>||\n**Current Lobby Code:**`,
     embeds: [embed],
     allowedMentions: {
@@ -108,6 +150,35 @@ async function postLobbyCode(client, code, desc = null, updatedById = null) {
       users: updatedById ? [updatedById] : [],
     },
   });
+
+  await saveLobbyCode({
+    code,
+    description: desc || null,
+    updatedBy: updatedById
+      ? {
+          id: updatedById,
+          username: user?.username ?? null,
+          displayName: user?.globalName ?? user?.username ?? null,
+        }
+      : null,
+    updatedAt: updatedAt.toISOString(),
+    updatedAtUnix: unixTimestamp,
+    channelId: TARGET_CHANNEL_ID,
+    messageId: sentMessage.id,
+  });
+
+  return sentMessage;
+}
+
+function postLobbyCode(client, code, desc = null, updatedById = null) {
+  const update = lobbyUpdateQueue.then(() =>
+    performLobbyUpdate(client, code, desc, updatedById),
+  );
+
+  // A failed update must not block subsequent updates.
+  lobbyUpdateQueue = update.catch(() => undefined);
+
+  return update;
 }
 
 module.exports = {

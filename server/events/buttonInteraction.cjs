@@ -557,7 +557,9 @@ module.exports = {
 
       if (action === "lobbyapprove") {
         try {
-          await postLobbyCode(interaction.client, code, null);
+          await interaction.deferUpdate();
+
+          await postLobbyCode(interaction.client, code, null, userId);
 
           const approvedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
             .setColor("#57F287")
@@ -567,7 +569,7 @@ module.exports = {
               inline: false,
             });
 
-          await interaction.update({
+          await interaction.editReply({
             embeds: [approvedEmbed],
             components: disabledRows,
           });

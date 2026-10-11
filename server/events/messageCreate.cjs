@@ -109,7 +109,7 @@ module.exports = {
 
       if (hasPrivilegedRole(message.member)) {
         try {
-          await postLobbyCode(client, code, null);
+          await postLobbyCode(client, code, null, author.id);
         } catch (error) {
           console.error(
             "Failed to update lobby code from messageCreate:",
