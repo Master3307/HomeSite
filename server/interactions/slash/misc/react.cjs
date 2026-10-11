@@ -9,10 +9,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("react")
     .setDescription("Add an emoji reaction to a message in this chat.")
-    .setIntegrationTypes(
-      ApplicationIntegrationType.GuildInstall,
-      ApplicationIntegrationType.UserInstall,
-    )
+    .setIntegrationTypes(ApplicationIntegrationType.GuildInstall)
     .setContexts(
       InteractionContextType.Guild,
       InteractionContextType.BotDM,
