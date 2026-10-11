@@ -1,0 +1,446 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+  width="1480"
+  height="944"
+  viewBox="0 -240 1480 944"
+  preserveAspectRatio="xMidYMax meet"
+  class="bobbing-cat">
+
+  <defs>
+    <clipPath id="left-paw-clip">
+      <path d="
+        M165 675
+        C110 595 20 425 20 345
+        C20 245 145 230 260 330
+        L345 410 Z"/>
+    </clipPath>
+
+    <clipPath id="right-paw-clip">
+      <path d="
+        M1110 682
+        C1050 590 960 440 960 355
+        C960 255 1080 250 1190 340
+        L1280 425 Z"/>
+    </clipPath>
+
+    <path id="mask-shape" d="
+      M728 223
+      C598 211 473 253 415 353
+      C353 461 399 574 493 627
+      C586 680 737 684 862 641
+      C984 599 1060 527 1061 434
+      C1063 339 951 252 840 232
+      Q783 222 728 223 Z"/>
+
+    <clipPath id="mask-clip">
+      <use href="#mask-shape"/>
+    </clipPath>
+
+    <path id="axe-blade-shape" d="
+      M775 -162
+      L907 -42
+      Q914 -35 905 -24
+      L850 43
+      C811 91 798 147 791 204
+      L715 255
+      C575 216 473 106 445 -18
+      C568 -24 684 -76 775 -162 Z"/>
+
+    <clipPath id="axe-blade-clip">
+      <use href="#axe-blade-shape"/>
+    </clipPath>
+  </defs>
+
+  <!-- Axe handle -->
+  <g stroke="#624b4b"
+     stroke-width="27"
+     stroke-linecap="round"
+     stroke-linejoin="round">
+    <path fill="#b99f83" d="
+      M742 -164
+      L719 -187
+      Q706 -201 720 -215
+      L740 -232
+      Q753 -242 766 -230
+      L1367 316
+      Q1382 329 1369 345
+      L1347 369
+      Q1334 382 1319 369 Z"/>
+
+    <path fill="none"
+      stroke="#d4b99a"
+      stroke-width="10"
+      d="M930 -42 L1347 338"/>
+  </g>
+
+  <!-- Original cat silhouette -->
+  <g stroke="#624b4b"
+     stroke-width="34"
+     stroke-linecap="round"
+     stroke-linejoin="round">
+    <path fill="#fff" d="
+      M165 675
+      Q190 360 470 205
+      Q490 95 540 20
+      Q620 30 720 130
+      Q955 115 1150 215
+      Q1250 155 1340 150
+      Q1390 265 1390 445
+      Q1470 565 1460 685 Z"/>
+
+    <path fill="#fff" stroke="none" d="
+      M165 675
+      C110 595 20 425 20 345
+      C20 245 145 230 260 330
+      L345 410
+      L205 658
+      L175 658 Z"/>
+  </g>
+
+  <!-- Inner ears -->
+  <g fill="#fda690">
+    <path d="
+      M525 195
+      Q535 125 565 80
+      Q630 105 675 155
+      Q590 165 525 195 Z"/>
+
+    <path transform="translate(-6 -6)" d="
+      M1135 300
+      Q1205 235 1305 228
+      Q1335 330 1335 455
+      Q1245 355 1135 300 Z"/>
+  </g>
+
+  <!-- Ear scratches -->
+  <g fill="none"
+     stroke="#ac8c80"
+     stroke-width="6"
+     stroke-linecap="round"
+     opacity=".8">
+    <path d="M565 122 L578 151"/>
+    <path d="M583 115 L598 149"/>
+    <path d="M602 130 L612 156"/>
+    <path d="M1248 256 L1260 289"/>
+    <path d="M1267 251 L1280 291"/>
+    <path d="M1287 261 L1297 298"/>
+  </g>
+
+  <!-- Cheeks -->
+  <g fill="#f6dfdd">
+    <ellipse cx="382" cy="530" rx="59" ry="47"/>
+    <path d="M1015 580 Q1010 625 1055 645 Z"/>
+  </g>
+
+  <!-- Right mask strap -->
+  <path fill="none"
+    stroke="#624b4b"
+    stroke-width="22"
+    stroke-linecap="round"
+    d="M981 333 L1063 285"/>
+
+  <!-- Mask base -->
+  <use href="#mask-shape" fill="#eeeae4"/>
+
+  <g clip-path="url(#mask-clip)">
+    <!-- Continuous curved edge shading.
+         No pointed wedge or angular termination. -->
+    <path fill="#d7d2c9" d="
+      M728 223
+      C598 211 473 253 415 353
+      C353 461 399 574 493 627
+      C586 680 737 684 862 641
+      C984 599 1060 527 1061 434
+      C1048 524 969 589 854 623
+      C735 658 600 650 514 602
+      C427 553 395 457 438 369
+      C489 268 603 228 728 223 Z"/>
+
+    <!-- Small curved highlight, rather than a broad stripe -->
+    <path fill="#faf8f3" opacity=".8" d="
+      M457 332
+      C527 261 637 236 743 243
+      C828 247 900 270 953 310
+      C890 280 816 266 741 264
+      C634 259 533 280 457 332 Z"/>
+
+    <!-- Eyes unchanged -->
+    <g fill="#624b4b">
+      <ellipse cx="526" cy="462"
+        rx="72" ry="73"
+        transform="rotate(-10 526 462)"/>
+      <ellipse cx="930" cy="480"
+        rx="72" ry="73"
+        transform="rotate(11 930 480)"/>
+    </g>
+
+    <!-- Eight vents unchanged -->
+    <g fill="#71615c">
+      <ellipse cx="679" cy="302" rx="18" ry="19"/>
+      <ellipse cx="753" cy="306" rx="18" ry="19"/>
+      <ellipse cx="685" cy="439" rx="18" ry="20"/>
+      <ellipse cx="759" cy="443" rx="18" ry="20"/>
+      <ellipse cx="689" cy="519" rx="18" ry="20"/>
+      <ellipse cx="763" cy="523" rx="18" ry="20"/>
+      <ellipse cx="693" cy="596" rx="18" ry="20"/>
+      <ellipse cx="767" cy="600" rx="18" ry="20"/>
+    </g>
+
+    <!-- Red mask markings -->
+    <g fill="#e95361">
+      <path d="
+        M595 358
+        Q606 349 616 362
+        L632 388
+        Q640 402 629 410
+        Q617 418 607 405
+        L592 380
+        Q584 367 595 358 Z"/>
+
+      <path d="
+        M832 367
+        Q846 354 857 367
+        Q866 378 853 389
+        L833 405
+        Q820 414 812 403
+        Q805 393 817 382 Z"/>
+
+      <path d="
+        M567 558
+        Q581 546 592 558
+        Q600 568 588 578
+        L575 587
+        Q563 594 554 584
+        Q548 575 559 565 Z"/>
+
+      <path d="
+        M854 568
+        Q866 559 876 570
+        L888 583
+        Q895 593 883 600
+        Q872 606 863 596
+        L852 583
+        Q846 576 854 568 Z"/>
+    </g>
+
+    <!-- Shorter, tapered left rim chip -->
+    <path fill="#624b4b" d="
+      M487 283
+      Q505 272 521 267
+      L518 282
+      Q527 289 530 304
+      L535 322
+      L522 307
+      L514 290
+      L506 289
+      L504 302
+      Q503 307 498 305
+      Q494 303 494 298
+      L494 290 Z"/>
+
+    <!-- Blood flecks -->
+    <g fill="#cc3947">
+      <ellipse cx="784" cy="284" rx="10" ry="8"
+        transform="rotate(14 784 284)"/>
+      <circle cx="799" cy="308" r="5"/>
+      <ellipse cx="721" cy="388" rx="8" ry="11"
+        transform="rotate(-12 721 388)"/>
+      <circle cx="633" cy="335" r="4"/>
+      <circle cx="617" cy="490" r="4"/>
+    </g>
+
+    <!-- Surface wear -->
+    <g fill="none"
+       stroke="#b5aaa1"
+       stroke-width="4"
+       stroke-linecap="round"
+       opacity=".7">
+      <path d="M436 510 L451 525"/>
+      <path d="M432 524 L446 539"/>
+      <path d="M737 366 L749 349"/>
+      <path d="M745 372 L757 354"/>
+      <path d="M623 613 L632 628"/>
+      <path d="M635 612 L644 626"/>
+    </g>
+  </g>
+
+  <!-- Draw the outline last so shading cannot cover its inner edge -->
+  <use href="#mask-shape"
+    fill="none"
+    stroke="#624b4b"
+    stroke-width="34"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+
+  <!-- Axe blade unchanged -->
+  <use href="#axe-blade-shape" fill="#8192aa"/>
+
+  <g clip-path="url(#axe-blade-clip)">
+    <path fill="#afc0d2" d="
+      M775 -162
+      L907 -42
+      L882 -11
+      Q869 -4 853 -16
+      L750 -111 Z"/>
+
+    <path fill="#c8d8e8" d="
+      M442 -23
+      C507 -24 569 -42 624 -66
+      Q644 -54 627 -28
+      L610 -6
+      Q599 10 613 21
+      Q626 31 645 18
+      Q667 3 679 17
+      Q691 30 680 47
+      L663 73
+      Q653 92 668 103
+      Q684 113 702 95
+      Q720 77 734 90
+      Q747 101 740 122
+      L727 166
+      Q721 190 739 205
+      L758 224
+      L715 255
+      C575 216 473 106 442 -23 Z"/>
+
+    <path fill="#f0f5f8" d="
+      M459 -6
+      Q513 -8 561 -21
+      Q552 6 521 21
+      Q505 31 515 45
+      Q528 60 551 48
+      L578 32
+      Q566 62 546 78
+      Q534 89 544 104
+      Q557 121 582 105
+      L607 88
+      Q592 122 583 138
+      Q580 152 596 170
+      Q645 218 715 241
+      L715 255
+      C586 218 490 121 459 -6 Z"/>
+  </g>
+
+  <use href="#axe-blade-shape"
+    fill="none"
+    stroke="#624b4b"
+    stroke-width="27"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+
+  <path fill="none"
+    stroke="#624b4b"
+    stroke-width="23"
+    stroke-linecap="round"
+    d="M741 -69 L801 -15"/>
+
+  <!-- Blade-mask contact -->
+  <path fill="none"
+    stroke="#9c2937"
+    stroke-width="12"
+    stroke-linecap="round"
+    d="M790 207 L716 258"/>
+
+  <path fill="#ce3545" d="
+    M784 203
+    L796 210
+    Q758 235 725 261
+    Q712 270 699 263
+    L680 253
+    Q673 249 677 243
+    Q681 238 690 243
+    L710 249
+    Q744 227 784 203 Z"/>
+
+  <path fill="#cf3546" d="
+    M711 253
+    Q723 249 727 259
+    L719 281
+    L716 306
+    Q715 317 707 316
+    Q699 315 701 303
+    L705 281
+    L703 266 Z"/>
+
+  <path fill="#c33442" d="
+    M692 251
+    L701 256
+    L693 274
+    Q689 282 683 278
+    Q679 275 683 268 Z"/>
+
+  <!-- Original right paw -->
+  <path fill="#fff"
+    stroke="#624b4b"
+    stroke-width="34"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    d="
+      M1110 682
+      C1050 590 960 440 960 355
+      C960 255 1080 250 1190 340
+      L1280 425"/>
+
+  <!-- Original paw pads -->
+  <g fill="#fda690" clip-path="url(#left-paw-clip)">
+    <ellipse cx="145" cy="495" rx="73" ry="74"/>
+    <ellipse cx="70" cy="378" rx="38" ry="40"/>
+    <circle cx="158" cy="363" r="31"/>
+  </g>
+
+  <g fill="#fda690" clip-path="url(#right-paw-clip)">
+    <ellipse cx="1085" cy="503" rx="74" ry="75"/>
+    <ellipse cx="1010" cy="386" rx="37" ry="40"/>
+    <circle cx="1100" cy="373" r="31"/>
+  </g>
+
+  <!-- Left paw scratches -->
+  <g clip-path="url(#left-paw-clip)"
+     fill="none"
+     stroke="#a68b80"
+     stroke-width="6"
+     stroke-linecap="round"
+     opacity=".85">
+    <path d="M131 472 L153 502"/>
+    <path d="M145 465 L167 496"/>
+    <path d="M158 471 L179 501"/>
+    <path d="M123 487 L144 516"/>
+    <path d="M235 580 L226 601"/>
+    <path d="M247 585 L238 606"/>
+    <path d="M258 589 L250 609"/>
+  </g>
+
+  <!-- Right paw scratches -->
+  <g clip-path="url(#right-paw-clip)"
+     fill="none"
+     stroke="#a68b80"
+     stroke-width="6"
+     stroke-linecap="round"
+     opacity=".85">
+    <path d="M1066 480 L1089 511"/>
+    <path d="M1080 473 L1104 505"/>
+    <path d="M1094 481 L1115 511"/>
+    <path d="M1058 494 L1080 523"/>
+    <path d="M1142 603 L1162 610"/>
+    <path d="M1147 616 L1167 623"/>
+    <path d="M1153 629 L1172 635"/>
+  </g>
+
+  <!-- Original paw outlines -->
+  <g fill="none"
+     stroke="#624b4b"
+     stroke-width="34"
+     stroke-linecap="round"
+     stroke-linejoin="round">
+    <path d="
+      M165 675
+      C110 595 20 425 20 345
+      C20 245 145 230 260 330
+      L345 410"/>
+
+    <path d="
+      M1110 682
+      C1050 590 960 440 960 355
+      C960 255 1080 250 1190 340
+      L1280 425"/>
+  </g>
+</svg>
