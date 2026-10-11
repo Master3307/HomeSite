@@ -1,0 +1,376 @@
+/* =========================================================
+   Lobby card wrapper
+   Requires:
+   .lobby-cat-wrap
+     > .card.cat-card.lobby-cat-card.lobby-panel
+     > .cat-hitbox
+   ========================================================= */
+
+   .lobby-cat-wrap {
+    --lobby-cat-width: 130px;
+    --lobby-cat-height: 61.83783784px;
+    --lobby-cat-right: 26px;
+
+    position: relative;
+    display: block;
+
+    width: 95%;
+    max-width: 777px;
+    min-width: 0;
+
+    margin: 69px auto 42px;
+
+    /* Reserve the cat's height immediately above the card. */
+    padding-top: var(--lobby-cat-height);
+
+    overflow: visible;
+    isolation: isolate;
+  }
+
+  /* Allow hearts to float outside cat cards. */
+  .cat-card {
+    overflow: visible;
+  }
+
+  /* The wrapper handles the card's outer width and spacing. */
+  .lobby-cat-wrap > .card.lobby-cat-card {
+    position: relative;
+    display: block;
+
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+
+    margin: 0;
+    padding: 28px 26px;
+
+    overflow: visible;
+  }
+
+  /* =========================================================
+     Cat hitbox
+     ========================================================= */
+
+  .cat-hitbox {
+    position: relative;
+    width: fit-content;
+    overflow: visible;
+    background: transparent;
+    cursor: grab;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .cat-hitbox:active {
+    cursor: grabbing;
+  }
+
+  .cat-hitbox:focus-visible {
+    outline: 2px solid #fda690;
+    outline-offset: 6px;
+    border-radius: 8px;
+  }
+
+  /* Sit on the top-right edge, not centered. */
+  .lobby-cat-wrap > .cat-hitbox {
+    position: absolute;
+    top: 0;
+    right: var(--lobby-cat-right);
+    bottom: auto;
+    left: auto;
+    z-index: 3;
+
+    display: block;
+    width: var(--lobby-cat-width);
+    height: var(--lobby-cat-height);
+    min-width: 0;
+
+    margin: 0;
+    padding: 0;
+
+    transform: none;
+    overflow: visible;
+  }
+
+  /* =========================================================
+     Cat image and animation wrappers
+     ========================================================= */
+
+  /* Gentle idle squish: vertical only, anchored at the bottom. */
+  .cat-idle-animation {
+    pointer-events: none;
+    transform-origin: center bottom;
+    animation:
+      cat-idle-squish 2.4s
+      cubic-bezier(0.37, 0, 0.63, 1)
+      infinite;
+  }
+
+  /* Click squish remains controlled by the JSX animation. */
+  .cat-pet-animation {
+    pointer-events: none;
+    transform-origin: center bottom;
+  }
+
+  .lobby-cat-wrap .cat-idle-animation,
+  .lobby-cat-wrap .cat-pet-animation {
+    display: block;
+    width: 100%;
+    height: 100%;
+
+    margin: 0;
+    padding: 0;
+
+    transform-origin: center bottom;
+    pointer-events: none;
+  }
+
+  /* Default dimensions preserve the intended proportions. */
+  .bobbing-cat {
+    display: block;
+    width: 130px;
+    height: 61.83783784px;
+    zoom: 1;
+    pointer-events: none;
+  }
+
+  /* Responsive dimensions for the lobby cat. */
+  .lobby-cat-wrap .bobbing-cat {
+    display: block;
+
+    width: var(--lobby-cat-width);
+    height: var(--lobby-cat-height);
+    max-width: none;
+    max-height: none;
+
+    margin: 0;
+    padding: 0;
+    zoom: 1;
+
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  @keyframes cat-idle-squish {
+    0%,
+    100% {
+      transform: scaleY(1);
+    }
+
+    50% {
+      transform: scaleY(0.97);
+    }
+  }
+
+  /* =========================================================
+     Petting hearts
+     ========================================================= */
+
+  /* Overlay does not affect layout or intercept clicks. */
+  .cat-hearts {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .lobby-cat-wrap .cat-hearts {
+    z-index: 4;
+  }
+
+  /* Fixed-size hearts, centered on their spawn positions. */
+  .cat-heart-position {
+    position: absolute;
+    width: 36px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  /* Movement and opacity only: no mid-flight size change. */
+  .cat-petting-heart {
+    display: block;
+    width: 100%;
+    height: auto;
+    opacity: 0;
+    scale: none;
+    pointer-events: none;
+    transform-origin: center;
+
+    animation:
+      cat-heart-rise 1s linear 240ms both,
+      cat-heart-opacity 1s linear 240ms both;
+  }
+
+  /* Constant-speed upward movement. */
+  @keyframes cat-heart-rise {
+    from {
+      transform: translateY(4px);
+    }
+
+    to {
+      transform: translateY(-72px);
+    }
+  }
+
+  /* Fade in, remain visible, then fade out as movement ends. */
+  @keyframes cat-heart-opacity {
+    0% {
+      opacity: 0;
+      animation-timing-function: ease-out;
+    }
+
+    10% {
+      opacity: 1;
+    }
+
+    65% {
+      opacity: 1;
+      animation-timing-function: ease-in-out;
+    }
+
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* Reduced-motion hearts fade without rising or scaling. */
+  @keyframes cat-heart-fade {
+    0% {
+      opacity: 0;
+      animation-timing-function: ease-out;
+    }
+
+    10% {
+      opacity: 1;
+    }
+
+    65% {
+      opacity: 1;
+      animation-timing-function: ease-in-out;
+    }
+
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cat-idle-animation {
+      animation: none;
+    }
+
+    .cat-petting-heart {
+      transform: none;
+      animation: cat-heart-fade 1.4s linear 500ms both;
+    }
+  }
+
+  /* =========================================================
+     Lobby layout safeguards
+     Existing visual styles remain in LobbyCode.css.
+     ========================================================= */
+
+  .lobby-cat-wrap .lobby-code-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .lobby-cat-wrap .lobby-code-field {
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .lobby-cat-wrap .lobby-copy-button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .lobby-cat-wrap .lobby-description,
+  .lobby-cat-wrap .lobby-error,
+  .lobby-cat-wrap .lobby-copy-status {
+    overflow-wrap: anywhere;
+  }
+
+  .lobby-cat-wrap .lobby-updater {
+    min-width: 0;
+  }
+
+  .lobby-cat-wrap .lobby-avatar {
+    flex-shrink: 0;
+  }
+
+  .lobby-cat-wrap .lobby-updater-info {
+    min-width: 0;
+  }
+
+  .lobby-cat-wrap .lobby-updater-name,
+  .lobby-cat-wrap .lobby-updater-username {
+    overflow-wrap: anywhere;
+  }
+
+  .lobby-cat-wrap .lobby-timestamp {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .lobby-cat-wrap .lobby-timestamp > .material-symbols-outlined {
+    flex-shrink: 0;
+  }
+
+  .lobby-cat-wrap .lobby-timestamp > span:last-child {
+    min-width: 0;
+  }
+
+  /* =========================================================
+     Mobile
+     ========================================================= */
+
+  @media (max-width: 480px) {
+    .lobby-cat-wrap {
+      --lobby-cat-width: 110px;
+      --lobby-cat-height: 52.32432433px;
+      --lobby-cat-right: 16px;
+
+      width: 95%;
+      margin-bottom: 32px;
+    }
+
+    .lobby-cat-wrap > .card.lobby-cat-card {
+      padding: 22px 16px;
+    }
+
+    .lobby-cat-wrap .lobby-copy-button {
+      padding: 10px 12px;
+      gap: 6px;
+      font-size: 0.9rem;
+    }
+
+    .lobby-cat-wrap .lobby-code-field {
+      font-size: 16px;
+    }
+  }
+
+  /* Extra-narrow screens */
+  @media (max-width: 340px) {
+    .lobby-cat-wrap {
+      --lobby-cat-right: 12px;
+    }
+
+    .lobby-cat-wrap > .card.lobby-cat-card {
+      padding-right: 12px;
+      padding-left: 12px;
+    }
+
+    .lobby-cat-wrap .lobby-copy-button {
+      padding-right: 10px;
+      padding-left: 10px;
+    }
+  }

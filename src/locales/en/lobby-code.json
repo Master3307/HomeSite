@@ -1,0 +1,29 @@
+{
+    "currentLobbyLabel": "Current lobby",
+    "lobbyCodeLabel": "Lobby code",
+    "loadingPlaceholder": "Loading…",
+    "noActiveLobbyPlaceholder": "No active lobby",
+    "unknownUser": "Unknown user",
+    "updatedByLabel": "Updated by",
+    "updatedAtLabel": "Updated",
+    "petCatLabel": "Pet the cat",
+    "copyButton": {
+      "copy": "Copy",
+      "copying": "Copying…",
+      "copied": "Copied!",
+      "retry": "Retry",
+      "copyAriaLabel": "Copy lobby code",
+      "copiedAriaLabel": "Lobby code copied"
+    },
+    "copyStatus": {
+      "success": "Lobby code copied to clipboard.",
+      "error": "Could not copy. Select the code and copy it manually."
+    },
+    "errors": {
+      "requestFailed": "Lobby request failed ({{status}}).",
+      "invalidResponse": "The lobby response is not a valid object.",
+      "invalidCode": "The lobby code must be a string.",
+      "loadFailed": "Could not load the lobby code.",
+      "refreshFailed": "Could not refresh. Showing the last loaded lobby."
+    }
+  }

@@ -30,6 +30,13 @@
     "opsz" 24;
 }
 
+/* Header / login positioning */
+:root {
+  /* Set this to the actual height of your fixed header. */
+  --header-height: 44px;
+  --login-header-gap: 1px;
+}
+
 /* Theme */
 :root,
 :root[data-theme="dark"] {
@@ -104,10 +111,10 @@ body::before {
   inset: 0;
   z-index: -1;
   background-image: linear-gradient(
-  to bottom,
-  var(--bg-secondary) 0%,
-  var(--bg-primary) 80%
-);
+    to bottom,
+    var(--bg-secondary) 0%,
+    var(--bg-primary) 80%
+  );
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
@@ -172,7 +179,6 @@ button:hover {
   top: 0;
   left: 0;
   width: 100%;
-
   z-index: 1000;
 
   /* Blue/tinted background — adjust alpha to taste */
@@ -191,8 +197,6 @@ button:hover {
   justify-content: center;
   text-align: center;
 }
-
-
 
 /* Card */
 .card {
@@ -225,9 +229,8 @@ button:hover {
   backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px); /* Safari */
   box-shadow:
-  0 10px 30px rgba(0, 0, 0, 0.14),
-  inset 0 1px 0 rgba(255, 255, 255, 0.047);
-
+    0 10px 30px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.047);
 }
 
 .about-card {
@@ -395,8 +398,8 @@ button:hover {
   backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px); /* Safari */
   box-shadow:
-  0 10px 30px rgba(0, 0, 0, 0.14),
-  inset 0 1px 0 rgba(255, 255, 255, 0.047);
+    0 10px 30px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.047);
 }
 
 .picker select:hover {
@@ -417,7 +420,8 @@ button:hover {
   --presence-image-left: 1.3rem;
   --presence-image-gap: 0.69rem;
   --presence-side-slot: calc(
-    var(--presence-image-left) + var(--presence-image-size) + var(--presence-image-gap)
+    var(--presence-image-left) + var(--presence-image-size) +
+      var(--presence-image-gap)
   );
 
   position: relative;
@@ -707,6 +711,7 @@ button:hover {
   from {
     transform: translateX(0);
   }
+
   to {
     transform: translateX(calc(var(--overflow-distance) * -1));
   }
@@ -730,7 +735,8 @@ button:hover {
     --presence-image-left: 0.8rem;
     --presence-image-gap: 0.8rem;
     --presence-side-slot: calc(
-      var(--presence-image-left) + var(--presence-image-size) + var(--presence-image-gap)
+      var(--presence-image-left) + var(--presence-image-size) +
+        var(--presence-image-gap)
     );
 
     width: min(100%, 70rem);
@@ -771,8 +777,6 @@ button:hover {
 
   .discord-card__tag {
     font-size: 0.24rem;
-
-
   }
 
   .redirect-info {
@@ -782,17 +786,14 @@ button:hover {
     opacity: 0.7;
     overflow-wrap: anywhere;
   }
-
 }
 
-
 /* Account / Login */
-
 .login-below-head {
   position: fixed;
-  top: 5px; /* directly below the fixed header */
+  top: calc(var(--header-height) + var(--login-header-gap));
   right: 5px;
-  z-index: 1000;
+  z-index: 999;
 
   display: flex;
   justify-content: flex-end;
@@ -802,7 +803,6 @@ button:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   padding: 9px 16px;
 
   color: var(--text-primary);
@@ -821,8 +821,6 @@ button:hover {
   color: var(--text-primary);
   background-color: var(--accent-hover);
 }
-
-
 
 .accountMenu {
   display: inline-flex;
@@ -853,7 +851,6 @@ button:hover {
   flex: 0 0 auto;
   width: 34px;
   height: 34px;
-
   object-fit: cover;
   border-radius: 50%;
   user-select: none;
@@ -875,7 +872,6 @@ button:hover {
   min-height: 32px;
   padding: 6px 10px;
   border-radius: 10px;
-
   font-size: 0.78rem;
 }
 
@@ -885,6 +881,11 @@ button:hover {
 }
 
 @media (max-width: 420px) {
+  :root {
+    /* Adjust this if your mobile header has a different height. */
+    --header-height: 64px;
+  }
+
   .accountMenu {
     max-width: 68vw;
     gap: 6px;
@@ -906,7 +907,6 @@ button:hover {
   }
 }
 
-
 /* Yellow/black construction-style text */
 .constructionText {
   display: inline-block;
@@ -921,6 +921,7 @@ button:hover {
     #111 13px
   );
   margin-top: 50px;
+
   /* Text on top */
   color: white;
   -webkit-text-stroke: 1px #111;
@@ -928,13 +929,11 @@ button:hover {
 
   text-align: center;
   font-size: 1.3rem;
-
   font-weight: 900;
   padding: 0.25em 0.8em;
 }
 
 /* Twemoji */
-
 img.discord-emoji {
   width: 1em;
   height: 1em;
@@ -943,7 +942,6 @@ img.discord-emoji {
   display: inline-block;
   object-fit: contain;
 }
-
 
 .language-picker {
   position: relative;
@@ -972,12 +970,9 @@ img.discord-emoji {
   cursor: pointer;
 }
 
-.language-select-option[aria-selected='true'] {
+.language-select-option[aria-selected="true"] {
   font-weight: 700;
 }
-
-
-
 
 .discord-presence__music-link {
   color: inherit;
@@ -1041,160 +1036,4 @@ img.discord-emoji {
   outline: 2px solid currentColor;
   outline-offset: 2px;
   border-radius: 2px;
-}
-.cat-hitbox {
-  position: relative;
-  width: fit-content;
-  overflow: visible;
-  background: transparent;
-  cursor: grab;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.cat-hitbox:active {
-  cursor: grabbing;
-}
-
-.cat-hitbox:focus-visible {
-  outline: 2px solid #fda690;
-  outline-offset: 6px;
-  border-radius: 8px;
-}
-
-/* Gentle idle squish: vertical only, anchored at the bottom. */
-.cat-idle-animation {
-  pointer-events: none;
-  transform-origin: center bottom;
-  animation:
-    cat-idle-squish 2.4s
-    cubic-bezier(0.37, 0, 0.63, 1)
-    infinite;
-}
-
-/* Click squish remains controlled by the JSX animation. */
-.cat-pet-animation {
-  pointer-events: none;
-  transform-origin: center bottom;
-}
-
-/* Explicit dimensions preserve the intended image proportions. */
-.bobbing-cat {
-  display: block;
-  width: 130px;
-  height: 61.83783784px;
-  zoom: 1;
-  pointer-events: none;
-}
-
-@keyframes cat-idle-squish {
-  0%,
-  100% {
-    transform: scaleY(1);
-  }
-
-  50% {
-    transform: scaleY(0.97);
-  }
-}
-
-/* Overlay does not affect layout or intercept clicks. */
-.cat-hearts {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  overflow: visible;
-  pointer-events: none;
-}
-
-/* Fixed-size hearts, centered on their spawn positions. */
-.cat-heart-position {
-  position: absolute;
-  width: 36px;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
-/* Movement and opacity only: no mid-flight size change. */
-.cat-petting-heart {
-  display: block;
-  width: 100%;
-  height: auto;
-  opacity: 0;
-  scale: none;
-  pointer-events: none;
-  transform-origin: center;
-
-  animation:
-    cat-heart-rise 1s linear 240ms both,
-    cat-heart-opacity 1s linear 240ms both;
-}
-
-/* Constant-speed upward movement. */
-@keyframes cat-heart-rise {
-  from {
-    transform: translateY(4px);
-  }
-
-  to {
-    transform: translateY(-72px);
-  }
-}
-
-/* Fade in, remain visible, then fade out as movement ends. */
-@keyframes cat-heart-opacity {
-  0% {
-    opacity: 0;
-    animation-timing-function: ease-out;
-  }
-
-  10% {
-    opacity: 1;
-  }
-
-  65% {
-    opacity: 1;
-    animation-timing-function: ease-in-out;
-  }
-
-  100% {
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cat-idle-animation {
-    animation: none;
-  }
-
-  .cat-petting-heart {
-    transform: none;
-    animation: cat-heart-fade 1.4s linear 500ms both;
-  }
-}
-
-/* Reduced-motion hearts fade without rising or scaling. */
-@keyframes cat-heart-fade {
-  0% {
-    opacity: 0;
-    animation-timing-function: ease-out;
-  }
-
-  10% {
-    opacity: 1;
-  }
-
-  65% {
-    opacity: 1;
-    animation-timing-function: ease-in-out;
-  }
-
-  100% {
-    opacity: 0;
-  }
-}
-
-/* Allow hearts to float outside the card. */
-.cat-card {
-  overflow: visible;
 }
