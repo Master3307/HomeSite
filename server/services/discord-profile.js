@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import session from "express-session";
+import rateLimit from "express-rate-limit";
 
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -242,7 +243,14 @@ app.get("/health", (_req, res) => {
 
 registerAuthRoutes(app);
 
-app.get("/stalking", async (req, res) => {
+const stalkingReadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.get("/stalking", stalkingReadLimiter, async (req, res) => {
   res.setHeader("Cache-Control", "private, no-store");
 
   const userId = selectedUserId(req);
@@ -273,7 +281,7 @@ app.get("/stalking", async (req, res) => {
   }
 });
 
-app.get("/stalking-history", async (req, res) => {
+app.get("/stalking-history", stalkingReadLimiter, async (req, res) => {
   res.setHeader("Cache-Control", "private, no-store");
 
   const userId = selectedUserId(req);
@@ -355,7 +363,7 @@ app.get("/stalking-history", async (req, res) => {
   }
 });
 
-app.get("/stalking-users", async (_req, res) => {
+app.get("/stalking-users", stalkingReadLimiter, async (_req, res) => {
   res.setHeader("Cache-Control", "private, no-store");
 
   try {
