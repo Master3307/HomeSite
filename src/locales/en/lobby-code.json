@@ -1,6 +1,6 @@
 {
     "currentLobbyLabel": "Current lobby",
-    "lobbyCodeLabel": "Lobby code",
+    "lobbyCodeLabel": "Current Lobby code",
     "loadingPlaceholder": "Loading…",
     "noActiveLobbyPlaceholder": "No active lobby",
     "unknownUser": "Unknown user",

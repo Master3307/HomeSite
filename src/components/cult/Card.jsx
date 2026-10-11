@@ -46,7 +46,7 @@ export default function Cult() {
   const discordPicSrc = getDiscordPicSrc()
 
   return (
-    <div id="card" className="card">
+    <div id="cult-card" className="cult-card">
       <h2>{t('header', { user })}</h2>
 
       <br />

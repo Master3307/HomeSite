@@ -23,6 +23,10 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+
   font-variation-settings:
     "FILL" 0,
     "wght" 400,
@@ -1036,4 +1040,21 @@ img.discord-emoji {
   outline: 2px solid currentColor;
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+
+.cult-card {
+  position: relative;
+  width: 95%;
+  max-width: 777px;
+  margin: 42px auto;
+  margin-top: 69px;
+  padding: 28px 26px;
+  overflow: hidden;
+  text-align: center;
+  border-radius: 13px;
+  transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
+  transition: transform 0.5s ease-out;
+  -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
 }
