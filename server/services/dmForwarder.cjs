@@ -27,13 +27,17 @@ module.exports = function startDmForwarder(client) {
         [message.content, ...attachmentUrls].filter(Boolean).join("\n") ||
         "[Message without text or attachments]";
 
-      const prefix = `[<@${message.author.id}>]: `;
-      const chunkSize = 2000 - prefix.length;
+      const prefix = `[@${message.author.id}] ~ `;
+      const suffix = `\n\nMessage ID:\n${message.id}`;
+      const chunkSize = 2000 - prefix.length - suffix.length;
 
       for (let offset = 0; offset < body.length; offset += chunkSize) {
         await recipient.send({
-          content: prefix + body.slice(offset, offset + chunkSize),
-          allowedMentions: { parse: [] },
+          content: prefix + body.slice(offset, offset + chunkSize) + suffix,
+          allowedMentions: {
+            parse: [],
+            repliedUser: false,
+          },
         });
       }
     } catch (error) {
