@@ -56,13 +56,13 @@
     width: fit-content;
     overflow: visible;
     background: transparent;
-    cursor: grab;
+    cursor: pointer;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
   }
 
   .cat-hitbox:active {
-    cursor: grabbing;
+    cursor: pointer;
   }
 
   .cat-hitbox:focus-visible {
