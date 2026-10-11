@@ -248,4 +248,9 @@ const commandJsonData = [
   }
 })();
 
+/**********************************************************************/
+// Forward incoming direct messages to DISCORD_USER_ID.
+
+require("./services/dmForwarder.cjs")(client);
+
 client.login(token);
