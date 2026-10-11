@@ -1042,3 +1042,159 @@ img.discord-emoji {
   outline-offset: 2px;
   border-radius: 2px;
 }
+.cat-hitbox {
+  position: relative;
+  width: fit-content;
+  overflow: visible;
+  background: transparent;
+  cursor: grab;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cat-hitbox:active {
+  cursor: grabbing;
+}
+
+.cat-hitbox:focus-visible {
+  outline: 2px solid #fda690;
+  outline-offset: 6px;
+  border-radius: 8px;
+}
+
+/* Gentle idle squish: vertical only, anchored at the bottom. */
+.cat-idle-animation {
+  pointer-events: none;
+  transform-origin: center bottom;
+  animation:
+    cat-idle-squish 2.4s
+    cubic-bezier(0.37, 0, 0.63, 1)
+    infinite;
+}
+
+/* Click squish remains controlled by the JSX animation. */
+.cat-pet-animation {
+  pointer-events: none;
+  transform-origin: center bottom;
+}
+
+/* Explicit dimensions preserve the intended image proportions. */
+.bobbing-cat {
+  display: block;
+  width: 130px;
+  height: 61.83783784px;
+  zoom: 1;
+  pointer-events: none;
+}
+
+@keyframes cat-idle-squish {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  50% {
+    transform: scaleY(0.97);
+  }
+}
+
+/* Overlay does not affect layout or intercept clicks. */
+.cat-hearts {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Fixed-size hearts, centered on their spawn positions. */
+.cat-heart-position {
+  position: absolute;
+  width: 36px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Movement and opacity only: no mid-flight size change. */
+.cat-petting-heart {
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: 0;
+  scale: none;
+  pointer-events: none;
+  transform-origin: center;
+
+  animation:
+    cat-heart-rise 1s linear 240ms both,
+    cat-heart-opacity 1s linear 240ms both;
+}
+
+/* Constant-speed upward movement. */
+@keyframes cat-heart-rise {
+  from {
+    transform: translateY(4px);
+  }
+
+  to {
+    transform: translateY(-72px);
+  }
+}
+
+/* Fade in, remain visible, then fade out as movement ends. */
+@keyframes cat-heart-opacity {
+  0% {
+    opacity: 0;
+    animation-timing-function: ease-out;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  65% {
+    opacity: 1;
+    animation-timing-function: ease-in-out;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cat-idle-animation {
+    animation: none;
+  }
+
+  .cat-petting-heart {
+    transform: none;
+    animation: cat-heart-fade 1.4s linear 500ms both;
+  }
+}
+
+/* Reduced-motion hearts fade without rising or scaling. */
+@keyframes cat-heart-fade {
+  0% {
+    opacity: 0;
+    animation-timing-function: ease-out;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  65% {
+    opacity: 1;
+    animation-timing-function: ease-in-out;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Allow hearts to float outside the card. */
+.cat-card {
+  overflow: visible;
+}

@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1150" height="1026" viewBox="-20 -30 1150 1026" preserveAspectRatio="none" class="sparkly">
+  <defs>
+    <path id="heart" d="
+      M550 295
+      C475 140 375 65 260 65
+      C115 65 35 175 35 320
+      C35 525 235 735 550 940
+      C865 735 1060 525 1060 320
+      C1060 175 980 65 835 65
+      C720 65 625 140 550 295
+      Z"/>
+
+    <!-- Pointed inner notch instead of a rounded join -->
+    <path id="heart-inner" d="
+      M550 350
+      C535 324 520 295 496 255
+      C430 145 350 105 260 105
+      C145 105 78 190 78 325
+      C78 493 207 657 365 743
+      C426 776 492 802 550 808
+      C608 802 674 776 735 743
+      C893 657 1017 493 1017 325
+      C1017 190 950 105 835 105
+      C745 105 670 145 604 255
+      C580 295 565 324 550 350
+      Z"/>
+
+    <path id="large-sparkle" d="
+      M305 455
+      Q326 455 331 490
+      C348 587 389 627 479 646
+      Q522 655 522 675
+      Q522 695 479 704
+      C389 723 348 763 331 860
+      Q326 895 305 895
+      Q284 895 279 860
+      C262 763 221 723 131 704
+      Q88 695 88 675
+      Q88 655 131 646
+      C221 627 262 587 279 490
+      Q284 455 305 455
+      Z"/>
+
+    <!-- Transform applies to both the fill and outer border -->
+    <path id="small-sparkle" transform="translate(20 -12)" d="
+      M885 35
+      Q903 35 909 66
+      C924 141 954 175 1025 190
+      Q1057 198 1057 217
+      Q1057 236 1025 244
+      C954 259 924 293 909 368
+      Q903 399 885 399
+      Q867 399 861 368
+      C846 293 816 259 745 244
+      Q713 236 713 217
+      Q713 198 745 190
+      C816 175 846 141 861 66
+      Q867 35 885 35
+      Z"/>
+
+    <clipPath id="heart-inner-clip">
+      <use href="#heart-inner"/>
+    </clipPath>
+  </defs>
+
+  <!-- Outer border around the combined silhouette -->
+  <g fill="#654b47" stroke="#654b47" stroke-width="76"
+    stroke-linecap="round" stroke-linejoin="round">
+    <use href="#heart"/>
+    <use href="#large-sparkle"/>
+    <use href="#small-sparkle"/>
+  </g>
+
+  <!-- Red rim and lower shadow -->
+  <use href="#heart" fill="#ce2639"/>
+  <use href="#heart-inner" fill="#ec4251"/>
+
+  <g clip-path="url(#heart-inner-clip)" fill="#fb8283">
+    <!-- Left crescent -->
+    <path d="
+      M78 325
+      C78 190 145 105 260 105
+      C350 105 430 145 496 255
+      C504 269 496 280 481 271
+      C407 226 345 207 274 215
+      C199 223 144 266 119 326
+      C111 348 97 352 87 341
+      Q78 332 78 325
+      Z"/>
+
+    <!-- Right crescent -->
+    <path d="
+      M1017 325
+      C1017 190 950 105 835 105
+      C745 105 670 145 604 255
+      C596 269 604 280 619 271
+      C693 226 755 207 826 215
+      C901 223 951 266 976 326
+      C984 348 998 352 1008 341
+      Q1017 332 1017 325
+      Z"/>
+
+    <!-- Small left-edge reflection -->
+    <path d="
+      M119 420
+      C128 414 138 420 145 434
+      Q166 477 193 508
+      C206 523 200 536 188 534
+      C169 530 139 489 115 444
+      Q107 429 119 420
+      Z"/>
+  </g>
+
+  <!-- Sparkles cover internal outline intersections -->
+  <g fill="#fae280">
+    <use href="#large-sparkle"/>
+    <use href="#small-sparkle"/>
+  </g>
+</svg>

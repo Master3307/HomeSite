@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
 import CultCard from '/src/components/cult/Card'
 import Login from '/src/components/Login'
+import LobbyCode from '/src/components/cult/LobbyCode'
 import {
   getDiscordPicSrc,
   getFaviconSrc,
@@ -58,6 +59,7 @@ export default function Home() {
       </div>
 
       <CultCard />
+      <LobbyCode />
     </>
   )
 }

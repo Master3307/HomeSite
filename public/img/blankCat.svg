@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="704" viewBox="0 0 1480 704" preserveAspectRatio="none" class="bobbing-cat">
+  <defs>
+    <clipPath id="left-paw-clip">
+      <path d="
+        M165 675
+        C110 595 20 425 20 345
+        C20 245 145 230 260 330
+        L345 410
+        Z"/>
+    </clipPath>
+
+    <clipPath id="right-paw-clip">
+      <path d="
+        M1110 682
+        C1050 590 960 440 960 355
+        C960 255 1080 250 1190 340
+        L1280 425
+        Z"/>
+    </clipPath>
+  </defs>
+
+  <g stroke="#624b4b" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Head and outer ears -->
+    <path fill="#fff" d="
+      M165 675
+      Q190 360 470 205
+      Q490 95 540 20
+      Q620 30 720 130
+      Q955 115 1150 215
+      Q1250 155 1340 150
+      Q1390 265 1390 445
+      Q1470 565 1460 685
+      Z"/>
+
+    <!-- Left paw fill extended without changing its outline -->
+    <path fill="#fff" stroke="none" d="
+      M165 675
+      C110 595 20 425 20 345
+      C20 245 145 230 260 330
+      L345 410
+      L205 658
+      L175 658
+      Z"/>
+  </g>
+
+  <!-- Inner ears -->
+  <g fill="#fda690">
+    <path d="
+      M525 195
+      Q535 125 565 80
+      Q630 105 675 155
+      Q590 165 525 195
+      Z"/>
+
+    <path transform="translate(-6 -6)" d="
+      M1135 300
+      Q1205 235 1305 228
+      Q1335 330 1335 455
+      Q1245 355 1135 300
+      Z"/>
+  </g>
+
+  <!-- Cheeks -->
+  <g fill="#f6dfdd">
+    <ellipse cx="382" cy="530" rx="59" ry="47"/>
+    <path d="M1015 580Q1010 625 1055 645Z"/>
+  </g>
+
+  <!-- Original eyes and mouth moved right as one group -->
+  <g transform="translate(30 0)">
+    <g fill="#624b4b">
+      <circle cx="495" cy="488" r="47"/>
+      <circle cx="950" cy="535" r="47"/>
+    </g>
+
+    <path fill="none" stroke="#624b4b" stroke-width="34"
+      stroke-linecap="round" stroke-linejoin="round"
+      d="M590 505Q595 560 680 510Q720 580 795 530"/>
+  </g>
+
+  <!-- Right paw overlaps the right eye -->
+  <path fill="#fff" stroke="#624b4b" stroke-width="34"
+    stroke-linecap="round" stroke-linejoin="round"
+    d="
+      M1110 682
+      C1050 590 960 440 960 355
+      C960 255 1080 250 1190 340
+      L1280 425"/>
+
+  <!-- Left pads -->
+  <g fill="#fda690" clip-path="url(#left-paw-clip)">
+    <ellipse cx="145" cy="495" rx="73" ry="74"/>
+    <ellipse cx="70" cy="378" rx="38" ry="40"/>
+    <circle cx="158" cy="363" r="31"/>
+  </g>
+
+  <!-- Right pads -->
+  <g fill="#fda690" clip-path="url(#right-paw-clip)">
+    <ellipse cx="1085" cy="503" rx="74" ry="75"/>
+    <ellipse cx="1010" cy="386" rx="37" ry="40"/>
+    <circle cx="1100" cy="373" r="31"/>
+  </g>
+
+  <!-- Original paw outlines unchanged -->
+  <g fill="none" stroke="#624b4b" stroke-width="34"
+    stroke-linecap="round" stroke-linejoin="round">
+    <path d="
+      M165 675
+      C110 595 20 425 20 345
+      C20 245 145 230 260 330
+      L345 410"/>
+    <path d="
+      M1110 682
+      C1050 590 960 440 960 355
+      C960 255 1080 250 1190 340
+      L1280 425"/>
+  </g>
+</svg>
