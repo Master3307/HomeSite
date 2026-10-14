@@ -526,7 +526,7 @@ export default function BobbingCatCard() {
         <div className="cat-idle-animation">
           <div ref={petRef} className="cat-pet-animation">
             <img
-              src="/img/blankCat.svg"
+              src="/img/bongo-cat/killer.svg"
               className="bobbing-cat"
               alt=""
               draggable={false}
@@ -548,7 +548,7 @@ export default function BobbingCatCard() {
               }}
             >
               <img
-                src="/img/sparkly.svg"
+                src="/img/bongo-cat/sparkly.svg"
                 className="cat-petting-heart"
                 alt=""
                 draggable={false}

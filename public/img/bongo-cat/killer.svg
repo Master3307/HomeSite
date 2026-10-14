@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg"
   width="1480"
-  height="944"
-  viewBox="0 -240 1480 944"
-  preserveAspectRatio="xMidYMax meet"
+  height="704"
+  viewBox="0 0 1480 704"
+  preserveAspectRatio="none"
   class="bobbing-cat">
 
   <defs>
@@ -34,43 +34,7 @@
     <clipPath id="mask-clip">
       <use href="#mask-shape"/>
     </clipPath>
-
-    <path id="axe-blade-shape" d="
-      M775 -162
-      L907 -42
-      Q914 -35 905 -24
-      L850 43
-      C811 91 798 147 791 204
-      L715 255
-      C575 216 473 106 445 -18
-      C568 -24 684 -76 775 -162 Z"/>
-
-    <clipPath id="axe-blade-clip">
-      <use href="#axe-blade-shape"/>
-    </clipPath>
   </defs>
-
-  <!-- Axe handle -->
-  <g stroke="#624b4b"
-     stroke-width="27"
-     stroke-linecap="round"
-     stroke-linejoin="round">
-    <path fill="#b99f83" d="
-      M742 -164
-      L719 -187
-      Q706 -201 720 -215
-      L740 -232
-      Q753 -242 766 -230
-      L1367 316
-      Q1382 329 1369 345
-      L1347 369
-      Q1334 382 1319 369 Z"/>
-
-    <path fill="none"
-      stroke="#d4b99a"
-      stroke-width="10"
-      d="M930 -42 L1347 338"/>
-  </g>
 
   <!-- Original cat silhouette -->
   <g stroke="#624b4b"
@@ -142,8 +106,7 @@
   <use href="#mask-shape" fill="#eeeae4"/>
 
   <g clip-path="url(#mask-clip)">
-    <!-- Continuous curved edge shading.
-         No pointed wedge or angular termination. -->
+    <!-- Continuous curved edge shading -->
     <path fill="#d7d2c9" d="
       M728 223
       C598 211 473 253 415 353
@@ -155,7 +118,7 @@
       C427 553 395 457 438 369
       C489 268 603 228 728 223 Z"/>
 
-    <!-- Small curved highlight, rather than a broad stripe -->
+    <!-- Small curved highlight -->
     <path fill="#faf8f3" opacity=".8" d="
       M457 332
       C527 261 637 236 743 243
@@ -163,7 +126,7 @@
       C890 280 816 266 741 264
       C634 259 533 280 457 332 Z"/>
 
-    <!-- Eyes unchanged -->
+    <!-- Eyes -->
     <g fill="#624b4b">
       <ellipse cx="526" cy="462"
         rx="72" ry="73"
@@ -173,7 +136,7 @@
         transform="rotate(11 930 480)"/>
     </g>
 
-    <!-- Eight vents unchanged -->
+    <!-- Eight vents -->
     <g fill="#71615c">
       <ellipse cx="679" cy="302" rx="18" ry="19"/>
       <ellipse cx="753" cy="306" rx="18" ry="19"/>
@@ -237,17 +200,6 @@
       Q494 303 494 298
       L494 290 Z"/>
 
-    <!-- Blood flecks -->
-    <g fill="#cc3947">
-      <ellipse cx="784" cy="284" rx="10" ry="8"
-        transform="rotate(14 784 284)"/>
-      <circle cx="799" cy="308" r="5"/>
-      <ellipse cx="721" cy="388" rx="8" ry="11"
-        transform="rotate(-12 721 388)"/>
-      <circle cx="633" cy="335" r="4"/>
-      <circle cx="617" cy="490" r="4"/>
-    </g>
-
     <!-- Surface wear -->
     <g fill="none"
        stroke="#b5aaa1"
@@ -270,103 +222,6 @@
     stroke-width="34"
     stroke-linecap="round"
     stroke-linejoin="round"/>
-
-  <!-- Axe blade unchanged -->
-  <use href="#axe-blade-shape" fill="#8192aa"/>
-
-  <g clip-path="url(#axe-blade-clip)">
-    <path fill="#afc0d2" d="
-      M775 -162
-      L907 -42
-      L882 -11
-      Q869 -4 853 -16
-      L750 -111 Z"/>
-
-    <path fill="#c8d8e8" d="
-      M442 -23
-      C507 -24 569 -42 624 -66
-      Q644 -54 627 -28
-      L610 -6
-      Q599 10 613 21
-      Q626 31 645 18
-      Q667 3 679 17
-      Q691 30 680 47
-      L663 73
-      Q653 92 668 103
-      Q684 113 702 95
-      Q720 77 734 90
-      Q747 101 740 122
-      L727 166
-      Q721 190 739 205
-      L758 224
-      L715 255
-      C575 216 473 106 442 -23 Z"/>
-
-    <path fill="#f0f5f8" d="
-      M459 -6
-      Q513 -8 561 -21
-      Q552 6 521 21
-      Q505 31 515 45
-      Q528 60 551 48
-      L578 32
-      Q566 62 546 78
-      Q534 89 544 104
-      Q557 121 582 105
-      L607 88
-      Q592 122 583 138
-      Q580 152 596 170
-      Q645 218 715 241
-      L715 255
-      C586 218 490 121 459 -6 Z"/>
-  </g>
-
-  <use href="#axe-blade-shape"
-    fill="none"
-    stroke="#624b4b"
-    stroke-width="27"
-    stroke-linecap="round"
-    stroke-linejoin="round"/>
-
-  <path fill="none"
-    stroke="#624b4b"
-    stroke-width="23"
-    stroke-linecap="round"
-    d="M741 -69 L801 -15"/>
-
-  <!-- Blade-mask contact -->
-  <path fill="none"
-    stroke="#9c2937"
-    stroke-width="12"
-    stroke-linecap="round"
-    d="M790 207 L716 258"/>
-
-  <path fill="#ce3545" d="
-    M784 203
-    L796 210
-    Q758 235 725 261
-    Q712 270 699 263
-    L680 253
-    Q673 249 677 243
-    Q681 238 690 243
-    L710 249
-    Q744 227 784 203 Z"/>
-
-  <path fill="#cf3546" d="
-    M711 253
-    Q723 249 727 259
-    L719 281
-    L716 306
-    Q715 317 707 316
-    Q699 315 701 303
-    L705 281
-    L703 266 Z"/>
-
-  <path fill="#c33442" d="
-    M692 251
-    L701 256
-    L693 274
-    Q689 282 683 278
-    Q679 275 683 268 Z"/>
 
   <!-- Original right paw -->
   <path fill="#fff"
