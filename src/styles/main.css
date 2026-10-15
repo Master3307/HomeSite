@@ -884,10 +884,17 @@ button:hover {
   opacity: 0.65;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 750px) {
   :root {
     /* Adjust this if your mobile header has a different height. */
     --header-height: 50px;
+  }
+}
+
+@media (max-width: 300px) {
+  :root {
+    /* Adjust this if your mobile header has a different height. */
+    --header-height: 80px;
   }
 
   .accountMenu {
@@ -1048,7 +1055,7 @@ img.discord-emoji {
   width: 95%;
   max-width: 777px;
   margin: 42px auto;
-  margin-top: 69px;
+  margin-top: 100px;
   padding: 28px 26px;
   overflow: hidden;
   text-align: center;
