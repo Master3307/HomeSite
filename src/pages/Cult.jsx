@@ -4,6 +4,8 @@ import { useEffect } from 'react'
 import CultCard from '/src/components/cult/Card'
 import Login from '/src/components/Login'
 import LobbyCode from '/src/components/cult/LobbyCode'
+import Voting from '/src/components/cult/Voting'
+
 import {
   getDiscordPicSrc,
   getFaviconSrc,
@@ -60,6 +62,7 @@ export default function Home() {
 
       <CultCard />
       <LobbyCode />
+      <Voting />
     </>
   )
 }
