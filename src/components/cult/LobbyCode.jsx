@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import "/src/styles/LobbyCode.css";
-import "/src/styles/LobbyCat.css";
 
 const LOBBY_URL = "/lobby-code.json";
 const DISCORD_API_URL = "https://discord-api.master3307.org";
@@ -79,16 +78,8 @@ function getUpdatedDate(lobby) {
   return null;
 }
 
-export default function BobbingCatCard() {
+export default function LobbyCode() {
   const { t, i18n } = useTranslation("lobby-code");
-
-  const hitboxRef = useRef(null);
-  const petRef = useRef(null);
-  const animationRef = useRef(null);
-
-  const heartIdRef = useRef(0);
-  const heartTimersRef = useRef(new Set());
-  const [hearts, setHearts] = useState([]);
 
   const [lobby, setLobby] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -112,17 +103,9 @@ export default function BobbingCatCard() {
 
   useEffect(() => {
     mountedRef.current = true;
-    const heartTimers = heartTimersRef.current;
 
     return () => {
       mountedRef.current = false;
-
-      animationRef.current?.cancel();
-      animationRef.current = null;
-
-      heartTimers.forEach(clearTimeout);
-      heartTimers.clear();
-
       clearTimeout(copyTimerRef.current);
     };
   }, []);
@@ -279,108 +262,6 @@ export default function BobbingCatCard() {
     }, 2500);
   }
 
-  function createHeart() {
-    const hitbox = hitboxRef.current;
-
-    if (!hitbox) {
-      return;
-    }
-
-    const rect = hitbox.getBoundingClientRect();
-    const id = heartIdRef.current++;
-
-    const heart = {
-      id,
-      x: rect.width * (0.2 + Math.random() * 0.6),
-      y: rect.height * 0.3,
-      drift: 0,
-      rotation: 0,
-    };
-
-    setHearts((current) => [...current, heart]);
-
-    const timer = setTimeout(() => {
-      setHearts((current) => current.filter((item) => item.id !== id));
-      heartTimersRef.current.delete(timer);
-    }, 2700);
-
-    heartTimersRef.current.add(timer);
-  }
-
-  function petCat() {
-    createHeart();
-
-    const element = petRef.current;
-
-    if (
-      !element ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      return;
-    }
-
-    // Continue from the visible pose when clicked repeatedly.
-    const currentTransform = getComputedStyle(element).transform;
-    const startingTransform =
-      currentTransform === "none" ? "scale(1, 1)" : currentTransform;
-
-    animationRef.current?.cancel();
-
-    const animation = element.animate(
-      [
-        {
-          transform: startingTransform,
-          offset: 0,
-          easing: "cubic-bezier(0.2, 0.7, 0.3, 1)",
-        },
-        {
-          transform: "scale(1.1, 0.74)",
-          offset: 0.22,
-          easing: "cubic-bezier(0.3, 0, 0.65, 1)",
-        },
-        {
-          transform: "scale(1.085, 0.77)",
-          offset: 0.32,
-          easing: "cubic-bezier(0.16, 0.8, 0.3, 1)",
-        },
-        {
-          transform: "scale(0.99, 1.025)",
-          offset: 0.72,
-          easing: "cubic-bezier(0.35, 0, 0.55, 1)",
-        },
-        {
-          transform: "scale(1, 1)",
-          offset: 1,
-        },
-      ],
-      {
-        duration: 460,
-        iterations: 1,
-        fill: "none",
-      },
-    );
-
-    animationRef.current = animation;
-
-    animation.onfinish = () => {
-      if (animationRef.current === animation) {
-        animationRef.current = null;
-      }
-    };
-  }
-
-  function handleKeyDown(event) {
-    if (event.key !== "Enter" && event.key !== " ") {
-      return;
-    }
-
-    event.preventDefault();
-
-    if (!event.repeat) {
-      petCat();
-    }
-  }
-
   const copyLabel =
     copyStatus === "copied"
       ? t("copyButton.copied")
@@ -391,172 +272,126 @@ export default function BobbingCatCard() {
           : t("copyButton.copy");
 
   return (
-    <div className="lobby-cat-wrap">
-      <section
-        className="card cat-card lobby-cat-card lobby-panel"
-        aria-label={t("currentLobbyLabel")}
-      >
-        <label className="lobby-label" htmlFor="lobby-code-field">
-          {t("lobbyCodeLabel")}
-        </label>
+    <section
+      className="card cat-card lobby-cat-card lobby-panel"
+      aria-label={t("currentLobbyLabel")}
+    >
+      <label className="lobby-label" htmlFor="lobby-code-field">
+        {t("lobbyCodeLabel")}
+      </label>
 
-        <div className="lobby-code-row">
-          <input
-            id="lobby-code-field"
-            className="lobby-code-field"
-            type="text"
-            value={code}
-            placeholder={
-              loading ? t("loadingPlaceholder") : t("noActiveLobbyPlaceholder")
-            }
-            readOnly
-            spellCheck={false}
-            autoComplete="off"
-            onFocus={(event) => event.currentTarget.select()}
-          />
+      <div className="lobby-code-row">
+        <input
+          id="lobby-code-field"
+          className="lobby-code-field"
+          type="text"
+          value={code}
+          placeholder={
+            loading ? t("loadingPlaceholder") : t("noActiveLobbyPlaceholder")
+          }
+          readOnly
+          spellCheck={false}
+          autoComplete="off"
+          onFocus={(event) => event.currentTarget.select()}
+        />
 
-          <button
-            className="lobby-copy-button"
-            type="button"
-            onClick={copyLobbyCode}
-            disabled={!code || copyStatus === "copying"}
-            aria-label={
-              copyStatus === "copied"
-                ? t("copyButton.copiedAriaLabel")
-                : t("copyButton.copyAriaLabel")
-            }
-          >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              {copyStatus === "copied" ? "check" : "content_copy"}
-            </span>
-            <span>{copyLabel}</span>
-          </button>
-        </div>
+        <button
+          className="lobby-copy-button"
+          type="button"
+          onClick={copyLobbyCode}
+          disabled={!code || copyStatus === "copying"}
+          aria-label={
+            copyStatus === "copied"
+              ? t("copyButton.copiedAriaLabel")
+              : t("copyButton.copyAriaLabel")
+          }
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">
+            {copyStatus === "copied" ? "check" : "content_copy"}
+          </span>
+          <span>{copyLabel}</span>
+        </button>
+      </div>
 
-        {typeof lobby?.description === "string" &&
-          lobby.description.trim() && (
-            <p className="lobby-description">{lobby.description}</p>
-          )}
-
-        {lobby?.updatedBy && (
-          <div className="lobby-updater">
-            {avatar && !avatarFailed ? (
-              <img
-                className="lobby-avatar"
-                src={avatar}
-                alt=""
-                draggable={false}
-                onError={() => setAvatarFailed(true)}
-              />
-            ) : (
-              <span
-                className="lobby-avatar lobby-avatar-fallback"
-                aria-hidden="true"
-              >
-                {Array.from(updaterName)[0]?.toUpperCase() || "?"}
-              </span>
-            )}
-
-            <div className="lobby-updater-info">
-              <span className="lobby-updated-by">{t("updatedByLabel")}</span>
-              <span className="lobby-updater-name">{updaterName}</span>
-
-              {updaterUsername && (
-                <span className="lobby-updater-username">
-                  @{updaterUsername}
-                </span>
-              )}
-            </div>
-          </div>
+      {typeof lobby?.description === "string" &&
+        lobby.description.trim() && (
+          <p className="lobby-description">{lobby.description}</p>
         )}
 
-        {updatedDate && (
-          <p className="lobby-timestamp">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              schedule
-            </span>
-            <span>
-              {t("updatedAtLabel")}{" "}
-              <time
-                dateTime={updatedDate.toISOString()}
-                title={updatedDate.toISOString()}
-              >
-                {updatedDate.toLocaleString(
-                  i18n.resolvedLanguage || i18n.language || undefined,
-                  {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                  },
-                )}
-              </time>
-            </span>
-          </p>
-        )}
-
-        {fetchError && (
-          <p className="lobby-error" role="status">
-            {lobby
-              ? t("errors.refreshFailed")
-              : t(fetchError.key, fetchError.values || {})}
-          </p>
-        )}
-
-        <p className="lobby-copy-status" role="status" aria-live="polite">
-          {copyStatus === "copied"
-            ? t("copyStatus.success")
-            : copyStatus === "error"
-              ? t("copyStatus.error")
-              : ""}
-        </p>
-      </section>
-
-      <div
-        ref={hitboxRef}
-        className="cat-hitbox"
-        role="button"
-        tabIndex={0}
-        aria-label={t("petCatLabel")}
-        onClick={petCat}
-        onKeyDown={handleKeyDown}
-      >
-        <div className="cat-idle-animation">
-          <div ref={petRef} className="cat-pet-animation">
+      {lobby?.updatedBy && (
+        <div className="lobby-updater">
+          {avatar && !avatarFailed ? (
             <img
-              src="/img/bongo-cat/killer.svg"
-              className="bobbing-cat"
+              className="lobby-avatar"
+              src={avatar}
               alt=""
               draggable={false}
+              onError={() => setAvatarFailed(true)}
             />
+          ) : (
+            <span
+              className="lobby-avatar lobby-avatar-fallback"
+              aria-hidden="true"
+            >
+              {Array.from(updaterName)[0]?.toUpperCase() || "?"}
+            </span>
+          )}
+
+          <div className="lobby-updater-info">
+            <span className="lobby-updated-by">{t("updatedByLabel")}</span>
+            <span className="lobby-updater-name">{updaterName}</span>
+
+            {updaterUsername && (
+              <span className="lobby-updater-username">
+                @{updaterUsername}
+              </span>
+            )}
           </div>
         </div>
+      )}
 
-        {/* Outside the squishing wrappers, so hearts don't distort. */}
-        <div className="cat-hearts" aria-hidden="true">
-          {hearts.map((heart) => (
-            <span
-              key={heart.id}
-              className="cat-heart-position"
-              style={{
-                left: heart.x,
-                top: heart.y,
-                "--heart-drift": `${heart.drift}px`,
-                "--heart-rotation": `${heart.rotation}deg`,
-              }}
+      {updatedDate && (
+        <p className="lobby-timestamp">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            schedule
+          </span>
+          <span>
+            {t("updatedAtLabel")}{" "}
+            <time
+              dateTime={updatedDate.toISOString()}
+              title={updatedDate.toISOString()}
             >
-              <img
-                src="/img/bongo-cat/sparkly.svg"
-                className="cat-petting-heart"
-                alt=""
-                draggable={false}
-              />
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
+              {updatedDate.toLocaleString(
+                i18n.resolvedLanguage || i18n.language || undefined,
+                {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                },
+              )}
+            </time>
+          </span>
+        </p>
+      )}
+
+      {fetchError && (
+        <p className="lobby-error" role="status">
+          {lobby
+            ? t("errors.refreshFailed")
+            : t(fetchError.key, fetchError.values || {})}
+        </p>
+      )}
+
+      <p className="lobby-copy-status" role="status" aria-live="polite">
+        {copyStatus === "copied"
+          ? t("copyStatus.success")
+          : copyStatus === "error"
+            ? t("copyStatus.error")
+            : ""}
+      </p>
+    </section>
   );
 }

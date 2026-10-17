@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import CultCard from '/src/components/cult/Card'
 import Login from '/src/components/Login'
 import LobbyCode from '/src/components/cult/LobbyCode'
+import LobbyCat from '/src/components/cult/LobbyCat'
 import Voting from '/src/components/cult/Voting'
 
 import {
@@ -61,7 +62,10 @@ export default function Home() {
       </div>
 
       <CultCard />
-      <LobbyCode />
+      <div className="cult-lobby-widget">
+        <LobbyCode />
+        <LobbyCat />
+      </div>
       <Voting />
     </>
   )

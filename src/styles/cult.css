@@ -8,3 +8,156 @@ body.cult-page {
 .discordpic {
   width: 150px;
 }
+
+/* Center the panel and give the cat the same positioning boundary. */
+.cult-page .cult-lobby-widget {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% - 32px);
+  max-width: 780px;
+  min-width: 0;
+  margin: 80px auto 0;
+  overflow: visible;
+  isolation: isolate;
+}
+
+/* Restore the original stacked panel layout. */
+.cult-page .cult-lobby-widget > .lobby-panel {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  padding: 26px;
+}
+
+.cult-page .cult-lobby-widget .lobby-label {
+  display: block;
+  width: auto;
+  margin: 0 0 8px;
+}
+
+.cult-page .cult-lobby-widget .lobby-code-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.cult-page .cult-lobby-widget .lobby-code-field {
+  flex: 1 1 0;
+  box-sizing: border-box;
+  width: 0;
+  min-width: 0;
+}
+
+.cult-page .cult-lobby-widget .lobby-copy-button {
+  flex: 0 0 auto;
+}
+
+.cult-page .cult-lobby-widget .lobby-description {
+  margin: 14px 0 0;
+}
+
+.cult-page .cult-lobby-widget .lobby-updater {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  margin: 16px 0 0;
+}
+
+.cult-page .cult-lobby-widget .lobby-avatar {
+  flex: 0 0 auto;
+}
+
+.cult-page .cult-lobby-widget .lobby-updater-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.cult-page .cult-lobby-widget .lobby-timestamp {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  margin: 12px 0 0;
+}
+
+.cult-page .cult-lobby-widget .lobby-timestamp > span:last-child {
+  min-width: 0;
+}
+
+.cult-page .cult-lobby-widget .lobby-error {
+  margin: 12px 0 0;
+}
+
+/* Keep the live region without adding an empty paragraph's spacing. */
+.cult-page .cult-lobby-widget .lobby-copy-status:empty {
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+}
+
+/* Place the independent cat component on the panel's top-right edge. */
+.cult-page .cult-lobby-widget > .lobby-cat-wrap {
+  position: absolute;
+  inset: auto;
+  top: 0;
+  right: 24px;
+  z-index: 2;
+
+  display: block;
+  box-sizing: border-box;
+  width: 130px;
+  height: 80px;
+  margin: 0;
+  padding: 0;
+
+  transform: translateY(-100%);
+  overflow: visible;
+}
+
+.cult-page .cult-lobby-widget .cat-hitbox {
+  position: relative;
+  inset: auto;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  transform: none;
+  overflow: visible;
+}
+
+.cult-page .cult-lobby-widget .cat-idle-animation,
+.cult-page .cult-lobby-widget .cat-pet-animation {
+  width: 100%;
+  height: 100%;
+}
+
+.cult-page .cult-lobby-widget .bobbing-cat {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+@media (max-width: 480px) {
+  .cult-page .cult-lobby-widget > .lobby-panel {
+    padding: 20px;
+  }
+
+  .cult-page .cult-lobby-widget > .lobby-cat-wrap {
+    right: 16px;
+    width: 110px;
+    height: 68px;
+  }
+}
