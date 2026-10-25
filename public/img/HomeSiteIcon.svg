@@ -7,9 +7,8 @@
 
   <title id="homesite-title">HomeSite</title>
 
-  <g opacity="0.95">
-    <path
-      fill="#5416A4"
+  <defs>
+    <path id="homesite-shape"
       d="
         M245 26
         Q256 21 267 26
@@ -22,6 +21,40 @@
         V141
         Q40 118 61 109
         Z"/>
+
+    <clipPath id="homesite-clip">
+      <use href="#homesite-shape"/>
+    </clipPath>
+
+    <linearGradient id="surface-shading"
+      x1="0%" y1="0%"
+      x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".085"/>
+      <stop offset="38%" stop-color="#FFFFFF" stop-opacity=".02"/>
+      <stop offset="62%" stop-color="#140526" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#140526" stop-opacity=".12"/>
+    </linearGradient>
+
+    <linearGradient id="edge-shading"
+      x1="0%" y1="0%"
+      x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#DEC7FF" stop-opacity=".22"/>
+      <stop offset="45%" stop-color="#BD8AFF" stop-opacity=".04"/>
+      <stop offset="100%" stop-color="#140526" stop-opacity=".1"/>
+    </linearGradient>
+  </defs>
+
+  <g opacity=".95">
+    <use href="#homesite-shape" fill="#5416A4"/>
+    <use href="#homesite-shape" fill="url(#surface-shading)"/>
+
+    <g clip-path="url(#homesite-clip)">
+      <use
+        href="#homesite-shape"
+        fill="none"
+        stroke="url(#edge-shading)"
+        stroke-width="2"/>
+    </g>
 
     <path
       fill="#FFFFFF"

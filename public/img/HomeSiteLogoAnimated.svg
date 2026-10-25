@@ -1,0 +1,486 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+  width="672"
+  height="224"
+  viewBox="0 0 672 224"
+  role="img"
+  aria-labelledby="homesite-title homesite-description">
+
+  <title id="homesite-title">HomeSite</title>
+  <desc id="homesite-description">
+    An animated purple HomeSite logo with subtle shading and a slow
+    repeating shine. A single glowing glint travels along the top edge,
+    settles at the upper-right corner, then spins and fades away.
+  </desc>
+
+  <defs>
+    <path id="background-shape"
+      pathLength="1"
+      d="
+        M74 49
+        Q80 46 86 49
+        L139 72
+        H642
+        Q656 72 656 86
+        V186
+        Q656 200 642 200
+        H30
+        Q16 200 16 186
+        V87
+        Q16 79 24 76
+        Z"/>
+
+    <clipPath id="background-clip">
+      <use href="#background-shape"/>
+    </clipPath>
+
+    <linearGradient id="surface-light"
+      x1="0%" y1="0%"
+      x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".12"/>
+      <stop offset="38%" stop-color="#FFFFFF" stop-opacity=".025"/>
+      <stop offset="65%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#140526" stop-opacity=".18"/>
+    </linearGradient>
+
+    <linearGradient id="edge-light"
+      x1="0%" y1="0%"
+      x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#DEC7FF" stop-opacity=".36"/>
+      <stop offset="50%" stop-color="#BD8AFF" stop-opacity=".08"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity=".14"/>
+    </linearGradient>
+
+    <linearGradient id="shine-gradient"
+      x1="0%" y1="0%"
+      x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="28%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity=".09"/>
+      <stop offset="72%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <radialGradient id="star-halo">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".9"/>
+      <stop offset="12%" stop-color="#F6EEFF" stop-opacity=".65"/>
+      <stop offset="38%" stop-color="#D5B1FF" stop-opacity=".24"/>
+      <stop offset="100%" stop-color="#A566FF" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="star-reflection">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".3"/>
+      <stop offset="35%" stop-color="#E1C8FF" stop-opacity=".12"/>
+      <stop offset="100%" stop-color="#C091FF" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="star-glow"
+      x="-150%" y="-150%"
+      width="400%" height="400%"
+      color-interpolation-filters="sRGB">
+      <feGaussianBlur
+        in="SourceGraphic"
+        stdDeviation="1.7"
+        result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!--
+      Follow the horizontal top edge, then only half of the rounded
+      corner. The endpoint is on the corner itself, not the right edge.
+    -->
+    <path id="star-route"
+      d="M500 72 H642 Q649 72 652.5 75.5"/>
+
+    <path id="letter-h"
+      d="
+        M42 94 H67 V126 H94 V94 H119
+        V182 H94 V150 H67 V182 H42 Z"/>
+
+    <path id="letter-o"
+      fill-rule="evenodd"
+      d="
+        M168 116
+        C147 116 133 130 133 150
+        C133 170 147 184 168 184
+        C189 184 203 170 203 150
+        C203 130 189 116 168 116
+        Z
+
+        M168 136
+        C176 136 181 141 181 150
+        C181 159 176 164 168 164
+        C160 164 155 159 155 150
+        C155 141 160 136 168 136
+        Z"/>
+
+    <path id="letter-m"
+      d="
+        M215 118 H236 V126
+        C241 119 248 116 257 116
+        C267 116 274 120 278 127
+        C284 120 292 116 301 116
+        C318 116 326 126 326 144
+        V182 H304 V148
+        C304 140 302 136 295 136
+        C288 136 284 141 284 149
+        V182 H262 V148
+        C262 140 259 136 253 136
+        C246 136 237 141 237 149
+        V182 H215
+        Z"/>
+
+    <path id="letter-e"
+      fill-rule="evenodd"
+      d="
+        M371 116
+        C350 116 337 130 337 150
+        C337 171 351 184 373 184
+        C386 184 396 179 402 170
+        L385 160
+        C382 165 378 167 373 167
+        C365 167 360 163 359 156
+        H404 V150
+        C404 129 392 116 371 116
+        Z
+
+        M359 143
+        C361 136 365 132 371 132
+        C378 132 382 136 383 143
+        Z"/>
+
+    <path id="letter-s"
+      d="
+        M449 92
+        C429 92 415 103 415 120
+        C415 136 426 142 442 147
+        L452 150
+        C460 152 463 155 463 159
+        C463 164 458 167 450 167
+        C440 167 432 162 428 154
+        L408 165
+        C416 179 430 185 449 185
+        C472 185 486 174 486 157
+        C486 141 475 134 458 129
+        L448 126
+        C440 124 437 121 437 117
+        C437 112 441 109 448 109
+        C456 109 462 113 466 120
+        L485 110
+        C478 98 466 92 449 92
+        Z"/>
+
+    <path id="letter-i"
+      d="
+        M494 118 H516 V182 H494 Z
+
+        M505 88
+        A12 12 0 1 1 505 112
+        A12 12 0 1 1 505 88
+        Z"/>
+
+    <path id="letter-t"
+      d="
+        M536 102 H558 V118 H574 V136 H558 V157
+        C558 163 561 166 567 166
+        C570 166 572 165 575 164
+        V182
+        C571 184 566 185 560 185
+        C544 185 536 177 536 160
+        V136 H526 V118 H536
+        Z"/>
+  </defs>
+
+  <style>
+    .background-outline {
+      fill: none;
+      stroke: #5416A4;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      animation:
+        draw-background 1s cubic-bezier(.45, 0, .2, 1) forwards,
+        hide-outline .25s ease 1s forwards;
+    }
+
+    .background-fill {
+      opacity: 0;
+      animation:
+        fill-background 1.2s cubic-bezier(.4, 0, .2, 1) .15s both;
+    }
+
+    .home-letter,
+    .site-letter {
+      fill: #FFFFFF;
+      stroke: none;
+      opacity: 0;
+      transform-box: fill-box;
+      transform-origin: center bottom;
+      animation-delay: var(--delay);
+      animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+      animation-fill-mode: both;
+    }
+
+    .home-letter {
+      animation-name: flip-home;
+      animation-duration: .62s;
+    }
+
+    .site-letter {
+      animation-name: rise-site;
+      animation-duration: .58s;
+    }
+
+    .shine {
+      fill: url(#shine-gradient);
+      opacity: 0;
+      animation: slow-shine 12s linear 5.3s infinite both;
+    }
+
+    .star-appearance {
+      opacity: 0;
+      animation: star-appear 1.2s linear 3.55s both;
+    }
+
+    .star-burst {
+      transform-box: view-box;
+      transform-origin: 0 0;
+      animation: star-twinkle 1.2s linear 3.55s both;
+    }
+
+    @keyframes draw-background {
+      from { stroke-dashoffset: 1; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    @keyframes hide-outline {
+      to { opacity: 0; }
+    }
+
+    @keyframes fill-background {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes flip-home {
+      0% {
+        opacity: 0;
+        transform: translateY(8px) scaleY(.12) skewX(-8deg);
+      }
+      45% {
+        opacity: 1;
+      }
+      72% {
+        opacity: 1;
+        transform: translateY(-1px) scaleY(1.045) skewX(1.5deg);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scaleY(1) skewX(0);
+      }
+    }
+
+    @keyframes rise-site {
+      0% {
+        opacity: 0;
+        transform: translateY(18px) scale(.96);
+      }
+      65% {
+        opacity: 1;
+        transform: translateY(-2px) scale(1.01);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes slow-shine {
+      0% {
+        opacity: 0;
+        transform: translateX(-360px) skewX(-16deg);
+      }
+      5%, 38% {
+        opacity: 1;
+      }
+      45%, 100% {
+        opacity: 0;
+        transform: translateX(790px) skewX(-16deg);
+      }
+    }
+
+    @keyframes star-appear {
+      0%   { opacity: 0; }
+      12%  { opacity: .85; }
+      45%  { opacity: 1; }
+      65%  { opacity: 1; }
+      80%  { opacity: .75; }
+      100% { opacity: 0; }
+    }
+
+    @keyframes star-twinkle {
+      0% {
+        transform: rotate(-18deg) scale(.12);
+      }
+      30% {
+        transform: rotate(-8deg) scale(.75);
+      }
+      58% {
+        transform: rotate(0deg) scale(1.15);
+      }
+      65% {
+        transform: rotate(12deg) scale(1.2);
+      }
+      80% {
+        transform: rotate(105deg) scale(.8);
+      }
+      100% {
+        transform: rotate(250deg) scale(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .background-outline,
+      .shine,
+      .star-effect {
+        display: none;
+        animation: none;
+      }
+
+      .background-fill,
+      .home-letter,
+      .site-letter {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }
+  </style>
+
+  <g opacity=".95" aria-hidden="true">
+    <use class="background-outline" href="#background-shape"/>
+
+    <g class="background-fill">
+      <use href="#background-shape" fill="#5416A4"/>
+      <use href="#background-shape" fill="url(#surface-light)"/>
+
+      <g clip-path="url(#background-clip)">
+        <use
+          href="#background-shape"
+          fill="none"
+          stroke="url(#edge-light)"
+          stroke-width="2"/>
+      </g>
+    </g>
+
+    <g class="home-letter" style="--delay: 1.05s">
+      <use href="#letter-h"/>
+    </g>
+    <g class="home-letter" style="--delay: 1.28s">
+      <use href="#letter-o"/>
+    </g>
+    <g class="home-letter" style="--delay: 1.51s">
+      <use href="#letter-m"/>
+    </g>
+    <g class="home-letter" style="--delay: 1.74s">
+      <use href="#letter-e"/>
+    </g>
+
+    <g class="site-letter" style="--delay: 2.35s">
+      <use href="#letter-s"/>
+    </g>
+    <g class="site-letter" style="--delay: 2.47s">
+      <use href="#letter-i"/>
+    </g>
+    <g class="site-letter" style="--delay: 2.59s">
+      <use href="#letter-t"/>
+    </g>
+    <g class="site-letter" style="--delay: 2.71s">
+      <use href="#letter-e" transform="translate(242 0)"/>
+    </g>
+
+    <!-- Independent, slow repeating shine. -->
+    <g clip-path="url(#background-clip)">
+      <rect
+        class="shine"
+        x="0"
+        y="24"
+        width="300"
+        height="192"/>
+    </g>
+
+    <!--
+      The sparkle reaches the corner at 65% of its animation.
+      It stays there while spinning and fading during the final 35%.
+    -->
+
+    <!-- Soft reflected light stays inside the background. -->
+    <g class="star-effect" clip-path="url(#background-clip)">
+      <g>
+        <animateMotion
+          begin="3.55s"
+          dur="1.2s"
+          calcMode="spline"
+          keyTimes="0;.65;1"
+          keyPoints="0;1;1"
+          keySplines=".25 .1 .35 1;0 0 1 1"
+          fill="freeze">
+          <mpath href="#star-route"/>
+        </animateMotion>
+
+        <g class="star-appearance">
+          <ellipse
+            cx="-5"
+            cy="7"
+            rx="34"
+            ry="21"
+            fill="url(#star-reflection)"/>
+        </g>
+      </g>
+    </g>
+
+    <!-- Single, slender four-point glint. -->
+    <g class="star-effect">
+      <g>
+        <animateMotion
+          begin="3.55s"
+          dur="1.2s"
+          calcMode="spline"
+          keyTimes="0;.65;1"
+          keyPoints="0;1;1"
+          keySplines=".25 .1 .35 1;0 0 1 1"
+          fill="freeze">
+          <mpath href="#star-route"/>
+        </animateMotion>
+
+        <g class="star-appearance">
+          <g class="star-burst">
+            <circle r="19" fill="url(#star-halo)"/>
+
+            <g filter="url(#star-glow)">
+              <path
+                fill="#FFFFFF"
+                d="
+                  M0 -14
+                  C.8 -3.2 1.6 -1.2 10 0
+                  C1.6 1.2 .8 3.2 0 14
+                  C-.8 3.2 -1.6 1.2 -10 0
+                  C-1.6 -1.2 -.8 -3.2 0 -14
+                  Z"/>
+
+              <circle r="1.6" fill="#FFFFFF"/>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

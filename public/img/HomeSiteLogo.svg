@@ -7,10 +7,8 @@
 
   <title id="homesite-title">HomeSite</title>
 
-  <g opacity="0.95">
-    <!-- Unified background with a softly rounded roof and corners. -->
-    <path
-      fill="#5416A4"
+  <defs>
+    <path id="background-shape"
       d="
         M74 49
         Q80 46 86 49
@@ -24,6 +22,41 @@
         V87
         Q16 79 24 76
         Z"/>
+
+    <clipPath id="background-clip">
+      <use href="#background-shape"/>
+    </clipPath>
+
+    <linearGradient id="surface-light"
+      x1="0%" y1="0%"
+      x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".12"/>
+      <stop offset="38%" stop-color="#FFFFFF" stop-opacity=".025"/>
+      <stop offset="65%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#140526" stop-opacity=".18"/>
+    </linearGradient>
+
+    <linearGradient id="edge-light"
+      x1="0%" y1="0%"
+      x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#DEC7FF" stop-opacity=".36"/>
+      <stop offset="50%" stop-color="#BD8AFF" stop-opacity=".08"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity=".14"/>
+    </linearGradient>
+  </defs>
+
+  <g opacity=".95">
+    <!-- Background with the same subtle shading as the animated version. -->
+    <use href="#background-shape" fill="#5416A4"/>
+    <use href="#background-shape" fill="url(#surface-light)"/>
+
+    <g clip-path="url(#background-clip)">
+      <use
+        href="#background-shape"
+        fill="none"
+        stroke="url(#edge-light)"
+        stroke-width="2"/>
+    </g>
 
     <g fill="#FFFFFF">
       <!-- H -->

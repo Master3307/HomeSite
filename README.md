@@ -1,4 +1,4 @@
-<h1 align="center"><a href="https://home.master3307.org/"><img src="public/img/HomeSiteLogo.webp" alt="HomeSite" style="height: 69px; width: auto;"></a></h1>
+<h1 align="center"><a href="https://home.master3307.org/"><img src="public/img/HomeSiteLogoAnimated.svg" alt="HomeSite" style="height: 113px; width: auto;"></a></h1>
 
 <p align="center"><i><strong>~ My Personal Website ~</strong></i></p>
 
@@ -67,4 +67,4 @@ Card Tilt effect by [Stormxxboy](https://stormxxboy.com/card/) found [here](http
 
 ---------------------------------------------------------------------
 
-<p align="center"><img src="public/favicon.png" alt="HomeSite" style="height: 46px; width: auto;"></p>
+<p align="center"><img src="public/img/HomeSiteIconAnimated.svg" alt="HomeSite" style="height: 46px; width: auto;"></p>

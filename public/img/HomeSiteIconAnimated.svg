@@ -1,0 +1,349 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+  width="512"
+  height="512"
+  viewBox="0 0 512 512"
+  role="img"
+  aria-labelledby="homesite-title homesite-description">
+
+  <title id="homesite-title">HomeSite</title>
+  <desc id="homesite-description">
+    A purple house icon with subtle shading. Its outline draws,
+    the background fades in, and the white H reveals from the center
+    outward with a gentle scale-up and settling motion.
+    A glowing star follows the upper-right roof edge, then spins
+    and fades at the corner. A gentle shine repeats independently.
+  </desc>
+
+  <defs>
+    <path id="homesite-shape"
+      pathLength="1"
+      d="
+        M245 26
+        Q256 21 267 26
+        L451 109
+        Q472 118 472 141
+        V466
+        Q472 492 446 492
+        H66
+        Q40 492 40 466
+        V141
+        Q40 118 61 109
+        Z"/>
+
+    <path id="homesite-h"
+      d="
+        M128 170
+        H218
+        V267
+        H294
+        V170
+        H384
+        V450
+        H294
+        V353
+        H218
+        V450
+        H128
+        Z"/>
+
+    <clipPath id="homesite-clip">
+      <use href="#homesite-shape"/>
+    </clipPath>
+
+    <linearGradient id="surface-shading"
+      x1="0%" y1="0%"
+      x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".085"/>
+      <stop offset="38%" stop-color="#FFFFFF" stop-opacity=".02"/>
+      <stop offset="62%" stop-color="#140526" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#140526" stop-opacity=".12"/>
+    </linearGradient>
+
+    <linearGradient id="edge-shading"
+      x1="0%" y1="0%"
+      x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#DEC7FF" stop-opacity=".22"/>
+      <stop offset="45%" stop-color="#BD8AFF" stop-opacity=".04"/>
+      <stop offset="100%" stop-color="#140526" stop-opacity=".1"/>
+    </linearGradient>
+
+    <linearGradient id="shine-gradient"
+      x1="0%" y1="0%"
+      x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="28%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity=".085"/>
+      <stop offset="72%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <radialGradient id="star-halo">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".9"/>
+      <stop offset="12%" stop-color="#F6EEFF" stop-opacity=".65"/>
+      <stop offset="38%" stop-color="#D5B1FF" stop-opacity=".24"/>
+      <stop offset="100%" stop-color="#A566FF" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="star-reflection">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".3"/>
+      <stop offset="35%" stop-color="#E1C8FF" stop-opacity=".12"/>
+      <stop offset="100%" stop-color="#C091FF" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="star-glow"
+      x="-150%" y="-150%"
+      width="400%" height="400%"
+      color-interpolation-filters="sRGB">
+      <feGaussianBlur
+        in="SourceGraphic"
+        stdDeviation="1.9"
+        result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Follow the roof and stop halfway around its right shoulder. -->
+    <path id="star-route"
+      d="
+        M335 56.673913
+        L451 109
+        Q461.5 113.5 466.75 121.5"/>
+  </defs>
+
+  <style>
+    .background-outline {
+      fill: none;
+      stroke: #5416A4;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      animation:
+        draw-background 1.1s cubic-bezier(.45, 0, .2, 1) forwards,
+        hide-outline .3s ease 1.1s forwards;
+    }
+
+    .background-fill {
+      opacity: 0;
+      animation:
+        fill-background 1.2s cubic-bezier(.4, 0, .2, 1) .15s both;
+    }
+
+    .letter {
+      fill: #FFFFFF;
+      opacity: 0;
+      transform-box: fill-box;
+      transform-origin: center;
+      animation:
+        reveal-h .85s cubic-bezier(.22, 1, .36, 1) 1.1s both;
+    }
+
+    .shine {
+      fill: url(#shine-gradient);
+      opacity: 0;
+      animation: slow-shine 12s linear 4.5s infinite both;
+    }
+
+    .star-appearance {
+      opacity: 0;
+      animation: star-appear 1.2s linear 2.3s both;
+    }
+
+    .star-burst {
+      transform-box: view-box;
+      transform-origin: 0 0;
+      animation: star-twinkle 1.2s linear 2.3s both;
+    }
+
+    @keyframes draw-background {
+      from { stroke-dashoffset: 1; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    @keyframes hide-outline {
+      to { opacity: 0; }
+    }
+
+    @keyframes fill-background {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes reveal-h {
+      0% {
+        opacity: 0;
+        clip-path: inset(0 50% 0 50%);
+        transform: scale(.92);
+      }
+      20% {
+        opacity: 1;
+      }
+      75% {
+        opacity: 1;
+        clip-path: inset(0 0 0 0);
+        transform: scale(1.025);
+      }
+      100% {
+        opacity: 1;
+        clip-path: inset(0 0 0 0);
+        transform: scale(1);
+      }
+    }
+
+    @keyframes slow-shine {
+      0% {
+        opacity: 0;
+        transform: translateX(-340px) skewX(-16deg);
+      }
+      5%, 38% {
+        opacity: 1;
+      }
+      45%, 100% {
+        opacity: 0;
+        transform: translateX(680px) skewX(-16deg);
+      }
+    }
+
+    @keyframes star-appear {
+      0%   { opacity: 0; }
+      12%  { opacity: .85; }
+      45%  { opacity: 1; }
+      65%  { opacity: 1; }
+      80%  { opacity: .75; }
+      100% { opacity: 0; }
+    }
+
+    @keyframes star-twinkle {
+      0% {
+        transform: rotate(-18deg) scale(.12);
+      }
+      30% {
+        transform: rotate(-8deg) scale(.75);
+      }
+      58% {
+        transform: rotate(0deg) scale(1.15);
+      }
+      65% {
+        transform: rotate(12deg) scale(1.2);
+      }
+      80% {
+        transform: rotate(105deg) scale(.8);
+      }
+      100% {
+        transform: rotate(250deg) scale(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .background-outline,
+      .shine,
+      .star-effect {
+        display: none;
+        animation: none;
+      }
+
+      .background-fill,
+      .letter {
+        animation: none;
+        opacity: 1;
+        transform: none;
+        clip-path: none;
+      }
+    }
+  </style>
+
+  <g opacity=".95" aria-hidden="true">
+    <use class="background-outline" href="#homesite-shape"/>
+
+    <g class="background-fill">
+      <use href="#homesite-shape" fill="#5416A4"/>
+      <use href="#homesite-shape" fill="url(#surface-shading)"/>
+
+      <g clip-path="url(#homesite-clip)">
+        <use
+          href="#homesite-shape"
+          fill="none"
+          stroke="url(#edge-shading)"
+          stroke-width="2"/>
+      </g>
+    </g>
+
+    <g class="letter">
+      <use href="#homesite-h"/>
+    </g>
+
+    <!-- Independent, slow repeating surface shine. -->
+    <g clip-path="url(#homesite-clip)">
+      <rect
+        class="shine"
+        x="0"
+        y="0"
+        width="280"
+        height="512"/>
+    </g>
+
+    <!-- Reflected light stays inside the house silhouette. -->
+    <g class="star-effect" clip-path="url(#homesite-clip)">
+      <g>
+        <animateMotion
+          begin="2.3s"
+          dur="1.2s"
+          calcMode="spline"
+          keyTimes="0;.65;1"
+          keyPoints="0;1;1"
+          keySplines=".25 .1 .35 1;0 0 1 1"
+          fill="freeze">
+          <mpath href="#star-route"/>
+        </animateMotion>
+
+        <g class="star-appearance">
+          <ellipse
+            cx="-9"
+            cy="11"
+            rx="36"
+            ry="26"
+            fill="url(#star-reflection)"/>
+        </g>
+      </g>
+    </g>
+
+    <!-- One star, one pass, ending with a spinning fade at the corner. -->
+    <g class="star-effect">
+      <g>
+        <animateMotion
+          begin="2.3s"
+          dur="1.2s"
+          calcMode="spline"
+          keyTimes="0;.65;1"
+          keyPoints="0;1;1"
+          keySplines=".25 .1 .35 1;0 0 1 1"
+          fill="freeze">
+          <mpath href="#star-route"/>
+        </animateMotion>
+
+        <g class="star-appearance">
+          <g class="star-burst">
+            <circle r="22" fill="url(#star-halo)"/>
+
+            <g filter="url(#star-glow)">
+              <path
+                fill="#FFFFFF"
+                d="
+                  M0 -17
+                  C1 -4 2 -1.5 12 0
+                  C2 1.5 1 4 0 17
+                  C-1 4 -2 1.5 -12 0
+                  C-2 -1.5 -1 -4 0 -17
+                  Z"/>
+
+              <circle r="1.9" fill="#FFFFFF"/>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
