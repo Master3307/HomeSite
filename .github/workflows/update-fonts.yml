@@ -21,9 +21,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout dev
         uses: actions/checkout@v5
         with:
+          ref: dev
           persist-credentials: true
 
       - name: Set up pnpm
@@ -44,10 +45,11 @@ jobs:
       - name: Scan and update self-hosted fonts
         run: pnpm fonts:update
 
-      - name: Commit updated font assets
+      - name: Commit and push updated font assets to dev
         id: commit
         uses: stefanzweifel/git-auto-commit-action@v6
         with:
+          branch: dev
           commit_message: "chore: update self-hosted fonts"
           file_pattern: |
             public/fonts/**
