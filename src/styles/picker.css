@@ -93,9 +93,7 @@
 
     transform: none;
 
-    transition:
-      background-color 0.35s ease,
-      box-shadow 0.25s ease;
+    transition: box-shadow 0.25s ease;
   }
 
   .picker .theme-toggle:hover {
@@ -115,7 +113,7 @@
   }
 
 
-  /* Sliding thumb */
+  /* Thumb follows the shared live theme progress */
 
   .picker .theme-toggle-thumb {
     position: absolute;
@@ -134,50 +132,35 @@
     pointer-events: none;
 
     transform: translateX(
-      calc(var(--theme-progress, 0) * var(--theme-thumb-travel))
+      calc(var(--theme-progress, 1) * var(--theme-thumb-travel))
     );
 
-    transition:
-      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-      background-color 0.35s ease;
-  }
-
-  /* Follow the pointer directly while dragging. */
-  .picker .theme-toggle[data-dragging="true"] .theme-toggle-thumb {
-    transition: background-color 0.35s ease;
+    transition: none;
   }
 
 
-  /* Reactive sun and moon icons */
+  /* Icons follow the same live theme progress */
 
   .picker .theme-toggle .material-symbols-outlined {
     pointer-events: none;
     font-size: 20px;
-
-    transition:
-      opacity 0.25s ease,
-      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: none;
   }
 
   .picker .theme-toggle-sun {
-    opacity: calc(1 - var(--theme-progress, 0) * 0.5);
+    opacity: calc(1 - var(--theme-progress, 1) * 0.5);
 
     transform:
-      rotate(calc(var(--theme-progress, 0) * 45deg))
-      scale(calc(1 - var(--theme-progress, 0) * 0.15));
+      rotate(calc(var(--theme-progress, 1) * 45deg))
+      scale(calc(1 - var(--theme-progress, 1) * 0.15));
   }
 
   .picker .theme-toggle-moon {
-    opacity: calc(0.5 + var(--theme-progress, 0) * 0.5);
+    opacity: calc(0.5 + var(--theme-progress, 1) * 0.5);
 
     transform:
-      rotate(calc(-20deg + var(--theme-progress, 0) * 20deg))
-      scale(calc(0.85 + var(--theme-progress, 0) * 0.15));
-  }
-
-  /* Keep the icons synchronized with the thumb during dragging. */
-  .picker .theme-toggle[data-dragging="true"] .material-symbols-outlined {
-    transition: none;
+      rotate(calc(-20deg + var(--theme-progress, 1) * 20deg))
+      scale(calc(0.85 + var(--theme-progress, 1) * 0.15));
   }
 
 
@@ -224,7 +207,7 @@
       0 10px 30px rgba(0, 0, 0, 0.14),
       inset 0 1px 0 rgba(255, 255, 255, 0.047);
 
-    transition: background-color 0.2s ease;
+    transition: none;
   }
 
   .picker .picker-trigger::-webkit-details-marker {
@@ -325,7 +308,7 @@
     cursor: pointer;
 
     transform: none;
-    transition: background-color 0.2s ease;
+    transition: none;
   }
 
   .picker .picker-option:hover {
@@ -382,12 +365,7 @@
   /* Reduced motion */
 
   @media (prefers-reduced-motion: reduce) {
-    .picker .theme-toggle,
-    .picker .theme-toggle-thumb,
-    .picker .theme-toggle .material-symbols-outlined,
-    .picker .picker-trigger,
-    .picker .picker-option,
-    .picker .theme-toggle[data-dragging="true"] .theme-toggle-thumb {
+    .picker .theme-toggle {
       transition: none;
     }
   }

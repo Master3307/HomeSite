@@ -4,16 +4,20 @@
 
 
 
+
 You want to View the Source Code?
 
 
 
+
 find it here:
-https://github.com/Master3307/HomeSite
+[https://github.com/Master3307/HomeSite](https://github.com/Master3307/HomeSite)
+
 
 
 thanks for your interest :D
 it means a lot to me :3
+
 
 
 
@@ -27,7 +31,9 @@ it means a lot to me :3
 
 
 
+
 have fun and enjoy!
+
 
 
 
@@ -35,6 +41,32 @@ have fun and enjoy!
 
   <head>
     <meta charset="UTF-8" />
+
+    <!-- Apply the saved theme before the page renders. -->
+    <script>
+      (() => {
+        const root = document.documentElement;
+        let theme = "dark";
+
+        try {
+          const savedTheme = localStorage.getItem("preferredTheme");
+
+          if (savedTheme === "light" || savedTheme === "dark") {
+            theme = savedTheme;
+          }
+        } catch {
+          // Keep the dark default if storage is unavailable.
+        }
+
+        root.setAttribute("data-theme", theme);
+
+        root.style.setProperty(
+          "--theme-progress",
+          theme === "dark" ? "1" : "0",
+        );
+      })();
+    </script>
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Favicons / PWA -->

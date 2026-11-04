@@ -1,24 +1,120 @@
-import { useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAccountSettings } from '../lib/accountSettings.jsx'
 
-function clamp(value, min, max) {
+function clamp(value, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value))
+}
+
+function themeProgress(theme) {
+  return theme === 'dark' ? 1 : 0
 }
 
 export default function ThemeSwitch() {
   const { t } = useTranslation('themeswitch')
   const { theme, setTheme } = useAccountSettings()
 
-  const isDark = theme === 'dark'
-
-  const [dragProgress, setDragProgress] = useState(null)
-
+  const buttonRef = useRef(null)
+  const progressRef = useRef(themeProgress(theme))
+  const animationRef = useRef(null)
   const gestureRef = useRef(null)
   const suppressClickRef = useRef(false)
 
-  const progress = dragProgress ?? (isDark ? 1 : 0)
-  const isDragging = dragProgress !== null
+  const stopAnimation = useCallback(() => {
+    if (animationRef.current !== null) {
+      cancelAnimationFrame(animationRef.current)
+      animationRef.current = null
+    }
+  }, [])
+
+  const writeProgress = useCallback((value) => {
+    const progress = clamp(value)
+
+    progressRef.current = progress
+
+    document.documentElement.style.setProperty(
+      '--theme-progress',
+      String(progress),
+    )
+  }, [])
+
+  const animateTo = useCallback((target) => {
+    stopAnimation()
+
+    const start = progressRef.current
+    const distance = Math.abs(target - start)
+
+    const reducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+
+    if (reducedMotion || distance < 0.001) {
+      writeProgress(target)
+      return
+    }
+
+    const startedAt = performance.now()
+    const duration = 260
+
+    function frame(now) {
+      const elapsed = clamp((now - startedAt) / duration)
+
+      // One easing curve drives the entire page and toggle.
+      const eased = 1 - Math.pow(1 - elapsed, 3)
+
+      writeProgress(start + (target - start) * eased)
+
+      if (elapsed < 1) {
+        animationRef.current = requestAnimationFrame(frame)
+      } else {
+        animationRef.current = null
+        writeProgress(target)
+      }
+    }
+
+    animationRef.current = requestAnimationFrame(frame)
+  }, [stopAnimation, writeProgress])
+
+  useLayoutEffect(() => {
+    const root = document.documentElement
+
+    const existingProgress = Number.parseFloat(
+      root.style.getPropertyValue('--theme-progress'),
+    )
+
+    writeProgress(
+      Number.isFinite(existingProgress)
+        ? existingProgress
+        : themeProgress(root.getAttribute('data-theme')),
+    )
+
+    return stopAnimation
+  }, [stopAnimation, writeProgress])
+
+  // Also animate changes coming from account settings.
+  useEffect(() => {
+    if (!gestureRef.current) {
+      animateTo(themeProgress(theme))
+    }
+  }, [theme, animateTo])
+
+  function commitTheme(nextTheme) {
+    // Animate even when returning to the already-selected theme.
+    animateTo(themeProgress(nextTheme))
+
+    if (nextTheme !== theme) {
+      setTheme(nextTheme)
+    }
+  }
+
+  function clearDragging() {
+    buttonRef.current?.removeAttribute('data-dragging')
+  }
 
   function handlePointerDown(event) {
     if (!event.isPrimary || event.button !== 0) return
@@ -29,23 +125,21 @@ export default function ThemeSwitch() {
 
     if (!thumb) return
 
+    stopAnimation()
+    suppressClickRef.current = false
+
     const buttonRect = button.getBoundingClientRect()
     const thumbRect = thumb.getBoundingClientRect()
     const inset = Number.parseFloat(getComputedStyle(thumb).left) || 0
 
-    const travel = Math.max(
-      1,
-      buttonRect.width - inset * 2 - thumbRect.width
-    )
-
-    suppressClickRef.current = false
-
     gestureRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
-      startProgress: isDark ? 1 : 0,
-      progress: isDark ? 1 : 0,
-      travel,
+      startProgress: progressRef.current,
+      travel: Math.max(
+        1,
+        buttonRect.width - inset * 2 - thumbRect.width,
+      ),
       dragging: false,
     }
 
@@ -63,16 +157,13 @@ export default function ThemeSwitch() {
 
     if (!gesture.dragging && Math.abs(distance) >= 4) {
       gesture.dragging = true
+      buttonRef.current?.setAttribute('data-dragging', 'true')
     }
 
     if (gesture.dragging) {
-      gesture.progress = clamp(
+      writeProgress(
         gesture.startProgress + distance / gesture.travel,
-        0,
-        1
       )
-
-      setDragProgress(gesture.progress)
     }
 
     return gesture
@@ -89,16 +180,11 @@ export default function ThemeSwitch() {
 
     gestureRef.current = null
     suppressClickRef.current = gesture.dragging
+    clearDragging()
 
     if (gesture.dragging) {
-      const nextTheme = gesture.progress >= 0.5 ? 'dark' : 'light'
-
-      if (nextTheme !== theme) {
-        setTheme(nextTheme)
-      }
+      commitTheme(progressRef.current >= 0.5 ? 'dark' : 'light')
     }
-
-    setDragProgress(null)
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
@@ -110,38 +196,35 @@ export default function ThemeSwitch() {
 
     if (!gesture || gesture.pointerId !== event.pointerId) return
 
-    suppressClickRef.current = gesture.dragging
     gestureRef.current = null
+    suppressClickRef.current = gesture.dragging
+    clearDragging()
 
-    setDragProgress(null)
+    animateTo(themeProgress(theme))
   }
 
   function handleClick(event) {
-    // Keyboard and assistive-technology clicks still toggle normally.
     if (event.detail !== 0 && suppressClickRef.current) {
       suppressClickRef.current = false
       return
     }
 
     suppressClickRef.current = false
-    setTheme(isDark ? 'light' : 'dark')
+    commitTheme(theme === 'dark' ? 'light' : 'dark')
   }
 
   return (
     <div className="picker theme-picker">
       <button
+        ref={buttonRef}
         type="button"
         className="theme-toggle"
         role="switch"
-        aria-checked={isDark}
+        aria-checked={theme === 'dark'}
         aria-label={t('darkMode', {
           defaultValue: 'Dark mode',
         })}
-        title={t(isDark ? 'dark' : 'light')}
-        data-dragging={isDragging ? 'true' : 'false'}
-        style={{
-          '--theme-progress': progress,
-        }}
+        title={t(theme === 'dark' ? 'dark' : 'light')}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

@@ -1,0 +1,104 @@
+/*
+ * Shared live theme blend.
+ *
+ * --theme-progress:
+ *   0 = light
+ *   1 = dark
+ *
+ * JavaScript animates this single value.
+ * Do not add a CSS transition to it or to the blended colors.
+ */
+
+/* Fallback before the toggle component initializes. */
+:root {
+    --theme-progress: 1;
+  }
+
+  :root[data-theme="light"] {
+    --theme-progress: 0;
+  }
+
+  :root[data-theme="dark"] {
+    --theme-progress: 1;
+  }
+
+  /*
+   * Repeated :root deliberately matches the specificity
+   * of the existing :root[data-theme] declarations.
+   * Load this stylesheet after the main theme stylesheet.
+   */
+  :root:root {
+    --theme-dark-weight: calc(var(--theme-progress) * 100%);
+
+    --bg-primary: color-mix(
+      in oklab,
+      #b28ee1,
+      #150a24 var(--theme-dark-weight)
+    );
+
+    --bg-secondary: color-mix(
+      in oklab,
+      #8452c5,
+      #63369e var(--theme-dark-weight)
+    );
+
+    --text-primary: #eee;
+
+    --text-secondary: color-mix(
+      in oklab,
+      #c1bdce,
+      #c0bfe6 var(--theme-dark-weight)
+    );
+
+    --text-thirdary: color-mix(
+      in oklab,
+      #000,
+      #eee var(--theme-dark-weight)
+    );
+
+    --vier: color-mix(
+      in oklab,
+      #eee,
+      #000 var(--theme-dark-weight)
+    );
+
+    --accent: color-mix(
+      in oklab,
+      #5f4ee6,
+      #3d29d4 var(--theme-dark-weight)
+    );
+
+    --accent-hover: color-mix(
+      in oklab,
+      #4638c9,
+      #594bd667 var(--theme-dark-weight)
+    );
+
+    --border: color-mix(
+      in oklab,
+      #e6e0f6,
+      #47405b var(--theme-dark-weight)
+    );
+  }
+
+  /*
+   * These surfaces must follow the shared progress directly,
+   * rather than starting their own delayed color transitions.
+   */
+
+  .picker .theme-toggle {
+    transition: box-shadow 0.25s ease;
+  }
+
+  .picker .theme-toggle-thumb,
+  .picker .theme-toggle .material-symbols-outlined,
+  .picker .picker-trigger,
+  .picker .picker-option {
+    transition: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .picker .theme-toggle {
+      transition: none;
+    }
+  }
