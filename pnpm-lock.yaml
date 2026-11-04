@@ -279,8 +279,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0(react@19.3.1)
       react-i18next:
-        specifier: ^17.1.11
-        version: 17.1.11(i18next@26.7.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: ^17.1.12
+        version: 17.1.12(i18next@26.7.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react-powerglitch:
         specifier: ^1.1.0
         version: 1.1.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -1935,8 +1935,8 @@ packages:
     peerDependencies:
       react: ^16.6.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  react-i18next@17.1.11:
-    resolution: {integrity: sha512-nQqkvaD+N4kSrM0bosDc7yW2IvaC3chHPhZb0FoRXX6Buf1JzfOLLLs2u7SfXcnAE3nKAIn0Kvu68lQGObPlyA==}
+  react-i18next@17.1.12:
+    resolution: {integrity: sha512-Gf8riCKF/EmqQ8I1g0N5pJOLvJCkAXGAEkzOuRNHc/sBGL3dfE3WZ7+sDLrUo/kw/xdug3g48jo7M+s/SKf0HQ==}
     peerDependencies:
       i18next: '>= 26.2.0'
       react: '>= 16.8.0'
@@ -3814,7 +3814,7 @@ snapshots:
       react-fast-compare: 3.2.2
       shallowequal: 1.1.0
 
-  react-i18next@17.1.11(i18next@26.7.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  react-i18next@17.1.12(i18next@26.7.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@babel/runtime': 7.29.10
       html-parse-stringify: 4.0.1
