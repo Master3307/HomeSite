@@ -1,0 +1,13 @@
+{
+    "template": "S sieht so aus, als wärsch auf an Fehler g'stoßa.",
+    "templateTitle": "Fehler",
+    "403": "S sieht so aus, als dürftsch du die Seit net aufruafa – Verbotta.",
+    "404": "S sieht so aus, als hättsch a Seit g'funda, die's gar net gibt – Net g'funda.",
+    "500": "S sieht so aus, als wär auf em Server a Fehler aufdreta – Interner Serverfehler.",
+    "502": "S sieht so aus, als wär auf em Server a Fehler aufdreta – Bad Gateway.",
+    "503": "S sieht so aus, als wär auf em Server a Fehler aufdreta – Dienscht net verfügbar.",
+    "504": "S sieht so aus, als wär auf em Server a Fehler aufdreta – Gateway Timeout.",
+    "back": "Zruck",
+    "home": "Zur Schtartseit",
+    "reload": "Seit nei lada"
+}

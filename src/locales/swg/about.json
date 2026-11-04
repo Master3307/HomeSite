@@ -1,0 +1,11 @@
+{
+    "about": {
+        "header": "Über die Website",
+        "card": {
+            "line1": "Des isch a Bauschtell.",
+            "line2": "Do erfährsch mehr über mi!",
+            "github": "Guck dir dr Quellcode auf <strong><a href=\"https://github.com/Master3307/HomeSite\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a></strong> a",
+            "line3": "Mehr a'gucka…"
+        }
+    }
+}

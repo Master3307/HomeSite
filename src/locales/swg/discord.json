@@ -1,0 +1,10 @@
+{
+    "discord": {
+        "listening": "Hört grad Musik",
+        "playing": "Schpielt a Schpiel",
+        "loading": "Lad grad…",
+        "failed": "Fehler beim Lada vom Profil",
+        "unavailable": "Discord-Profil net verfügbar:",
+        "streak": "Streak"
+    }
+}
