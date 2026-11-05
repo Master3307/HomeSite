@@ -19,7 +19,7 @@
     "serve": "serve -s dist -l tcp://127.0.0.1:8081",
     "deploy:local": "bash scripts/deploy.sh"
   },
-  "packageManager": "pnpm@12.15.0",
+  "packageManager": "pnpm@12.16.1",
   "engines": {
     "pnpm": ">=10.0.0"
   },

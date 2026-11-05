@@ -2,6 +2,15 @@ allowBuilds:
   better-sqlite3: true
   canvas: true
   twemoji-emojis: true
+
 overrides:
   undici: "^6.28.0"
-  qs: "6.16.0"
+  qs: "^6.16.1"
+  decompress: "npm:@xhmikosr/decompress@^11.1.4"
+
+patchedDependencies:
+  download@8.0.0: patches/download@8.0.0.patch
+
+permissions:
+  dotenv:
+    skills: false
