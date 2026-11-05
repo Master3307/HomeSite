@@ -1,10 +1,11 @@
-name: Update self-hosted fonts
+name: Update self-hosted fonts and emojis
 
 on:
   push:
     branches: ["master"]
     paths-ignore:
       - "public/fonts/**"
+      - "public/twemoji/**"
       - "src/styles/google-sans-flex.css"
   workflow_dispatch:
 
@@ -12,12 +13,12 @@ permissions:
   contents: write
 
 concurrency:
-  group: update-self-hosted-fonts
+  group: update-self-hosted-assets
   cancel-in-progress: false
 
 jobs:
   update:
-    name: Scan and update font assets
+    name: Update font and emoji assets
     runs-on: ubuntu-latest
 
     steps:
@@ -35,7 +36,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -45,12 +46,84 @@ jobs:
       - name: Scan and update self-hosted fonts
         run: pnpm fonts:update
 
-      - name: Commit and push updated font assets to dev
-        id: commit
+      - name: Determine installed Twemoji version
+        id: twemoji
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="$(node --input-type=commonjs -e '
+            const { execFileSync } = require("node:child_process");
+            const projects = JSON.parse(
+              execFileSync(
+                "pnpm",
+                ["list", "@twemoji/api", "--depth", "0", "--json"],
+                { encoding: "utf8" }
+              )
+            );
+
+            const version =
+              projects[0]?.dependencies?.["@twemoji/api"]?.version;
+
+            if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
+              throw new Error(`Unexpected Twemoji version: ${version}`);
+            }
+
+            process.stdout.write(version);
+          ')"
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Using Twemoji release v$version"
+
+      - name: Checkout matching Twemoji release
+        uses: actions/checkout@v5
+        with:
+          repository: jdecked/twemoji
+          ref: v${{ steps.twemoji.outputs.version }}
+          path: .asset-sources/twemoji
+          persist-credentials: false
+          sparse-checkout: |
+            assets/svg
+          sparse-checkout-cone-mode: true
+
+      - name: Update self-hosted Twemoji SVGs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          source=".asset-sources/twemoji/assets/svg"
+          target="public/twemoji/svg"
+
+          if [ ! -d "$source" ]; then
+            echo "::error::Twemoji SVG directory is missing."
+            exit 1
+          fi
+
+          count="$(find "$source" -maxdepth 1 -type f -name '*.svg' | wc -l)"
+
+          if [ "$count" -lt 1000 ]; then
+            echo "::error::Unexpectedly small Twemoji collection: $count SVGs."
+            exit 1
+          fi
+
+          mkdir -p "$target"
+
+          rsync -a --delete \
+            --include='*.svg' \
+            --exclude='*' \
+            "$source/" "$target/"
+
+          echo "Synchronized $count SVG files from Twemoji v${{ steps.twemoji.outputs.version }}."
+
+      - name: Verify production build
+        run: pnpm run build
+
+      - name: Commit and push updated assets to dev
         uses: stefanzweifel/git-auto-commit-action@v6
         with:
           branch: dev
-          commit_message: "chore: update self-hosted fonts"
+          commit_message: "chore: update self-hosted fonts and emojis"
           file_pattern: |
             public/fonts/**
+            public/twemoji/svg/**
             src/styles/google-sans-flex.css
