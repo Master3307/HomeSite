@@ -72,7 +72,16 @@ async function writeJson(file, value) {
 }
 
 async function main() {
-  await fs.access(SOURCE);
+  try {
+    await fs.access(SOURCE);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      console.log("[FDC export] Source directory does not exist; skipping.");
+      return;
+    }
+
+    throw error;
+  }
 
   const sourceSummary = JSON.parse(
     await fs.readFile(path.join(SOURCE, "summary.json"), "utf8"),
