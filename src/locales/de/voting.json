@@ -1,4 +1,37 @@
 {
     "votingComingSoon": "Hier kannst du bald für den FDC abstimmen! :D",
-    "votingComingSoonPatience": "Du musst nur noch ein bisschen Geduld haben ;)"
+    "votingComingSoonPatience": "Du musst nur noch ein bisschen Geduld haben ;)",
+    "fdc": {
+        "running": "Läuft",
+        "ended": "Beendet",
+        "failed": "Fehlgeschlagen",
+        "notAcceptingVotes": "Keine Stimmabgabe möglich",
+        "title": "Friday Dress Code",
+        "openImage": "Bild für Option {{number}} öffnen",
+        "tiedWinner": "Gewinner bei Gleichstand",
+        "winner": "Gewinner",
+        "votes_one": "{{count}} Stimme",
+        "votes_other": "{{count}} Stimmen",
+        "votingNotConnected": "Abstimmung auf der Website bald verfügbar",
+        "loginToVoteButton": "Zum Abstimmen anmelden",
+        "totalVoters": "{{count}} Teilnehmende insgesamt",
+        "checkingLogin": "Anmeldestatus wird geprüft…",
+        "loggedInVotingSoon": "Du bist angemeldet. Die Abstimmung auf der Website wird verfügbar sein, sobald die Serveranbindung eingerichtet ist.",
+        "loginToVote": "Melde dich über den Anmeldebutton an, um abzustimmen. Du kannst die Umfrage auch ohne Anmeldung ansehen.",
+        "votersPrivate": "Die Identitäten der Abstimmenden sind nur für angemeldete Nutzer sichtbar.",
+        "voterDetailsSoon": "Details zu den Abstimmenden werden über die Serveranbindung mit Authentifizierung verfügbar sein.",
+        "backToArchive": "Zurück zum Archiv",
+        "loadingPoll": "Umfrage wird geladen…",
+        "loadError": "Diese Umfrage konnte nicht geladen werden.",
+        "archiveTitle": "FDC-Archiv",
+        "back": "Zurück",
+        "archiveIntroduction": "Sieh dir frühere Umfragen und ihre Ergebnisse an. Umfragen sind ohne Anmeldung sichtbar, die Identitäten der Abstimmenden jedoch nicht.",
+        "archiveEmpty": "Noch keine archivierten Umfragen vorhanden.",
+        "sectionTitle": "Friday Dress Code",
+        "viewArchive": "FDC-Archiv ansehen",
+        "archive": "Archiv ansehen",
+        "loading": "FDC-Umfragen werden geladen…",
+        "summaryError": "Die FDC-Umfragen konnten nicht geladen werden. Bitte versuche es später erneut.",
+        "noCurrentPoll": "Derzeit gibt es keine laufende FDC-Umfrage."
+    }
 }

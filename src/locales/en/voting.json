@@ -1,4 +1,37 @@
 {
     "votingComingSoon": "You will be able to Vote for the FDC here soon! :D",
-    "votingComingSoonPatience": "You just need to have some patience ;)"
+    "votingComingSoonPatience": "You just need to have some patience ;)",
+    "fdc": {
+        "running": "Running",
+        "ended": "Ended",
+        "failed": "Failed",
+        "notAcceptingVotes": "Not accepting votes",
+        "title": "Friday Dress Code",
+        "openImage": "Open image for option {{number}}",
+        "tiedWinner": "Tied winner",
+        "winner": "Winner",
+        "votes_one": "{{count}} vote",
+        "votes_other": "{{count}} votes",
+        "votingNotConnected": "Website voting coming soon",
+        "loginToVoteButton": "Log in to vote",
+        "totalVoters": "{{count}} total voters",
+        "checkingLogin": "Checking login…",
+        "loggedInVotingSoon": "You are logged in. Website voting will be available when the server integration is connected.",
+        "loginToVote": "Log in using the login button to vote. You can view the poll without logging in.",
+        "votersPrivate": "Voter identities are only available to logged-in users.",
+        "voterDetailsSoon": "Voter details will be available through the authenticated server integration.",
+        "backToArchive": "Back to archive",
+        "loadingPoll": "Loading poll…",
+        "loadError": "Could not load this poll.",
+        "archiveTitle": "FDC archive",
+        "back": "Back",
+        "archiveIntroduction": "Browse previous polls and their results. Polls are visible without logging in; voter identities are not.",
+        "archiveEmpty": "No archived polls yet.",
+        "sectionTitle": "Friday Dress Code",
+        "viewArchive": "View FDC archive",
+        "archive": "View Archive",
+        "loading": "Loading FDC polls…",
+        "summaryError": "Could not load FDC polls. Please try again later.",
+        "noCurrentPoll": "There is no current FDC poll."
+    }
 }

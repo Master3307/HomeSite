@@ -1,4 +1,37 @@
 {
     "votingComingSoon": "Bald kasch hier für dr FDC abstimma! :D",
-    "votingComingSoonPatience": "Musch bloß no a bissle Geduld haba ;)"
+    "votingComingSoonPatience": "Musch bloß no a bissle Geduld haba ;)",
+    "fdc": {
+        "running": "Läuft",
+        "ended": "Isch rum",
+        "failed": "Hot net klappt",
+        "notAcceptingVotes": "Abstimma grad net möglich",
+        "title": "Friday Dress Code",
+        "openImage": "Bild für Option {{number}} uffmacha",
+        "tiedWinner": "Gwinner bei Gleichstand",
+        "winner": "Gwinner",
+        "votes_one": "{{count}} Stimm",
+        "votes_other": "{{count}} Stimma",
+        "votingNotConnected": "Abstimma uff dr Website goht bald",
+        "loginToVoteButton": "Zum Abstimma aam elda",
+        "totalVoters": "{{count}} Leit hend insgesamt abgstimmt",
+        "checkingLogin": "Mir gucket, ob du aagmeldet bisch…",
+        "loggedInVotingSoon": "Du bisch aagmeldet. Uff dr Website kasch abstimma, sobald d Serveraabindung eingerichtet isch.",
+        "loginToVote": "Meld di über dr Aameldeknopf aa, damit du abstimma kasch. D Umfrag kasch au ohne Aameldung aagucka.",
+        "votersPrivate": "Wer abgstimmt hot, sehet bloß aagmeldete Nutzer.",
+        "voterDetailsSoon": "Meh Infos zu de Leit, wo abgstimmt hend, gibt’s, sobald d Serveraabindung mit Aameldung eingerichtet isch.",
+        "backToArchive": "Zrugg zum Archiv",
+        "loadingPoll": "D Umfrag wird glada…",
+        "loadError": "Die Umfrag hot net glada werda könna.",
+        "archiveTitle": "FDC-Archiv",
+        "back": "Zrugg",
+        "archiveIntroduction": "Guck dir ältere Umfraga ond ihre Ergebnisse aa. D Umfraga kasch ohne Aameldung seha, aber net, wer abgstimmt hot.",
+        "archiveEmpty": "No koine Umfraga im Archiv.",
+        "sectionTitle": "Friday Dress Code",
+        "viewArchive": "FDC-Archiv aagucka",
+        "archive": "Archiv aagucka",
+        "loading": "D FDC-Umfraga werdet glada…",
+        "summaryError": "D FDC-Umfraga hend net glada werda könna. Probier’s später nommol.",
+        "noCurrentPoll": "Grad gibt’s koi laufende FDC-Umfrag."
+    }
 }

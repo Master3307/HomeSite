@@ -226,8 +226,8 @@ importers:
         specifier: ^1.0.3
         version: 1.0.3
       i18next:
-        specifier: ^26.7.1
-        version: 26.7.1
+        specifier: ^26.7.2
+        version: 26.7.2
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -238,8 +238,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0(react@19.3.1)
       react-i18next:
-        specifier: ^17.1.12
-        version: 17.1.12(i18next@26.7.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: ^17.1.13
+        version: 17.1.13(i18next@26.7.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react-powerglitch:
         specifier: ^1.1.0
         version: 1.1.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -270,7 +270,7 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       '@vitejs/plugin-react':
         specifier: ^6.2.1
-        version: 6.2.1(vite@8.3.5(@types/node@26.6.6))
+        version: 6.2.1(vite@8.3.6(@types/node@26.6.6))
       oxlint:
         specifier: ^1.91.0
         version: 1.91.0
@@ -281,13 +281,13 @@ importers:
         specifier: ^6.28.0
         version: 6.29.1
       vite:
-        specifier: ^8.3.5
-        version: 8.3.5(@types/node@26.6.6)
+        specifier: ^8.3.6
+        version: 8.3.6(@types/node@26.6.6)
 
 packages:
 
-  '@babel/runtime@7.29.10':
-    resolution: {integrity: sha512-NpugTzbKgGrNe45Ui32cN8vCFFMxVtP/9rtfwv0nP5FRDAjvYBxJcLVpYA9mr1jxP6cnIT7x9LUzuDTbWYYNRA==}
+  '@babel/runtime@7.29.13':
+    resolution: {integrity: sha512-v+oN26xP4YIlQsbQ/CbTH1WG5m/l/DjKKZNy/Kp3f/AFvbgt7Em/D0FeMM3O2hX0YzeN2M16W8lOpyhIkfCBcQ==}
     engines: {node: '>=6.9.0'}
 
   '@canvas/image-data@1.1.0':
@@ -1192,8 +1192,8 @@ packages:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
     engines: {node: '>=10.17.0'}
 
-  i18next@26.7.1:
-    resolution: {integrity: sha512-cX+3RRVczel/V2kCMTACckSGSpqgtWYEA6beXNYVms7dOQiHojdPYHD26lT4IKimNeoGWrLvtPgjftbRvmZJVw==}
+  i18next@26.7.2:
+    resolution: {integrity: sha512-RsOY3BeaCDdkk52NeJSFAXELQ2rQXBO/tOub6L8ue2ICPfR/FRDWDOfEDg4xMPd1SqO5goVYQ6i72qWEUB/PPw==}
     peerDependencies:
       typescript: ^5 || ^6 || ^7
     peerDependenciesMeta:
@@ -1552,8 +1552,8 @@ packages:
     peerDependencies:
       react: ^16.6.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  react-i18next@17.1.12:
-    resolution: {integrity: sha512-Gf8riCKF/EmqQ8I1g0N5pJOLvJCkAXGAEkzOuRNHc/sBGL3dfE3WZ7+sDLrUo/kw/xdug3g48jo7M+s/SKf0HQ==}
+  react-i18next@17.1.13:
+    resolution: {integrity: sha512-ZxhOSlyKSKPtbUNPLwYMmE3w3bhoc0jaZJZ6bc7wGOT6cLbrbs//6m01HxCLtFdSjHvFpwFwoPhxxzIlHSs9cw==}
     peerDependencies:
       i18next: '>= 26.2.0'
       react: '>= 16.8.0'
@@ -1812,8 +1812,8 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  vite@8.3.5:
-    resolution: {integrity: sha512-z1YpjieJ9g0ebTmQpLBv/oq9E3F9EIlOe+7LahW8SrE3LTiG3udBRUXQOlYXP9b+IC2q2phHeVxj9xGlw34OEQ==}
+  vite@8.3.6:
+    resolution: {integrity: sha512-UI7dK29NnS54Fk+mmo7o+jI6U8Fp7hDl+X5Q1k45WH+d4dSlbLVUETGQ+hfkNgvLQGyoElPj837nZyv4MBc0VA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
@@ -1885,7 +1885,7 @@ packages:
 
 snapshots:
 
-  '@babel/runtime@7.29.10': {}
+  '@babel/runtime@7.29.13': {}
 
   '@canvas/image-data@1.1.0': {}
 
@@ -2245,10 +2245,10 @@ snapshots:
     dependencies:
       '@types/node': 26.6.6
 
-  '@vitejs/plugin-react@6.2.1(vite@8.3.5(@types/node@26.6.6))':
+  '@vitejs/plugin-react@6.2.1(vite@8.3.6(@types/node@26.6.6))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.3.5(@types/node@26.6.6)
+      vite: 8.3.6(@types/node@26.6.6)
 
   '@vladfrangu/async_event_emitter@2.4.7': {}
 
@@ -2673,7 +2673,7 @@ snapshots:
 
   human-signals@2.1.0: {}
 
-  i18next@26.7.1: {}
+  i18next@26.7.2: {}
 
   iconv-lite@0.7.3:
     dependencies:
@@ -2966,11 +2966,11 @@ snapshots:
       react-fast-compare: 3.2.2
       shallowequal: 1.1.0
 
-  react-i18next@17.1.12(i18next@26.7.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  react-i18next@17.1.13(i18next@26.7.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
-      '@babel/runtime': 7.29.10
+      '@babel/runtime': 7.29.13
       html-parse-stringify: 4.0.1
-      i18next: 26.7.1
+      i18next: 26.7.2
       react: 19.3.1
       use-sync-external-store: 1.7.0(react@19.3.1)
     optionalDependencies:
@@ -3288,7 +3288,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite@8.3.5(@types/node@26.6.6):
+  vite@8.3.6(@types/node@26.6.6):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
