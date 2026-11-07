@@ -15,7 +15,7 @@
     "mcstatus": "node scripts/test-mcstatus.js",
     "cleaner": "node scripts/clean.cjs",
     "sitemap": "node scripts/generate-sitemap.mjs",
-    "build": "pnpm run sitemap && vite build && node scripts/export-fdc.cjs --dist && cp dist/index.html dist/404.html",
+    "build": "pnpm run sitemap && vite build && node scripts/export-fdc.cjs --dist && node scripts/create-404.cjs",
     "preview": "vite preview",
     "images": "node scripts/generate-images.mjs",
     "serve": "serve -s dist -l tcp://127.0.0.1:8081",
