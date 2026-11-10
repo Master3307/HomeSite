@@ -1,0 +1,557 @@
+/* Dash page (/dash). Builds on the tokens and .card/.head styles in main.css. */
+
+.dash {
+  --dash-glass: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
+  --dash-glass-strong: color-mix(in srgb, var(--bg-secondary) 65%, transparent);
+  --dash-line: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  --dash-muted: var(--text-secondary);
+  --dash-danger: #e5484d;
+  --dash-radius: 13px;
+  --dash-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.047);
+
+  display: flex;
+  flex-direction: column;
+  width: 95%;
+  max-width: 1200px;
+  margin: 69px auto 0;
+  gap: 18px;
+}
+
+.dash > .card {
+  width: 100%;
+  margin: 0 auto;
+  text-align: left;
+}
+
+@supports (corner-shape: squircle) {
+  .dash .card,
+  .dash-widget,
+  .dash-search__form,
+  .dash-chip,
+  .dash button {
+    corner-shape: squircle;
+  }
+}
+
+/* ---------- Search ---------- */
+
+.dash-search {
+  max-width: 777px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dash-search__form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 6px 16px;
+  background: var(--dash-glass);
+  border-radius: var(--dash-radius);
+  box-shadow: var(--dash-shadow);
+  transition: box-shadow 0.2s ease;
+}
+
+.dash-search__form:focus-within {
+  box-shadow:
+    var(--dash-shadow),
+    0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.dash-search__icon {
+  color: var(--dash-muted);
+}
+
+.dash-search__input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 4px;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 1.15rem;
+}
+
+.dash-search__input::placeholder {
+  color: color-mix(in srgb, var(--text-secondary) 75%, transparent);
+}
+
+.dash-search__input::-webkit-search-cancel-button {
+  filter: invert(1);
+  opacity: 0.6;
+}
+
+.dash-search__submit {
+  padding: 10px 14px;
+}
+
+.dash-providers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dash-chip {
+  padding: 7px 12px;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-secondary) 25%, transparent);
+  box-shadow: inset 0 0 0 1px var(--dash-line);
+}
+
+.dash-chip:hover {
+  color: var(--text-primary);
+  background: var(--accent-hover);
+}
+
+.dash-chip--active {
+  color: var(--text-primary);
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.dash-chip--target {
+  box-shadow: 0 0 0 2px var(--link);
+  color: var(--text-primary);
+}
+
+.dash-chip__kw {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.dash-hint {
+  color: var(--dash-muted);
+  font-size: 0.85rem;
+}
+
+.dash-hint .material-symbols-outlined {
+  font-size: 18px;
+  vertical-align: -4px;
+}
+
+/* ---------- Settings toggle (top left, mirrors .login-below-head) ---------- */
+
+.settings-below-head {
+  position: fixed;
+  top: calc(var(--header-height) + var(--login-header-gap));
+  left: 5px;
+  z-index: 9999;
+  display: flex;
+}
+
+.dash-settings-toggle {
+  gap: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+.dash-settings-toggle .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.dash-settings-toggle--active {
+  background-color: var(--accent);
+}
+
+/* ---------- Widgets ---------- */
+
+.dash-widgets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-flow: dense;
+  gap: 18px;
+}
+
+.dash-widget {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: #ffffff04;
+  border-radius: var(--dash-radius);
+  box-shadow: var(--dash-shadow);
+  backdrop-filter: blur(13px);
+  -webkit-backdrop-filter: blur(13px);
+}
+
+.dash-widget--small { grid-column: span 1; }
+.dash-widget--medium { grid-column: span 2; }
+.dash-widget--large { grid-column: span 3; }
+.dash-widget--full { grid-column: 1 / -1; }
+
+.dash-widget__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px 8px 14px;
+  border-bottom: 1px solid var(--dash-line);
+}
+
+.dash-widget__title {
+  overflow: hidden;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dash-widget__open {
+  display: inline-flex;
+  color: var(--dash-muted);
+}
+
+.dash-widget__open:hover {
+  color: var(--text-primary);
+}
+
+.dash-widget__open .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.dash-widget__frame {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+}
+
+.dash-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center !important;
+  color: var(--dash-muted);
+}
+
+.dash-empty__icon {
+  font-size: 42px;
+  opacity: 0.7;
+}
+
+/* ---------- Settings ---------- */
+
+.dash-settings {
+  max-width: 900px;
+}
+
+.dash-settings__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.dash-settings h2 {
+  font-size: 1.3rem;
+}
+
+.dash-settings h3 {
+  margin: 18px 0 10px;
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.dash-settings h3:first-child {
+  margin-top: 0;
+}
+
+.dash-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding: 4px;
+  overflow-x: auto;
+  background: color-mix(in srgb, var(--bg-primary) 35%, transparent);
+  border-radius: var(--dash-radius);
+}
+
+.dash-tab {
+  flex: 1;
+  padding: 9px 12px;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 0.95rem;
+}
+
+.dash-tab .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.dash-tab--active {
+  color: var(--text-primary);
+  background: var(--accent);
+}
+
+.dash-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+}
+
+.dash-list__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 8px 14px;
+  background: var(--dash-glass);
+  border-radius: var(--dash-radius);
+}
+
+.dash-list__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.dash-list__main code,
+.dash-preview code {
+  overflow: hidden;
+  color: var(--dash-muted);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dash-badge {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+  border-radius: 999px;
+}
+
+.dash-badge--muted {
+  background: var(--dash-line);
+  color: var(--dash-muted);
+}
+
+.dash-icon-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+.dash-icon-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.dash-icon-btn:hover {
+  color: var(--text-primary);
+  background: var(--accent-hover);
+}
+
+.dash-icon-btn--danger:hover {
+  background: color-mix(in srgb, var(--dash-danger) 70%, transparent);
+}
+
+.dash button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dash-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 4px;
+  border-top: 1px solid var(--dash-line);
+}
+
+.dash-form > h3,
+.dash-form > .dash-preview,
+.dash-form > .dash-error,
+.dash-form > .dash-hint,
+.dash-form > .dash-actions,
+.dash-field--wide {
+  grid-column: 1 / -1;
+}
+
+.dash-form > h3 {
+  margin-top: 14px;
+}
+
+.dash-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.dash-field > span {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.dash-field small {
+  color: var(--dash-muted);
+  font-size: 0.78rem;
+}
+
+.dash-field input,
+.dash-field select,
+.dash-css {
+  width: 100%;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  background: var(--dash-glass);
+  border: 1px solid var(--dash-line);
+  border-radius: var(--dash-radius);
+  outline: none;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease;
+}
+
+.dash-field select option {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+.dash-field input:focus,
+.dash-field select:focus,
+.dash-css:focus {
+  border-color: var(--accent);
+}
+
+.dash-css {
+  display: block;
+  min-height: 280px;
+  resize: vertical;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.dash-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.dash-form .dash-check {
+  margin-top: 0;
+}
+
+.dash-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.dash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dash-form .dash-actions {
+  margin-top: 0;
+}
+
+.dash-actions button {
+  padding: 10px 16px;
+}
+
+.dash-actions .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.dash-btn-secondary {
+  background: var(--dash-glass);
+  box-shadow: inset 0 0 0 1px var(--dash-line);
+}
+
+.dash-btn-danger {
+  background: color-mix(in srgb, var(--dash-danger) 55%, transparent);
+}
+
+.dash-btn-danger:hover {
+  background: var(--dash-danger);
+}
+
+.dash-preview {
+  font-size: 0.85rem;
+  color: var(--dash-muted);
+}
+
+.dash-error {
+  color: #ff8a8f;
+  font-size: 0.9rem;
+}
+
+.dash-warning {
+  margin-top: 8px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  background: color-mix(in srgb, #f5a524 22%, transparent);
+  border-radius: var(--dash-radius);
+}
+
+.dash {
+  /* .about-card uses margin-top: auto !important (error.css), so the gap lives here. */
+  margin-bottom: 42px;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 900px) {
+  .dash-widgets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dash-widget--large {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .dash-widgets {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dash-widget--small,
+  .dash-widget--medium,
+  .dash-widget--large {
+    grid-column: 1 / -1;
+  }
+
+  .dash-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dash-tab > span:not(.material-symbols-outlined) {
+    display: none;
+  }
+
+  .dash-list__item {
+    flex-wrap: wrap;
+  }
+
+  .dash-list__main {
+    flex-basis: 100%;
+  }
+}

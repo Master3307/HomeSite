@@ -1,0 +1,102 @@
+{
+    "search": {
+        "label": "Suche",
+        "placeholder": "Mit {{provider}} suchen…",
+        "submit": "Suchen",
+        "providers": "Suchanbieter",
+        "hint": "/ zum Fokussieren · !Kürzel für einen anderen Anbieter (z. B. !ddg Katzen)",
+        "bangActive": "Diese Suche verwendet {{provider}}"
+    },
+    "widgets": {
+        "label": "Widgets",
+        "empty": "Noch keine Widgets. Füge eine beliebige einbettbare Seite als iframe-Widget hinzu.",
+        "add": "Widget hinzufügen",
+        "openExternal": "In neuem Tab öffnen"
+    },
+    "settings": {
+        "title": "Anpassen",
+        "close": "Schließen",
+        "add": "Hinzufügen",
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "edit": "Bearbeiten",
+        "delete": "Löschen",
+        "moveUp": "Nach oben",
+        "moveDown": "Nach unten",
+        "tabs": {
+            "search": "Suche",
+            "widgets": "Widgets",
+            "css": "Eigenes CSS",
+            "backup": "Sync & Backup"
+        },
+        "search": {
+            "providers": "Suchanbieter",
+            "builtin": "Integriert",
+            "makeDefault": "Als Standard festlegen",
+            "addProvider": "Eigenen Anbieter hinzufügen",
+            "editProvider": "Anbieter bearbeiten",
+            "name": "Name",
+            "url": "Such-URL",
+            "urlHelp": "%s steht für die Suchanfrage, z. B. https://example.com/search?q=%s",
+            "keyword": "Kürzel (optional)",
+            "keywordHelp": "!Kürzel vor der Anfrage nutzt diesen Anbieter einmalig.",
+            "preview": "Vorschau:",
+            "newTab": "Suchergebnisse in neuem Tab öffnen"
+        },
+        "widgets": {
+            "list": "Deine Widgets",
+            "add": "iframe-Widget hinzufügen",
+            "edit": "Widget bearbeiten",
+            "title": "Titel",
+            "titlePlaceholder": "Mein Widget",
+            "url": "URL",
+            "urlHelp": "Jede http(s)-Seite, die Einbetten erlaubt.",
+            "size": "Breite",
+            "height": "Höhe (px)",
+            "showTitle": "Titelleiste anzeigen",
+            "sandboxed": "iframe sandboxen (empfohlen)",
+            "embedNote": "Manche Seiten blockieren das Einbetten (X-Frame-Options / CSP) und bleiben leer.",
+            "sizes": {
+                "small": "Klein",
+                "medium": "Mittel",
+                "large": "Groß",
+                "full": "Volle Breite"
+            }
+        },
+        "css": {
+            "title": "Eigenes CSS",
+            "help": "Dieses CSS gilt für jede Seite der Website. Mit ?nocss an der URL lässt es sich vorübergehend abschalten.",
+            "enabled": "Eigenes CSS aktivieren",
+            "replace": "CSS der Seite komplett ersetzen (nur eigenes CSS)",
+            "replaceWarning": "Alle eingebauten Styles sind deaktiviert. Falls die Seite unbenutzbar wird, öffne /dash?nocss.",
+            "apply": "Anwenden",
+            "starter": "Theme-Vorlage einfügen",
+            "revert": "Verwerfen",
+            "clear": "Leeren",
+            "unsaved": "Ungespeicherte Änderungen · Strg+Enter zum Anwenden",
+            "saved": "Gespeichert.",
+            "shortcut": "Strg+Enter zum Anwenden"
+        },
+        "backup": {
+            "sync": "Sync",
+            "syncLocal": "Einstellungen werden in diesem Browser gespeichert. Melde dich an, um sie mit deinem Konto zu synchronisieren (bald verfügbar).",
+            "syncSoon": "Angemeldet als {{name}}. Konto-Sync fürs Dash kommt bald; bis dahin wird in diesem Browser gespeichert.",
+            "syncOn": "Mit deinem Konto synchronisiert ({{name}}).",
+            "title": "Backup",
+            "help": "Exportiere Anbieter, Widgets und eigenes CSS als JSON-Datei oder importiere eine.",
+            "export": "Exportieren",
+            "import": "Importieren",
+            "imported": "Einstellungen importiert.",
+            "importFailed": "Diese Datei konnte nicht importiert werden.",
+            "reset": "Alles zurücksetzen",
+            "resetConfirm": "Alle Dash-Einstellungen (Anbieter, Widgets, eigenes CSS) zurücksetzen?",
+            "resetDone": "Einstellungen zurückgesetzt."
+        }
+    },
+    "errors": {
+        "urlRequired": "Bitte gib eine URL ein.",
+        "urlInvalid": "Bitte gib eine gültige http(s)-URL ein.",
+        "placeholderMissing": "Die URL muss %s für die Suchanfrage enthalten.",
+        "keywordTaken": "Dieses Kürzel nutzt schon ein anderer Anbieter."
+    }
+}

@@ -1,3 +1,102 @@
 {
-    "temp": "Work in Progress."
+    "search": {
+        "label": "Search",
+        "placeholder": "Search with {{provider}}…",
+        "submit": "Search",
+        "providers": "Search provider",
+        "hint": "Press / to focus · Type !keyword to use another provider (e.g. !ddg cats)",
+        "bangActive": "This search will use {{provider}}"
+    },
+    "widgets": {
+        "label": "Widgets",
+        "empty": "No widgets yet. Add any embeddable page as an iframe widget.",
+        "add": "Add widget",
+        "openExternal": "Open in new tab"
+    },
+    "settings": {
+        "title": "Customize",
+        "close": "Close",
+        "add": "Add",
+        "save": "Save",
+        "cancel": "Cancel",
+        "edit": "Edit",
+        "delete": "Delete",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "tabs": {
+            "search": "Search",
+            "widgets": "Widgets",
+            "css": "Custom CSS",
+            "backup": "Sync & Backup"
+        },
+        "search": {
+            "providers": "Search providers",
+            "builtin": "Built-in",
+            "makeDefault": "Make default",
+            "addProvider": "Add custom provider",
+            "editProvider": "Edit provider",
+            "name": "Name",
+            "url": "Search URL",
+            "urlHelp": "Use %s where the search query goes, e.g. https://example.com/search?q=%s",
+            "keyword": "Keyword (optional)",
+            "keywordHelp": "Type !keyword before a query to use this provider once.",
+            "preview": "Preview:",
+            "newTab": "Open search results in a new tab"
+        },
+        "widgets": {
+            "list": "Your widgets",
+            "add": "Add iframe widget",
+            "edit": "Edit widget",
+            "title": "Title",
+            "titlePlaceholder": "My widget",
+            "url": "URL",
+            "urlHelp": "Any http(s) page that allows being embedded.",
+            "size": "Width",
+            "height": "Height (px)",
+            "showTitle": "Show title bar",
+            "sandboxed": "Sandbox iframe (recommended)",
+            "embedNote": "Some sites block embedding (X-Frame-Options / CSP). Those will show up blank.",
+            "sizes": {
+                "small": "Small",
+                "medium": "Medium",
+                "large": "Large",
+                "full": "Full width"
+            }
+        },
+        "css": {
+            "title": "Custom CSS",
+            "help": "This CSS is applied to every page of the site. Add ?nocss to any URL to temporarily disable it.",
+            "enabled": "Enable custom CSS",
+            "replace": "Replace the site's CSS entirely (only use your CSS)",
+            "replaceWarning": "All built-in styles are disabled. If the page becomes unusable, open /dash?nocss to fix it.",
+            "apply": "Apply",
+            "starter": "Insert theme template",
+            "revert": "Revert",
+            "clear": "Clear",
+            "unsaved": "Unsaved changes · Ctrl+Enter to apply",
+            "saved": "Saved.",
+            "shortcut": "Ctrl+Enter to apply"
+        },
+        "backup": {
+            "sync": "Sync",
+            "syncLocal": "Settings are saved in this browser. Log in to sync them with your account (coming soon).",
+            "syncSoon": "Logged in as {{name}}. Account sync for the dash is coming soon; settings are saved in this browser for now.",
+            "syncOn": "Synced with your account ({{name}}).",
+            "title": "Backup",
+            "help": "Export your providers, widgets and custom CSS as a JSON file, or import one.",
+            "export": "Export",
+            "import": "Import",
+            "imported": "Settings imported.",
+            "importFailed": "That file could not be imported.",
+            "reset": "Reset everything",
+            "resetConfirm": "Reset all dash settings (providers, widgets, custom CSS)?",
+            "resetDone": "Settings reset."
+        }
+    },
+    "errors": {
+        "urlRequired": "Please enter a URL.",
+        "urlInvalid": "Please enter a valid http(s) URL.",
+        "placeholderMissing": "The URL must contain %s for the search query.",
+        "keywordTaken": "That keyword is already used by another provider."
+    }
 }
