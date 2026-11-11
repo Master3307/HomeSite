@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "checks": "node scripts/checks.cjs",
-    "dev": "vite",
+    "dev": "pnpm run search:index && vite",
     "git-sync": "node scripts/sync.cjs",
     "fonts:update": "node scripts/update-fonts.mjs",
     "bot": "node server/bot.cjs",
@@ -15,7 +15,8 @@
     "mcstatus": "node scripts/test-mcstatus.js",
     "cleaner": "node scripts/clean.cjs",
     "sitemap": "node scripts/generate-sitemap.mjs",
-    "build": "pnpm run sitemap && vite build && node scripts/export-fdc.cjs --dist && node scripts/create-404.cjs",
+    "search:index": "node scripts/generate-search-index.mjs",
+    "build": "pnpm run sitemap && pnpm run search:index && vite build && node scripts/export-fdc.cjs --dist && node scripts/create-404.cjs",
     "preview": "vite preview",
     "images": "node scripts/generate-images.mjs",
     "serve": "serve -s dist -l tcp://127.0.0.1:8081",

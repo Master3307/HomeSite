@@ -26,6 +26,7 @@ note.md
 server/services/db/emoji-sync.json
 server/services/db/emoji-sync.json.tmp
 public/lobby-code.json
+public/search-index.json
 
 .logs/
 

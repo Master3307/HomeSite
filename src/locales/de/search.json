@@ -1,0 +1,16 @@
+{
+    "label": "Website durchsuchen",
+    "placeholder": "Seiten, Inhalte und Profile durchsuchen…",
+    "clear": "Suche leeren",
+    "shortcut": "Strg K",
+    "loading": "Suchindex wird geladen…",
+    "loadError": "Der Suchindex konnte nicht geladen werden.",
+    "noResults": "Nichts gefunden für „{{query}}“.",
+    "pages": "Seiten",
+    "profiles": "Profile",
+    "placeholderBadge": "Vorschau",
+    "alsoAt": "auch unter {{paths}}",
+    "results_one": "{{count}} Ergebnis",
+    "results_other": "{{count}} Ergebnisse",
+    "hint": "↑ ↓ zum Navigieren · Enter zum Öffnen · Esc zum Schließen"
+}

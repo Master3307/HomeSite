@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import About from '../components/AboutCard.jsx'
 import Greeting from '../components/GreetingCard.jsx'
+import Search from '../components/Search.jsx'
 
 export default function Home() {
   const { t } = useTranslation('title')
@@ -14,6 +15,7 @@ export default function Home() {
         </h1>
       </header>
 
+      <Search />
       <Greeting />
       <About />
 

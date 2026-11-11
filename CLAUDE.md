@@ -10,8 +10,8 @@ Personal website (home.master3307.org) built with Vite + React 19, plus several 
 
 ```bash
 pnpm install
-pnpm dev            # Vite dev server; proxies /api -> http://127.0.0.1:3001 (discord-profile service)
-pnpm build          # sitemap -> vite build -> export FDC polls into dist/ -> create dist/404.html
+pnpm dev            # builds search index, then Vite dev server; proxies /api -> http://127.0.0.1:3001 (discord-profile service)
+pnpm build          # sitemap -> search index -> vite build -> export FDC polls into dist/ -> create dist/404.html
 pnpm preview        # vite preview on port 8081
 pnpm checks         # local equivalent of CI (scripts/checks.cjs); logs to .logs/
 pnpm exec oxlint .  # lint only (config: .oxlintrc.json, react + oxc plugins)
@@ -24,7 +24,7 @@ pnpm discord        # Discord profile/presence API (server/services/discord-prof
 
 There is no test suite. Validation is `pnpm checks` (oxlint, `node --check` on every .js/.cjs/.mjs file, static bot-entry validation, build + dist checks). `pnpm checks --discord-smoke-test` additionally hits the live Discord API with credentials from `.env`.
 
-Other scripts: `fdc:import` / `fdc:export` (FDC poll data), `sitemap`, `images`, `fonts:update` (self-hosted fonts / Material Symbols), `git-sync`, `cleaner`.
+Other scripts: `search:index` (rebuild `public/search-index.json`), `fdc:import` / `fdc:export` (FDC poll data), `sitemap`, `images`, `fonts:update` (self-hosted fonts / Material Symbols), `git-sync`, `cleaner`.
 
 ## Architecture
 
@@ -33,6 +33,7 @@ Other scripts: `fdc:import` / `fdc:export` (FDC poll data), `sitemap`, `images`,
 - `Root.jsx` renders `App` plus the global `ThemeSwitch` / `LanguageSwitch`, and runs `twemoji.parse` over the whole tree on every route/language change (emoji served from `/twemoji/svg/`). `themeSwitchHiddenPaths` controls where the theme switch is hidden (glob-style patterns, e.g. `/cult*`).
 - `App.jsx` holds all routes (`react-router` v8); unknown paths render `<Error forcedCode={404} />`. Public routes that should be indexed must also be added to the hardcoded list in `scripts/generate-sitemap.mjs`.
 - `pages/` are route components; `components/cult/` contains the Cult (Discord community) features: FDC archive/polls, voting, lobby code.
+- Site search: `scripts/generate-search-index.mjs` crawls the routes in `App.jsx` and the components they render, collects static `t('key')` calls and resolves them in every locale into `public/search-index.json` (gitignored, generated). Each entry is identified as `<namespace>:<key>` with its source file:line. `components/Search.jsx` (ranking in `lib/search.js`) searches it client-side; `SearchHighlight` in `Root.jsx` scrolls to and highlights the hit after navigation. Profile search is a static placeholder in `lib/search.js`. Tune excluded routes/keys and per-route keywords in the script's config section.
 - `lib/i18n.js` auto-discovers translations via `import.meta.glob('../locales/*/*.json')`: each folder under `src/locales/` is a language, each JSON file a namespace. Adding a language or namespace needs no code changes. Other languages are translated through Weblate.
 - Frontend env vars must be prefixed `VITE_` (e.g. `VITE_DISCORD_API_URL`).
 
@@ -50,3 +51,4 @@ Other scripts: `fdc:import` / `fdc:export` (FDC poll data), `sitemap`, `images`,
 - Conventional Commits (`feat:`, `fix:`, `chore:`, `refactor:`, `docs:`, optional scope, `!` / `BREAKING CHANGE:` for breaking changes). See `.github/.copilot-commit-message-instructions.md`.
 - Branch prefixes: `feat/`, `fix/`, `docs/`, `refactor/`, `test/`, `chore/`; PRs target `master`.
 - Never commit `.env`; document new env vars in `.env.example`.
+- Commit messages and PR descriptions must not include a `Claude-Session:` trailer or session link unless the owner explicitly asks for it.

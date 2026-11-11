@@ -6,7 +6,7 @@ export default function Home() {
 
   return (
     <>
-      <title>Home – MrKoby07</title>
+      <title>Collect – MrKoby07</title>
       <header className="head">
         <h1 className="tit">
           {t('collect', { ns:'title'})} <strong>&nbsp;MrKoby07</strong>

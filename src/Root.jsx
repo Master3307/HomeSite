@@ -8,6 +8,7 @@ import App from './App.jsx'
 import ThemeSwitch from './components/ThemeSwitch.jsx'
 import LanguageSwitch from './components/LanguageSwitch.jsx'
 import CustomCss from './components/CustomCss.jsx'
+import { SearchHighlight } from './components/Search.jsx'
 
 const themeSwitchHiddenPaths = [
   '/cult*',
@@ -62,6 +63,7 @@ export default function Root() {
   return (
     <div ref={rootRef}>
       <CustomCss />
+      <SearchHighlight />
       <App />
       {!hideThemeSwitch && <ThemeSwitch />}
       <LanguageSwitch />

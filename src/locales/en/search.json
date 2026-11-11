@@ -1,0 +1,16 @@
+{
+    "label": "Search this site",
+    "placeholder": "Search pages, content and profiles…",
+    "clear": "Clear search",
+    "shortcut": "Ctrl K",
+    "loading": "Loading search index…",
+    "loadError": "The search index could not be loaded.",
+    "noResults": "Nothing found for “{{query}}”.",
+    "pages": "Pages",
+    "profiles": "Profiles",
+    "placeholderBadge": "Preview",
+    "alsoAt": "also at {{paths}}",
+    "results_one": "{{count}} result",
+    "results_other": "{{count}} results",
+    "hint": "↑ ↓ to navigate · Enter to open · Esc to close"
+}
