@@ -46,6 +46,7 @@
     "express-session": "^1.19.0",
     "gifenc": "^1.0.3",
     "i18next": "^26.7.2",
+    "leaflet": "1.9.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-helmet-async": "^3.0.0",
