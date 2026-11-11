@@ -223,6 +223,11 @@ button:hover {
     inset 0 1px 0 rgba(255, 255, 255, 0.047);
 }
 
+/* Home greeting sits a bit lower below the fixed header */
+.card.greeting-card {
+  margin-top: 96px;
+}
+
 .viewCard {
   padding: 10px 12px;
   color: var(--text-primary);
@@ -240,6 +245,14 @@ button:hover {
 .about-card {
   margin-top: auto;
   margin-bottom: 32px;
+}
+
+/* .about-card's margin-top is auto (0 in normal flow), so give the card (or
+   standalone search bar) before it the same gap other cards get from their
+   69px margin-top. */
+.card:has(+ .about-card),
+.site-search:has(+ .about-card) {
+  margin-bottom: 69px;
 }
 
 .close-icon {

@@ -1,4 +1,4 @@
-/* Site search (src/components/Search.jsx) — builds on the .card styles in main.css */
+/* Site search (src/components/Search.jsx, card wrapper in SearchCard.jsx) */
 
 .site-search {
   --search-glass: color-mix(in srgb, var(--bg-secondary) 22%, transparent);
@@ -10,8 +10,19 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 18px;
   text-align: left;
+
+  /* Standalone: same width and vertical spacing as a .card (main.css). */
+  width: 95%;
+  max-width: 777px;
+  margin: 69px auto 42px;
+}
+
+/* Inside SearchCard the card provides width and spacing. */
+.search-card .site-search {
+  width: auto;
+  max-width: none;
+  margin: 0;
 }
 
 /* Input row */
@@ -29,6 +40,23 @@
 .site-search__form:focus-within {
   box-shadow:
     inset 0 0 0 1px var(--search-line),
+    0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* Standalone (not inside SearchCard): the box looks like a .card (main.css). */
+.site-search:not(.search-card .site-search) .site-search__form {
+  background: #ffffff04;
+  -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.047);
+}
+
+.site-search:not(.search-card .site-search) .site-search__form:focus-within {
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.047),
     0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 

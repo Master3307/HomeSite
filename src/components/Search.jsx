@@ -20,8 +20,9 @@ function Highlighted({ text, tokens }) {
 }
 
 /**
- * Site search box. Searches the generated page index (`pnpm search:index`)
- * plus a placeholder profile search, ranked by relevance.
+ * Bare site search bar (input + results panel), with no card around it;
+ * use `SearchCard` for the card-wrapped version. Searches the generated page
+ * index (`pnpm search:index`) plus a placeholder profile search, ranked by relevance.
  */
 export default function Search({ className = '', autoFocus = false }) {
   const { t, i18n } = useTranslation('search')
@@ -177,7 +178,7 @@ export default function Search({ className = '', autoFocus = false }) {
   const isTyping = query !== deferredQuery
 
   return (
-    <section ref={rootRef} className={`card site-search ${className}`.trim()} aria-label={t('label')}>
+    <div ref={rootRef} className={`site-search ${className}`.trim()}>
       <form className="site-search__form" role="search" onSubmit={(event) => event.preventDefault()}>
         <span className="material-symbols-outlined site-search__icon" aria-hidden="true">search</span>
         <input
@@ -319,7 +320,7 @@ export default function Search({ className = '', autoFocus = false }) {
           )}
         </div>
       )}
-    </section>
+    </div>
   )
 }
 

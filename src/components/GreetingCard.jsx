@@ -6,7 +6,7 @@ export default function Greeting() {
   const { t } = useTranslation('greeting')
 
   return (
-    <div id="card" className="card">
+    <div id="card" className="card greeting-card">
       <h2>{t('header')}</h2>
       <p>{t('welcome')}</p>
       <br />
