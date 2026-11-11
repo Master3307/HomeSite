@@ -475,7 +475,8 @@ const CSS_STARTER = `/* Custom CSS: applies to every page of the site.
 }
 `
 
-function CssSettings() {
+/** Custom CSS editor. Also reused by the /maps settings modal. */
+export function CssSettings() {
   const { t } = useTranslation('dash')
   const settings = useDashSettings()
   const [draft, setDraft] = useState(settings.customCss)
