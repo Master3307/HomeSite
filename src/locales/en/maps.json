@@ -1,0 +1,382 @@
+{
+    "common": {
+        "back": "Back",
+        "cancel": "Cancel",
+        "close": "Close",
+        "edit": "Edit",
+        "loading": "Loading…",
+        "open": "Open",
+        "save": "Save"
+    },
+    "panel": {
+        "label": "Map panel"
+    },
+    "toolbar": {
+        "label": "Map tools",
+        "directions": "Directions",
+        "saved": "Saved places",
+        "locate": "Show my location",
+        "login": "Log in"
+    },
+    "search": {
+        "placeholder": "Search places or coordinates",
+        "clear": "Clear search",
+        "loading": "Searching…",
+        "error": "Search is unavailable right now.",
+        "noResults": "Nothing found for “{{query}}”."
+    },
+    "context": {
+        "whatsHere": "What's here?",
+        "from": "Directions from here",
+        "to": "Directions to here",
+        "addPlace": "Add a place here"
+    },
+    "location": {
+        "unsupported": "Your browser can't share your location.",
+        "denied": "Location access was denied.",
+        "failed": "Couldn't get your location."
+    },
+    "place": {
+        "droppedPin": "Dropped pin",
+        "loading": "Loading details…",
+        "directions": "Directions",
+        "favorite": "Favourite",
+        "favorited": "Favourite",
+        "save": "Save",
+        "share": "Share",
+        "edit": "Edit",
+        "addHere": "Add place",
+        "linkCopied": "Link copied to the clipboard.",
+        "coordsCopied": "Coordinates copied.",
+        "viewOnOsm": "View on OpenStreetMap",
+        "editInId": "Edit in iD",
+        "report": "Report a problem / leave a note",
+        "allTags": "All OSM tags ({{count}})",
+        "myNote": "My note",
+        "myNotePlaceholder": "Only you can see this note.",
+        "nearby": "Also here"
+    },
+    "lists": {
+        "title": "Lists",
+        "saveTo": "Save to list",
+        "empty": "No lists yet. Create one below.",
+        "listEmpty": "This list is empty. Open a place and use Save to add it.",
+        "new": "Create list",
+        "newPlaceholder": "New list, e.g. Want to go",
+        "name": "Name",
+        "color": "Colour",
+        "count_one": "{{count}} place",
+        "count_other": "{{count}} places",
+        "delete": "Delete list",
+        "deleteConfirm": "Delete the list “{{name}}”? The places themselves stay on the map.",
+        "remove": "Remove from list",
+        "showAll": "Show all on the map"
+    },
+    "saved": {
+        "title": "Saved",
+        "favorites": "Favourites",
+        "noFavorites": "Tap the heart on a place to keep it here.",
+        "unfavorite": "Remove favourite",
+        "recent": "Recent",
+        "clearRecent": "Clear recent places",
+        "showOnMap": "Show saved places on the map",
+        "local": "Saved in this browser. Account sync is coming soon.",
+        "syncSoon": "Signed in as {{name}}. Syncing places to your account is coming soon; for now they stay in this browser."
+    },
+    "layers": {
+        "title": "Map layers",
+        "base": "Base map",
+        "overlays": "Overlays",
+        "names": {
+            "osm": "OpenStreetMap",
+            "satellite": "Satellite",
+            "hybrid": "Hybrid",
+            "voyager": "Voyager",
+            "dark": "Dark",
+            "light": "Light",
+            "topo": "Topographic",
+            "cyclosm": "Cycling",
+            "humanitarian": "Humanitarian",
+            "labels": "Place labels",
+            "roads": "Roads",
+            "hiking": "Hiking routes",
+            "cycling": "Cycling routes",
+            "railways": "Railways"
+        }
+    },
+    "route": {
+        "title": "Directions",
+        "mode": "Travel mode",
+        "profiles": {
+            "car": "Car",
+            "bike": "Bike",
+            "foot": "Walk"
+        },
+        "from": "Choose a starting point",
+        "to": "Choose a destination",
+        "clickMap": "Click on the map…",
+        "yourLocation": "Your location",
+        "pickOnMap": "Choose on the map",
+        "pickStart": "Click on the map to set the start.",
+        "pickEnd": "Click on the map to set the destination.",
+        "swap": "Swap start and destination",
+        "hint": "Pick a start and a destination. Right-click (or long-press) the map for more options.",
+        "loading": "Finding the best route…",
+        "error": "The routing service is unavailable right now.",
+        "noRoute": "No route found between these points.",
+        "fastest": "Fastest",
+        "attribution": "Routes by OSRM on the FOSSGIS servers, using OpenStreetMap data.",
+        "openOsm": "Open on openstreetmap.org",
+        "directions": {
+            "uturn": "make a U-turn",
+            "sharp_right": "sharp right",
+            "right": "right",
+            "slight_right": "slight right",
+            "straight": "straight",
+            "slight_left": "slight left",
+            "left": "left",
+            "sharp_left": "sharp left"
+        },
+        "steps": {
+            "depart": "Head out",
+            "departNamed": "Head out on {{name}}",
+            "arrive": "You have arrived",
+            "turn": "Turn {{direction}}",
+            "turnNamed": "Turn {{direction}} onto {{name}}",
+            "continue": "Continue {{direction}}",
+            "continueNamed": "Continue on {{name}}",
+            "roundabout": "At the roundabout, take exit {{exit}}",
+            "roundaboutNamed": "At the roundabout, take exit {{exit}} onto {{name}}",
+            "exitRoundabout": "Leave the roundabout",
+            "exitRoundaboutNamed": "Leave the roundabout onto {{name}}",
+            "merge": "Merge {{direction}}",
+            "mergeNamed": "Merge {{direction}} onto {{name}}",
+            "onRamp": "Take the ramp",
+            "onRampNamed": "Take the ramp onto {{name}}",
+            "offRamp": "Take the exit",
+            "offRampNamed": "Take the exit towards {{name}}",
+            "fork": "Keep {{direction}} at the fork",
+            "forkNamed": "Keep {{direction}} at the fork onto {{name}}",
+            "endOfRoad": "At the end of the road, turn {{direction}}",
+            "endOfRoadNamed": "At the end of the road, turn {{direction}} onto {{name}}"
+        }
+    },
+    "photos": {
+        "title": "Photos",
+        "loading": "Loading photos…",
+        "empty": "No photos of this place yet. Add the first one below!",
+        "error": "Photos couldn't be loaded.",
+        "open": "Open photo from {{source}}",
+        "previous": "Previous photo",
+        "next": "Next photo",
+        "source": "Source & licence",
+        "connect": "Connect Panoramax",
+        "connectHint": "Panoramax is optional: it's for street-level photos. Connect a free account (you log in with OpenStreetMap).",
+        "choose": "Choose a JPEG photo",
+        "upload": "Upload",
+        "untitled": "Place photo",
+        "uploadHint": "Uploaded to Panoramax as {{user}} under CC-BY-SA 4.0. Faces and number plates are blurred automatically; it can take a few minutes to appear.",
+        "status": {
+            "creating": "Preparing…",
+            "uploading": "Uploading…",
+            "completing": "Finishing…",
+            "done": "Uploaded! Panoramax is processing your photo.",
+            "preparing": "Preparing…",
+            "linking": "Linking to OpenStreetMap…",
+            "panoramaxDone": "Uploaded! Panoramax is processing your photo."
+        },
+        "errors": {
+            "panoramax_jpeg_only": "Panoramax only accepts JPEG photos.",
+            "panoramax_unauthorized": "Your Panoramax connection expired. Connect again in Settings → Accounts.",
+            "panoramax_no_token": "Connect Panoramax first.",
+            "commons_unauthorized": "Your Wikimedia login expired. Please log in again.",
+            "commons_bad_type": "Wikimedia Commons accepts JPEG, PNG and WebP photos here.",
+            "commons_exists": "A file with this name already exists on Commons. Change the file name and try again.",
+            "commons_duplicate": "This exact photo is already on Wikimedia Commons.",
+            "commons_no_token": "Wikimedia didn't allow the upload (missing edit token). Try logging in again."
+        },
+        "mapillaryMissing": "Mapillary street-level photos need VITE_MAPILLARY_CLIENT_TOKEN on this site.",
+        "streetView": "Street view",
+        "photoView": "Photo",
+        "uploadTo": "Upload to",
+        "commons": {
+            "login": "Log in with Wikimedia",
+            "loginHint": "Share your photo of this place on Wikimedia Commons, the free media library behind Wikipedia. You need a free Wikimedia account.",
+            "expired": "Your Wikimedia login expired. Log in again to upload.",
+            "notConfigured": "Wikimedia login isn't set up on this site yet (missing VITE_WIKIMEDIA_CLIENT_ID).",
+            "loginDone": "Logged in with Wikimedia.",
+            "loginFailed": "Wikimedia login failed ({{error}}).",
+            "fileName": "File name on Commons",
+            "description": "Description",
+            "descriptionPlaceholder": "What does the photo show?",
+            "defaultDescription": "{{name}}",
+            "license": "Licence",
+            "licenses": {
+                "cc-by-sa-40": "CC BY-SA 4.0 (recommended)",
+                "cc-by-40": "CC BY 4.0",
+                "cc-zero": "CC0 (public domain)"
+            },
+            "categories": "Categories (optional)",
+            "categoriesPlaceholder": "e.g. Marienplatz (Munich), comma separated",
+            "ownWork": "I took this photo myself and agree to publish it under the chosen free licence.",
+            "linkOsm": "Also link the photo to this place on OpenStreetMap (adds a wikimedia_commons tag)",
+            "osmComment": "Add Wikimedia Commons photo of {{name}}",
+            "upload": "Upload to Commons",
+            "hint": "Uploading as {{user}}. The place's coordinates are added to the file page.",
+            "done": "Uploaded to Wikimedia Commons!",
+            "viewFile": "View file",
+            "linked": "Linked on OpenStreetMap."
+        }
+    },
+    "edit": {
+        "title": "Edit place on OpenStreetMap",
+        "newTitle": "Add a place to OpenStreetMap",
+        "loading": "Loading current version…",
+        "loginRequired": "Log in with your OpenStreetMap account to edit. Changes are public and help everyone who uses OSM.",
+        "signedInAs": "Editing as {{name}}",
+        "type": "What is it?",
+        "fields": {
+            "name": "Name",
+            "opening_hours": "Opening hours",
+            "website": "Website",
+            "phone": "Phone",
+            "addr_street": "Street",
+            "addr_housenumber": "House number",
+            "addr_postcode": "Postcode",
+            "addr_city": "City"
+        },
+        "allTags": "All tags ({{count}})",
+        "key": "Key",
+        "value": "Value",
+        "addTag": "Add tag",
+        "removeTag": "Remove tag",
+        "comment": "Changeset comment",
+        "commentHelp": "Briefly describe what you changed, e.g. “Added opening hours”.",
+        "defaultComment": "Update {{name}}",
+        "defaultCommentNew": "Add a new place",
+        "save": "Upload to OSM",
+        "saving": "Uploading…",
+        "saved": "Saved to OpenStreetMap (changeset {{id}}).",
+        "geometryHint": "To move points or draw shapes, use the full editor:",
+        "openId": "Open in iD",
+        "errors": {
+            "noTags": "Add at least one tag.",
+            "unauthorized": "Your OpenStreetMap login expired. Please log in again."
+        }
+    },
+    "note": {
+        "title": "Leave a note for mappers",
+        "help": "Notes are public. Local mappers will check them and fix the map. No account needed.",
+        "placeholder": "What's wrong or missing here?",
+        "submit": "Send note",
+        "saving": "Sending…",
+        "done": "Thanks! Your note was created.",
+        "view": "View note",
+        "error": "The note couldn't be sent."
+    },
+    "osm": {
+        "login": "Log in with OpenStreetMap",
+        "logout": "Log out",
+        "loginDone": "Logged in with OpenStreetMap.",
+        "loginFailed": "OpenStreetMap login failed ({{error}}).",
+        "devServer": "test server",
+        "notConfigured": "OpenStreetMap login isn't set up on this site yet (missing VITE_OSM_CLIENT_ID)."
+    },
+    "settings": {
+        "title": "Map settings",
+        "tabs": {
+            "appearance": "Appearance",
+            "map": "Map & routes",
+            "accounts": "Accounts",
+            "css": "Custom CSS",
+            "data": "Data"
+        },
+        "appearance": {
+            "theme": "Theme",
+            "themeHint": "“Site” follows the site's light/dark switch.",
+            "themes": {
+                "site": "Site",
+                "midnight": "Midnight",
+                "forest": "Forest",
+                "ocean": "Ocean",
+                "sunset": "Sunset",
+                "paper": "Paper"
+            },
+            "tiles": "Map colours",
+            "tileFilters": {
+                "auto": "Auto",
+                "none": "Original",
+                "dark": "Dark",
+                "dim": "Dimmed"
+            },
+            "tilesHint": "Darkens street maps to match the theme. Satellite imagery is never changed."
+        },
+        "map": {
+            "baseLayer": "Default map",
+            "units": "Units",
+            "unitNames": {
+                "metric": "Metric (km)",
+                "imperial": "Imperial (mi)"
+            },
+            "routeProfile": "Default travel mode",
+            "showScale": "Show scale bar",
+            "showPhotos": "Show photos of places",
+            "rememberView": "Remember where I left the map",
+            "alternatives": "Suggest alternative routes",
+            "photoSources": "Photo sources:",
+            "sources": {
+                "mapillary": "Mapillary (street-level photos)",
+                "commons": "Wikimedia Commons",
+                "panoramax": "Panoramax (optional street-level photos)"
+            }
+        },
+        "accounts": {
+            "connected": "Connected",
+            "disconnect": "Disconnect",
+            "soon": "Soon",
+            "homesite": "HomeSite account",
+            "homesiteHelp": "Syncs favourites, lists and settings across devices.",
+            "homesiteOffline": "The account server isn't available yet. Everything is saved in this browser until then.",
+            "homesiteLogin": "Log in",
+            "osmHelp": "Log in to edit the map. Notes work without an account.",
+            "osmSignedIn": "{{name}} · {{count}} changesets",
+            "osmServer": "Server",
+            "osmServerHelp": "Use the test server to try editing without changing the real map.",
+            "servers": {
+                "production": "OpenStreetMap",
+                "dev": "Test server"
+            },
+            "profile": "OSM profile",
+            "panoramaxHelp": "Open street-level photos. Log in with your OpenStreetMap account to upload.",
+            "panoramaxConnected": "Uploading as {{name}}",
+            "panoramaxInstance": "Panoramax server",
+            "panoramaxConnect": "Connect Panoramax",
+            "panoramaxStep1": "Open the Panoramax page and log in (with OpenStreetMap) to approve this site:",
+            "panoramaxClaim": "Approve on Panoramax",
+            "panoramaxStep2": "Come back here and press “Check connection”.",
+            "panoramaxVerify": "Check connection",
+            "panoramaxNotClaimed": "Not approved yet. Open the Panoramax link, log in and try again.",
+            "panoramaxOpen": "Open Panoramax",
+            "commonsHelp": "Log in to upload your photos of places to Wikimedia Commons.",
+            "commonsSignedIn": "Uploading as {{name}}",
+            "commonsUploads": "My uploads",
+            "mapillaryHelp": "Main source of street-level photos. No login needed to view.",
+            "active": "Active",
+            "inactive": "Not set up",
+            "mapillaryUpload": "Mapillary only accepts uploads through its own apps:",
+            "mapillaryApps": "Mapillary apps",
+            "optional": "Optional"
+        },
+        "data": {
+            "summary": "{{favorites}} favourites and {{lists}} lists are saved in this browser.",
+            "help": "Export a backup file, or import one on another device. Once the HomeSite account works, this happens automatically.",
+            "export": "Export",
+            "import": "Import",
+            "imported": "Settings imported.",
+            "importFailed": "That file couldn't be imported.",
+            "reset": "Reset everything",
+            "resetConfirm": "Delete all map settings, favourites and lists in this browser?",
+            "resetDone": "Map settings reset."
+        }
+    }
+}
