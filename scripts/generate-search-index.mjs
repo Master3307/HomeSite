@@ -59,6 +59,7 @@ const EXCLUDED_KEY_PATTERNS = [
   /:.*(loading|Loading|failed|Failed|Error|error|AriaLabel|aria)/,
   /^lobby-code:copy(Button|Status)\./,
   /^dash:settings\.(moveUp|moveDown|edit|delete|save|add|cancel|close)$/,
+  /^maps:common\./,
 ]
 
 /**
@@ -89,6 +90,10 @@ const ROUTE_META = {
   '/cult/profile': {
     keywords: ['cult', 'profile', 'account', 'login', 'discord'],
     description: 'Your Cult of Black Cats profile.',
+  },
+  '/maps': {
+    keywords: ['maps', 'map', 'karte', 'openstreetmap', 'osm', 'satellite', 'directions', 'route', 'routing', 'navigation', 'places', 'favorites', 'photos', 'panoramax'],
+    description: 'OpenStreetMap maps with satellite layers, directions, saved places, photos and OSM editing.',
   },
 }
 
@@ -173,6 +178,12 @@ function parseImports(file, source) {
   const imports = new Map() // local identifier -> absolute file
 
   for (const match of source.matchAll(/import\s+([A-Za-z_$][\w$]*)\s+from\s+['"]([^'"]+)['"]/g)) {
+    const resolved = resolveImport(file, match[2])
+    if (resolved && /\.(jsx?|mjs)$/.test(resolved)) imports.set(match[1], resolved)
+  }
+
+  // Lazy routes: const X = lazy(() => import('./pages/X.jsx'))
+  for (const match of source.matchAll(/(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*lazy\(\s*\(\)\s*=>\s*import\(\s*['"]([^'"]+)['"]\s*\)\s*\)/g)) {
     const resolved = resolveImport(file, match[2])
     if (resolved && /\.(jsx?|mjs)$/.test(resolved)) imports.set(match[1], resolved)
   }

@@ -7,6 +7,7 @@ const routes = [
   { path: "/", priority: 1.0 },
   { path: "/card", priority: 0.9 },
   { path: "/about", priority: 0.8 },
+  { path: "/maps", priority: 0.7 },
 ];
 
 for (const route of routes) {
