@@ -374,3 +374,176 @@
       padding-left: 10px;
     }
   }
+
+/* =========================================================
+   Speech bubble (LobbyCat.jsx, catSay() in lib/lobbyCat.js)
+   Sits to the left of the cat, tail pointing at it.
+   ========================================================= */
+
+.cat-speech {
+  position: absolute;
+  right: calc(100% + 10px);
+  bottom: 38%;
+  z-index: 5;
+
+  width: max-content;
+  max-width: min(240px, 60vw);
+  margin: 0;
+  padding: 8px 12px;
+
+  color: #1a0b0b;
+  background: #fff;
+  border-radius: 14px 14px 4px 14px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+
+  font-size: 0.85rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: left;
+  overflow-wrap: anywhere;
+
+  pointer-events: none;
+  transform-origin: right bottom;
+  animation: cat-speech-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Tail pointing right, towards the cat. */
+.cat-speech::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  bottom: 6px;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  border-radius: 0 0 3px 0;
+  transform: rotate(-45deg);
+}
+
+
+.cat-speech__text {
+  margin: 0;
+}
+
+/* A question with answer buttons: wider, clickable, tail stays put. */
+.cat-speech--ask {
+  max-width: min(280px, 72vw);
+  padding: 10px 12px 12px;
+  pointer-events: auto;
+}
+
+.cat-speech__choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.cat-speech__choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  color: #1a0b0b;
+  background: #f4ecec;
+  border: 1px solid rgba(26, 11, 11, 0.08);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  /* Pop in one after another once the bubble is up. */
+  animation: cat-choice-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(0.18s + var(--i, 0) * 0.07s);
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.cat-speech__choice:hover:not(:disabled) {
+  background: #ffe0e0;
+  transform: translateY(-1px) scale(1.03);
+}
+
+.cat-speech__choice:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.cat-speech__choice:focus-visible {
+  outline: 2px solid var(--accent, #b60b0b);
+  outline-offset: 2px;
+}
+
+.cat-speech__choice:disabled {
+  cursor: default;
+}
+
+.cat-speech__choice img.discord-emoji,
+.cat-speech__text img.discord-emoji {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+@keyframes cat-choice-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.7);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.cat-speech--leaving {
+  animation: cat-speech-out 0.22s ease-in both;
+}
+
+@keyframes cat-speech-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px) scale(0.6);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes cat-speech-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cat-speech,
+  .cat-speech--leaving {
+    animation-name: cat-speech-fade;
+    animation-timing-function: linear;
+  }
+
+  .cat-speech--leaving {
+    animation-direction: reverse;
+  }
+
+  .cat-speech__choice {
+    animation-name: cat-speech-fade;
+    animation-timing-function: linear;
+  }
+
+  @keyframes cat-speech-fade {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+}

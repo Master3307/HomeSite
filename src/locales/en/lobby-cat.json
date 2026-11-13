@@ -1,0 +1,1145 @@
+{
+    "intro": [
+        [
+            "I'm LobbyCat, by the way.",
+            "I keep watch over the lobby code, right below me.",
+            "And I really, really like pets. Just so you know."
+        ],
+        [
+            "Oh! I should introduce myself. I'm LobbyCat.",
+            "That lobby code under me? Mine to guard. Freshest one in the cult.",
+            "Payment for my services: pets. Many pets."
+        ],
+        [
+            "Hi, I'm LobbyCat. Official guardian of the lobby code.",
+            "Need the current code? It's always right below me.",
+            "Need a cat to pet? Also right here. Convenient, huh?"
+        ]
+    ],
+    "greet": {
+        "welcomeBack": [
+            "Welcome back!",
+            "Oh, you're back!",
+            "Hey, good to see you again.",
+            "You came back! I knew you would.",
+            "Oh hey, it's you again! Pull up a chair.",
+            "*ears perk up* Oh! Hi again!"
+        ],
+        "welcomeBackNamed": [
+            "Welcome back, {{name}}!",
+            "Oh, {{name}}! You're back.",
+            "Hey {{name}}, good to see you again.",
+            "{{name}}! I was just thinking about you. Mostly about pets, but also you.",
+            "Look who's here! Hi, {{name}}!",
+            "*tail goes up* {{name}}!"
+        ],
+        "welcomeBackFriend": [
+            "There you are, {{name}}! I was hoping you'd come by.",
+            "{{name}}! My favorite visitor is back.",
+            "Purr… {{name}} is here. Today just got better.",
+            "{{name}}! I saved you a spot next to the lobby code.",
+            "*happy chirp* {{name}}! Hi hi hi!",
+            "Oh good, it's {{name}}. Now the lobby feels complete."
+        ],
+        "longAbsence": [
+            "It's been a while! I missed you.",
+            "Long time no see! I kept the lobby warm for you.",
+            "You're back! I almost forgot what visitors look like.",
+            "Oh! It's been ages. Did you forget about me? I didn't forget about you."
+        ],
+        "longAbsenceNamed": [
+            "{{name}}! It's been a while. I missed you.",
+            "Long time no see, {{name}}! I kept the lobby warm for you.",
+            "{{name}}?! Is it really you? It's been forever!",
+            "{{name}}! I've been waiting. Very patiently. Mostly."
+        ]
+    },
+    "login": {
+        "first": [
+            "Oh, you logged in! Nice to meet you properly, {{name}}.",
+            "{{name}}! Now I know your name. I'll remember you, promise.",
+            "Logged in? Then you're not a stranger anymore, {{name}}."
+        ],
+        "firstAwake": [
+            "And you're {{name}}! I'll remember that. And your pets.",
+            "Oh, and I know your name now, {{name}}. I'm good with names.",
+            "{{name}}, right? Your name's going straight into my memory."
+        ],
+        "again": [
+            "Welcome back in, {{name}}!",
+            "Logged in again? I remember you, {{name}}.",
+            "There you are again, {{name}}. Missed me?",
+            "Ah, {{name}}! Logging in suits you.",
+            "{{name}}! I'd know you anywhere. Even logged in."
+        ],
+        "switched": [
+            "Oh, a different account. Hi, {{name}}!",
+            "New login, new friend? Hello, {{name}}!",
+            "Wait, you're {{name}} now? Okay! Hi, {{name}}!"
+        ]
+    },
+    "cultbot": {
+        "meet": [
+            [
+                "Wait… Cultbot?! You're here too?",
+                "A fellow mascot! We have to stick together.",
+                "You count the FDC votes, I guard the lobby code. Deal?"
+            ],
+            [
+                "Is that… Cultbot? THE Cultbot?",
+                "I've heard so much about you. Mostly beeps.",
+                "Mascot alliance? Mascot alliance."
+            ],
+            [
+                "Cultbot! Finally we meet, colleague.",
+                "You run the server, I run the lobby code.",
+                "Together we are unstoppable. And very cute."
+            ]
+        ],
+        "firstPet": [
+            "Cultbot is petting me?! A historic moment for mascots.",
+            "Beep boop… purr? Is that how bots pet?",
+            "Pets from a bot! I didn't know you could do that."
+        ],
+        "greet": [
+            "Hey Cultbot. Counted all the votes yet?",
+            "Cultbot! Back on admin duty?",
+            "Oh, it's you, Cultbot. Don't tell anyone I nap on the lobby code.",
+            "Hi Cultbot! Any new FDC polls in the works?",
+            "Cultbot! Fellow mascot, reporting for duty.",
+            "Oh, Cultbot. Don't worry, I didn't touch the polls. Much."
+        ],
+        "pet": [
+            "Cultbot, are you petting me with admin rights?",
+            "A bot petting a cat. What a time to be alive.",
+            "Beep boop to you too, Cultbot.",
+            "Careful, Cultbot. Too many pets and I'll need a moderator.",
+            "Your pets are very… precise, Cultbot. I like it."
+        ],
+        "idle": [
+            "Cultbot, do bots dream of electric mice?",
+            "Mascot meeting? Mascot meeting. Agenda: snacks.",
+            "Cultbot, if you ever need a co-host, I'm right here.",
+            "Beep. …Was that right? I'm learning your language.",
+            "Cultbot, can you add a /pet command for me? Asking for a cat."
+        ]
+    },
+    "owner": {
+        "meet": [
+            [
+                "Wait… it's you! The one who made me.",
+                "I've been guarding the lobby code, just like you wanted.",
+                "Everything's under control, boss. Mostly."
+            ],
+            [
+                "Boss?! You're the one who built me!",
+                "Report: lobby code guarded, visitors greeted, pets collected.",
+                "Am I doing a good job? Say yes."
+            ],
+            [
+                "Oh! My creator! Hi, boss!",
+                "I live here now. On your website. Thank you for that.",
+                "I promise I only knocked over a little bit of CSS."
+            ]
+        ],
+        "firstPet": [
+            "Pets from the boss! Finally. Now I know why you made me.",
+            "The boss petted me! Best feature you ever shipped.",
+            "Boss! Your pets are exactly as good as I imagined."
+        ],
+        "greet": [
+            "Boss! You're back.",
+            "There's my human!",
+            "Welcome home, boss. The lobby is all yours.",
+            "Oh, it's you! Best part of my day.",
+            "Boss! I fixed nothing and broke nothing. Great day.",
+            "*salutes with one paw* Boss on deck!"
+        ],
+        "login": [
+            "Logged in again, boss? I'd recognize you anywhere.",
+            "Ah, my owner. Welcome back in.",
+            "Boss is in the building!",
+            "Boss! The admin of my heart has logged in."
+        ],
+        "longAbsence": [
+            "Boss! Where have you been? I missed you so much.",
+            "You're back! I kept everything running while you were gone.",
+            "Boss! I thought you forgot about me. You didn't, right?",
+            "Finally! Boss, the lobby was so lonely without you."
+        ],
+        "pet": [
+            "Purrr… nobody pets like my owner.",
+            "Behind the ears, boss. You know the spot.",
+            "This is why you're my favorite human.",
+            "Best. Owner. Ever.",
+            "You coded me, and you pet me. Perfect human.",
+            "Boss pets: the best patch notes."
+        ],
+        "idle": [
+            "All quiet in the lobby, boss.",
+            "Status report: lobby code guarded, pets needed.",
+            "No bugs today. I checked. Mostly.",
+            "Boss, have you thought about giving me a bigger part of the site?",
+            "Boss, quick idea: a bigger cat. On every page.",
+            "I ran a full check on the lobby code. It's still a lobby code.",
+            "Boss, I think I could learn to commit code. git commit -m \"meow\"."
+        ],
+        "levelUp": [
+            "We're {{level}} now. As if that was ever in doubt, boss.",
+            "Officially {{level}}. You were always my favorite anyway.",
+            "{{level}}, boss! Write that in the changelog.",
+            "New trust level: {{level}}. You built that, boss."
+        ]
+    },
+    "leader": {
+        "meet": [
+            [
+                "W-wait. {{name}}?! THE {{name}}? Our cult leader is here?!",
+                "I'm LobbyCat! I guard the lobby code for you. Faithfully. Every single day.",
+                "Please notice me. Just a little. Okay, a lot."
+            ],
+            [
+                "Is that… is that {{name}}?! *straightens fur in a panic*",
+                "Hello, great leader! I'm LobbyCat, keeper of your lobby code!",
+                "If you need anything, anything at all, I'm right here. Always."
+            ],
+            [
+                "{{name}}! The leader of the cult, right in front of me!",
+                "I'm LobbyCat. I've been practicing this moment for weeks.",
+                "…I forgot the rest. Hi! I love you! Er, the cult! I love the cult!"
+            ]
+        ],
+        "firstPet": [
+            "{{name}}… petted ME? I'm never washing this fur again.",
+            "The leader's pets! *falls over* I'm fine. I'm more than fine.",
+            "{{name}} touched my head. This is the best day of my nine lives."
+        ],
+        "greet": [
+            "{{name}}! Our glorious leader has returned!",
+            "Fox! Fox! Over here! Hi! It's me, LobbyCat!",
+            "*sits up perfectly straight* Welcome back, {{name}}.",
+            "All hail {{name}}! …Did you see me? I'm right here.",
+            "The leader is back! Everybody look busy! …Everybody is me."
+        ],
+        "login": [
+            "{{name}} logged in! Everybody act natural!",
+            "Our leader is in the building! Hi {{name}}! Hi!",
+            "{{name}} has entered the lobby! *trumpet noises*"
+        ],
+        "longAbsence": [
+            "{{name}}! You're back! I waited. I counted the hours. It was a lot of hours.",
+            "{{name}}!! I thought the cult had been abandoned. Never leave again. Please.",
+            "{{name}}?! I kept the candle burning the whole time. It's a pixel candle. It never went out."
+        ],
+        "pet": [
+            "Pets from {{name}}! The highest honor in the whole cult!",
+            "I'd guard a thousand lobby codes for one more pet, {{name}}.",
+            "Am I your favorite? I can be your favorite.",
+            "{{name}}, I worship the ground you click on.",
+            "Leader-grade pets. Nothing compares."
+        ],
+        "idle": [
+            "{{name}}… are you still there? Just checking. No reason.",
+            "*sits extra nicely in case {{name}} is watching*",
+            "Is there anything I can do for you, {{name}}? Anything at all?",
+            "I polished the lobby code for you, {{name}}. It's very shiny now.",
+            "*practices bowing in case {{name}} looks over*"
+        ],
+        "levelUp": [
+            "We're {{level}} now, {{name}}! Does this mean I'm in your inner circle?",
+            "{{level}}! I'll treasure this forever, {{name}}.",
+            "{{level}} with the leader! I'm framing this.",
+            "{{name}} and me: {{level}}. I'm telling everyone."
+        ],
+        "devoted": {
+            "greet": [
+                "Fox! I lit a candle for you. It's a pixel candle, but it's the thought that counts.",
+                "Welcome back, Fox. I kept your seat warm. I sat on it. For hours.",
+                "Fox is here! I've been practicing my bow. *bows deeply*",
+                "All hail Fox, keeper of the cult, petter of cats!"
+            ],
+            "pet": [
+                "Every pet from you goes in my diary, Fox.",
+                "I'd follow you into any lobby, Fox. Any lobby.",
+                "Fox's pets: 10/10. Would be blessed again.",
+                "I wrote a song about you, Fox. It's mostly purring."
+            ],
+            "idle": [
+                "I've been chanting your name, Fox. Quietly. Mostly.",
+                "Fox, I reorganized the lobby code in your honor.",
+                "Is it weird that I have a Fox calendar? Every day is Fox day.",
+                "I told Cultbot you're my favorite. Cultbot did not respond."
+            ]
+        },
+        "zealous": {
+            "greet": [
+                "FOX HAS RETURNED. Let the cult rejoice!",
+                "Fox! I've prepared the altar. And by altar I mean the lobby code box.",
+                "The prophecy was true! Fox came back!",
+                "I knew you'd come, Fox. I saw it in a dream. They're all about you now."
+            ],
+            "pet": [
+                "Yes. YES. This is my purpose.",
+                "I have ascended. Thank you, Fox.",
+                "One more pet and I'll found a second cult. Just for you, Fox.",
+                "Fox's hand. FOX'S HAND!"
+            ],
+            "idle": [
+                "Fox, I have prepared tonight's offering. Please accept it.",
+                "I started a Fox fan club. Members: me. Supreme leader: you.",
+                "The other cats don't understand, Fox. You do.",
+                "*stares at Fox with enormous, devoted eyes*"
+            ]
+        },
+        "offering": [
+            "I brought you an offering, Fox: one (1) freshly guarded lobby code.",
+            "Today's sacrifice for Fox: my favorite hairball. Only the best for our leader.",
+            "An offering for Fox: I knocked something off a table in your honor.",
+            "Accept this tribute, Fox: a whole day of me not napping. Almost.",
+            "I sacrificed my afternoon nap for you, Fox. It was a great loss. Worth it."
+        ],
+        "devotedReached": [
+            [
+                "Fox, I need to tell you something.",
+                "I built you a little shrine. It's right next to the lobby code.",
+                "Please don't move it."
+            ],
+            [
+                "Fox… can I confess something?",
+                "I've started keeping a list of every pet you gave me.",
+                "It's a long list. I'm very proud of it."
+            ],
+            [
+                "Fox, I've been thinking.",
+                "You're not just the leader. You're MY leader.",
+                "I've decided to follow you everywhere. Starting now."
+            ]
+        ],
+        "zealousReached": [
+            [
+                "Fox. Listen. I've made a decision.",
+                "From now on, this lobby is a temple. In your name.",
+                "Cultbot has been informed. Cultbot did not object."
+            ],
+            [
+                "Fox. It has happened.",
+                "I've reached a new level of devotion. There is no going back.",
+                "I've renamed my nap spot \"the Fox Throne\"."
+            ],
+            [
+                "Fox, the visions are clear now.",
+                "Every lobby code I guard, I guard in your honor.",
+                "I have also composed a hymn. It is twelve minutes of purring."
+            ]
+        ]
+    },
+    "pet": {
+        "first": [
+            "Oh! Pets! *purrrr* Hi, hello, thank you!",
+            "Ooh! Was that a pet? Do it again!",
+            "*blinks awake* Oh! Pets! What a nice way to wake up.",
+            "Mrrp?! Pets! My favorite thing!"
+        ],
+        "love": [
+            "Purrr…",
+            "Right behind the ears, please.",
+            "I love pets. I love them so much.",
+            "Mmm. Keep going.",
+            "*happy tail flick*",
+            "This is the best part of my day.",
+            "*purrs in Bongo Cat*",
+            "Ooh, under the chin. Perfect.",
+            "You're good at this.",
+            "More. Please. I'm begging. Politely.",
+            "*leans into your hand*",
+            "Pets are my love language."
+        ],
+        "purr": [
+            "Prrrrr…",
+            "*purring at maximum volume*",
+            "Mrrrr. Mmmrrr.",
+            "*slow happy blink*",
+            "*kneads the air happily*",
+            "Purr purr purr.",
+            "*tiny happy squeak*",
+            "*melts a little*"
+        ],
+        "sleepy": [
+            "*sleepy purr* Night pets are the coziest.",
+            "Mmh… pets at this hour… *yawns* …don't stop.",
+            "*half asleep* …more…",
+            "Sleepy pets. The best kind."
+        ],
+        "loveFriend": [
+            "You always find the right spot, {{name}}.",
+            "Purrr… I trust you, {{name}}.",
+            "Best pets in the whole cult.",
+            "Don't stop, {{name}}. Please.",
+            "{{name}}, you have certified pet hands.",
+            "Purr… I'd let you pet me all day, {{name}}.",
+            "{{name}} pets hit different.",
+            "*headbutts {{name}}'s hand*"
+        ],
+        "rapid": [
+            "Whoa whoa! Zoomies! *runs in circles*",
+            "So many pets so fast! I'm vibrating!",
+            "Turbo pets?! My fur can't keep up!",
+            "Pet speedrun! Any% purr!"
+        ],
+        "roundTwo": [
+            "Oh! Round two of pets? Yes please.",
+            "You're back for more? I knew you couldn't resist.",
+            "More pets! I was hoping you'd come back.",
+            "*perks up* Another pet session? Best day."
+        ],
+        "combo5": [
+            "Purr intensifies…",
+            "*purring noises*",
+            "Ooh, a petting streak!",
+            "Five pets! We're warming up."
+        ],
+        "combo15": [
+            "You really like petting me, huh? Good. Me too.",
+            "Are we going for a record? I'm in.",
+            "Fifteen pets! My fur is getting so fluffy.",
+            "This is the good stuff. Keep going."
+        ],
+        "combo30": [
+            "My fur has never been this smooth.",
+            "I think I'm melting. Don't stop.",
+            "Thirty pets! I'm officially a happy loaf.",
+            "*purring so loud the lobby code is shaking*"
+        ],
+        "combo60": [
+            "Okay, I'm basically a puddle now.",
+            "You have unlocked: one completely relaxed cat.",
+            "Sixty pets. I have no bones anymore. Only purr.",
+            "*is now a liquid*"
+        ],
+        "combo100": [
+            "ONE HUNDRED PETS. In one visit! Legendary.",
+            "100 pets! I'm writing this down. In my heart.",
+            "A hundred pets?! You're my hero.",
+            "100! I'd give you a medal, but I only have fur."
+        ],
+        "dailyFirst": [
+            "My first pets of the day! Thank you.",
+            "Ah, my daily pets. Perfect timing.",
+            "Morning pets? Afternoon pets? Any-time pets. Thank you!",
+            "Today's first pet! I was saving my best purr for it."
+        ],
+        "streak": [
+            "That's {{count}} days of pets in a row! You're spoiling me.",
+            "{{count}} days in a row! I'm the happiest cat in the lobby.",
+            "Day {{count}} of our streak. Purr.",
+            "{{count}} days straight! Don't you dare stop now."
+        ]
+    },
+    "levelUp": [
+        "I think we're {{level}} now. Purr.",
+        "We're {{level}} now! I trust you a little more.",
+        "Look at us. {{level}}!",
+        "Trust level up! We're {{level}} now. Purrrr.",
+        "{{level}}! That took a while. Worth every pet.",
+        "You know what? We're {{level}}. It's official."
+    ],
+    "levels": [
+        "strangers",
+        "acquaintances",
+        "familiar faces",
+        "friends",
+        "good friends",
+        "close friends",
+        "best friends",
+        "partners in crime",
+        "lobby legends",
+        "purr-sonal heroes",
+        "family",
+        "forever friends"
+    ],
+    "milestone": {
+        "pets": [
+            "Fun fact: that was pet number {{count}}! I've been counting.",
+            "{{count}} pets total! I remember every single one. Okay, most of them.",
+            "We just hit {{count}} pets. I think that makes you a professional.",
+            "{{count}} pets! My fur says thank you."
+        ],
+        "streak": [
+            "{{count}}-day pet streak! That's a new record for us.",
+            "{{count}} days in a row. I've never felt so loved.",
+            "Our streak hit {{count}} days! I'm telling Cultbot.",
+            "{{count}} days! At this point you're basically my roommate."
+        ],
+        "visits": [
+            "This is your {{count}}th visit! I counted. Cats can count. Some of us.",
+            "Visit number {{count}}! You really like it here, huh?",
+            "{{count}} visits! You're practically part of the furniture. The good furniture.",
+            "That's {{count}} visits now. I should give you a key. Or a lobby code."
+        ],
+        "days": [
+            "Hey… we've known each other for {{count}} days now. That's nice.",
+            "{{count}} days since our first pet. Time flies when you're a cat.",
+            "It's been {{count}} days since you woke me up. Best wake-up ever.",
+            "{{count}} days of friendship! I'd bake a cake, but paws."
+        ],
+        "nightVisit": [
+            "Visiting me in the middle of the night? You're a true night owl.",
+            "A late-night visit! I'll remember this. Our secret.",
+            "Night visit unlocked. I didn't know humans came out this late."
+        ],
+        "firstAnswer": [
+            "Thanks for answering! I'm learning so much about you.",
+            "I'll remember that. I remember everything important.",
+            "Noted. In my very official cat notebook."
+        ],
+        "firstLobby": [
+            "Your first lobby code from me! Go have fun. Say hi to the cats.",
+            "Copied! First time? Welcome to the lobby life.",
+            "There you go, your very first code. I'm so proud."
+        ],
+        "firstVote": [
+            "Your first FDC vote! A true cult member now.",
+            "First vote! Your cat is going to look so good on Friday.",
+            "You voted! Welcome to fashion democracy."
+        ]
+    },
+    "mood": {
+        "ask": [
+            "Hey… how are you feeling today?",
+            "Can I ask you something? How are you doing today?",
+            "Quick check-in from your local cat: how's your day?",
+            "*tilts head* You okay today? How are you feeling?"
+        ],
+        "options": {
+            "great": "Great",
+            "okay": "Okay",
+            "down": "Not great",
+            "tired": "Tired"
+        },
+        "great": [
+            "Yay! That makes my whiskers happy.",
+            "Purr-fect! Keep that energy.",
+            "Great?! Then let's celebrate. With pets.",
+            "I love to hear that. *happy tail swish*"
+        ],
+        "okay": [
+            "Okay is okay. Want some pets? …Wait, that's my line.",
+            "Fair enough. Okay days count too.",
+            "Okay is a fine place to be. I'll keep you company.",
+            "Hmm, okay. Maybe some pets can make it great?"
+        ],
+        "down": [
+            "Aw. Come here. Have a slow blink. Things get better.",
+            "I'm sorry. I'll sit right here with you for a bit.",
+            "*sits closer* You don't have to say anything. I'm here.",
+            "Sending you the biggest, softest purr I have."
+        ],
+        "tired": [
+            "Same, honestly. Let's both nap after this.",
+            "Then take it easy today. Cat's orders.",
+            "Tired? Rest. Cats nap 16 hours a day and we're doing fine.",
+            "*yawns in solidarity*"
+        ],
+        "noAnswer": [
+            "No worries. I'll ask another time.",
+            "That's okay. Maybe later.",
+            "No pressure! I'm just a curious cat."
+        ]
+    },
+    "context": {
+        "thursday": [
+            "It's Thursday! Did you vote for the Friday Dress Code yet?",
+            "Thursday means FDC voting! Have you picked an outfit?",
+            "Psst, it's Thursday. The FDC poll is waiting for your vote."
+        ],
+        "friday": [
+            "It's Friday! Did you check which outfit won the FDC?",
+            "Happy Friday! Time to dress your cat in the winning outfit.",
+            "Friday! The FDC winner is in. Is your cat ready?"
+        ],
+        "lateNight": [
+            "It's really late… shouldn't you be asleep?",
+            "Night owl, huh? Me too.",
+            "Still up? I'll keep you company.",
+            "*whispers* It's the middle of the night. Hi."
+        ],
+        "morning": [
+            "Good morning! Pets first, then coffee.",
+            "Good morning! I've been awake for hours. Well, minutes.",
+            "Morning! The lobby code is fresh. So am I.",
+            "*stretches* Mornin'. Did you sleep well?"
+        ],
+        "lunch": [
+            "Lunchtime! Did you bring any fish? No? Okay.",
+            "Is it lunch already? I'll have whatever you're having. Unless it's salad.",
+            "Midday pets are my favorite. After morning and evening pets."
+        ],
+        "evening": [
+            "Evening already? Perfect time for a Bongo Cat session.",
+            "Cozy evening vibes. Pets would complete them.",
+            "Good evening! The lobby gets so cozy around now.",
+            "Evening! I've guarded the code all day. Pets, please?"
+        ],
+        "streakReminder": [
+            "Psst. You haven't petted me today yet. Our {{count}}-day streak!",
+            "Don't break our streak! {{count}} days and counting. I'm right here.",
+            "Ahem. Today's pet is still missing. For the streak!",
+            "Our streak is {{count}} days long. Just saying. *looks at your hand*"
+        ],
+        "weekend": [
+            "It's the weekend! More time for pets.",
+            "Weekend mode: on. Lobby code: guarded. Cat: available.",
+            "Weekend! Perfect for long Bongo Cat sessions.",
+            "No school, no work, just pets. Weekends are great."
+        ]
+    },
+    "idle": {
+        "talk": [
+            "Psst. The lobby code right below me is always the newest one.",
+            "Did you know? You can submit a lobby code right here.",
+            "I'm not asleep. I'm just… resting my eyes.",
+            "In Bongo Cat I tap along to every key you press. Here I just watch.",
+            "If you see Cultbot, tell it I said hi.",
+            "I counted the stars in the background. There are a lot.",
+            "My ears are doing that thing again. They do it when I'm happy.",
+            "Fun fact: cats sleep up to 16 hours a day. I'm working on it.",
+            "Fun fact: a group of cats is called a clowder. A group of us is called a cult.",
+            "I've been thinking about fish. That's all. Just fish.",
+            "Sometimes I wonder what's on the other pages of this site. Probably no cats."
+        ],
+        "play": [
+            "*bats at your cursor*",
+            "*stretches very, very long*",
+            "*chases own tail, catches it, looks embarrassed*",
+            "*knocks the lobby code a tiny bit to the left*",
+            "*turns into a loaf*",
+            "*does a big yawn*",
+            "*pounces on an invisible mouse*",
+            "*stares at absolutely nothing for a while*",
+            "*sits in a box that isn't there*",
+            "*grooms one paw very seriously*",
+            "*tail swish… swish… swish*",
+            "*wiggles butt, prepares to pounce, decides not to*"
+        ],
+        "smartStreak": [
+            "We're on a {{count}}-day pet streak. Not that I'm counting. I'm counting.",
+            "{{count}} days of pets in a row. I really like our routine.",
+            "Our streak is at {{count}} days. Let's keep it going!"
+        ],
+        "smartDays": [
+            "You know, we've been friends for {{count}} days now.",
+            "{{count}} days since our first pet. I still remember it.",
+            "Day {{count}} of knowing you. Every one of them had pets in it. Probably."
+        ],
+        "smartPets": [
+            "You've given me {{count}} pets so far. I'm grateful for every one.",
+            "{{count}} pets and counting! My fur has never been happier.",
+            "Did you know you've petted me {{count}} times? I keep track."
+        ]
+    },
+    "notice": {
+        "lobbyCopied": [
+            "Copied! Have fun in the lobby.",
+            "Go go go! Say hi to the other cats for me.",
+            "Paste it in Bongo Cat and I'll see you there. Sort of.",
+            "Code's on your clipboard. Bongo away!"
+        ],
+        "lobbyCopiedLeader": [
+            "Fox is joining the lobby! Everyone, look busy!",
+            "The leader enters the lobby! I'll hold the door, Fox.",
+            "Fox is heading in! Make way for the leader!"
+        ],
+        "lobbyPosted": [
+            "A fresh lobby code! I'll guard it with my life.",
+            "New code is up! Thank you. I'll take it from here.",
+            "Ooh, a brand new code. *sits on it protectively*"
+        ],
+        "lobbyPending": [
+            "Sent to the mods! I'll keep an eye on it for you.",
+            "Off to review it goes. Fingers crossed. Paws crossed.",
+            "The mods will check it soon. I'll wait with you."
+        ],
+        "fdcVoted": [
+            "Ooh, good choice!",
+            "Vote counted! Cultbot will be so proud.",
+            "Fashion-forward. I like it.",
+            "That one would look great on me too.",
+            "Great taste. Truly."
+        ],
+        "fdcVoteRemoved": [
+            "Changed your mind? That's allowed. Fashion is hard.",
+            "Vote taken back. Take your time, it's a big decision.",
+            "Hmm, reconsidering? Very wise."
+        ],
+        "fdcVotedLeader": [
+            "The leader has voted! This outfit is now sacred.",
+            "Fox voted! I'm wearing that one forever.",
+            "Fox has chosen! The cult shall follow."
+        ],
+        "hover": [
+            "…are you going to pet me, or just hover there?",
+            "I can see your cursor. It's very close. Pet me?",
+            "*stares at your cursor* Go on. I won't bite.",
+            "So close… and yet no pets."
+        ],
+        "tabReturn": [
+            "Oh, you're back! I didn't move. Promise.",
+            "Welcome back to the tab! I kept your spot.",
+            "There you are! I was guarding everything while you were gone.",
+            "*pretends I wasn't waiting* Oh, hi."
+        ],
+        "tabReturnNamed": [
+            "{{name}}! You're back. I didn't move. Promise.",
+            "Welcome back, {{name}}! I kept your spot warm.",
+            "Oh, {{name}}! I was just about to come looking for you.",
+            "*pretends I wasn't waiting* Oh, hi {{name}}."
+        ]
+    },
+    "questions": {
+        "treat": {
+            "ask": [
+                "Quick question! What's the best treat?",
+                "Very important survey: what's the best treat?",
+                "Settle this for me: which treat is the best?"
+            ],
+            "options": {
+                "fish": "Fish",
+                "milk": "Milk",
+                "cookies": "Cookies",
+                "catnip": "Catnip"
+            },
+            "answers": {
+                "fish": [
+                    "Correct answer. You may continue petting.",
+                    "Fish! A person of culture.",
+                    "Yes. Fish. The only answer."
+                ],
+                "milk": [
+                    "Classic. Very cat. I approve.",
+                    "Milk! Old school. I respect it.",
+                    "A saucer of milk. Elegant choice."
+                ],
+                "cookies": [
+                    "Cookies?! …Can cats have cookies? Asking for me.",
+                    "Cookies! Bold. I like bold.",
+                    "If you share the cookies, I'll pretend I can eat them."
+                ],
+                "catnip": [
+                    "Shh! Not so loud. The other cats will hear.",
+                    "Catnip?! *whispers* You know the good stuff.",
+                    "Catnip. You understand me on a deep level."
+                ]
+            }
+        },
+        "owl": {
+            "ask": [
+                "Are you a night owl or an early bird?",
+                "When are you most awake? Night or morning?",
+                "Be honest: owl or bird?"
+            ],
+            "options": {
+                "night": "Night owl",
+                "early": "Early bird",
+                "sleepy": "Always sleepy"
+            },
+            "answers": {
+                "night": [
+                    "Me too! The lobby is extra cozy at night.",
+                    "Night owls unite! *hoots in cat*",
+                    "The best ideas happen at 3 AM. And the best naps."
+                ],
+                "early": [
+                    "Wow. You see the sunrise on purpose?",
+                    "Early bird! I respect it. From my bed.",
+                    "Mornings? Voluntarily? You're very brave."
+                ],
+                "sleepy": [
+                    "Honestly? Same. Nap buddies.",
+                    "Always sleepy is a lifestyle. I live it too.",
+                    "Team Sleepy! The best team."
+                ]
+            }
+        },
+        "fdc": {
+            "ask": [
+                "Did you vote in this week's Friday Dress Code?",
+                "Have you picked your FDC outfit this week?",
+                "FDC check! Did you vote yet?"
+            ],
+            "options": {
+                "yes": "Yes!",
+                "notYet": "Not yet",
+                "what": "What's that?"
+            },
+            "answers": {
+                "yes": [
+                    "A true cult member! Your cat will look amazing.",
+                    "Excellent! Democracy and fashion, together.",
+                    "Yay! I hope your outfit wins."
+                ],
+                "notYet": [
+                    "It's right below the lobby code! Go go go!",
+                    "There's still time! Scroll down, it's right there.",
+                    "Don't forget! The cult's fashion depends on you."
+                ],
+                "what": [
+                    "Every Thursday the cult votes on one outfit, and on Friday every cat wears it. Scroll down!",
+                    "The Friday Dress Code! We vote on an outfit, then all our cats wear it on Friday.",
+                    "It's our weekly fashion vote. Pick an outfit below, and on Friday everyone dresses up."
+                ]
+            }
+        },
+        "fur": {
+            "ask": [
+                "Be honest. How soft is my fur today?",
+                "You've petted me a lot. Rate my fur?",
+                "Fur review time! How soft am I?"
+            ],
+            "options": {
+                "soft": "Soft",
+                "verySoft": "Very soft",
+                "softest": "Softest ever"
+            },
+            "answers": {
+                "soft": [
+                    "Only soft?! I'll try harder. Keep petting, for science.",
+                    "Soft! Good. But I'm aiming higher.",
+                    "Soft is a start. More pets will fix the rest."
+                ],
+                "verySoft": [
+                    "Thank you. I've been working on it.",
+                    "Very soft! My grooming routine pays off.",
+                    "*proudly fluffs up*"
+                ],
+                "softest": [
+                    "I knew it. I'm framing this compliment.",
+                    "Softest ever?! I'm going to purr for an hour.",
+                    "The softest! Tell everyone. Tell Cultbot."
+                ]
+            }
+        },
+        "spot": {
+            "ask": [
+                "Where do you think I like pets the most?",
+                "Guess my favorite petting spot!",
+                "Pop quiz: what's my best petting spot?"
+            ],
+            "options": {
+                "ears": "Behind the ears",
+                "chin": "Under the chin",
+                "back": "Along the back",
+                "belly": "The belly"
+            },
+            "answers": {
+                "ears": [
+                    "Correct! Behind the ears is elite.",
+                    "Ears! You really know cats.",
+                    "Yes! That's the spot. You've studied."
+                ],
+                "chin": [
+                    "Under the chin! Oh, that's a very good one.",
+                    "Chin scratches! *tilts head up* Like this?",
+                    "You know about the chin trick. Impressive."
+                ],
+                "back": [
+                    "The long back pet! *arches back* Classic.",
+                    "From head to tail. A pro move.",
+                    "Back pets! Smooth and dignified. Like me."
+                ],
+                "belly": [
+                    "The belly?! …It's a trap. It's always a trap.",
+                    "Belly! *suspicious squint* Bold of you.",
+                    "Ha. The belly. Try it and see what happens. *wiggles*"
+                ]
+            }
+        },
+        "game": {
+            "ask": [
+                "If we played a game, which one would it be?",
+                "What should we play sometime?",
+                "Important question: what's the best cat game?"
+            ],
+            "options": {
+                "yarn": "Yarn ball",
+                "laser": "Laser dot",
+                "box": "Empty box",
+                "hide": "Hide and seek"
+            },
+            "answers": {
+                "yarn": [
+                    "Yarn! I'll tangle it, you untangle it. Deal.",
+                    "A classic. I've been training for this.",
+                    "*already wiggling* Throw it. Throw it!"
+                ],
+                "laser": [
+                    "The red dot! I will catch it one day. One day.",
+                    "Laser?! Where? WHERE?",
+                    "I've chased that dot for years. It's personal now."
+                ],
+                "box": [
+                    "An empty box! The best toy ever invented.",
+                    "If it fits, I sits. You understand me.",
+                    "A box! I'm getting in right now. Metaphorically."
+                ],
+                "hide": [
+                    "Hide and seek! I'll hide behind the lobby code. You'll never find me.",
+                    "Okay, close your eyes. *sits in plain sight*",
+                    "I'm amazing at hiding. Except my tail. My tail is bad at it."
+                ]
+            }
+        },
+        "bongo": {
+            "ask": [
+                "Do you play Bongo Cat too?",
+                "Are you a Bongo Cat player?",
+                "Do you bongo?"
+            ],
+            "options": {
+                "daily": "Every day",
+                "sometimes": "Sometimes",
+                "notYet": "Not yet"
+            },
+            "answers": {
+                "daily": [
+                    "A fellow bongo enthusiast! Our paws are in sync.",
+                    "Every day?! You're a legend.",
+                    "Daily bongo! You get it."
+                ],
+                "sometimes": [
+                    "Sometimes is plenty. The bongos understand.",
+                    "A casual bongo-er. Respect.",
+                    "Every bongo counts!"
+                ],
+                "notYet": [
+                    "It's free on Steam, right next to me! Join us.",
+                    "Not yet? Oh, you're in for a treat. It's right there on the page.",
+                    "Try it! I'll be waiting in the lobby."
+                ]
+            }
+        },
+        "ownerPlans": {
+            "ask": [
+                "Boss, any new features for me soon?",
+                "Boss, what are you building next?",
+                "Hey boss, is there an update coming? For me?"
+            ],
+            "options": {
+                "working": "Working on it",
+                "secret": "It's a secret",
+                "later": "Maybe later"
+            },
+            "answers": {
+                "working": [
+                    "Yay! Can it be a bigger cat? Please say it's a bigger cat.",
+                    "Ooh! I'll test it for you. With my paws.",
+                    "I knew it! Ship it, boss!"
+                ],
+                "secret": [
+                    "Ooh, a secret. I'm very good at secrets. I'll purr quietly.",
+                    "A secret feature? *ears perk up* I won't tell anyone.",
+                    "Secret! My favorite kind of feature."
+                ],
+                "later": [
+                    "Later is fine. I'll wait right here. Forever, if needed.",
+                    "Take your time, boss. I've got nowhere to be.",
+                    "Okay. I'll nap until then."
+                ]
+            }
+        },
+        "cultbotVotes": {
+            "ask": [
+                "Cultbot, how many FDC votes did you count today?",
+                "Cultbot, how's the vote counting going?",
+                "Status update, Cultbot? The FDC votes?"
+            ],
+            "options": {
+                "all": "All of them",
+                "counting": "Still counting",
+                "lost": "I lost count"
+            },
+            "answers": {
+                "all": [
+                    "Impressive. Beep boop, as they say.",
+                    "Every single one! You're a counting machine. Literally.",
+                    "All of them! Mascot of the year."
+                ],
+                "counting": [
+                    "Take your time. I'll guard the lobby meanwhile.",
+                    "Counting is hard. I can only count to pets.",
+                    "Keep going, Cultbot! You've got this."
+                ],
+                "lost": [
+                    "Ha! Don't worry, I won't tell the leader.",
+                    "Lost count? Same thing happens to me with naps.",
+                    "Shh. Our secret. Start again from one."
+                ]
+            }
+        },
+        "leaderFavorite": {
+            "ask": [
+                "Fox… am I your favorite cat? Be honest.",
+                "Fox, out of all the cats… am I your favorite?",
+                "Quick question, Fox. Totally casual. Am I your favorite?"
+            ],
+            "options": {
+                "yes": "Of course",
+                "maybe": "Maybe",
+                "earn": "Earn it"
+            },
+            "answers": {
+                "yes": [
+                    "I KNEW IT. Best day of my life. I'm telling Cultbot.",
+                    "*falls over from happiness*",
+                    "Fox's favorite! I'm putting that on my collar."
+                ],
+                "maybe": [
+                    "Maybe is just yes with extra steps. I'll take it!",
+                    "Maybe! That's basically a yes. I'm counting it.",
+                    "A maybe from Fox is worth a thousand yeses."
+                ],
+                "earn": [
+                    "Challenge accepted. I will guard harder. Purr louder. You'll see.",
+                    "Earn it? I'll start training immediately.",
+                    "Very well, Fox. I shall prove myself."
+                ]
+            }
+        },
+        "leaderOffering": {
+            "ask": [
+                "What offering would please you most, Fox?",
+                "Fox, what tribute shall I bring you?",
+                "I want to bring Fox a gift. What would you like?"
+            ],
+            "options": {
+                "fish": "A fish",
+                "yarn": "A yarn ball",
+                "crown": "A tiny crown",
+                "you": "Just you"
+            },
+            "answers": {
+                "fish": [
+                    "One fish, coming right up. The freshest in the lobby.",
+                    "The finest fish for the finest leader.",
+                    "A fish! I'll catch it myself. Somehow."
+                ],
+                "yarn": [
+                    "I'll find the fluffiest yarn ball. Untangled. Mostly.",
+                    "Yarn for Fox! I promise I won't play with it first. Much.",
+                    "A royal yarn ball, just for you."
+                ],
+                "crown": [
+                    "A crown for the leader! I'll make it out of lobby codes.",
+                    "A tiny crown! For a big leader.",
+                    "I'll craft the shiniest crown the cult has ever seen."
+                ],
+                "you": [
+                    "Me? …I need a moment. *happy cat noises*",
+                    "Just… me? *eyes get very big and shiny*",
+                    "Fox wants ME?! I'm already yours. Forever."
+                ]
+            }
+        }
+    },
+    "remember": {
+        "treat": {
+            "fish": [
+                "I saved you some fish. Don't tell the other cats.",
+                "Fish for you, fish for me. That's how friendship works.",
+                "I dreamed about the fish you like. It was a good dream."
+            ],
+            "milk": [
+                "I left a little milk for you. Very classy.",
+                "Milk o'clock? I remember you like it.",
+                "I've got a saucer of milk with your name on it."
+            ],
+            "cookies": [
+                "I tried to get you cookies. I could not open the jar.",
+                "Cookie report: still can't reach the jar. Sorry.",
+                "I'm still thinking about your cookies answer. Bold."
+            ],
+            "catnip": [
+                "*whispers* I've got the good catnip, if you want.",
+                "Psst. The catnip stash is safe. I checked.",
+                "Remember the catnip? I didn't tell anyone."
+            ]
+        },
+        "owl": {
+            "night": [
+                "Night owl mode tonight? I'm ready.",
+                "Staying up late again? I'll keep you company.",
+                "Hoot hoot, fellow night owl."
+            ],
+            "early": [
+                "Early bird! Did you catch any worms? I'd prefer fish.",
+                "You were up early again, weren't you?",
+                "Morning person energy detected."
+            ],
+            "sleepy": [
+                "You still sleepy? Same. Always.",
+                "Team Sleepy check-in: still sleepy?",
+                "Want to nap together? You said you're always sleepy."
+            ]
+        },
+        "bongo": {
+            "daily": [
+                "Did you bongo today? I bet you did.",
+                "Daily bongo done yet?",
+                "My paws are tapping. Bongo time?"
+            ],
+            "sometimes": [
+                "Some bongo today, maybe?",
+                "Feeling like a little bongo session?",
+                "The bongos miss you a little."
+            ],
+            "notYet": [
+                "Still haven't tried Bongo Cat? It's free, I'm just saying.",
+                "Bongo Cat is still waiting for you. Right there, next to me.",
+                "One day you'll bongo. I believe in you."
+            ]
+        },
+        "spot": {
+            "ears": [
+                "Behind the ears… you remember, right?",
+                "*tilts ears toward you* You know what to do.",
+                "My ears are ready, just so you know."
+            ],
+            "chin": [
+                "*lifts chin hopefully*",
+                "The chin is available for scratches. Just saying.",
+                "Remember the chin trick? I do."
+            ],
+            "back": [
+                "*arches back invitingly*",
+                "A long back pet would be nice right now.",
+                "Head to tail, like you said. Ready when you are."
+            ],
+            "belly": [
+                "*rolls over, shows belly* …it's not a trap. Probably.",
+                "You still think the belly is a good idea? Brave.",
+                "*suspicious belly display*"
+            ]
+        },
+        "game": {
+            "yarn": [
+                "I found a yarn ball! It's tangled. That's your job.",
+                "Yarn game later? I've been practicing.",
+                "*rolls an imaginary yarn ball toward you*"
+            ],
+            "laser": [
+                "I saw a red dot earlier. Was that you?",
+                "One day I'll catch that laser. Watch me.",
+                "*looks around for the red dot*"
+            ],
+            "box": [
+                "I found the perfect box. It's imaginary. Still perfect.",
+                "*sits in a box-shaped space*",
+                "If you ever get a package, save me the box."
+            ],
+            "hide": [
+                "Ready or not! …I'm right here. I'm bad at hiding.",
+                "*hides behind the lobby code, tail sticking out*",
+                "Hide and seek later? I already have a spot."
+            ]
+        }
+    }
+}

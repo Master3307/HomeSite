@@ -1,17 +1,87 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import twemoji from "@twemoji/api";
+import { getCurrentAccount } from "/src/lib/account";
+import { CAT_NOTICE_EVENT, CAT_SAY_EVENT } from "/src/lib/lobbyCat";
+import { createLobbyCatBrain } from "/src/lib/lobbyCatBrain/brain";
+import { useCatSpeech } from "./useCatSpeech";
 import "/src/styles/LobbyCat.css";
+
+const TWEMOJI_OPTIONS = {
+  base: "/twemoji/",
+  folder: "svg",
+  ext: ".svg",
+  className: "discord-emoji",
+};
+
+const BRAIN_TICK_MS = 5_000;
 
 export default function BobbingCatCard() {
   const { t } = useTranslation("lobby-code");
+  const { t: tCat } = useTranslation("lobby-cat");
 
   const hitboxRef = useRef(null);
   const petRef = useRef(null);
   const animationRef = useRef(null);
+  const bubbleRef = useRef(null);
 
   const heartIdRef = useRef(0);
   const heartTimersRef = useRef(new Set());
   const [hearts, setHearts] = useState([]);
+
+  // Speech queue + the brain that decides what to say (lib/lobbyCatBrain).
+  const speech = useCatSpeech();
+  const { say, ask, busy } = speech;
+  const brainRef = useRef(null);
+  const tCatRef = useRef(tCat);
+
+  useEffect(() => {
+    tCatRef.current = tCat;
+  });
+
+  useEffect(() => {
+    const brain = createLobbyCatBrain({
+      getT: () => tCatRef.current,
+      speak: say,
+      ask,
+      isBusy: busy,
+    });
+    brainRef.current = brain;
+
+    let active = true;
+    getCurrentAccount()
+      .catch(() => null)
+      .then((account) => {
+        if (active) brain.arrive(account);
+      });
+
+    const tick = setInterval(() => brain.tick(), BRAIN_TICK_MS);
+
+    function onSay(event) {
+      if (event.detail?.text) say([event.detail.text]);
+    }
+    window.addEventListener(CAT_SAY_EVENT, onSay);
+
+    function onNotice(event) {
+      if (event.detail?.type) brain.notice(event.detail.type, event.detail.detail);
+    }
+    window.addEventListener(CAT_NOTICE_EVENT, onNotice);
+
+    return () => {
+      active = false;
+      clearInterval(tick);
+      window.removeEventListener(CAT_SAY_EVENT, onSay);
+      window.removeEventListener(CAT_NOTICE_EVENT, onNotice);
+      brain.dispose();
+      brainRef.current = null;
+    };
+  }, [say, ask, busy]);
+
+  // Emoji in the bubble look like the rest of the site.
+  const currentId = speech.current?.id;
+  useEffect(() => {
+    if (currentId && bubbleRef.current) twemoji.parse(bubbleRef.current, TWEMOJI_OPTIONS);
+  }, [currentId]);
 
   useEffect(() => {
     const heartTimers = heartTimersRef.current;
@@ -55,6 +125,7 @@ export default function BobbingCatCard() {
 
   function petCat() {
     createHeart();
+    brainRef.current?.pet();
 
     const element = petRef.current;
 
@@ -129,6 +200,44 @@ export default function BobbingCatCard() {
 
   return (
     <div className="lobby-cat-wrap">
+      <span className="visually-hidden" aria-live="polite">
+        {speech.current?.text ?? ""}
+      </span>
+
+      {/* Outside the hitbox: answer buttons can't live inside a button. */}
+      {speech.current && (
+        <div
+          key={speech.current.id}
+          ref={bubbleRef}
+          className={[
+            "cat-speech",
+            speech.current.leaving && "cat-speech--leaving",
+            speech.current.choices && "cat-speech--ask",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          <p className="cat-speech__text">{speech.current.text}</p>
+
+          {speech.current.choices && (
+            <div className="cat-speech__choices" role="group" aria-label={speech.current.text}>
+              {speech.current.choices.map((choice, index) => (
+                <button
+                  key={choice.id}
+                  type="button"
+                  className="cat-speech__choice"
+                  style={{ "--i": index }}
+                  disabled={speech.current.leaving}
+                  onClick={() => speech.answer(speech.current.id, choice.id)}
+                >
+                  <span aria-hidden="true">{choice.emoji}</span>
+                  {choice.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div
         ref={hitboxRef}
@@ -138,6 +247,10 @@ export default function BobbingCatCard() {
         aria-label={t("petCatLabel")}
         onClick={petCat}
         onKeyDown={handleKeyDown}
+        // Lingering on the cat without petting it gets a little tease.
+        onPointerEnter={(event) => event.pointerType === "mouse" && brainRef.current?.hover(true)}
+        onPointerLeave={() => brainRef.current?.hover(false)}
+        onPointerDown={() => brainRef.current?.hover(false)}
       >
         <div className="cat-idle-animation">
           <div ref={petRef} className="cat-pet-animation">
