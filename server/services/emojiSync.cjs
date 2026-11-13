@@ -105,8 +105,43 @@ function makeHashKey(animated, hash) {
   return `${animated ? "animated" : "static"}:${hash}`;
 }
 
-function isValidEmojiName(name) {
-  return /^[a-zA-Z0-9_]{2,32}$/.test(name);
+/*
+ * Emoji image URL in its real format. The default URL is a static WebP, so
+ * animated emojis used to be copied as stills.
+ */
+function emojiAssetURL(emoji) {
+  return emoji.imageURL({ extension: emoji.animated ? "gif" : "png", size: 128 });
+}
+
+/*
+ * The name without the suffixes createUniqueName adds when a name is taken:
+ * `BongoSmirk_187765_2` -> `BongoSmirk`.
+ */
+function baseEmojiName(name) {
+  return String(name).replace(/_\d{6}(?:_\d+)?$/, "");
+}
+
+/*
+ * An existing application emoji that already is this source emoji: same
+ * name (or a suffixed copy of it) and same animation. Discord re-encodes
+ * uploads, so comparing image bytes alone never matches; without this every
+ * sync from a fresh state file (another bot instance, a reset db) created a
+ * new copy. Prefers the exact name, never takes one mapped to another emoji.
+ */
+function findByName(applicationEmojis, sourceEmoji, takenIds) {
+  const clean = sanitizeEmojiName(sourceEmoji.name);
+  const candidates = [...applicationEmojis.values()].filter(
+    (emoji) =>
+      !takenIds.has(emoji.id) &&
+      Boolean(emoji.animated) === Boolean(sourceEmoji.animated) &&
+      baseEmojiName(emoji.name) === clean,
+  );
+
+  return (
+    candidates.find((emoji) => emoji.name === clean) ??
+    candidates.sort((a, b) => a.name.length - b.name.length)[0] ??
+    null
+  );
 }
 
 function sanitizeEmojiName(name) {
@@ -183,7 +218,7 @@ async function syncApplicationEmojis({ client, sourceGuild, state }) {
 
   for (const applicationEmoji of applicationEmojis.values()) {
     try {
-      const { hash } = await getAsset(applicationEmoji.imageURL());
+      const { hash } = await getAsset(emojiAssetURL(applicationEmoji));
 
       applicationByHash.set(
         makeHashKey(applicationEmoji.animated, hash),
@@ -214,7 +249,7 @@ async function syncApplicationEmojis({ client, sourceGuild, state }) {
       : null;
 
     try {
-      const { buffer, hash } = await getAsset(sourceEmoji.imageURL());
+      const { buffer, hash } = await getAsset(emojiAssetURL(sourceEmoji));
       const hashKey = makeHashKey(sourceEmoji.animated, hash);
 
       if (mappedApplicationEmoji) {
@@ -249,7 +284,16 @@ async function syncApplicationEmojis({ client, sourceGuild, state }) {
         continue;
       }
 
-      const identicalApplicationEmoji = applicationByHash.get(hashKey);
+      const takenIds = new Set(
+        state.mappings
+          .filter((mapping) => mapping.sourceEmojiId !== sourceEmoji.id)
+          .map((mapping) => mapping.applicationEmojiId),
+      );
+
+      const hashMatch = applicationByHash.get(hashKey);
+      const identicalApplicationEmoji =
+        (hashMatch && !takenIds.has(hashMatch.id) ? hashMatch : null) ??
+        findByName(applicationEmojis, sourceEmoji, takenIds);
 
       if (identicalApplicationEmoji) {
         upsertMapping(state, {
