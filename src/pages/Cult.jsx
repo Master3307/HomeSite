@@ -1,11 +1,11 @@
 import { Helmet } from 'react-helmet-async'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
 import CultCard from '/src/components/cult/Card'
 import Login from '/src/components/Login'
-import LobbyCode from '/src/components/cult/LobbyCode'
-import LobbyCat from '/src/components/cult/LobbyCat'
+import BongoCat from '/src/components/cult/BongoCat'
 import Voting from '/src/components/cult/Voting'
+import DiscordWidget from '/src/components/DiscordWidget'
 
 import {
   getDiscordPicSrc,
@@ -61,12 +61,29 @@ export default function Home() {
         <Login />
       </div>
 
-      <CultCard />
-      <div className="cult-lobby-widget">
-        <LobbyCode />
-        <LobbyCat />
-      </div>
-      <Voting />
+      <main className="cult">
+        <section className="cult-hero">
+          <CultCard />
+          <DiscordWidget />
+        </section>
+
+        <BongoCat />
+        <Voting />
+      </main>
+
+      <footer className="cult-footer">
+        <p>
+          <span className="material-symbols-outlined" aria-hidden="true">code</span>
+          <Trans
+            ns="cult"
+            i18nKey="footer.source"
+            defaults="View source on <0>GitHub</0>"
+            components={[
+              <a key="github" href="https://github.com/Master3307/HomeSite" target="_blank" rel="noopener noreferrer" />,
+            ]}
+          />
+        </p>
+      </footer>
     </>
   )
 }

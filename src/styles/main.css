@@ -839,6 +839,203 @@ button:hover {
   background-color: var(--accent-hover);
 }
 
+/* Login button + panel (Discord or admin code) */
+button.loginButton {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.login-wrap {
+  position: relative;
+}
+
+.login-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(300px, calc(100vw - 16px));
+  box-sizing: border-box;
+  padding: 16px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  color: var(--text-primary);
+  text-align: left;
+  background-color: color-mix(in srgb, var(--bg-secondary) 72%, transparent);
+  border-radius: 13px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  animation: login-panel-in 0.16s ease-out;
+}
+
+@keyframes login-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.login-panel__title {
+  margin: 0 0 2px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.login-panel__discord {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 14px;
+
+  color: #fff;
+  background-color: #5865f2;
+  border-radius: 11px;
+  font-weight: 650;
+  text-decoration: none;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.login-panel__discord:hover {
+  color: #fff;
+  background-color: #4752c4;
+}
+
+.login-panel__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 11px 12px;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, #f0b232 12%, transparent);
+  border: 1px solid color-mix(in srgb, #f0b232 35%, transparent);
+  border-radius: 11px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.login-panel__notice .material-symbols-outlined {
+  flex-shrink: 0;
+  color: #f0b232;
+  font-size: 1.2rem;
+}
+
+.login-panel__notice strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+.login-panel__divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.login-panel__divider::before,
+.login-panel__divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--text-primary) 18%, transparent);
+}
+
+.login-panel__link {
+  justify-content: flex-start;
+  padding: 9px 10px;
+  color: var(--text-primary);
+  background: transparent;
+  font-size: 0.88rem;
+}
+
+.login-panel__link:hover {
+  background-color: color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.login-panel__link .material-symbols-outlined,
+.login-panel__discord .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.login-panel__admin {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-panel__admin label {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.login-panel__row {
+  display: flex;
+  gap: 6px;
+}
+
+.login-panel__row input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 11px;
+
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-primary) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 16%, transparent);
+  border-radius: 10px;
+  font: inherit;
+}
+
+.login-panel__row input:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.login-panel__row button {
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
+.login-panel__row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.login-panel__error {
+  margin: 2px 0 0;
+  color: #ff9aa8;
+  font-size: 0.8rem;
+}
+
+.accountBadge {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .accountMenu {
   display: inline-flex;
   align-items: center;

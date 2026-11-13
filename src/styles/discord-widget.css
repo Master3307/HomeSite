@@ -1,0 +1,201 @@
+/*
+ * Discord server widget (components/DiscordWidget.jsx).
+ * Uses the page tokens so it matches the page it sits on.
+ */
+
+.discord-widget {
+  --dw-border: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  --dw-raised: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  --dw-online: #6be0a4;
+
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-sizing: border-box;
+  padding: 22px;
+  color: var(--text-primary);
+  text-align: left;
+  background: color-mix(in srgb, var(--bg-secondary) 55%, transparent);
+  border: 1px solid var(--dw-border);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+  -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
+}
+
+.discord-widget *,
+.discord-widget *::before,
+.discord-widget *::after {
+  box-sizing: border-box;
+}
+
+.discord-widget h2,
+.discord-widget p,
+.discord-widget dl,
+.discord-widget dd {
+  margin: 0;
+}
+
+.discord-widget--loading .dw-stats dd {
+  opacity: 0.5;
+}
+
+/* ---------- header ---------- */
+
+.dw-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.dw-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.dw-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.dw-title {
+  min-width: 0;
+}
+
+.dw-kicker {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dw-title h2 {
+  overflow: hidden;
+  margin-top: 2px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- stats ---------- */
+
+.dw-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.dw-stat {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--dw-raised);
+}
+
+.dw-stat dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.dw-stat dd {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  transition: opacity 0.2s ease;
+}
+
+.dw-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dw-online);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dw-online) 22%, transparent);
+}
+
+/* ---------- online faces ---------- */
+
+.dw-faces {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  padding: 0 0 0 8px;
+  list-style: none;
+}
+
+.dw-faces li {
+  margin-left: -8px;
+}
+
+.dw-faces img,
+.dw-faces__fallback {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid color-mix(in srgb, var(--bg-secondary) 85%, black);
+  border-radius: 50%;
+  background: var(--dw-raised);
+  object-fit: cover;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.dw-faces .dw-faces__more {
+  margin-left: 10px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.dw-note {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+/* ---------- join ---------- */
+
+.dw-join {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 16px;
+  color: #fff;
+  background: #5865f2;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-weight: 650;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.dw-join:hover {
+  color: #fff;
+  background: #4752c4;
+}
+
+.dw-join .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+.dw-join:focus-visible {
+  outline: 2px solid #c9cdfb;
+  outline-offset: 2px;
+}

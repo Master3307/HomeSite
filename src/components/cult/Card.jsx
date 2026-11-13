@@ -1,44 +1,25 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getDiscordPicSrc } from '/src/lib/seasonalAssets'
+import { getCurrentAccount } from '/src/lib/account'
 
-const ACCOUNT_API_URL = 'https://accounts-api.master3307.org'
-
+/** Hero intro of /cult: greeting and a short pitch. */
 export default function Cult() {
   const { t } = useTranslation('cult')
 
   const [displayName, setDisplayName] = useState(null)
 
   useEffect(() => {
-    const controller = new AbortController()
+    let active = true
 
-    async function loadCurrentUser() {
-      try {
-        const response = await fetch(`${ACCOUNT_API_URL}/auth/me`, {
-          credentials: 'include',
-          signal: controller.signal,
-        })
-
-        if (!response.ok) {
-          return
-        }
-
-        const data = await response.json()
-
-        if (data.authenticated && data.user?.displayName) {
-          setDisplayName(data.user.displayName)
-        }
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error('Could not load current account:', error)
-        }
-      }
-    }
-
-    loadCurrentUser()
+    getCurrentAccount()
+      .then((account) => {
+        if (active && account?.displayName) setDisplayName(account.displayName)
+      })
+      .catch((error) => console.error('Could not load current account:', error))
 
     return () => {
-      controller.abort()
+      active = false
     }
   }, [])
 
@@ -46,18 +27,26 @@ export default function Cult() {
   const discordPicSrc = getDiscordPicSrc()
 
   return (
-    <div id="cult-card" className="cult-card">
-      <h2>{t('header', { user })}</h2>
-
-      <br />
-
+    <div id="cult-card" className="cult-hero__intro">
       <img
         src={discordPicSrc}
         className="discordpic"
         title="hehehehehe"
         alt="Some Funny Cat Greeting You"
+        width="128"
+        height="128"
       />
-      <br />
+
+      <p className="cult-eyebrow">
+        {t('eyebrow', { defaultValue: 'A Discord community' })}
+      </p>
+      <h2 className="cult-hero__title">{t('header', { user })}</h2>
+      <p className="cult-lead">
+        {t('lead', {
+          defaultValue:
+            'A small server of black cat enjoyers who mostly hang out in Bongo Cat. Grab the lobby code, vote on this week’s Friday Dress Code, and pet the cat while you’re here.',
+        })}
+      </p>
     </div>
   )
 }

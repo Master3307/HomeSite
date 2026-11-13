@@ -5,117 +5,219 @@ body.cult-page {
   --bg-primary: #470404 !important;
 }
 
-.discordpic {
-  width: 150px;
-}
+/* =========================================================
+   Page layout: a wide, left-aligned column of sections
+   instead of stacked centered cards.
+   ========================================================= */
 
-/* Center the panel and give the cat the same positioning boundary. */
-.cult-page .cult-lobby-widget {
-  position: relative;
-  display: block;
-  box-sizing: border-box;
-  width: calc(100% - 32px);
-  max-width: 780px;
-  min-width: 0;
-  margin: 80px auto 0;
-  overflow: visible;
-  isolation: isolate;
-}
+.cult {
+  --cult-border: color-mix(in srgb, var(--text-primary) 12%, transparent);
 
-/* Restore the original stacked panel layout. */
-.cult-page .cult-lobby-widget > .lobby-panel {
-  position: relative;
-  display: block;
   box-sizing: border-box;
   width: 100%;
-  max-width: none;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 112px 24px 72px;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.cult *,
+.cult *::before,
+.cult *::after {
+  box-sizing: border-box;
+}
+
+.cult-eyebrow {
+  margin: 0 0 6px;
+  color: color-mix(in srgb, var(--accent) 45%, white);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ---------- hero ---------- */
+
+.cult-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 56px;
+  /* Extra room for the lobby cat standing on the line below. */
+  padding-bottom: 108px;
+}
+
+.cult-hero__intro {
   min-width: 0;
+}
+
+.cult-hero__intro .discordpic {
+  display: block;
+  width: 128px;
+  height: auto;
+  margin-bottom: 20px;
+  border-radius: 22px;
+}
+
+.cult-hero__title {
   margin: 0;
-  padding: 26px;
+  font-size: clamp(2rem, 4.5vw, 3rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
 }
 
-.cult-page .cult-lobby-widget .lobby-label {
-  display: block;
-  width: auto;
-  margin: 0 0 8px;
-}
-
-.cult-page .cult-lobby-widget .lobby-code-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-}
-
-.cult-page .cult-lobby-widget .lobby-code-field {
-  flex: 1 1 0;
-  box-sizing: border-box;
-  width: 0;
-  min-width: 0;
-}
-
-.cult-page .cult-lobby-widget .lobby-copy-button {
-  flex: 0 0 auto;
-}
-
-.cult-page .cult-lobby-widget .lobby-description {
-  margin: 14px 0 0;
-}
-
-.cult-page .cult-lobby-widget .lobby-updater {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-width: 0;
+.cult-lead {
+  max-width: 34em;
   margin: 16px 0 0;
+  color: var(--text-secondary);
+  font-size: 1.08rem;
+  line-height: 1.6;
 }
 
-.cult-page .cult-lobby-widget .lobby-avatar {
-  flex: 0 0 auto;
+/* ---------- sections: text on the left, content on the right ---------- */
+
+.cult-section {
+  display: grid;
+  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  align-items: start;
+  gap: 56px;
+  padding: 64px 0;
+  border-top: 1px solid var(--cult-border);
+  scroll-margin-top: 72px;
 }
 
-.cult-page .cult-lobby-widget .lobby-updater-info {
+.cult-section__aside {
+  position: sticky;
+  top: 96px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  gap: 12px;
   min-width: 0;
 }
 
-.cult-page .cult-lobby-widget .lobby-timestamp {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  width: 100%;
-  margin: 12px 0 0;
-}
-
-.cult-page .cult-lobby-widget .lobby-timestamp > span:last-child {
-  min-width: 0;
-}
-
-.cult-page .cult-lobby-widget .lobby-error {
-  margin: 12px 0 0;
-}
-
-/* Keep the live region without adding an empty paragraph's spacing. */
-.cult-page .cult-lobby-widget .lobby-copy-status:empty {
+.cult-section__aside .cult-eyebrow {
   margin: 0;
-  padding: 0;
-  min-height: 0;
 }
 
-/* Place the independent cat component on the panel's top-right edge. */
-.cult-page .cult-lobby-widget > .lobby-cat-wrap {
+.cult-section__title {
+  margin: 0 0 4px;
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+
+.cult-section__aside > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.97rem;
+  line-height: 1.65;
+}
+
+.cult-section__main {
+  min-width: 0;
+}
+
+/*
+ * Bongo Cat: label on the first row (the lobby cat sits on that row too,
+ * on top of the lobby panel), then the Steam panel and the lobby panel
+ * side by side at the same size.
+ */
+.cult-section--game {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    "label ."
+    "steam lobby";
+  /* Both panels are 190px when the submit form is closed; the lobby panel
+     may grow when it is open, the Steam panel keeps its size. */
+  align-items: start;
+  position: relative;
+  gap: 16px 32px;
+  padding-top: 40px;
+}
+
+.cult-game__label {
+  grid-area: label;
+  align-self: end;
+  margin: 0;
+}
+
+.cult-section--game .lobby-panel {
+  min-height: 190px;
+}
+
+/*
+ * Steam's widget panel is 166px tall inside a 190px iframe, with the
+ * "Install Game" button hanging below it. The iframe is masked to the panel
+ * plus the button, and the wrapper continues the panel in Steam's colour,
+ * so the whole thing reads as one panel as tall as the lobby panel.
+ * The mask leaves out the button's drop shadow (below the panel, and the
+ * 10px strip to its right), which would otherwise end abruptly at the seam.
+ */
+.cult-steam-widget {
+  grid-area: steam;
+  position: relative;
+  min-width: 0;
+  height: 190px;
+  overflow: hidden;
+  /* Matches the bottom edge of Steam's panel, which shades left to right. */
+  background: linear-gradient(to right, rgb(55 63 76), rgb(43 49 61));
+  border-radius: 13px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+/* Shifted up 1px to hide Steam's light top line, which the rounded corners
+   would otherwise cut off at both ends. */
+.cult-steam-widget iframe {
+  display: block;
+  width: 100%;
+  height: 191px;
+  margin-top: -1px;
+  border: 0;
+  -webkit-mask:
+    linear-gradient(#000 0 0) left 0 top 0 / 100% 145px,
+    linear-gradient(#000 0 0) left 0 top 0 / calc(100% - 10px) 166px,
+    linear-gradient(#000 0 0) right 10px top 151px / 107px 36px;
+  -webkit-mask-repeat: no-repeat;
+  mask:
+    linear-gradient(#000 0 0) left 0 top 0 / 100% 145px,
+    linear-gradient(#000 0 0) left 0 top 0 / calc(100% - 10px) 166px,
+    linear-gradient(#000 0 0) right 10px top 151px / 107px 36px;
+  mask-repeat: no-repeat;
+}
+
+.cult-page .cult-section--game .cult-lobby-widget {
+  grid-area: lobby;
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+  margin-top: 0;
+}
+
+
+
+/* =========================================================
+   Lobby code panel, and the cat standing on the separator
+   line at the top of the Bongo Cat section
+   ========================================================= */
+
+.cult-page .cult-lobby-widget {
+  position: relative;
+  min-width: 0;
+}
+
+.cult-page .cult-section--game > .lobby-cat-wrap {
   position: absolute;
   inset: auto;
-  top: 0;
+  /* Bottom of the cat on the section's 1px top border. */
+  top: -1px;
   right: 24px;
   z-index: 2;
 
   display: block;
-  box-sizing: border-box;
   width: 130px;
   height: 80px;
   margin: 0;
@@ -125,7 +227,7 @@ body.cult-page {
   overflow: visible;
 }
 
-.cult-page .cult-lobby-widget .cat-hitbox {
+.cult-page .cult-section--game > .lobby-cat-wrap .cat-hitbox {
   position: relative;
   inset: auto;
   display: block;
@@ -136,13 +238,13 @@ body.cult-page {
   overflow: visible;
 }
 
-.cult-page .cult-lobby-widget .cat-idle-animation,
-.cult-page .cult-lobby-widget .cat-pet-animation {
+.cult-page .cult-section--game > .lobby-cat-wrap .cat-idle-animation,
+.cult-page .cult-section--game > .lobby-cat-wrap .cat-pet-animation {
   width: 100%;
   height: 100%;
 }
 
-.cult-page .cult-lobby-widget .bobbing-cat {
+.cult-page .cult-section--game > .lobby-cat-wrap .bobbing-cat {
   display: block;
   width: 100%;
   height: 100%;
@@ -150,14 +252,97 @@ body.cult-page {
   object-position: center bottom;
 }
 
-@media (max-width: 480px) {
-  .cult-page .cult-lobby-widget > .lobby-panel {
-    padding: 20px;
+/* =========================================================
+   Responsive
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .cult-hero,
+  .cult-section {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
   }
 
-  .cult-page .cult-lobby-widget > .lobby-cat-wrap {
+  .cult-section__aside {
+    position: static;
+  }
+
+  .cult-lobby-widget {
+    max-width: none;
+  }
+
+  .cult-section--game {
+    grid-template-areas:
+      "label"
+      "steam"
+      "lobby";
+    gap: 14px;
+  }
+}
+
+@media (max-width: 560px) {
+  .cult {
+    padding: 96px 16px 48px;
+  }
+
+  .cult-hero {
+    padding-bottom: 92px;
+  }
+
+  .cult-section {
+    padding: 48px 0;
+  }
+
+  .cult-section.cult-section--game {
+    padding-top: 28px;
+  }
+
+  .cult-hero__intro .discordpic {
+    width: 100px;
+    border-radius: 18px;
+  }
+
+  .cult-lead {
+    font-size: 1rem;
+  }
+
+  .cult-page .cult-section--game > .lobby-cat-wrap {
     right: 16px;
     width: 110px;
     height: 68px;
   }
+}
+
+/* ---------- footer ---------- */
+
+.cult-page .cult-footer {
+  display: flex;
+  justify-content: center;
+  padding: 8px 16px 40px;
+}
+
+.cult-page .cult-footer p {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  opacity: 0.8;
+}
+
+.cult-page .cult-footer .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+.cult-page .cult-footer a {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 3px;
+}
+
+.cult-page .cult-footer a:hover {
+  text-decoration-color: currentColor;
 }

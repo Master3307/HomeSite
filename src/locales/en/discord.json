@@ -6,5 +6,18 @@
         "playing": "Playing a Game",
         "streak": "Streak",
         "listening": "Listening to Music"
+    },
+    "widget": {
+        "label": "Discord server",
+        "fallbackName": "Cult of Black Cats",
+        "online": "online",
+        "members": "members",
+        "boosts": "boosts",
+        "onlineNow": "Online now",
+        "inVoice": "In voice",
+        "more": "+{{count}} more",
+        "unavailable": "Live server info is unavailable right now.",
+        "join": "Join the server",
+        "totalMembers": "Members"
     }
 }
