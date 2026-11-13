@@ -20,7 +20,8 @@
     "preview": "vite preview",
     "images": "node scripts/generate-images.mjs",
     "serve": "serve -s dist -l tcp://127.0.0.1:8081",
-    "deploy:local": "bash scripts/deploy.sh"
+    "deploy:local": "bash scripts/deploy.sh",
+    "emoji:data": "node scripts/generate-emoji-data.mjs"
   },
   "packageManager": "pnpm@12.18.0",
   "engines": {
@@ -31,7 +32,7 @@
     "@discordjs/rest": "^2.6.3",
     "@mongez/sitemap": "^1.0.2",
     "@twemoji/api": "^17.0.3",
-    "better-sqlite3": "^13.0.3",
+    "better-sqlite3": "^13.1.1",
     "canvas": "^3.2.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -49,7 +50,7 @@
     "leaflet": "1.9.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-helmet-async": "^3.0.0",
+    "react-helmet-async": "^3.1.0",
     "react-i18next": "^17.1.13",
     "react-powerglitch": "^1.1.0",
     "react-router": "^8.5.1",
@@ -66,6 +67,7 @@
     "oxlint": "^1.93.0",
     "serve": "^14.2.7",
     "undici": "^8.11.2",
-    "vite": "^8.3.7"
+    "vite": "^8.3.8",
+    "unicode-emoji-json": "0.8.0"
   }
 }
