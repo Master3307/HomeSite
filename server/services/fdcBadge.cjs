@@ -40,6 +40,11 @@ const BADGE = {
   numberText: "#ffffff",
 };
 
+// Badge height and corner margin as a share of the 16:10 reference width.
+const REFERENCE_RATIO = 16 / 10;
+const BADGE_SIZE = 0.11;
+const BADGE_MARGIN = 0.03;
+
 const DISCORD_UPLOAD_LIMIT = 9.5 * 1024 * 1024;
 
 function escapeXml(value) {
@@ -128,11 +133,20 @@ function digitsSvg(text, x, centerY, height, fill) {
  * Returns `{ png, left, top }`: where to put it on the frame.
  */
 async function renderBadge(width, height, { number, emoji }) {
-  const base = Math.min(width, height);
+  /*
+   * Always proportional, never a fixed minimum or maximum, so the badge
+   * looks the same on every FDC. Size and position are measured on the
+   * largest centred 16:10 area of the image: that's what Discord shows in
+   * its image grid (and the editor's default crop), so the badge has the
+   * same relative size everywhere and is never cropped away.
+   */
+  const frameWidth = Math.min(width, height * REFERENCE_RATIO);
+  const frameHeight = frameWidth / REFERENCE_RATIO;
+  const frameLeft = (width - frameWidth) / 2;
+  const frameTop = (height - frameHeight) / 2;
 
-  // Big enough to read in Discord's preview, small enough to stay out of the way.
-  const size = Math.round(Math.min(Math.max(base * 0.11, 38), 140));
-  const margin = Math.round(Math.max(size * 0.34, base * 0.025));
+  const size = Math.max(1, Math.round(frameWidth * BADGE_SIZE));
+  const margin = Math.round(frameWidth * BADGE_MARGIN);
   const pad = Math.round(size * 0.13);
   const circle = size - pad * 2;
   const emojiSize = Math.round(size * 0.64);
@@ -146,7 +160,7 @@ async function renderBadge(width, height, { number, emoji }) {
   const badgeWidth = pad + numberWidth + (icon ? gap + emojiSize + Math.round(pad * 1.4) : pad);
 
   // Room around the pill for its shadow.
-  const blur = Math.max(2, Math.round(size * 0.08));
+  const blur = Math.max(1, Math.round(size * 0.08));
   const bleed = blur * 3;
   const canvasWidth = badgeWidth + bleed * 2;
   const canvasHeight = size + bleed * 2;
@@ -177,10 +191,11 @@ async function renderBadge(width, height, { number, emoji }) {
 
   const png = await sharp(Buffer.from(svg)).composite(layers).png().toBuffer();
 
+  const clamp = (value, max) => Math.round(Math.min(Math.max(0, value), Math.max(0, max)));
   return {
     png,
-    left: Math.max(0, width - margin - badgeWidth - bleed),
-    top: Math.max(0, margin - bleed),
+    left: clamp(frameLeft + frameWidth - margin - badgeWidth - bleed, width - canvasWidth),
+    top: clamp(frameTop + margin - bleed, height - canvasHeight),
   };
 }
 

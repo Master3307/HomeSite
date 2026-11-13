@@ -24,7 +24,7 @@ pnpm discord        # Discord profile/presence API (server/services/discord-prof
 
 There is no test suite. Validation is `pnpm checks` (oxlint, `node --check` on every .js/.cjs/.mjs file, static bot-entry validation, build + dist checks). `pnpm checks --discord-smoke-test` additionally hits the live Discord API with credentials from `.env`.
 
-Other scripts: `search:index` (rebuild `public/search-index.json`), `fdc:import` / `fdc:export` (FDC poll data), `sitemap`, `images`, `fonts:update` (self-hosted fonts / Material Symbols), `git-sync`, `cleaner`.
+Other scripts: `fdc:rebadge` (re-upload FDC option images to Discord with the number + emoji badge; preview by default, `--apply` / `--all`), `search:index` (rebuild `public/search-index.json`), `fdc:import` / `fdc:export` (FDC poll data), `sitemap`, `images`, `fonts:update` (self-hosted fonts / Material Symbols), `git-sync`, `cleaner`.
 
 ## Architecture
 

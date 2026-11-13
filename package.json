@@ -21,7 +21,8 @@
     "images": "node scripts/generate-images.mjs",
     "serve": "serve -s dist -l tcp://127.0.0.1:8081",
     "deploy:local": "bash scripts/deploy.sh",
-    "emoji:data": "node scripts/generate-emoji-data.mjs"
+    "emoji:data": "node scripts/generate-emoji-data.mjs",
+    "fdc:rebadge": "node scripts/fdc-rebadge.cjs"
   },
   "packageManager": "pnpm@12.18.0",
   "engines": {
