@@ -1,9 +1,43 @@
-export const ACCOUNT_API_URL = "https://accounts-api.master3307.org";
+import {
+  clearLocalAdminSession,
+  getLocalAdminSession,
+  isLocalAdminAvailable,
+  startLocalAdminSession,
+  verifyAdminCodeLocally,
+} from "./localAdmin";
+
+/*
+ * In `pnpm dev` the API is reached through the same-origin /account-api
+ * proxy (scripts/account-api-proxy.mjs), so admin-key sessions work on
+ * localhost. Set VITE_ACCOUNT_API_URL=/account-api at build time to use the
+ * proxy from `pnpm preview` on a local server as well.
+ */
+export const ACCOUNT_API_URL =
+  import.meta.env.VITE_ACCOUNT_API_URL ||
+  (import.meta.env.DEV ? "/account-api" : "https://accounts-api.master3307.org");
 
 const CSRF_HEADER_NAME = "X-Requested-With";
 const CSRF_HEADER_VALUE = "homesite-web";
 
-async function accountFetch(path, options = {}) {
+export const DISCORD_LOGIN_URL = `${ACCOUNT_API_URL}/auth/discord`;
+
+/** Discord login is switched off for now; flip to true to re-enable it. */
+export const LOGIN_AVAILABLE = true;
+
+/*
+ * Cached avatars are served by the account API (/avatars/<id>.webp). The API
+ * prefixes them with API_ORIGIN; when that isn't set the path is relative and
+ * would wrongly resolve against the website, so resolve it against the API.
+ */
+function withApiAvatar(user) {
+  if (!user || typeof user.avatarUrl !== "string" || !user.avatarUrl.startsWith("/")) {
+    return user;
+  }
+
+  return { ...user, avatarUrl: `${ACCOUNT_API_URL}${user.avatarUrl}` };
+}
+
+export async function accountFetch(path, options = {}) {
   const method = String(options.method || "GET").toUpperCase();
   const headers = new Headers(options.headers || {});
 
@@ -19,23 +53,42 @@ async function accountFetch(path, options = {}) {
   });
 }
 
+/**
+ * The logged-in user. Falls back to a local admin session (see
+ * lib/localAdmin.js) when the server has no session or is unreachable.
+ */
 export async function getCurrentAccount() {
-  const response = await accountFetch("/auth/me");
+  let response;
 
-  if (response.status === 401) {
+  try {
+    response = await accountFetch("/auth/me");
+  } catch (error) {
+    const local = getLocalAdminSession();
+    if (local) return local;
+    throw error;
+  }
+
+  if (response.ok) {
+    const data = await response.json().catch(() => null);
+    if (data?.authenticated) return withApiAvatar(data.user);
+  }
+
+  const local = getLocalAdminSession();
+  if (local) return local;
+
+  if (response.ok || response.status === 401) {
     return null;
   }
 
-  if (!response.ok) {
-    throw new Error(`Account request failed: ${response.status}`);
-  }
-
-  const data = await response.json();
-
-  return data.authenticated ? data.user : null;
+  throw new Error(`Account request failed: ${response.status}`);
 }
 
 export async function updateAccountSettings(settings) {
+  // Local admin sessions have nothing to sync to.
+  if (getLocalAdminSession()) {
+    return null;
+  }
+
   const response = await accountFetch("/account/settings", {
     method: "PATCH",
     headers: {
@@ -62,11 +115,72 @@ export async function updateAccountSettings(settings) {
 }
 
 export async function logoutAccount() {
-  const response = await accountFetch("/auth/logout", {
-    method: "POST",
-  });
+  const local = getLocalAdminSession();
+  clearLocalAdminSession();
 
-  if (!response.ok && response.status !== 204) {
+  let response;
+
+  try {
+    response = await accountFetch("/auth/logout", {
+      method: "POST",
+    });
+  } catch (error) {
+    if (local) return;
+    throw error;
+  }
+
+  if (!response.ok && response.status !== 204 && !local) {
     throw new Error(`Logout failed: ${response.status}`);
   }
+}
+
+async function loginLocally(key) {
+  if (!isLocalAdminAvailable()) {
+    throw new Error(
+      "The account server is unreachable and offline admin login is not set up.",
+    );
+  }
+
+  if (!(await verifyAdminCodeLocally(key))) {
+    throw new Error("Invalid admin code.");
+  }
+
+  return startLocalAdminSession();
+}
+
+/**
+ * Logs in as the admin ("Cultbot") account with the ADMIN_KEY code.
+ * Uses the account server when it can; when the server is unreachable or
+ * does not support admin login, the code is checked in the browser and a
+ * local admin session is started instead (`user.local === true`).
+ */
+export async function loginWithAdminCode(key) {
+  let response;
+
+  try {
+    response = await accountFetch("/auth/admin", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ key }),
+    });
+  } catch {
+    return loginLocally(key);
+  }
+
+  const data = await response.json().catch(() => null);
+
+  if (response.ok && data?.user) {
+    clearLocalAdminSession();
+    return withApiAvatar(data.user);
+  }
+
+  // The server rejected the code itself: do not fall back.
+  if ([400, 401, 429].includes(response.status) && data?.error) {
+    throw new Error(data.error);
+  }
+
+  // Server down (5xx), admin login missing (404) or disabled: work locally.
+  return loginLocally(key);
 }

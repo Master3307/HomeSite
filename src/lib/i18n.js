@@ -73,7 +73,8 @@ const initialLanguage = getInitialLanguage()
 i18n
   .use(initReactI18next)
   .init({
-    debug: true,
+    // Verbose i18next logging only while developing.
+    debug: import.meta.env.DEV,
     lng: initialLanguage,
     fallbackLng: 'en',
     supportedLngs,

@@ -1,16 +1,17 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router'
 import Home from './pages/Home.jsx'
-import Card from './pages/Card.jsx'
 import Error from './pages/Error.jsx'
-import About from './pages/About.jsx'
-import Dash from './pages/Dash.jsx'
-import Filer from './pages/Filter.jsx'
-import Collect from './pages/Collect.jsx'
-import Cult from './pages/Cult.jsx'
-import CultProfile from './pages/CultProfile.jsx'
 
-// Leaflet + the maps UI are big; load them only when /maps is opened.
+// Pages other than the home and error page load on demand, which keeps the
+// main bundle small (Leaflet + the maps UI in particular are big).
+const Card = lazy(() => import('./pages/Card.jsx'))
+const About = lazy(() => import('./pages/About.jsx'))
+const Dash = lazy(() => import('./pages/Dash.jsx'))
+const Filer = lazy(() => import('./pages/Filter.jsx'))
+const Collect = lazy(() => import('./pages/Collect.jsx'))
+const Cult = lazy(() => import('./pages/Cult.jsx'))
+const CultProfile = lazy(() => import('./pages/CultProfile.jsx'))
 const Maps = lazy(() => import('./pages/Maps.jsx'))
 
 export default function App() {
