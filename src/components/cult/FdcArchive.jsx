@@ -28,7 +28,8 @@ export default function FdcArchive({
     data: poll,
     loading,
     error,
-  } = useFdcPoll(selected)
+    reload,
+  } = useFdcPoll(selected, { live: isRunningPoll(selected, now) })
 
   if (selected) {
     return (
@@ -67,7 +68,12 @@ export default function FdcArchive({
         )}
 
         {poll && (
-          <FdcPoll poll={poll} account={account} />
+          <FdcPoll
+            key={`${poll.id}:${poll.updatedAt?.ms ?? ''}`}
+            poll={poll}
+            account={account}
+            onVoted={reload}
+          />
         )}
       </section>
     )
@@ -103,7 +109,7 @@ export default function FdcArchive({
       <p className="fdc-note">
         {t('fdc.archiveIntroduction', {
           defaultValue:
-            'Browse previous polls and their results. Polls are visible without logging in; voter identities are not.',
+            'Browse previous polls and their results. Anyone can see the results; who voted is only shown to logged-in users.',
         })}
       </p>
 
@@ -115,17 +121,21 @@ export default function FdcArchive({
         </p>
       ) : (
         <div className="fdc-archive__list">
-          {summary.polls.map((entry) => {
+          {summary.polls.map((entry, index) => {
             const running = isRunningPoll(entry, now)
 
             return (
               <button
                 type="button"
-                className="fdc-archive__entry"
+                className={`fdc-archive__entry${running ? ' fdc-archive__entry--running' : ''}`}
                 key={entry.id}
                 onClick={() => setSelectedId(entry.id)}
               >
-                <span>
+                <span className="fdc-archive__index" aria-hidden="true">
+                  #{(summary.totalFdcCount ?? summary.polls.length) - index}
+                </span>
+
+                <span className="fdc-archive__text">
                   <span className="fdc-archive__date">
                     {formatPollDate(
                       entry.endsAt,

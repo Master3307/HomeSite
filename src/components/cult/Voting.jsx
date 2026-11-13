@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import { ACCOUNT_API_URL } from '../../lib/account'
 
 import {
   isRunningPoll,
+  useFdcAccount,
   useFdcClock,
   useFdcPoll,
   useFdcSummary,
@@ -12,171 +11,194 @@ import {
 
 import FdcPoll from './FdcPoll'
 import FdcArchive from './FdcArchive'
+import FdcCreate from './FdcCreate'
+import FdcDrafts from './FdcDrafts'
 
 import '../../styles/fdc.css'
 
-export default function Cult() {
+function PollLoader({ entry, account, live, onVoted }) {
+  const { t } = useTranslation('voting')
+  const { data, loading, error, reload } = useFdcPoll(entry, { live })
+  const [managing, setManaging] = useState(false)
+
+  if (loading) {
+    return (
+      <p className="fdc-placeholder" role="status">
+        {t('fdc.loadingPoll', { defaultValue: 'Loading poll…' })}
+      </p>
+    )
+  }
+
+  if (error || !data) {
+    return (
+      <p role="alert" className="fdc-error">
+        {t('fdc.loadError', { defaultValue: 'Could not load this poll.' })}
+      </p>
+    )
+  }
+
+  return (
+    <FdcPoll
+      // A fresh poll resets vote state; while managing, keep the panel's state.
+      key={managing ? data.id : `${data.id}:${data.updatedAt?.ms ?? ''}`}
+      poll={data}
+      account={account}
+      managing={managing}
+      onManagingChange={setManaging}
+      onVoted={() => {
+        reload()
+        onVoted?.()
+      }}
+    />
+  )
+}
+
+/** Friday Dress Code: current poll, archive and (for moderators) creation. */
+export default function Voting() {
   const { t } = useTranslation('voting')
 
-  const [displayName, setDisplayName] = useState(null)
-  const [authenticated, setAuthenticated] = useState(false)
-  const [accountLoading, setAccountLoading] = useState(true)
-  const [showArchive, setShowArchive] = useState(false)
-
-  const now = useFdcClock()
+  const [view, setView] = useState('current') // current | archive | create
+  const account = useFdcAccount()
+  const now = useFdcClock(30_000)
 
   const {
     data: summary,
     loading: summaryLoading,
     error: summaryError,
+    reload: reloadSummary,
   } = useFdcSummary()
 
-  const currentEntry = summary?.polls.find((poll) =>
-    isRunningPoll(poll, now),
-  )
+  const currentEntry = summary?.polls.find((poll) => isRunningPoll(poll, now))
+  const latestEntry = summary?.polls[0]
+  const canCreate = summary?.viewer?.canCreate === true
 
-  const {
-    data: currentPoll,
-    loading: pollLoading,
-    error: pollError,
-  } = useFdcPoll(currentEntry)
+  const showCreate = view === 'create' && canCreate
+  const showArchive = view === 'archive' && summary
 
-  useEffect(() => {
-    const controller = new AbortController()
+  let content
 
-    async function loadCurrentUser() {
-      try {
-        const response = await fetch(
-          `${ACCOUNT_API_URL}/auth/me`,
-          {
-            credentials: 'include',
-            signal: controller.signal,
-            cache: 'no-store',
-          },
-        )
+  if (showCreate) {
+    content = (
+      <FdcCreate
+        onCancel={() => setView('current')}
+        onCreated={() => reloadSummary()}
+        viewerDiscordId={account.user?.discordUserId}
+      />
+    )
+  } else if (showArchive) {
+    content = (
+      <FdcArchive
+        summary={summary}
+        account={account}
+        onBack={() => setView('current')}
+      />
+    )
+  } else {
+    content = (
+      <>
+        {canCreate && <FdcDrafts onSent={reloadSummary} />}
 
-        if (!response.ok) {
-          return
-        }
+        {summary?.viewer?.local && (
+          <p className="fdc-note fdc-local-note">
+            <span className="material-symbols-outlined" aria-hidden="true">cloud_off</span>
+            {t('fdc.localAdmin', {
+              defaultValue:
+                'Local admin session: new polls are saved on this device and can be sent once the server is reachable.',
+            })}
+          </p>
+        )}
 
-        const data = await response.json()
+        {summaryLoading ? (
+          <p className="fdc-placeholder" role="status">
+            {t('fdc.loading', { defaultValue: 'Loading FDC polls…' })}
+          </p>
+        ) : summaryError ? (
+          <p role="alert" className="fdc-error">
+            {t('fdc.summaryError', {
+              defaultValue: 'Could not load FDC polls. Please try again later.',
+            })}
+          </p>
+        ) : currentEntry ? (
+          <PollLoader
+            entry={currentEntry}
+            account={account}
+            live
+            onVoted={reloadSummary}
+          />
+        ) : (
+          <>
+            <p className="fdc-empty">
+              <span className="material-symbols-outlined" aria-hidden="true">
+                checkroom
+              </span>
+              {t('fdc.noCurrentPoll', { defaultValue: 'There is no running FDC poll right now.' })}
+            </p>
 
-        if (controller.signal.aborted) {
-          return
-        }
-
-        setAuthenticated(data.authenticated === true)
-
-        if (data.authenticated && data.user?.displayName) {
-          setDisplayName(data.user.displayName)
-        }
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error(
-            'Could not load current account:',
-            error,
-          )
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setAccountLoading(false)
-        }
-      }
-    }
-
-    loadCurrentUser()
-
-    return () => {
-      controller.abort()
-    }
-  }, [])
-
-  const account = {
-    loading: accountLoading,
-    authenticated,
-    displayName,
+            {latestEntry && (
+              <>
+                <h3 className="fdc-subheading">
+                  {t('fdc.lastPoll', { defaultValue: 'Last FDC' })}
+                </h3>
+                <PollLoader entry={latestEntry} account={account} />
+              </>
+            )}
+          </>
+        )}
+      </>
+    )
   }
 
   return (
-    <div id="card" className="card fdc">
-      {showArchive && summary ? (
-        <FdcArchive
-          summary={summary}
-          account={account}
-          onBack={() => setShowArchive(false)}
-        />
-      ) : (
-        <>
-          <header className="fdc-section-header">
-            <h3>
-              {t('fdc.sectionTitle', {
-                defaultValue: 'Friday Dress Code',
-              })}
-            </h3>
+    <section id="fdc" className="cult-section fdc" aria-labelledby="fdc-title">
+      <div className="cult-section__aside">
+        <h2 id="fdc-title" className="cult-section__title">
+          {t('fdc.sectionTitle', { defaultValue: 'Friday Dress Code' })}
+        </h2>
 
+        <p>
+          {t('fdc.about', {
+            defaultValue: 'Every Thursday, vote for your favorite Friday Dress Code idea!',
+          })}
+        </p>
+        <p>
+          {t('fdc.aboutFriday', {
+            defaultValue:
+              'On Friday, the winner will be announced and you can make your cat look according to it!',
+          })}
+        </p>
+
+        {!showCreate && !showArchive && (
+          <div className="fdc-section-header__actions">
             <button
               type="button"
-              className="fdc-link"
-              onClick={() => setShowArchive(true)}
+              className="fdc-button fdc-button--ghost fdc-button--small"
+              onClick={() => setView('archive')}
               disabled={!summary}
-              aria-label={t('fdc.viewArchive', {
-                defaultValue: 'View FDC archive',
-              })}
+              aria-label={t('fdc.viewArchive', { defaultValue: 'View FDC archive' })}
             >
-              <span
-                className="material-symbols-outlined"
-                aria-hidden="true"
-              >
+              <span className="material-symbols-outlined" aria-hidden="true">
                 archive
               </span>
-
-              {t('fdc.archive', {
-                defaultValue: 'View Archive',
-              })}
+              {t('fdc.archive', { defaultValue: 'Archive' })}
             </button>
-          </header>
 
-          {summaryLoading ? (
-            <p role="status">
-              {t('fdc.loading', {
-                defaultValue: 'Loading FDC polls…',
-              })}
-            </p>
-          ) : summaryError ? (
-            <p role="alert" className="fdc-error">
-              {t('fdc.summaryError', {
-                defaultValue:
-                  'Could not load FDC polls. Please try again later.',
-              })}
-            </p>
-          ) : !currentEntry ? (
-            <p className="fdc-empty">
-              {t('fdc.noCurrentPoll', {
-                defaultValue:
-                  'There is no current FDC poll.',
-              })}
-            </p>
-          ) : pollLoading ? (
-            <p role="status">
-              {t('fdc.loadingPoll', {
-                defaultValue: 'Loading poll…',
-              })}
-            </p>
-          ) : pollError ? (
-            <p role="alert" className="fdc-error">
-              {t('fdc.loadError', {
-                defaultValue:
-                  'Could not load this poll.',
-              })}
-            </p>
-          ) : currentPoll ? (
-            <FdcPoll
-              poll={currentPoll}
-              account={account}
-            />
-          ) : null}
-        </>
-      )}
-    </div>
+            {canCreate && (
+              <button
+                type="button"
+                className="fdc-button fdc-button--small"
+                onClick={() => setView('create')}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  add
+                </span>
+                {t('fdc.newPoll', { defaultValue: 'New FDC' })}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="cult-section__main">{content}</div>
+    </section>
   )
 }
