@@ -5,6 +5,8 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
 const { registerDiscordOAuth } = require("./services/discordOAuth.cjs");
+const { registerFdcWeb, LARGE_BODY_PATHS } = require("./services/fdcWeb.cjs");
+const { registerLobbyCat } = require("./services/lobbyCat.cjs");
 
 const PORT = Number(process.env.ACCOUNT_API_PORT || 3002);
 
@@ -73,13 +75,20 @@ app.use(cors(corsOptions));
 
 app.options(/.*/, cors(corsOptions));
 
-app.use(express.json());
+// Routes with uploads (LARGE_BODY_PATHS) parse their own, larger bodies.
+const jsonParser = express.json();
+app.use((req, res, next) =>
+  LARGE_BODY_PATHS.has(req.path) ? next() : jsonParser(req, res, next),
+);
 
 app.use(cookieParser());
 
 app.use(requireTrustedMutation);
 
-registerDiscordOAuth(app);
+const accounts = registerDiscordOAuth(app);
+
+registerFdcWeb(app, accounts);
+registerLobbyCat(app, accounts);
 
 app.get("/health", (_req, res) => {
   res.json({
@@ -93,6 +102,15 @@ app.use((error, _req, res, _next) => {
   if (error?.message?.startsWith("CORS origin not allowed:")) {
     return res.status(403).json({
       error: error.message,
+    });
+  }
+
+  // Client errors from middleware, e.g. body-parser's 413 "entity.too.large".
+  const status = Number(error?.status || error?.statusCode);
+
+  if (status >= 400 && status < 500) {
+    return res.status(status).json({
+      error: error.expose && error.message ? error.message : "Bad request.",
     });
   }
 

@@ -20,6 +20,20 @@ const AUTH_COOKIE_DOMAIN = "master3307.org";
 const OAUTH_STATE_COOKIE_NAME = "__Secure-homesite_oauth_state";
 const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
 
+/*
+ * ADMIN_KEY login: signs in as the bot's own Discord identity ("Cultbot")
+ * with the owner role, without going through Discord OAuth.
+ */
+const ADMIN_DISCORD_USER_ID = "1525217425987993752";
+const ADMIN_USERNAME = "cultbot";
+const ADMIN_DISPLAY_NAME = "Cultbot";
+const ADMIN_KEY_MIN_LENGTH = 16;
+
+const ADMIN_SESSION_TTL_HOURS = Math.max(
+  1,
+  Number(process.env.ADMIN_SESSION_TTL_HOURS || 12),
+);
+
 const SESSION_TTL_DAYS = Math.max(
   1,
   Number(process.env.SESSION_TTL_DAYS || 30),
@@ -45,6 +59,23 @@ function nowIso() {
 
 function getSessionMaxAgeMs() {
   return SESSION_TTL_DAYS * 24 * 60 * 60 * 1000;
+}
+
+function getAdminKey() {
+  const key = String(process.env.ADMIN_KEY || "");
+  return key.length >= ADMIN_KEY_MIN_LENGTH ? key : null;
+}
+
+/** Constant-time comparison that does not leak the key's length. */
+function adminKeyMatches(received) {
+  const expected = getAdminKey();
+
+  if (!expected || typeof received !== "string" || !received) return false;
+
+  return crypto.timingSafeEqual(
+    crypto.createHash("sha256").update(expected).digest(),
+    crypto.createHash("sha256").update(received).digest(),
+  );
 }
 
 function createRandomToken() {
@@ -553,15 +584,13 @@ function registerDiscordOAuth(app) {
     db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(nowIso());
   }
 
-  function createPersistentSession(userId) {
+  function createPersistentSession(userId, maxAgeMs = getSessionMaxAgeMs()) {
     deleteExpiredSessions();
 
     const rawToken = createRandomToken();
     const createdAt = new Date();
 
-    const expiresAt = new Date(
-      createdAt.getTime() + getSessionMaxAgeMs(),
-    ).toISOString();
+    const expiresAt = new Date(createdAt.getTime() + maxAgeMs).toISOString();
 
     db.prepare(
       `
@@ -586,6 +615,7 @@ function registerDiscordOAuth(app) {
     return {
       token: rawToken,
       expiresAt,
+      maxAgeMs,
     };
   }
 
@@ -604,6 +634,8 @@ function registerDiscordOAuth(app) {
           sessions.expires_at,
 
           users.id AS user_id,
+          users.discord_user_id,
+          users.role,
           users.username,
           users.display_name,
           users.avatar_path,
@@ -661,7 +693,7 @@ function registerDiscordOAuth(app) {
     });
   }
 
-  function setAuthCookie(res, rawToken) {
+  function setAuthCookie(res, rawToken, maxAge = getSessionMaxAgeMs()) {
     // Prevent old and new scopes from retaining the same cookie name.
     clearLegacyHostAuthCookie(res);
 
@@ -671,7 +703,7 @@ function registerDiscordOAuth(app) {
       sameSite: "lax",
       domain: AUTH_COOKIE_DOMAIN,
       path: "/",
-      maxAge: getSessionMaxAgeMs(),
+      maxAge,
     });
   }
 
@@ -714,6 +746,9 @@ function registerDiscordOAuth(app) {
 
     return {
       id: accountSession.user_id,
+      discordUserId: accountSession.discord_user_id,
+      role: accountSession.role || "user",
+      isAdminSession: accountSession.discord_user_id === ADMIN_DISCORD_USER_ID,
       username: accountSession.username,
       displayName: accountSession.display_name,
       avatarUrl: accountSession.avatar_path
@@ -858,6 +893,114 @@ function registerDiscordOAuth(app) {
     },
   );
 
+  /** The current session, or null. Used by other routes (e.g. FDC). */
+  function getRequestSession(req) {
+    if (!db) return null;
+    return getAuthenticatedUser(req.cookies?.[AUTH_COOKIE_NAME]);
+  }
+
+  const adminLoginRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    message: {
+      error: "Too many admin login attempts. Please try again later.",
+    },
+  });
+
+  async function fetchBotProfile() {
+    const botToken = process.env.DISCORD_BOT_TOKEN;
+    if (!botToken) return null;
+
+    const response = await fetch(`${DISCORD_API}/users/@me`, {
+      headers: { Authorization: `Bot ${botToken}` },
+    });
+
+    return response.ok ? response.json() : null;
+  }
+
+  function upsertAdminUser(profile) {
+    let user = upsertUserFromDiscord({
+      id: ADMIN_DISCORD_USER_ID,
+      username: ADMIN_USERNAME,
+      global_name: ADMIN_DISPLAY_NAME,
+      discriminator: profile?.discriminator ?? "0",
+    });
+
+    if (user.role !== "owner") {
+      db.prepare("UPDATE users SET role = 'owner', updated_at = ? WHERE id = ?").run(
+        nowIso(),
+        user.id,
+      );
+      user = getUserById(user.id);
+    }
+
+    return user;
+  }
+
+  app.get("/auth/admin", accountReadRateLimiter, (_req, res) => {
+    res.json({ enabled: Boolean(getAdminKey()) });
+  });
+
+  app.post(
+    "/auth/admin",
+    adminLoginRateLimiter,
+    requireStorage,
+    async (req, res) => {
+      if (!getAdminKey()) {
+        return res.status(404).json({ error: "Admin login is disabled." });
+      }
+
+      if (!adminKeyMatches(req.body?.key)) {
+        console.warn(`[Accounts] Failed admin login from ${req.ip}.`);
+        return res.status(401).json({ error: "Invalid admin code." });
+      }
+
+      try {
+        let user = upsertAdminUser(null);
+
+        // Refresh the bot's avatar at most once a day.
+        const avatarAge = user.avatar_updated_at
+          ? Date.now() - Date.parse(user.avatar_updated_at)
+          : Infinity;
+
+        if (!user.avatar_path || avatarAge > 24 * 60 * 60 * 1000) {
+          try {
+            const profile = await fetchBotProfile();
+
+            if (profile?.id === ADMIN_DISCORD_USER_ID) {
+              const avatarPath = await downloadAndSaveAvatar(profile, user.id);
+              user = updateAvatarPath(user.id, avatarPath);
+            }
+          } catch (error) {
+            console.warn("[Accounts] Admin avatar update failed:", error.message);
+          }
+        }
+
+        const oldToken = req.cookies?.[AUTH_COOKIE_NAME];
+        if (oldToken) deletePersistentSession(oldToken);
+
+        const session = createPersistentSession(
+          user.id,
+          ADMIN_SESSION_TTL_HOURS * 60 * 60 * 1000,
+        );
+
+        setAuthCookie(res, session.token, session.maxAgeMs);
+        console.log(`[Accounts] Admin session started from ${req.ip}.`);
+
+        return res.json({
+          authenticated: true,
+          user: toPublicUser(getAuthenticatedUser(session.token)),
+        });
+      } catch (error) {
+        console.error("[Accounts] Admin login failed:", error);
+        return res.status(500).json({ error: "Admin login failed." });
+      }
+    },
+  );
+
   app.get("/auth/me", accountReadRateLimiter, requireStorage, (req, res) => {
     const rawToken = req.cookies?.[AUTH_COOKIE_NAME];
     const accountSession = getAuthenticatedUser(rawToken);
@@ -964,8 +1107,18 @@ function registerDiscordOAuth(app) {
       }
     },
   );
+
+  return {
+    requireStorage,
+    getRequestSession,
+    toPublicUser,
+    // For other account-backed features (e.g. services/lobbyCat.cjs).
+    // Only valid after requireStorage has passed.
+    getDatabase: () => db,
+  };
 }
 
 module.exports = {
+  ADMIN_DISCORD_USER_ID,
   registerDiscordOAuth,
 };
