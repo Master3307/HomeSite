@@ -12,6 +12,7 @@ const {
   postLobbyCode,
 } = require("../interactions/slash/utility/lobby-code.cjs");
 
+const lobbySubmissions = require("../services/lobbySubmissions.cjs");
 const birthdayCommand = require("../interactions/slash/misc/birthday.cjs");
 const petting = require("../services/petting.cjs");
 
@@ -551,15 +552,53 @@ module.exports = {
         return;
       }
 
-      const [action, userId, encodedCode] = interaction.customId.split(":");
-      const code = Buffer.from(encodedCode, "base64url").toString("utf8");
+      const [action, target, payload] = interaction.customId.split(":");
       const disabledRows = disableActionRows(interaction.message.components);
+
+      /*
+       * `lobbyapprove:web:<requestId>` is a stored request
+       * (services/lobbySubmissions.cjs) from the website or the lobby-code
+       * channel; it may have a description or come from a guest without a
+       * Discord account. `lobbyapprove:<userId>:<base64 code>` is the old
+       * channel format, still handled for requests posted before.
+       */
+      let userId = target;
+      let code;
+      let description = null;
+      let guestName = null;
+      let webRequestId = null;
+
+      if (target === "web") {
+        const request = await lobbySubmissions.getWebRequest(payload);
+
+        if (!request) {
+          await interaction.update({ components: disabledRows }).catch(() => null);
+          await interaction
+            .followUp({
+              content: "This request has expired or was already handled.",
+              flags: MessageFlags.Ephemeral,
+            })
+            .catch(() => null);
+          return;
+        }
+
+        webRequestId = request.id;
+        userId = request.userId;
+        code = request.code;
+        description = request.description;
+        guestName = request.guestName;
+      } else {
+        code = Buffer.from(payload, "base64url").toString("utf8");
+      }
 
       if (action === "lobbyapprove") {
         try {
           await interaction.deferUpdate();
 
-          await postLobbyCode(interaction.client, code, null, userId);
+          await postLobbyCode(interaction.client, code, description, userId, {
+            guestName,
+          });
+          if (webRequestId) await lobbySubmissions.deleteWebRequest(webRequestId);
 
           const approvedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
             .setColor("#57F287")
@@ -574,9 +613,9 @@ module.exports = {
             components: disabledRows,
           });
 
-          const user = await interaction.client.users
-            .fetch(userId)
-            .catch(() => null);
+          const user = userId
+            ? await interaction.client.users.fetch(userId).catch(() => null)
+            : null;
 
           if (user) {
             await user
@@ -624,9 +663,11 @@ module.exports = {
             components: disabledRows,
           });
 
-          const user = await interaction.client.users
-            .fetch(userId)
-            .catch(() => null);
+          if (webRequestId) await lobbySubmissions.deleteWebRequest(webRequestId);
+
+          const user = userId
+            ? await interaction.client.users.fetch(userId).catch(() => null)
+            : null;
 
           if (user) {
             await user

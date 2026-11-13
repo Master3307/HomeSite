@@ -1,6 +1,6 @@
 {
     "currentLobbyLabel": "Current lobby",
-    "lobbyCodeLabel": "Current Lobby code",
+    "lobbyCodeLabel": "Lobby code",
     "loadingPlaceholder": "Loading…",
     "noActiveLobbyPlaceholder": "No active lobby",
     "unknownUser": "Unknown user",
@@ -8,22 +8,45 @@
     "updatedAtLabel": "Updated",
     "petCatLabel": "Pet the cat",
     "copyButton": {
-      "copy": "Copy",
-      "copying": "Copying…",
-      "copied": "Copied!",
-      "retry": "Retry",
-      "copyAriaLabel": "Copy lobby code",
-      "copiedAriaLabel": "Lobby code copied"
+        "copy": "Copy",
+        "copying": "Copying…",
+        "copied": "Copied!",
+        "retry": "Retry",
+        "copyAriaLabel": "Copy lobby code",
+        "copiedAriaLabel": "Lobby code copied"
     },
     "copyStatus": {
-      "success": "Lobby code copied to clipboard.",
-      "error": "Could not copy. Select the code and copy it manually."
+        "success": "Lobby code copied to clipboard.",
+        "error": "Could not copy. Select the code and copy it manually."
     },
     "errors": {
-      "requestFailed": "Lobby request failed ({{status}}).",
-      "invalidResponse": "The lobby response is not a valid object.",
-      "invalidCode": "The lobby code must be a string.",
-      "loadFailed": "Could not load the lobby code.",
-      "refreshFailed": "Could not refresh. Showing the last loaded lobby."
+        "requestFailed": "Lobby request failed ({{status}}).",
+        "invalidResponse": "The lobby response is not a valid object.",
+        "invalidCode": "The lobby code must be a string.",
+        "loadFailed": "Could not load the lobby code.",
+        "refreshFailed": "Could not refresh. Showing the last loaded lobby."
+    },
+    "activeLabel": "Active",
+    "submit": {
+        "open": "Submit code",
+        "title": "Submit a new code",
+        "close": "Close",
+        "localAdmin": "Your admin session only works offline in this browser. Log in with the admin code again while the server is reachable to post lobby codes.",
+        "nameLabel": "What’s your name?",
+        "nameHint": "You’re not logged in, so the moderators will see this name when they review your code.",
+        "continue": "Continue",
+        "posted": "Posted! The lobby code is updated.",
+        "pending": "Sent to the moderators for approval. It shows up here once it’s approved.",
+        "done": "Done",
+        "hintAdmin": "Admin session: the code is posted right away.",
+        "hintUser": "Posted right away if you can post lobby codes on the server, otherwise sent to the moderators for approval.",
+        "hintGuest": "Submitting as {{name}}. The moderators review it before it’s posted.",
+        "changeName": "Change name",
+        "asUser": "Submitting as {{name}}.",
+        "codeLabel": "Lobby code",
+        "descriptionLabel": "Description (optional)",
+        "sending": "Sending…",
+        "post": "Post code",
+        "send": "Submit code"
     }
-  }
+}

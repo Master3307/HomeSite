@@ -1,11 +1,4 @@
-const {
-  Collection,
-  ChannelType,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-} = require("discord.js");
+const { Collection, ChannelType } = require("discord.js");
 
 const levels = require("../services/levels.cjs");
 const minecraftStatus = require("../services/minecraftStatus.cjs");
@@ -18,9 +11,7 @@ const {
   postLobbyCode,
   TARGET_CHANNEL_ID,
 } = require("../interactions/slash/utility/lobby-code.cjs");
-
-const REVIEW_CHANNEL_ID = "1532015231671472399";
-const REVIEW_ROLE_ID = "1479193560778805300";
+const lobbySubmissions = require("../services/lobbySubmissions.cjs");
 const STICKY_CHANNEL_ID = "1479219328258674709";
 const MINECRAFT_STATUS_THREAD_ID = "1543613705651093624";
 
@@ -101,7 +92,8 @@ module.exports = {
     }
 
     if (guild && channel.id === TARGET_CHANNEL_ID) {
-      const code = content.trim();
+      // First line is the code, the rest is the description (#27).
+      const { code, description } = lobbySubmissions.parseLobbyMessage(content);
 
       if (!code) {
         return;
@@ -109,7 +101,7 @@ module.exports = {
 
       if (hasPrivilegedRole(message.member)) {
         try {
-          await postLobbyCode(client, code, null, author.id);
+          await postLobbyCode(client, code, description, author.id);
         } catch (error) {
           console.error(
             "Failed to update lobby code from messageCreate:",
@@ -121,91 +113,16 @@ module.exports = {
       }
 
       try {
-        const reviewChannel = await client.channels
-          .fetch(REVIEW_CHANNEL_ID)
-          .catch(() => null);
-
-        if (
-          reviewChannel &&
-          reviewChannel.isTextBased() &&
-          reviewChannel.type === ChannelType.GuildText
-        ) {
-          const encodedCode = Buffer.from(code, "utf8").toString("base64url");
-
-          const embed = new EmbedBuilder()
-            .setColor("#2F1A80")
-            .setTitle("Lobby Code Approval Request")
-            .setDescription(
-              "A non-privileged user submitted a lobby code that requires approval.\n\n" +
-                `<@&${REVIEW_ROLE_ID}>`,
-            )
-            .setThumbnail(
-              author.displayAvatarURL({
-                dynamic: true,
-                size: 256,
-              }),
-            )
-            .addFields(
-              {
-                name: "User",
-                value: `${author} (${author.tag ?? author.username})`,
-                inline: false,
-              },
-              {
-                name: "User ID",
-                value: author.id,
-                inline: false,
-              },
-              {
-                name: "Requested Code",
-                value: code,
-                inline: false,
-              },
-            );
-
-          const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId(`lobbyapprove:${author.id}:${encodedCode}`)
-              .setLabel("Approve")
-              .setStyle(ButtonStyle.Success),
-            new ButtonBuilder()
-              .setCustomId(`lobbydeny:${author.id}:${encodedCode}`)
-              .setLabel("Deny")
-              .setStyle(ButtonStyle.Danger),
-          );
-
-          await reviewChannel.send({
-            embeds: [embed],
-            components: [row],
-          });
-        }
-
-        await message.delete().catch(() => null);
-
-        await author
-          .send({
-            embeds: [
-              new EmbedBuilder()
-                .setColor("#2F1A80")
-                .setTitle("Lobby Code Pending Approval")
-                .setDescription(
-                  "You do not currently have permission to post lobby codes " +
-                    `directly in <#${TARGET_CHANNEL_ID}>. Your submitted code ` +
-                    "has been forwarded for review. Please wait for approval " +
-                    "or denial from the staff team.",
-                )
-                .addFields({
-                  name: "Submitted Code",
-                  value: code,
-                  inline: false,
-                }),
-            ],
-          })
-          .catch(() => null);
+        await lobbySubmissions.submitFromChannel(client, {
+          code,
+          description,
+          userId: author.id,
+        });
       } catch (error) {
         console.error("Failed to send approval request for lobby code:", error);
       }
 
+      await message.delete().catch(() => null);
       return;
     }
 

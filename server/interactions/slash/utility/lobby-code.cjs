@@ -3,6 +3,7 @@ const {
   EmbedBuilder,
   ChannelType,
   MessageFlags,
+  escapeMarkdown,
 } = require("discord.js");
 
 const fs = require("node:fs/promises");
@@ -10,6 +11,9 @@ const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 
 const TARGET_CHANNEL_ID = "1479194712111059137";
+// Where lobby codes from unprivileged users are reviewed.
+const REVIEW_CHANNEL_ID = "1532015231671472399";
+const REVIEW_ROLE_ID = "1479193560778805300";
 const PING_ROLE_ID = "1487023716658319400";
 const PRIVILEGED_ROLE_IDS = [
   "1479193560778805300",
@@ -100,6 +104,7 @@ async function performLobbyUpdate(
   code,
   desc = null,
   updatedById = null,
+  { guestName = null } = {},
 ) {
   const channel = await client.channels
     .fetch(TARGET_CHANNEL_ID)
@@ -124,9 +129,12 @@ async function performLobbyUpdate(
   const updatedAt = new Date();
   const unixTimestamp = Math.floor(updatedAt.getTime() / 1000);
 
+  // Website guests have no Discord account, only the name they entered.
   const updatedValue = updatedById
     ? `Updated by <@${updatedById}>\n<t:${unixTimestamp}:R>`
-    : `<t:${unixTimestamp}:R>`;
+    : guestName
+      ? `Submitted by ${escapeMarkdown(guestName)} (website)\n<t:${unixTimestamp}:R>`
+      : `<t:${unixTimestamp}:R>`;
 
   const embed = new EmbedBuilder()
     .setColor("#2F1A80")
@@ -159,7 +167,9 @@ async function performLobbyUpdate(
           username: user?.username ?? null,
           displayName: user?.globalName ?? user?.username ?? null,
         }
-      : null,
+      : guestName
+        ? { id: null, username: null, displayName: guestName, guest: true }
+        : null,
     updatedAt: updatedAt.toISOString(),
     updatedAtUnix: unixTimestamp,
     channelId: TARGET_CHANNEL_ID,
@@ -169,9 +179,9 @@ async function performLobbyUpdate(
   return sentMessage;
 }
 
-function postLobbyCode(client, code, desc = null, updatedById = null) {
+function postLobbyCode(client, code, desc = null, updatedById = null, options = {}) {
   const update = lobbyUpdateQueue.then(() =>
-    performLobbyUpdate(client, code, desc, updatedById),
+    performLobbyUpdate(client, code, desc, updatedById, options),
   );
 
   // A failed update must not block subsequent updates.
@@ -239,4 +249,6 @@ module.exports = {
   hasPrivilegedRole,
   postLobbyCode,
   TARGET_CHANNEL_ID,
+  REVIEW_CHANNEL_ID,
+  REVIEW_ROLE_ID,
 };
