@@ -43,6 +43,9 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.MessageContent,
+    // Online members and voice channels for the website's Discord widget.
+    GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildVoiceStates,
   ],
   partials: [
     Partials.Channel,
@@ -252,5 +255,10 @@ const commandJsonData = [
 // Forward incoming direct messages to DISCORD_USER_ID.
 
 require("./services/dmForwarder.cjs")(client);
+
+/**********************************************************************/
+// Local-only API for the account API (website FDC votes/polls, widget).
+
+require("./services/internalApi.cjs").startInternalApi(client);
 
 client.login(token);

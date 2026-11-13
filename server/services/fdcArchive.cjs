@@ -2,13 +2,36 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const sharp = require("sharp");
 const { EmbedBuilder } = require("discord.js");
+const { addBadge } = require("./fdcBadge.cjs");
 
-const ROOT = path.join(__dirname, "db", "fdc-polls");
+const ROOT = process.env.FDC_ARCHIVE_DIR
+  ? path.resolve(process.env.FDC_ARCHIVE_DIR)
+  : path.join(__dirname, "db", "fdc-polls");
 const SUMMARY_PATH = path.join(ROOT, "summary.json");
 const TIME_ZONE = "Europe/Berlin";
 const UPDATE_DELAY = 1500;
 const MAX_IMAGE_BYTES = 30 * 1024 * 1024;
 
+const VOTE_ACTIONS = new Set([
+  "add",
+  "switch",
+  "recovered_add",
+  "recovered_switch",
+  "web_add",
+  "web_switch",
+]);
+
+const TIMESTAMP_FIELDS = [
+  "createdAt",
+  "sentAt",
+  "mediaSentAt",
+  "endsAt",
+  "closedAt",
+  "closingStartedAt",
+  "resultsSentAt",
+  "updatedAt",
+  "lastReconciledAt",
+];
 const records = new Map();
 const live = new Map();
 const reservedDates = new Set();
@@ -23,7 +46,8 @@ let closingTimer;
 function serial(task) {
   const result = queue.then(task);
   queue = result.catch((error) => {
-    console.error("[FDC] Archive operation failed:", error);
+    // Errors with a status are expected validation errors for the caller.
+    if (!error?.status) console.error("[FDC] Archive operation failed:", error);
   });
   return result;
 }
@@ -34,6 +58,29 @@ function timestamp(value = Date.now()) {
     iso: new Date(ms).toISOString(),
     ms,
   };
+}
+
+/*
+ * Older/imported archives sometimes stored `ms` as an ISO string.
+ * Rebuild such timestamps so numeric comparisons stay correct.
+ */
+function normalizeTimestamp(value) {
+  if (!value || typeof value !== "object") return value ?? null;
+  if (Number.isFinite(value.ms)) return value;
+
+  const ms = Date.parse(value.iso ?? value.ms);
+  return Number.isFinite(ms) ? timestamp(ms) : null;
+}
+
+function normalizePoll(poll) {
+  for (const field of TIMESTAMP_FIELDS) {
+    if (field in poll) poll[field] = normalizeTimestamp(poll[field]);
+  }
+
+  for (const entry of [...poll.votes, ...poll.voteHistory]) {
+    entry.observedAt = normalizeTimestamp(entry.observedAt);
+    if (entry.votedAt) entry.votedAt = normalizeTimestamp(entry.votedAt);
+  }
 }
 
 function dateKey(ms) {
@@ -104,13 +151,7 @@ function buildSummary() {
 
   for (const poll of polls) {
     for (const event of poll.voteHistory) {
-      if (
-        !["add", "switch", "recovered_add", "recovered_switch"].includes(
-          event.action,
-        )
-      ) {
-        continue;
-      }
+      if (!VOTE_ACTIONS.has(event.action)) continue;
 
       lifetimeVoteEventCount += 1;
 
@@ -281,6 +322,7 @@ async function initialize() {
         throw new Error(`Invalid FDC archive: ${entry.name}/data.json`);
       }
 
+      normalizePoll(poll);
       calculate(poll);
       records.set(poll.id, poll);
     }
@@ -298,6 +340,9 @@ function emojiKey(emoji) {
   return emoji.id ? `custom:${emoji.id}` : `unicode:${emoji.name}`;
 }
 
+/** Sources whose timestamp is the actual moment of voting. */
+const LIVE_SOURCES = new Set(["gateway", "web"]);
+
 function nextEvent(poll, action, userId, optionNumber, previous, source, at) {
   poll.lastSequence += 1;
 
@@ -307,7 +352,8 @@ function nextEvent(poll, action, userId, optionNumber, previous, source, at) {
     userId,
     optionNumber,
     previousOptionNumber: previous?.optionNumber ?? null,
-    votedAt: source === "gateway" && action !== "remove" ? at : null,
+    votedAt:
+      LIVE_SOURCES.has(source) && !action.endsWith("remove") ? at : null,
     observedAt: at,
     timestampSource: source,
   };
@@ -321,14 +367,8 @@ function applyVote(poll, userId, optionNumber, source, at) {
 
   if (previous?.optionNumber === optionNumber) return false;
 
-  const action =
-    source === "gateway"
-      ? previous
-        ? "switch"
-        : "add"
-      : previous
-        ? "recovered_switch"
-        : "recovered_add";
+  const prefix = { gateway: "", web: "web_" }[source] ?? "recovered_";
+  const action = `${prefix}${previous ? "switch" : "add"}`;
 
   const event = nextEvent(
     poll,
@@ -344,7 +384,7 @@ function applyVote(poll, userId, optionNumber, source, at) {
   poll.votes.push({
     userId,
     optionNumber,
-    votedAt: source === "gateway" ? at : null,
+    votedAt: LIVE_SOURCES.has(source) ? at : null,
     observedAt: at,
     timestampSource: source,
     sequence: event.sequence,
@@ -365,7 +405,7 @@ function removeVote(poll, userId, optionNumber, source, at) {
 
   nextEvent(
     poll,
-    source === "gateway" ? "remove" : "recovered_remove",
+    { gateway: "remove", web: "web_remove" }[source] ?? "recovered_remove",
     userId,
     previous.optionNumber,
     previous,
@@ -433,6 +473,37 @@ function resultsEmbed(poll) {
     .setTimestamp();
 }
 
+function safeFileName(name) {
+  const cleaned = String(name || "media")
+    .replace(/[^\w.-]+/g, "_")
+    .slice(-80);
+
+  return cleaned || "media";
+}
+
+/*
+ * The Discord upload for an option: the image with its badge, named
+ * `<number>-<name>` so the attachments keep the option order.
+ */
+async function discordFile(option, buffer) {
+  const stem = safeFileName(option.media.name).replace(/\.[a-z0-9]+$/i, "") || "media";
+
+  try {
+    const badged = await addBadge(buffer, option);
+    return {
+      attachment: badged.buffer,
+      name: `${option.number}-${stem}.${badged.extension}`,
+    };
+  } catch (error) {
+    // Never block a poll on the badge: fall back to the plain image.
+    console.error(`[FDC] Badge failed for option ${option.number}:`, error);
+    return {
+      attachment: buffer,
+      name: `${option.number}-${safeFileName(option.media.name)}`,
+    };
+  }
+}
+
 function scheduleEmbed(poll) {
   if (updateTimers.has(poll.id)) return;
 
@@ -458,7 +529,19 @@ function scheduleEmbed(poll) {
   updateTimers.set(poll.id, timer);
 }
 
-async function downloadWebp(url, destination) {
+async function readMedia(media) {
+  if (Buffer.isBuffer(media.buffer)) {
+    if (media.buffer.length > MAX_IMAGE_BYTES) {
+      throw new Error("An image exceeds the 30 MiB archive limit.");
+    }
+
+    return media.buffer;
+  }
+
+  return downloadMedia(media.url);
+}
+
+async function downloadMedia(url) {
   const response = await fetch(url, {
     signal: AbortSignal.timeout(60_000),
   });
@@ -487,7 +570,12 @@ async function downloadWebp(url, destination) {
     chunks.push(chunk);
   }
 
-  const output = await sharp(Buffer.concat(chunks), {
+  return Buffer.concat(chunks);
+}
+
+/* Saves the raw image (no badge) as the archive's WebP copy. */
+async function saveWebp(buffer, destination) {
+  const output = await sharp(buffer, {
     animated: true,
   })
     .webp({ quality: 90, effort: 4 })
@@ -567,7 +655,11 @@ async function reconcile(poll, message) {
    * stored selection, the lowest option number is the deterministic choice.
    */
   for (const vote of [...poll.votes]) {
-    if (!byUser.has(vote.userId)) {
+    /*
+     * Website votes have no reaction behind them, so a missing
+     * reaction does not mean that the vote was withdrawn.
+     */
+    if (!byUser.has(vote.userId) && vote.timestampSource !== "web") {
       changed = removeVote(poll, vote.userId, null, "recovery", at) || changed;
     }
   }
@@ -829,9 +921,17 @@ async function recover(client) {
   });
 }
 
+/**
+ * Sends a new FDC poll and archives it.
+ *
+ * `source` describes who created it: `{ id, userId, guildId,
+ * createdTimestamp, interactionId?, via: "discord" | "web" }`.
+ * Each option's `media` is a Discord attachment (`url`, `name`, ...) or an
+ * uploaded file (`buffer`, `name`, `contentType`, `size`).
+ */
 async function create({
   client,
-  interaction,
+  source,
   channel,
   roleId,
   endsAt,
@@ -854,7 +954,10 @@ async function create({
       reservedDates.has(date) ||
       [...records.values()].some((poll) => poll.date === date)
     ) {
-      throw new Error(`An FDC archive already exists for ${date}.`);
+      throw Object.assign(
+        new Error(`An FDC archive already exists for ${date}.`),
+        { status: 409 },
+      );
     }
 
     try {
@@ -877,27 +980,29 @@ async function create({
 
   try {
     const savedOptions = [];
+    const discordFiles = [];
 
     for (const option of options) {
       const localFile = `${option.number}.webp`;
-      const image = await downloadWebp(
-        option.media.url,
-        path.join(folder, localFile),
-      );
+      const buffer = await readMedia(option.media);
+      const image = await saveWebp(buffer, path.join(folder, localFile));
+
+      // Discord gets a copy with the number + emoji badge.
+      discordFiles.push(await discordFile(option, buffer));
 
       savedOptions.push({
         number: option.number,
         description: option.description,
         emoji: option.emoji,
         media: {
-          originalAttachmentId: option.media.id,
-          originalName: option.media.name,
-          originalUrl: option.media.url,
-          originalProxyUrl: option.media.proxyURL,
-          originalContentType: option.media.contentType,
-          originalSize: option.media.size,
-          originalWidth: option.media.width,
-          originalHeight: option.media.height,
+          originalAttachmentId: option.media.id ?? null,
+          originalName: option.media.name ?? null,
+          originalUrl: option.media.url ?? null,
+          originalProxyUrl: option.media.proxyURL ?? null,
+          originalContentType: option.media.contentType ?? null,
+          originalSize: option.media.size ?? option.media.buffer?.length ?? null,
+          originalWidth: option.media.width ?? null,
+          originalHeight: option.media.height ?? null,
           localFile,
           savedAt: timestamp(),
           ...image,
@@ -910,30 +1015,28 @@ async function create({
     }
 
     /*
-     * Send the original media to Discord; retain converted WebP copies
-     * locally. Discord upload limits therefore stay unchanged.
+     * Discord gets the badged images, in option order; the archive keeps
+     * the raw images as WebP.
      */
     mediaMessage = await channel.send({
       content: "Options:",
-      files: options.map((option) => ({
-        attachment: option.media.url,
-        name: `${option.number}-${option.media.name ?? "media"}`,
-      })),
+      files: discordFiles,
     });
 
     const poll = {
       version: 1,
-      id: interaction.id,
+      id: source.id,
       date,
       timeZone: TIME_ZONE,
       status: "creating",
-      guildId: interaction.guildId,
+      guildId: source.guildId,
       channelId: channel.id,
-      senderUserId: interaction.user.id,
-      interactionId: interaction.id,
+      senderUserId: source.userId,
+      interactionId: source.interactionId ?? null,
       roleId,
       commandName: "fdc",
-      createdAt: timestamp(interaction.createdTimestamp),
+      createdVia: source.via ?? "discord",
+      createdAt: timestamp(source.createdTimestamp ?? Date.now()),
       sentAt: null,
       mediaSentAt: timestamp(mediaMessage.createdTimestamp),
       endsAt: timestamp(endsAt.getTime()),
@@ -1013,7 +1116,357 @@ async function create({
   }
 }
 
+function findReaction(poll, optionNumber) {
+  const option = poll.options.find((item) => item.number === optionNumber);
+  if (!option) return null;
+
+  return live
+    .get(poll.id)
+    ?.message.reactions.cache.find(
+      (candidate) => emojiKey(candidate.emoji) === option.emoji.key,
+    );
+}
+
+/**
+ * Records a vote cast on the website. `optionNumber` null withdraws it.
+ * A website vote replaces the user's Discord reaction, so their old
+ * reaction is removed to keep both places in sync.
+ */
+async function voteFromWeb(pollId, userId, optionNumber) {
+  return serial(async () => {
+    await initialize();
+
+    const poll = records.get(String(pollId));
+
+    if (!poll) throw Object.assign(new Error("Poll not found."), { status: 404 });
+
+    if (poll.status !== "active" || poll.endsAt.ms <= Date.now()) {
+      throw Object.assign(new Error("This poll is no longer accepting votes."), {
+        status: 409,
+      });
+    }
+
+    if (
+      optionNumber !== null &&
+      !poll.options.some((option) => option.number === optionNumber)
+    ) {
+      throw Object.assign(new Error("Unknown option."), { status: 400 });
+    }
+
+    const at = timestamp();
+    const previous = poll.votes.find((vote) => vote.userId === userId);
+
+    const changed =
+      optionNumber === null
+        ? removeVote(poll, userId, null, "web", at)
+        : applyVote(poll, userId, optionNumber, "web", at);
+
+    if (changed) {
+      await persist(poll);
+      scheduleEmbed(poll);
+
+      if (previous && previous.optionNumber !== optionNumber) {
+        try {
+          await findReaction(poll, previous.optionNumber)?.users.remove(userId);
+        } catch (error) {
+          console.error("[FDC] Reaction removal after web vote failed:", error);
+        }
+      }
+    }
+
+    return {
+      changed,
+      optionNumber: poll.votes.find((vote) => vote.userId === userId)
+        ?.optionNumber ?? null,
+      statistics: poll.statistics,
+    };
+  });
+}
+
+/* ---------- managing running polls (website editors) ---------- */
+
+const MAX_DESCRIPTION_LENGTH = 400;
+
+function statusError(status, message) {
+  return Object.assign(new Error(message), { status });
+}
+
+/** A running poll that is connected to its Discord message. */
+function runningPoll(pollId) {
+  const poll = records.get(String(pollId));
+
+  if (!poll) throw statusError(404, "Poll not found.");
+
+  if (poll.status !== "active" || poll.endsAt.ms <= Date.now()) {
+    throw statusError(409, "Only running polls can be changed.");
+  }
+
+  const runtime = live.get(poll.id);
+
+  if (!runtime) {
+    throw statusError(503, "The poll's Discord message isn't connected right now.");
+  }
+
+  return { poll, runtime };
+}
+
+function isImage(media) {
+  return (
+    media?.contentType?.startsWith("image/") ||
+    /\.(png|jpe?g|gif|webp|avif|tiff?)$/i.test(media?.name ?? "")
+  );
+}
+
+/*
+ * The current Discord upload of every option, in option order. Unchanged
+ * options are downloaded from the existing message, so they stay exactly
+ * as they were (GIFs included); replaced options get the new badged image.
+ */
+async function mediaFiles(poll, mediaMessage, replacements) {
+  const attachments = [...mediaMessage.attachments.values()];
+  const files = [];
+
+  for (const [index, option] of poll.options.entries()) {
+    const replacement = replacements.get(option.number);
+
+    if (replacement) {
+      files.push(replacement.discord);
+      continue;
+    }
+
+    const existing =
+      attachments.find((attachment) =>
+        attachment.name?.startsWith(`${option.number}-`),
+      ) ?? attachments[index];
+
+    if (existing) {
+      files.push({
+        attachment: await downloadMedia(existing.url),
+        name: existing.name ?? `${option.number}-media`,
+      });
+      continue;
+    }
+
+    // Missing on Discord: rebuild it from the archive copy.
+    const buffer = await fs.readFile(path.join(ROOT, poll.date, option.media.localFile));
+    files.push(await discordFile({ ...option, media: { name: `${option.number}.webp` } }, buffer));
+  }
+
+  return files;
+}
+
+/**
+ * Edits a running poll from the website.
+ * `changes`: `[{ number, description?, media? }]`, where `media` is an
+ * uploaded image (`buffer`, `name`, `contentType`) that replaces the
+ * option's image completely: in the archive (raw) and in the Discord
+ * options message (badged), keeping the option order.
+ */
+async function editPoll(pollId, { actorId, changes }) {
+  return serial(async () => {
+    await initialize();
+
+    const { poll, runtime } = runningPoll(pollId);
+
+    if (!Array.isArray(changes) || !changes.length) {
+      throw statusError(400, "Nothing to change.");
+    }
+
+    const seen = new Set();
+    const replacements = new Map();
+    const descriptions = new Map();
+
+    for (const change of changes) {
+      const number = Number(change?.number);
+      const option = poll.options.find((item) => item.number === number);
+
+      if (!option) throw statusError(400, "Unknown option.");
+      if (seen.has(number)) throw statusError(400, `Option ${number} is listed twice.`);
+      seen.add(number);
+
+      if (change.description !== undefined) {
+        const description = String(change.description ?? "").trim();
+
+        if (!description) {
+          throw statusError(400, `Option ${number} needs a non-empty description.`);
+        }
+        if (description.length > MAX_DESCRIPTION_LENGTH) {
+          throw statusError(
+            400,
+            `Option ${number}'s description is longer than ${MAX_DESCRIPTION_LENGTH} characters.`,
+          );
+        }
+        if (description !== option.description) descriptions.set(number, description);
+      }
+
+      if (change.media) {
+        if (!isImage(change.media)) {
+          throw statusError(400, `Option ${number} must be an image or GIF.`);
+        }
+
+        const buffer = await readMedia(change.media);
+        const temporary = path.join(ROOT, poll.date, `${number}.webp.edit`);
+        const image = await saveWebp(buffer, temporary).catch(() => {
+          throw statusError(400, `Option ${number}'s image could not be read.`);
+        });
+
+        replacements.set(number, {
+          temporary,
+          image,
+          media: change.media,
+          discord: await discordFile({ ...option, media: change.media }, buffer),
+        });
+      }
+    }
+
+    if (!replacements.size && !descriptions.size) {
+      return { changed: false };
+    }
+
+    try {
+      if (replacements.size) {
+        const mediaMessage = await runtime.channel.messages.fetch(poll.mediaMessageId);
+        const files = await mediaFiles(poll, mediaMessage, replacements);
+
+        // `attachments: []` drops the old files; `files` re-adds all in order.
+        await mediaMessage.edit({ content: "Options:", attachments: [], files });
+      }
+    } catch (error) {
+      for (const replacement of replacements.values()) {
+        await fs.rm(replacement.temporary, { force: true }).catch(() => {});
+      }
+      console.error(`[FDC] Media edit failed for ${poll.id}:`, error);
+      throw statusError(502, "Discord didn't accept the new images. Nothing was changed.");
+    }
+
+    const at = timestamp();
+
+    for (const [number, replacement] of replacements) {
+      const option = poll.options.find((item) => item.number === number);
+      const localFile = `${number}.webp`;
+
+      await fs.rename(replacement.temporary, path.join(ROOT, poll.date, localFile));
+
+      option.media = {
+        ...option.media,
+        originalAttachmentId: null,
+        originalName: replacement.media.name ?? null,
+        originalUrl: null,
+        originalProxyUrl: null,
+        originalContentType: replacement.media.contentType ?? null,
+        originalSize: replacement.media.buffer?.length ?? null,
+        originalWidth: null,
+        originalHeight: null,
+        localFile,
+        savedAt: at,
+        revision: (option.media.revision ?? 0) + 1,
+        ...replacement.image,
+      };
+    }
+
+    for (const [number, description] of descriptions) {
+      poll.options.find((item) => item.number === number).description = description;
+    }
+
+    poll.editHistory ??= [];
+    poll.editHistory.push({
+      at,
+      by: actorId ?? null,
+      images: [...replacements.keys()],
+      descriptions: [...descriptions.keys()],
+    });
+
+    await persist(poll);
+
+    if (descriptions.size) {
+      await runtime.message.edit({ embeds: [pollEmbed(poll)] }).catch((error) => {
+        console.error(`[FDC] Embed update after edit failed: ${poll.id}`, error);
+      });
+    }
+
+    return {
+      changed: true,
+      images: [...replacements.keys()],
+      descriptions: [...descriptions.keys()],
+    };
+  });
+}
+
+/** Ends a running poll now: final embed and results message as usual. */
+async function closeNow(pollId, { actorId } = {}) {
+  return serial(async () => {
+    await initialize();
+
+    const { poll } = runningPoll(pollId);
+
+    poll.closedEarly = { by: actorId ?? null, at: timestamp(), scheduledEndsAt: poll.endsAt };
+    poll.endsAt = timestamp();
+
+    await closePoll(poll);
+    return { status: poll.status, closedAt: poll.closedAt };
+  });
+}
+
+/**
+ * Throws a running poll away completely: its Discord messages, its archive
+ * folder and its place in the FDC count. Only a one-line log entry stays.
+ */
+async function discardPoll(pollId, { actorId } = {}) {
+  return serial(async () => {
+    await initialize();
+
+    const { poll, runtime } = runningPoll(pollId);
+
+    const timer = updateTimers.get(poll.id);
+    if (timer) clearTimeout(timer);
+    updateTimers.delete(poll.id);
+
+    await runtime.message.delete().catch((error) => {
+      if (error?.code !== 10008) throw error; // 10008: already deleted
+    });
+
+    const mediaMessage = await runtime.channel.messages
+      .fetch(poll.mediaMessageId)
+      .catch(() => null);
+    await mediaMessage?.delete().catch(() => {});
+
+    live.delete(poll.id);
+    records.delete(poll.id);
+
+    await fs.rm(path.join(ROOT, poll.date), { recursive: true, force: true });
+
+    // Take it out of the lifetime count (saveSummary re-reads the disk copy).
+    const disk = await readJson(SUMMARY_PATH, null);
+    if (disk && Array.isArray(disk.countedPollIds) && disk.countedPollIds.includes(poll.id)) {
+      disk.countedPollIds = disk.countedPollIds.filter((id) => id !== poll.id);
+      disk.totalFdcCount = Math.max(0, (disk.totalFdcCount ?? 1) - 1);
+      await atomicJson(SUMMARY_PATH, disk);
+    }
+    summary.countedPollIds = (summary.countedPollIds ?? []).filter((id) => id !== poll.id);
+
+    await saveSummary();
+
+    await fs.appendFile(
+      path.join(ROOT, "discarded.jsonl"),
+      `${JSON.stringify({
+        id: poll.id,
+        date: poll.date,
+        discardedAt: timestamp(),
+        by: actorId ?? null,
+        votes: poll.votes.length,
+      })}\n`,
+    );
+
+    console.log(`[FDC] Discarded ${poll.date}: ${poll.id} (by ${actorId ?? "unknown"})`);
+    return { discarded: true, date: poll.date };
+  });
+}
+
 module.exports = {
   create,
   recover,
+  voteFromWeb,
+  editPoll,
+  closeNow,
+  discardPoll,
 };
