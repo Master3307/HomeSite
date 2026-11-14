@@ -285,7 +285,7 @@ function ContextMenu({ menu, favorites, onFavorite, onMove, onForget, onDelete, 
   )
 }
 
-export default function EmojiPicker({ value, fallback, onChange, labelledBy }) {
+export default function EmojiPicker({ value, fallback, onChange, labelledBy, emptyLabel }) {
   const { t } = useTranslation('voting')
   const panelId = useId()
   const rootRef = useRef(null)
@@ -574,7 +574,7 @@ export default function EmojiPicker({ value, fallback, onChange, labelledBy }) {
           {/* Custom emoji show their name; Unicode ones only the image. */}
           {(!value || current?.custom) && (
             <span className="emoji-picker__value">
-              {value ? current.label : t('fdc.emoji.default', { defaultValue: 'Default' })}
+              {value ? current.label : emptyLabel ?? t('fdc.emoji.default', { defaultValue: 'Default' })}
             </span>
           )}
           <span className="material-symbols-outlined" aria-hidden="true">expand_more</span>

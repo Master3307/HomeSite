@@ -70,7 +70,9 @@
             "reasonHours": "{{hours}} hours after you send the poll",
             "endsWhy": "Voting ends {{time}}: {{reason}}.",
             "endsBerlinNote": "FDC times are Berlin time; that is {{time}} in Berlin.",
-            "removeImage": "Remove image"
+            "removeImage": "Remove image",
+            "optional": "(optional)",
+            "imageOptional": "optional if the option has a name"
         },
         "voteFor": "Vote for option {{number}}",
         "hintVote": "Tap an outfit to vote.",
@@ -136,7 +138,10 @@
             "discardText": "The poll and its images are deleted from Discord and the archive, and all votes are lost. This can’t be undone.",
             "closeConfirm": "End poll",
             "discardConfirm": "Discard poll",
-            "working": "Working…"
+            "working": "Working…",
+            "archiveIntro": "This poll has ended: changes only update the archive (website, recycling bin). Discord stays as it was.",
+            "editArchive": "Edit",
+            "noImage": "No image"
         },
         "emoji": {
             "title": "Choose an emoji",
@@ -169,7 +174,8 @@
             "forget": "Remove from recent",
             "deleteEmoji": "Delete emoji",
             "delete": "Delete",
-            "deleteConfirm": "Delete {{name}} from the bot? This can’t be undone."
+            "deleteConfirm": "Delete {{name}} from the bot? This can’t be undone.",
+            "noEmoji": "No emoji"
         },
         "picker": {
             "previousMonth": "Previous month",
@@ -259,6 +265,43 @@
             "layout": "View",
             "gridView": "Grid view",
             "listView": "List view"
-        }
+        },
+        "external": {
+            "steam": "Steam group",
+            "title": "Votes from elsewhere",
+            "intro": "Add votes counted somewhere else, like the Steam group chat (Steam has no API for chat polls, so they are entered by hand). They are added to the results everywhere.",
+            "remove": "Remove {{name}}",
+            "source": "Where were these votes cast?",
+            "saved": "Added to the results",
+            "save": "Save {{count}} votes",
+            "open": "Add votes",
+            "included": "Includes {{count}} votes from {{sources}}."
+        },
+        "manual": {
+            "errors": {
+                "date": "Pick the day the FDC ended (today or earlier).",
+                "imageOrName": "Option {{number}} needs an image or a name."
+            },
+            "done": "FDC {{date}} added to the archive",
+            "doneNote": "{{options}} options and {{votes}} votes. You can still fix it from the archive (Edit, Add votes).",
+            "title": "Add a past FDC",
+            "intro": "For FDCs that only happened elsewhere, like the Steam group chat. It only goes into the archive; nothing is posted on Discord.",
+            "day": "Ended on",
+            "time": "at (Berlin time)",
+            "count": "Options",
+            "question": "Question (optional)",
+            "endsAt": "Archived as the FDC of {{date}}.",
+            "votes": "Votes",
+            "saving": "Saving…",
+            "submit": "Add to the archive",
+            "open": "Add past FDC",
+            "modeCounts": "Vote counts",
+            "modeWinner": "Only the winner",
+            "winnerNote": "When the vote counts are lost: pick the option that won. A single option is the winner."
+        },
+        "activityLog": "Activity log",
+        "winnerOnly": "Only the winner of this FDC is known; the vote counts were lost.",
+        "backup": "Backup & restore",
+        "adminSettings": "Admin settings"
     }
 }

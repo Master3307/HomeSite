@@ -494,7 +494,7 @@ function CandidatePicker({ folders, folderId, onAdded, onClose }) {
                       </span>
                       <Emoji emoji={candidate.emoji} />
                       <span className="recycle-row__text">
-                        <strong>{candidate.description}</strong>
+                        <strong>{candidate.description || t('fdc.create.option', { defaultValue: 'Option {{number}}', number: candidate.optionNumber })}</strong>
                         <small>
                           {pollDate(candidate.date, i18n.language)} ·{' '}
                           {t('fdc.votes', {
@@ -595,7 +595,7 @@ function ItemCard({ item, viewerDiscordId, selected, picking, onActivate, onTogg
         <span className="recycle-item__text">
           <span className="recycle-item__title">
             <Emoji emoji={item.emoji} />
-            <strong>{item.description}</strong>
+            <strong>{item.description || t('fdc.create.option', { defaultValue: 'Option {{number}}', number: item.optionNumber })}</strong>
           </span>
           <small>
             {pollDate(item.date, i18n.language)} · #{item.optionNumber}
@@ -1083,7 +1083,7 @@ export function RecycledCleanup({ items, onDone }) {
                   <img className="recycle-row__thumb" src={recycledImageUrl(item)} alt="" />
                   <Emoji emoji={item.emoji} />
                   <span className="recycle-row__text">
-                    <strong>{item.description}</strong>
+                    <strong>{item.description || t('fdc.create.option', { defaultValue: 'Option {{number}}', number: item.optionNumber })}</strong>
                   </span>
                 </label>
               </li>

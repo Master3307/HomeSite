@@ -217,7 +217,12 @@ async function inviteWidget() {
 
 /* ---------- routes ---------- */
 
-function registerFdcWeb(app, { requireStorage, getRequestSession }) {
+function registerFdcWeb(app, { requireStorage, getRequestSession, activity = null }) {
+  /* Activity log entry for an editor action (services/activityLog.cjs). */
+  const actorOf = (session) =>
+    session ? { discordId: session.discord_user_id, name: session.display_name || session.username } : null;
+  const audit = (session, entry) => activity?.append({ actor: actorOf(session), ...entry });
+
   const readLimiter = rateLimit({
     windowMs: 60 * 1000,
     limit: 120,
@@ -296,6 +301,8 @@ function registerFdcWeb(app, { requireStorage, getRequestSession }) {
           canVote: canVote(session),
           myVote: myVote?.optionNumber ?? null,
           canManage: poll.status === "active" && (await canCreateFdc(session)),
+          // Editors: fix archived polls and enter votes from elsewhere.
+          isEditor: await canCreateFdc(session),
           // Editors can recycle options of ended polls.
           recycled:
             poll.status !== "active" && (await canCreateFdc(session))
@@ -381,6 +388,22 @@ function registerFdcWeb(app, { requireStorage, getRequestSession }) {
       console.log(
         `[FDC web] Poll ${result.id} (${result.date}) created by ${session.username}.`,
       );
+      audit(session, {
+        level: "risky",
+        action: "fdc-create",
+        summary: `created the FDC poll for ${result.date}`,
+        target: { pollId: result.id, date: result.date },
+        details: {
+          endsAt: result.endsAt ?? endsAt,
+          options: (options ?? []).map((option, index) => ({
+            number: index + 1,
+            description: option?.description,
+            emoji: option?.emoji || "default",
+            image: option?.image?.name ?? null,
+            editedByBot: Boolean(option?.image?.edit),
+          })),
+        },
+      });
 
       return result;
     }),
@@ -424,6 +447,21 @@ function registerFdcWeb(app, { requireStorage, getRequestSession }) {
 
       readCache.clear();
       console.log(`[FDC web] Poll ${pollId} edited by ${session.username}.`);
+      if (result.changed) {
+        const parts = [
+          result.images?.length && `${result.images.length} image(s)`,
+          result.descriptions?.length && `${result.descriptions.length} name(s)`,
+          result.emojis?.length && `${result.emojis.length} emoji`,
+        ].filter(Boolean);
+        audit(session, {
+          // Changing an ended poll's info is risky; running polls are normal.
+          level: result.archiveOnly ? "risky" : "normal",
+          action: result.archiveOnly ? "fdc-edit-archived" : "fdc-edit",
+          summary: `edited ${parts.join(", ")} of the ${result.archiveOnly ? "ended " : ""}FDC ${result.date}`,
+          target: { pollId, date: result.date },
+          details: { changes: result.changes },
+        });
+      }
       return result;
     }),
   );
@@ -443,8 +481,16 @@ function registerFdcWeb(app, { requireStorage, getRequestSession }) {
     };
   }
 
-  const recycleRoute = (handler) =>
-    route(async (req) => handler(req, await requireRecycler(req)));
+  const recycleRoute = (handler, describe = null) =>
+    route(async (req) => {
+      const actor = await requireRecycler(req);
+      const result = await handler(req, actor);
+      if (describe) {
+        const entry = describe(result, req);
+        if (entry) activity?.append({ actor: { discordId: actor.discordId, name: actor.name }, ...entry });
+      }
+      return result;
+    });
 
   app.get("/fdc/recycle", readLimiter, requireStorage, recycleRoute(() => recycleBin.snapshot()));
   app.get("/fdc/recycle/candidates", readLimiter, requireStorage, recycleRoute(() => recycleBin.candidates()));
@@ -453,37 +499,77 @@ function registerFdcWeb(app, { requireStorage, getRequestSession }) {
     "/fdc/recycle/items",
     manageLimiter,
     requireStorage,
-    recycleRoute((req, actor) => recycleBin.add({ options: req.body?.options, folderId: req.body?.folderId ?? null }, actor)),
+    recycleRoute(
+      (req, actor) => recycleBin.add({ options: req.body?.options, folderId: req.body?.folderId ?? null }, actor),
+      (result) =>
+        result.added && {
+          level: "normal",
+          action: "recycle-add",
+          summary: `recycled ${result.added} option(s)${result.folder ? ` into "${result.folder}"` : ""}`,
+          details: { items: result.items },
+        },
+    ),
   );
   app.post(
     "/fdc/recycle/items/remove",
     manageLimiter,
     requireStorage,
-    recycleRoute((req, actor) => recycleBin.remove(req.body?.ids, actor)),
+    recycleRoute(
+      (req, actor) => recycleBin.remove(req.body?.ids, actor),
+      (result) =>
+        result.removed && {
+          level: "risky",
+          action: "recycle-remove",
+          summary: `removed ${result.removed} option(s) from the recycling bin`,
+          details: { items: result.items },
+        },
+    ),
   );
   app.post(
     "/fdc/recycle/items/move",
     manageLimiter,
     requireStorage,
-    recycleRoute((req, actor) => recycleBin.move(req.body?.ids, req.body?.folderId ?? null, actor)),
+    recycleRoute(
+      (req, actor) => recycleBin.move(req.body?.ids, req.body?.folderId ?? null, actor),
+      (result) =>
+        result.moved && {
+          level: "detail",
+          action: "recycle-move",
+          summary: `moved ${result.moved} recycled option(s) to "${result.folder ?? "Unsorted"}"`,
+          details: { items: result.items },
+        },
+    ),
   );
   app.post(
     "/fdc/recycle/folders",
     manageLimiter,
     requireStorage,
-    recycleRoute((req, actor) => recycleBin.createFolder(req.body?.name, actor)),
+    recycleRoute(
+      (req, actor) => recycleBin.createFolder(req.body?.name, actor),
+      (folder) => ({ level: "detail", action: "recycle-folder-create", summary: `created the recycling folder "${folder.name}"` }),
+    ),
   );
   app.post(
     "/fdc/recycle/folders/:id/rename",
     manageLimiter,
     requireStorage,
-    recycleRoute((req, actor) => recycleBin.renameFolder(req.params.id, req.body?.name, actor)),
+    recycleRoute(
+      (req, actor) => recycleBin.renameFolder(req.params.id, req.body?.name, actor),
+      (folder) => ({
+        level: "normal",
+        action: "recycle-folder-rename",
+        summary: `renamed the recycling folder "${folder.previousName}" to "${folder.name}"`,
+      }),
+    ),
   );
   app.post(
     "/fdc/recycle/folders/:id/delete",
     manageLimiter,
     requireStorage,
-    recycleRoute((req, actor) => recycleBin.deleteFolder(req.params.id, actor)),
+    recycleRoute(
+      (req, actor) => recycleBin.deleteFolder(req.params.id, actor),
+      (result) => ({ level: "risky", action: "recycle-folder-delete", summary: `deleted the recycling folder "${result.name}"` }),
+    ),
   );
 
   // Item images (ids are random, the images come from public polls anyway).
@@ -535,6 +621,12 @@ function registerFdcWeb(app, { requireStorage, getRequestSession }) {
 
       emojiCache = null;
       console.log(`[FDC web] Emoji :${result.name}: uploaded by ${session.username}.`);
+      audit(session, {
+        level: "normal",
+        action: "emoji-upload",
+        summary: `uploaded the emoji :${result.name}:${result.animated ? " (animated)" : ""}`,
+        target: { emojiId: result.id },
+      });
       return result;
     }),
   );
@@ -556,6 +648,45 @@ function registerFdcWeb(app, { requireStorage, getRequestSession }) {
 
       emojiCache = null;
       console.log(`[FDC web] Emoji :${result.name}: deleted by ${session.username}.`);
+      audit(session, {
+        level: "risky",
+        action: "emoji-delete",
+        summary: `deleted the bot emoji :${result.name}:`,
+        target: { emojiId: req.params.id },
+      });
+      return result;
+    }),
+  );
+
+  app.post(
+    "/fdc/polls/:pollId/external-votes",
+    manageLimiter,
+    requireStorage,
+    route(async (req) => {
+      const { session, pollId } = await requireEditor(req);
+      const result = await botFetch(`/fdc/polls/${pollId}/external-votes`, {
+        method: "POST",
+        body: {
+          actorId: session.discord_user_id,
+          source: req.body?.source,
+          label: req.body?.label,
+          counts: req.body?.counts ?? null,
+        },
+      });
+      readCache.clear();
+      console.log(`[FDC web] Poll ${pollId}: external votes (${req.body?.source}) by ${session.username}.`);
+      const removed = !result.current;
+      const total = (votes) => Object.values(votes?.counts ?? {}).reduce((sum, value) => sum + value, 0);
+      audit(session, {
+        level: removed ? "risky" : "normal",
+        action: removed ? "fdc-votes-remove" : "fdc-votes-set",
+        summary: removed
+          ? `removed the votes from "${result.previous?.label ?? result.source}" on the FDC ${result.date}`
+          : `set ${total(result.current)} votes from "${result.current.label}" on the FDC ${result.date}` +
+            (result.previous ? ` (was ${total(result.previous)})` : ""),
+        target: { pollId, date: result.date },
+        details: { source: result.source, before: result.previous?.counts ?? null, after: result.current?.counts ?? null },
+      });
       return result;
     }),
   );
@@ -579,10 +710,82 @@ function registerFdcWeb(app, { requireStorage, getRequestSession }) {
 
         readCache.clear();
         console.log(`[FDC web] Poll ${pollId}: ${action} by ${session.username}.`);
+        audit(session, {
+          level: "risky",
+          action: action === "close" ? "fdc-close" : "fdc-discard",
+          summary:
+            action === "close"
+              ? `ended the FDC ${result.date} early`
+              : `discarded the running FDC ${result.date} (${result.votes} votes deleted)`,
+          target: { pollId, date: result.date },
+          details: result,
+        });
         return result;
       }),
     );
   }
+
+  /* An FDC from before (Steam group chat …): archive only, editors. */
+  app.post(
+    "/fdc/polls/manual",
+    createLimiter,
+    express.json({ limit: CREATE_BODY_LIMIT }),
+    requireStorage,
+    route(async (req) => {
+      const session = getRequestSession(req);
+      if (!session) throw httpError(401, "Log in to add an FDC.");
+      if (!(await canCreateFdc(session))) throw httpError(403, "You are not allowed to add FDCs.");
+
+      const { endsAt, question, options, votes, winner } = req.body ?? {};
+      const result = await botFetch("/fdc/polls/manual", {
+        method: "POST",
+        body: { creatorId: session.discord_user_id, endsAt, question, options, votes, winner },
+        timeout: 180_000,
+      });
+
+      readCache.clear();
+      audit(session, {
+        level: "risky",
+        action: "fdc-create-manual",
+        summary: winner
+          ? `added the past FDC ${result.date} by hand (${result.options} option(s), only the winner known)`
+          : `added the past FDC ${result.date} by hand (${result.options} options, ${result.votes} votes)`,
+        target: { pollId: result.id, date: result.date },
+        details: {
+          question: question || null,
+          options: (options ?? []).map((option, index) => ({
+            number: index + 1,
+            description: option?.description,
+            emoji: option?.emoji || "default",
+            image: option?.image?.name ?? null,
+          })),
+          votes: winner ? null : (votes ?? null),
+          winner: winner ?? null,
+        },
+      });
+      return result;
+    }),
+  );
+
+  /* ---------- activity log (read only, editors) ---------- */
+
+  app.get(
+    "/account/activity",
+    readLimiter,
+    requireStorage,
+    route(async (req) => {
+      const session = getRequestSession(req);
+      if (!session) throw httpError(401, "Log in to see the activity log.");
+      if (!(await canCreateFdc(session))) throw httpError(403, "Only editors can see the activity log.");
+      if (!activity) throw httpError(503, "The activity log is not available.");
+
+      const view = ["risky", "normal", "verbose"].includes(req.query.view) ? req.query.view : "normal";
+      return {
+        ...(await activity.list({ view, before: req.query.before || null, search: String(req.query.q ?? "").slice(0, 100) })),
+        integrity: await activity.verify(),
+      };
+    }),
+  );
 
   let widgetCache = null;
 
@@ -672,6 +875,13 @@ function registerFdcWeb(app, { requireStorage, getRequestSession }) {
       console.log(
         `[Lobby] Web submission (${body.mode}${session ? ` ${session.username}` : ""}): ${result.status}.`,
       );
+      activity?.append({
+        level: "normal",
+        action: "lobby-submit",
+        actor: session ? actorOf(session) : { discordId: null, name: `${String(guestName ?? "").slice(0, 32)} (guest)` },
+        summary: `${result.status === "posted" ? "posted" : "sent for approval"} a lobby code`,
+        details: { code, description: description || null, mode: body.mode },
+      });
 
       return result;
     }),
@@ -706,6 +916,7 @@ module.exports = {
   LARGE_BODY_PATHS: {
     has: (requestPath) =>
       requestPath === "/fdc/polls" ||
+      requestPath === "/fdc/polls/manual" ||
       requestPath === "/fdc/emojis" ||
       /^\/fdc\/polls\/\d{17,20}\/edit$/.test(requestPath),
   },

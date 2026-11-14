@@ -38,7 +38,11 @@ function emptyOption() {
   return { file: null, source: null, edit: null, edits: null, preview: null, description: '', emoji: '', recycled: null }
 }
 
-function OptionEditor({ index, option, onChange, disabled, viewerDiscordId }) {
+/*
+ * `optionalDetails`: name and emoji may stay empty (past Steam FDCs often
+ * had neither); without an emoji the option just shows its number.
+ */
+export function OptionEditor({ index, option, onChange, disabled, viewerDiscordId, optionalDetails = false }) {
   const { t } = useTranslation('voting')
   const id = useId()
   const number = index + 1
@@ -108,6 +112,11 @@ function OptionEditor({ index, option, onChange, disabled, viewerDiscordId }) {
               add_photo_alternate
             </span>
             {t('fdc.create.image', { defaultValue: 'Image or GIF' })}
+            {optionalDetails && (
+              <small className="fdc-optional">
+                {t('fdc.create.imageOptional', { defaultValue: 'optional if the option has a name' })}
+              </small>
+            )}
           </span>
         )}
       </label>
@@ -183,6 +192,7 @@ function OptionEditor({ index, option, onChange, disabled, viewerDiscordId }) {
 
       <label className="fdc-create__label" htmlFor={`${id}-description`}>
         {t('fdc.create.description', { defaultValue: 'Name and description' })}
+        {optionalDetails && <span className="fdc-optional"> {t('fdc.create.optional', { defaultValue: '(optional)' })}</span>}
       </label>
       <textarea
         id={`${id}-description`}
@@ -190,17 +200,22 @@ function OptionEditor({ index, option, onChange, disabled, viewerDiscordId }) {
         rows={2}
         maxLength={MAX_DESCRIPTION}
         value={option.description}
-        placeholder={option.recycled?.description}
+        placeholder={
+          option.recycled?.description ||
+          (optionalDetails ? t('fdc.create.option', { defaultValue: 'Option {{number}}', number: index + 1 }) : undefined)
+        }
         onChange={(event) => onChange({ description: event.target.value })}
       />
 
       <span className="fdc-create__label" id={`${id}-emoji`}>
         {t('fdc.create.emoji', { defaultValue: 'Reaction emoji' })}
+        {optionalDetails && <span className="fdc-optional"> {t('fdc.create.optional', { defaultValue: '(optional)' })}</span>}
       </span>
       <EmojiPicker
         labelledBy={`${id}-emoji`}
         value={option.emoji}
-        fallback={option.recycled?.emoji?.value || FDC_DEFAULT_EMOJIS[index]}
+        fallback={option.recycled?.emoji?.value || (optionalDetails ? '' : FDC_DEFAULT_EMOJIS[index])}
+        emptyLabel={optionalDetails ? t('fdc.emoji.noEmoji', { defaultValue: 'No emoji' }) : undefined}
         onChange={(emoji) => onChange({ emoji })}
       />
     </fieldset>

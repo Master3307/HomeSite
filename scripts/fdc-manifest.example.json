@@ -1,0 +1,61 @@
+{
+  "label": "Steam group",
+  "polls": [
+    {
+      "date": "2026-03-27",
+      "endsAt": "2026-03-27 10:00",
+      "question": "Which one will you vote this time?",
+      "note": "Voted in the Steam group chat",
+      "options": [
+        {
+          "image": "steam/2026-03-27/1.png",
+          "emoji": "⚔️",
+          "description": "Wounded Knight",
+          "votes": 3
+        },
+        {
+          "image": "steam/2026-03-27/2.png",
+          "emoji": "🍄",
+          "description": "Red Mushroom",
+          "votes": 2
+        },
+        {
+          "image": "steam/2026-03-27/3.png",
+          "emoji": "<:BongoLove:123456789012345678>",
+          "description": "Cute Cat",
+          "votes": 1
+        },
+        {
+          "image": "steam/2026-03-27/4.gif",
+          "votes": 0
+        }
+      ]
+    },
+    {
+      "date": "2026-03-20",
+      "note": "Only the winner (option 2) is known; option 1 has no image, only a name",
+      "winner": 2,
+      "options": [
+        {
+          "description": "Witch Cat"
+        },
+        {
+          "image": "steam/2026-03-20/2.png"
+        },
+        {
+          "image": "steam/2026-03-20/3.png"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-13",
+      "note": "Only the winning outfit survived (a single option is the winner)",
+      "options": [
+        {
+          "image": "steam/2026-03-13/winner.png",
+          "description": "Pirate Cat"
+        }
+      ]
+    }
+  ]
+}

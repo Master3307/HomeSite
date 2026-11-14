@@ -82,11 +82,41 @@ function publicOptions(poll, date) {
         animated: Boolean(option.emoji?.animated),
       },
 
-      image: `${option.number}.webp`,
+      // null: no image (some past FDCs only have a name).
+      image: option.media === null ? null : `${option.number}.webp`,
       // Bumped when an editor replaces the image (cache busting).
       imageVersion: Number.isInteger(option.media?.revision) ? option.media.revision : 0,
     };
   });
+}
+
+/* Votes editors entered from elsewhere (e.g. the Steam group chat). */
+function externalVotes(poll) {
+  const sources = Object.entries(poll.externalVotes ?? {}).map(([id, source]) => {
+    const counts = {};
+    let total = 0;
+    for (const [number, count] of Object.entries(source.counts ?? {})) {
+      const value = Math.max(0, Math.floor(Number(count) || 0));
+      if (!value) continue;
+      counts[number] = value;
+      total += value;
+    }
+    return { id, label: String(source.label ?? id), counts, total };
+  });
+  return { sources, total: sources.reduce((sum, source) => sum + source.total, 0) };
+}
+
+function withExternal(results, external) {
+  if (!external.total) return results;
+  const options = (results?.options ?? []).map((entry) => {
+    const extra = external.sources.reduce((sum, source) => sum + (source.counts[entry.optionNumber] ?? 0), 0);
+    return { ...entry, votes: (Number(entry.votes) || 0) + extra };
+  });
+  return {
+    ...results,
+    options,
+    totalVoters: (Number(results?.totalVoters) || 0) + external.total,
+  };
 }
 
 /** The public poll document for an archived poll stored under `date`. */
@@ -104,10 +134,39 @@ function toPublicPoll(poll, date) {
   const useOfficialResults =
     poll.status === "closed" && poll.officialResults?.final === true;
 
-  const statistics = cleanStatistics(
-    useOfficialResults ? poll.officialResults : poll.statistics,
+  const external = externalVotes(poll);
+
+  // Archive statistics already include external votes (fdcArchive calculate);
+  // official (imported) results don't, so they're added here.
+  // Without saved statistics (e.g. written by a script): votes + external.
+  const computed = () =>
+    withExternal(
+      {
+        totalVoters: (poll.votes ?? []).length,
+        options: options.map((option) => ({
+          optionNumber: option.number,
+          votes: (poll.votes ?? []).filter((vote) => vote.optionNumber === option.number).length,
+        })),
+      },
+      external,
+    );
+
+  let statistics = cleanStatistics(
+    useOfficialResults ? withExternal(poll.officialResults, external) : (poll.statistics ?? computed()),
     options,
   );
+
+  // Past FDCs where only the winner is known (no vote counts survived).
+  const votesKnown = !(useOfficialResults && poll.officialResults.votesKnown === false);
+  if (!votesKnown) {
+    statistics = {
+      ...statistics,
+      winningOptionNumbers: (poll.officialResults.winningOptionNumbers ?? []).filter((number) =>
+        options.some((option) => option.number === number),
+      ),
+      isTie: false,
+    };
+  }
 
   return {
     version: 1,
@@ -122,6 +181,9 @@ function toPublicPoll(poll, date) {
     messageUrl: typeof poll.messageUrl === "string" ? poll.messageUrl : null,
     options,
     statistics,
+
+    externalVotes: external.sources,
+    votesKnown,
 
     statisticsSource: useOfficialResults
       ? "historical_official_results"

@@ -9,7 +9,9 @@ const {
 
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 
-const SOURCE = path.join(PROJECT_ROOT, "server", "services", "db", "fdc-polls");
+const SOURCE = process.env.FDC_ARCHIVE_DIR
+  ? path.resolve(process.env.FDC_ARCHIVE_DIR)
+  : path.join(PROJECT_ROOT, "server", "services", "db", "fdc-polls");
 
 const OUTPUT_ROOT = path.join(
   PROJECT_ROOT,
@@ -78,6 +80,7 @@ async function main() {
       await fs.mkdir(targetFolder);
 
       for (const option of publicPoll.options) {
+        if (!option.image) continue; // past FDC option without an image
         await fs.copyFile(
           path.join(sourceFolder, option.image),
           path.join(targetFolder, option.image),

@@ -1,0 +1,40 @@
+{
+    "option": "Option {{number}}",
+    "title": "Activity log",
+    "back": "Back to the cult",
+    "intro": "Who logged in and what editors did on the site. Read only: nobody can change or delete entries.",
+    "intact": "Log intact ({{count}} entries, unchanged since they were written)",
+    "broken": "Warning: entry {{seq}} was changed or removed outside the site.",
+    "level": "Level",
+    "search": "Search people, actions, dates…",
+    "loading": "Loading…",
+    "loginNeeded": "Log in as an editor to see the activity log.",
+    "editorsOnly": "Only editors can see the activity log.",
+    "empty": "Nothing logged yet.",
+    "someone": "Someone",
+    "more": "Show older entries",
+    "views": {
+        "risky": {
+            "label": "Risky",
+            "hint": "Deleting, creating polls, editing ended polls"
+        },
+        "normal": {
+            "label": "Normal",
+            "hint": "Everything, short"
+        },
+        "verbose": {
+            "label": "Verbose",
+            "hint": "Everything, with exact changes"
+        }
+    },
+    "levels": {
+        "risky": "risky",
+        "normal": "normal",
+        "detail": "detail"
+    },
+    "field": {
+        "description": "name",
+        "emoji": "emoji",
+        "image": "image"
+    }
+}

@@ -226,6 +226,7 @@ function createRecycleBin(archiveRoot) {
       const list = [];
       for (const poll of await endedPolls()) {
         for (const option of poll.public.options) {
+          if (!option.image) continue; // nothing to reuse without an image
           const described = describeOption(poll, option);
           if (!inBin.has(described.key)) list.push(described);
         }
@@ -293,7 +294,11 @@ function createRecycleBin(archiveRoot) {
         }
 
         await log("add", actor, { items: added.map((item) => ({ id: item.id, key: item.key })), folderId: folder?.id ?? null });
-        return { added: added.length };
+        return {
+          added: added.length,
+          folder: folder?.name ?? null,
+          items: added.map((item) => ({ key: item.key, description: item.description })),
+        };
       });
     },
 
@@ -307,7 +312,7 @@ function createRecycleBin(archiveRoot) {
         for (const item of removed) await fs.rm(path.join(BIN, item.file), { force: true });
         state.items = state.items.filter((item) => !wanted.has(item.id));
         await log("remove", actor, { items: removed.map((item) => ({ id: item.id, key: item.key })) });
-        return { removed: removed.length };
+        return { removed: removed.length, items: removed.map((item) => ({ key: item.key, description: item.description })) };
       });
     },
 
@@ -321,6 +326,7 @@ function createRecycleBin(archiveRoot) {
         if (folderId && !folder) throw httpError(404, "That folder doesn't exist anymore.");
 
         let moved = 0;
+        const movedItems = [];
         for (const item of state.items) {
           if (!wanted.has(item.id) || item.folderId === (folder?.id ?? null)) continue;
           const file = itemFile(folder, item.id);
@@ -328,10 +334,11 @@ function createRecycleBin(archiveRoot) {
           item.file = file;
           item.folderId = folder?.id ?? null;
           moved += 1;
+          movedItems.push({ key: item.key, description: item.description });
         }
 
         await log("move", actor, { items: [...wanted], folderId: folder?.id ?? null });
-        return { moved };
+        return { moved, folder: folder?.name ?? null, items: movedItems };
       });
     },
 
@@ -372,7 +379,7 @@ function createRecycleBin(archiveRoot) {
         }
 
         await log("folder-rename", actor, { folder: { id, from: old, to: clean } });
-        return folder;
+        return { ...folder, previousName: old };
       });
     },
 
@@ -394,7 +401,7 @@ function createRecycleBin(archiveRoot) {
         state.folders = state.folders.filter((entry) => entry.id !== id);
 
         await log("folder-delete", actor, { folder: { id, name: folder.name } });
-        return { deleted: true };
+        return { deleted: true, name: folder.name };
       });
     },
 

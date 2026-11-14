@@ -265,6 +265,7 @@ export async function editFdc(pollId, changes) {
     changes.map(async (change) => ({
       number: change.number,
       ...(change.description !== undefined ? { description: change.description } : {}),
+      ...(change.emoji ? { emoji: change.emoji } : {}),
       ...(change.file
         ? {
             image: {
@@ -279,6 +280,52 @@ export async function editFdc(pollId, changes) {
   );
 
   return postJson(`/fdc/polls/${encodeURIComponent(pollId)}/edit`, { options });
+}
+
+/**
+ * Adds an FDC that only exists elsewhere (Steam group chat, older polls)
+ * to the archive. `options`: [{ file, edit, description, emoji }];
+ * `votes`: { label, counts: { [number]: count } }; `endsAt`: ISO string.
+ */
+export async function createManualFdc({ endsAt, question, options, votes, winner = null }) {
+  const payload = await Promise.all(
+    options.map(async (option) => ({
+      description: option.description,
+      emoji: option.emoji,
+      // Optional for past FDCs (then the option needs a name).
+      image: option.file
+        ? {
+            name: option.file.name,
+            type: option.file.type,
+            data: await fileToBase64(option.file),
+            ...(option.edit ? { edit: option.edit } : {}),
+          }
+        : null,
+    })),
+  );
+  // `winner`: only the winning option is known (no vote counts).
+  return postJson("/fdc/polls/manual", { endsAt, question, options: payload, votes: winner ? null : votes, winner });
+}
+
+/** The site-wide activity log (editors). `view`: risky | normal | verbose. */
+export async function loadActivity({ view = "normal", before = null, q = "" } = {}) {
+  const query = new URLSearchParams({ view, ...(before ? { before } : {}), ...(q ? { q } : {}) });
+  const response = await accountFetch(`/account/activity?${query}`, { cache: "no-store" });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw Object.assign(new Error(data?.error || `Could not load the activity log (${response.status}).`), {
+      status: response.status,
+    });
+  }
+  return data;
+}
+
+/**
+ * Votes counted elsewhere (e.g. the Steam group chat), per option number.
+ * `counts` null removes that source.
+ */
+export function setExternalVotes(pollId, { source, label, counts }) {
+  return postJson(`/fdc/polls/${encodeURIComponent(pollId)}/external-votes`, { source, label, counts });
 }
 
 /** Ends a running poll now (results are posted as usual). */

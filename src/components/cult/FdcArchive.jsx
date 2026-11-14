@@ -30,6 +30,7 @@ export default function FdcArchive({
     error,
     reload,
   } = useFdcPoll(selected, { live: isRunningPoll(selected, now) })
+  const [managing, setManaging] = useState(false)
 
   if (selected) {
     return (
@@ -37,7 +38,10 @@ export default function FdcArchive({
         <button
           type="button"
           className="fdc-link"
-          onClick={() => setSelectedId(null)}
+          onClick={() => {
+            setSelectedId(null)
+            setManaging(false)
+          }}
         >
           <span
             className="material-symbols-outlined"
@@ -69,10 +73,13 @@ export default function FdcArchive({
 
         {poll && (
           <FdcPoll
-            key={`${poll.id}:${poll.updatedAt?.ms ?? ''}`}
+            // While editing, keep the panel open across the reload after a save.
+            key={managing ? poll.id : `${poll.id}:${poll.updatedAt?.ms ?? ''}`}
             poll={poll}
             account={account}
             onVoted={reload}
+            managing={managing}
+            onManagingChange={setManaging}
           />
         )}
       </section>

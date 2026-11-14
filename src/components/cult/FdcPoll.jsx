@@ -13,6 +13,7 @@ import {
 import { LOGIN_AVAILABLE } from '../../lib/account'
 import { catNotice } from '../../lib/lobbyCat'
 import FdcManage from './FdcManage'
+import FdcExternalVotes from './FdcExternalVotes'
 import { recycleOptions } from '../../lib/fdcRecycle'
 
 function OptionEmoji({ emoji }) {
@@ -115,11 +116,20 @@ export default function FdcPoll({
 
   const running = isRunningPoll(poll, now)
   const canManage = running && poll.live !== false && poll.viewer?.canManage === true
+  // Editors: fix ended / archived polls (archive only) and add outside votes.
+  const isEditor = poll.live !== false && poll.viewer?.isEditor === true
+  const canEditArchive = !running && isEditor && !canManage
+  // `managing`: false | 'edit' (true = 'edit') | 'votes'
+  const editing = managing === true || managing === 'edit'
+  const enteringVotes = managing === 'votes'
+  const externalTotal = (poll.externalVotes ?? []).reduce((sum, source) => sum + source.total, 0)
   const statistics = result?.statistics ?? poll.statistics
   const myVote = result ? result.optionNumber : poll.viewer?.myVote ?? null
   const canVote = running && poll.live !== false && poll.viewer?.canVote
   const showWinners = poll.status === 'closed'
   const winningNumbers = statistics.winningOptionNumbers ?? []
+  // Past FDCs where only the winner survived: no counts to show.
+  const votesKnown = poll.votesKnown !== false
 
   async function recycle(optionNumber) {
     if (recycling !== null || recycled.has(optionNumber)) return
@@ -191,12 +201,23 @@ export default function FdcPoll({
             {status}
           </span>
 
-          {canManage && !managing && (
-            <button type="button" className="fdc-link" onClick={() => setManaging(true)}>
+          {(canManage || canEditArchive) && !editing && (
+            <button type="button" className="fdc-link" onClick={() => setManaging('edit')}>
               <span className="material-symbols-outlined" aria-hidden="true">
                 edit
               </span>
-              {t('fdc.manage.open', { defaultValue: 'Manage' })}
+              {canManage
+                ? t('fdc.manage.open', { defaultValue: 'Manage' })
+                : t('fdc.manage.editArchive', { defaultValue: 'Edit' })}
+            </button>
+          )}
+
+          {isEditor && !enteringVotes && (
+            <button type="button" className="fdc-link" onClick={() => setManaging('votes')}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                how_to_vote
+              </span>
+              {t('fdc.external.open', { defaultValue: 'Add votes' })}
             </button>
           )}
 
@@ -216,9 +237,18 @@ export default function FdcPoll({
         </div>
       </header>
 
-      {managing && canManage && (
+      {enteringVotes && isEditor && (
+        <FdcExternalVotes
+          poll={poll}
+          onClose={() => setManaging(false)}
+          onSaved={() => (onChanged ?? onVoted)?.('votes')}
+        />
+      )}
+
+      {editing && (canManage || canEditArchive) && (
         <FdcManage
           poll={poll}
+          archived={canEditArchive}
           onClose={() => setManaging(false)}
           onDone={(action) => {
             if (action !== 'edited') setManaging(false)
@@ -227,7 +257,7 @@ export default function FdcPoll({
         />
       )}
 
-      {canVote && !managing && (
+      {canVote && !editing && (
         <p className="fdc-poll__hint">
           <span className="material-symbols-outlined" aria-hidden="true">
             touch_app
@@ -262,15 +292,20 @@ export default function FdcPoll({
                 pending === option.number && 'fdc-option--pending',
               ].filter(Boolean).join(' ')}
             >
-              <div className="fdc-option__media">
-                <img
-                  src={publicPollImage(poll, option)}
-                  alt={option.description}
-                  loading="lazy"
-                  decoding="async"
-                  width="640"
-                  height="400"
-                />
+              <div className={`fdc-option__media${option.image === null ? ' fdc-option__media--text' : ''}`}>
+                {/* Past FDCs may have options without an image: show the name instead. */}
+                {option.image === null ? (
+                  <span className="fdc-option__text-card">{option.description}</span>
+                ) : (
+                  <img
+                    src={publicPollImage(poll, option)}
+                    alt={option.description}
+                    loading="lazy"
+                    decoding="async"
+                    width="640"
+                    height="400"
+                  />
+                )}
 
                 <span className="fdc-option__tag">
                   <span className="fdc-option__number">{option.number}</span>
@@ -318,6 +353,7 @@ export default function FdcPoll({
                   </button>
                 )}
 
+                {option.image !== null && (
                 <a
                   className="fdc-option__zoom"
                   href={publicPollImage(poll, option)}
@@ -332,11 +368,16 @@ export default function FdcPoll({
                     open_in_full
                   </span>
                 </a>
+                )}
               </div>
 
               <div className="fdc-option__body">
-                <p className="fdc-option__description">{option.description}</p>
+                <p className="fdc-option__description">
+                  {option.description ||
+                    t('fdc.create.option', { defaultValue: 'Option {{number}}', number: option.number })}
+                </p>
 
+                {votesKnown && (
                 <div className="fdc-option__result">
                   <div
                     className="fdc-option__progress"
@@ -365,6 +406,7 @@ export default function FdcPoll({
                     </span>
                   </p>
                 </div>
+                )}
               </div>
 
               {canVote && (
@@ -403,13 +445,25 @@ export default function FdcPoll({
       <footer className="fdc-poll__footer">
         <p className="fdc-poll__total">
           <span className="material-symbols-outlined" aria-hidden="true">
-            how_to_vote
+            {votesKnown ? 'how_to_vote' : 'trophy'}
           </span>
-          {t('fdc.totalVoters', {
-            defaultValue: '{{count}} total voters',
-            count: statistics.totalVoters ?? 0,
-          })}
+          {votesKnown
+            ? t('fdc.totalVoters', {
+                defaultValue: '{{count}} total voters',
+                count: statistics.totalVoters ?? 0,
+              })
+            : t('fdc.winnerOnly', { defaultValue: 'Only the winner of this FDC is known; the vote counts were lost.' })}
         </p>
+
+        {externalTotal > 0 && (
+          <p className="fdc-note">
+            {t('fdc.external.included', {
+              defaultValue: 'Includes {{count}} votes from {{sources}}.',
+              count: externalTotal,
+              sources: poll.externalVotes.map((source) => source.label).join(', '),
+            })}
+          </p>
+        )}
 
         {running && !account.loading && (
           <p className="fdc-note">

@@ -17,6 +17,7 @@ const VOTE_ACTIONS = new Set([
   "switch",
   "recovered_add",
   "recovered_switch",
+  "imported",
   "web_add",
   "web_switch",
 ]);
@@ -111,20 +112,39 @@ async function atomicJson(file, value) {
   await fs.rename(temporary, file);
 }
 
+/** Sum of all external vote sources: `{ total, options: { [number]: count } }`. */
+function externalTotals(poll) {
+  const options = {};
+  let total = 0;
+  for (const source of Object.values(poll.externalVotes ?? {})) {
+    for (const [number, count] of Object.entries(source.counts ?? {})) {
+      const value = Math.max(0, Math.floor(Number(count) || 0));
+      options[number] = (options[number] ?? 0) + value;
+      total += value;
+    }
+  }
+  return { total, options };
+}
+
 function calculate(poll) {
   poll.votes.sort(
     (a, b) => b.observedAt.ms - a.observedAt.ms || b.sequence - a.sequence,
   );
 
-  const total = poll.votes.length;
+  // Votes entered by editors from elsewhere (e.g. the Steam group chat).
+  const external = externalTotals(poll);
+
+  const total = poll.votes.length + external.total;
   const counts = poll.options.map(
     (option) =>
-      poll.votes.filter((vote) => vote.optionNumber === option.number).length,
+      poll.votes.filter((vote) => vote.optionNumber === option.number).length +
+      (external.options[option.number] ?? 0),
   );
   const highest = Math.max(0, ...counts);
 
   poll.statistics = {
     totalVoters: total,
+    externalVoters: external.total,
     options: poll.options.map((option, index) => ({
       optionNumber: option.number,
       votes: counts[index],
@@ -433,11 +453,12 @@ function pollEmbed(poll, ended = false) {
 
   const seconds = Math.floor(poll.endsAt.ms / 1000);
   const total = poll.statistics.totalVoters;
+  const external = externalLine(poll);
 
   const footer = ended
-    ? `Poll closed・**${total}** voter${total === 1 ? "" : "s"}.`
+    ? `Poll closed・**${total}** voter${total === 1 ? "" : "s"}${external}.`
     : `Ends <t:${seconds}:R> (<t:${seconds}:f>)\n` +
-      `**${total}** voter${total === 1 ? "" : "s"}.`;
+      `**${total}** voter${total === 1 ? "" : "s"}${external}.`;
 
   return new EmbedBuilder()
     .setColor(ended ? 0x5865f2 : 0xf1c40f)
@@ -448,6 +469,17 @@ function pollEmbed(poll, ended = false) {
       }${footer}`,
     )
     .setTimestamp();
+}
+
+/* " (incl. 5 Steam group, 2 Twitch)" — empty without external votes. */
+function externalLine(poll) {
+  const parts = Object.values(poll.externalVotes ?? {})
+    .map((source) => {
+      const count = Object.values(source.counts ?? {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
+      return count ? `${count} ${source.label}` : null;
+    })
+    .filter(Boolean);
+  return parts.length ? ` (incl. ${parts.join(", ")})` : "";
 }
 
 function resultsEmbed(poll) {
@@ -468,7 +500,7 @@ function resultsEmbed(poll) {
     .setTitle("Friday Dress Code: Final Results")
     .setDescription(description)
     .setFooter({
-      text: `The poll has ended. Total voters: ${poll.votes.length}`,
+      text: `The poll has ended. Total voters: ${poll.statistics.totalVoters}${externalLine(poll)}`,
     })
     .setTimestamp();
 }
@@ -736,6 +768,21 @@ async function closePoll(poll) {
   live.delete(poll.id);
 }
 
+/*
+ * Embeds of polls with votes from elsewhere show them in the vote count;
+ * bring older ones up to date once (after updates or restarts).
+ */
+async function syncExternalEmbeds() {
+  for (const poll of records.values()) {
+    if (!poll.externalVotes || !Object.keys(poll.externalVotes).length) continue;
+    const signature = JSON.stringify(poll.externalVotes);
+    if (poll.externalEmbedSignature === signature) continue;
+    await refreshDiscordResults(poll);
+    poll.externalEmbedSignature = signature;
+    await persist(poll);
+  }
+}
+
 async function recoverInternal(client) {
   for (const poll of records.values()) {
     if (!["active", "closing"].includes(poll.status)) continue;
@@ -918,6 +965,7 @@ async function recover(client) {
   return serial(async () => {
     await initialize();
     await recoverInternal(client);
+    await syncExternalEmbeds().catch((error) => console.error("[FDC] External embed sync failed:", error));
   });
 }
 
@@ -1059,8 +1107,8 @@ async function create({
     };
 
     pollMessage = await channel.send({
-      content: `<@&${roleId}>・Vote for The FDC! :D`,
-      allowedMentions: { roles: [roleId] },
+      content: roleId ? `<@&${roleId}>・Vote for The FDC! :D` : "Vote for The FDC! :D",
+      allowedMentions: { roles: roleId ? [roleId] : [] },
       embeds: [pollEmbed(poll)],
     });
 
@@ -1191,6 +1239,32 @@ function statusError(status, message) {
   return Object.assign(new Error(message), { status });
 }
 
+/*
+ * A poll by id. Polls added to the archive while the bot runs (e.g. by
+ * scripts/import-fdc.cjs) are loaded from disk on first use.
+ */
+async function findPoll(pollId) {
+  const id = String(pollId);
+  if (records.has(id)) return records.get(id);
+
+  for (const entry of await fs.readdir(ROOT, { withFileTypes: true }).catch(() => [])) {
+    if (!entry.isDirectory() || !/^\d{4}-\d{2}-\d{2}$/.test(entry.name)) continue;
+    const poll = await readJson(path.join(ROOT, entry.name, "data.json"), null);
+    if (poll?.id !== id || !Array.isArray(poll.options)) continue;
+    poll.votes ??= [];
+    poll.voteHistory ??= [];
+    normalizePoll(poll);
+    calculate(poll);
+    records.set(poll.id, poll);
+    return poll;
+  }
+  throw statusError(404, "Poll not found.");
+}
+
+function isRunning(poll) {
+  return poll.status === "active" && poll.endsAt.ms > Date.now();
+}
+
 /** A running poll that is connected to its Discord message. */
 function runningPoll(pollId) {
   const poll = records.get(String(pollId));
@@ -1266,15 +1340,26 @@ async function editPoll(pollId, { actorId, changes }) {
   return serial(async () => {
     await initialize();
 
-    const { poll, runtime } = runningPoll(pollId);
+    /*
+     * Running polls: archive and Discord messages change together.
+     * Ended / archived polls: only the archive changes (images, names and
+     * emoji), e.g. to fix old imported polls; Discord stays as it was.
+     */
+    const found = await findPoll(pollId);
+    const archived = !isRunning(found);
+    const { poll, runtime } = archived ? { poll: found, runtime: null } : runningPoll(pollId);
 
     if (!Array.isArray(changes) || !changes.length) {
       throw statusError(400, "Nothing to change.");
     }
 
+    // For the activity log: the options as they were.
+    const before = structuredClone(poll.options);
+
     const seen = new Set();
     const replacements = new Map();
     const descriptions = new Map();
+    const emojis = new Map();
 
     for (const change of changes) {
       const number = Number(change?.number);
@@ -1299,6 +1384,12 @@ async function editPoll(pollId, { actorId, changes }) {
         if (description !== option.description) descriptions.set(number, description);
       }
 
+      // Already resolved by the internal API (fdcSetup.resolveEmoji).
+      if (change.emoji) {
+        if (!archived) throw statusError(409, "Emoji of a running poll can't change (votes are reactions).");
+        if (change.emoji.key !== option.emoji?.key) emojis.set(number, change.emoji);
+      }
+
       if (change.media) {
         if (!isImage(change.media)) {
           throw statusError(400, `Option ${number} must be an image or GIF.`);
@@ -1314,17 +1405,28 @@ async function editPoll(pollId, { actorId, changes }) {
           temporary,
           image,
           media: change.media,
-          discord: await discordFile({ ...option, media: change.media }, buffer),
+          discord: archived ? null : await discordFile({ ...option, media: change.media }, buffer),
         });
       }
     }
 
-    if (!replacements.size && !descriptions.size) {
+    if (!replacements.size && !descriptions.size && !emojis.size) {
       return { changed: false };
     }
 
+    if (emojis.size) {
+      // Options without an emoji (old Steam polls) don't count as duplicates.
+      const keys = poll.options.map((option) => emojis.get(option.number)?.key ?? option.emoji?.key).filter(Boolean);
+      if (new Set(keys).size !== keys.length) {
+        for (const replacement of replacements.values()) {
+          await fs.rm(replacement.temporary, { force: true }).catch(() => {});
+        }
+        throw statusError(400, "Each option must use a different emoji.");
+      }
+    }
+
     try {
-      if (replacements.size) {
+      if (replacements.size && !archived) {
         const mediaMessage = await runtime.channel.messages.fetch(poll.mediaMessageId);
         const files = await mediaFiles(poll, mediaMessage, replacements);
 
@@ -1359,7 +1461,7 @@ async function editPoll(pollId, { actorId, changes }) {
         originalHeight: null,
         localFile,
         savedAt: at,
-        revision: (option.media.revision ?? 0) + 1,
+        revision: (option.media?.revision ?? 0) + 1, // media may be null (past FDC option without an image)
         ...replacement.image,
       };
     }
@@ -1367,29 +1469,123 @@ async function editPoll(pollId, { actorId, changes }) {
     for (const [number, description] of descriptions) {
       poll.options.find((item) => item.number === number).description = description;
     }
+    for (const [number, emoji] of emojis) {
+      poll.options.find((item) => item.number === number).emoji = emoji;
+    }
 
     poll.editHistory ??= [];
     poll.editHistory.push({
       at,
       by: actorId ?? null,
+      archiveOnly: archived,
       images: [...replacements.keys()],
       descriptions: [...descriptions.keys()],
+      emojis: [...emojis.keys()],
     });
 
     await persist(poll);
 
-    if (descriptions.size) {
+    if (descriptions.size && !archived) {
       await runtime.message.edit({ embeds: [pollEmbed(poll)] }).catch((error) => {
         console.error(`[FDC] Embed update after edit failed: ${poll.id}`, error);
       });
     }
 
+    const numbers = [...new Set([...replacements.keys(), ...descriptions.keys(), ...emojis.keys()])].sort();
     return {
       changed: true,
+      archiveOnly: archived,
+      date: poll.date,
       images: [...replacements.keys()],
       descriptions: [...descriptions.keys()],
+      emojis: [...emojis.keys()],
+      // Exactly what changed, option by option (activity log).
+      changes: numbers.map((number) => {
+        const old = before.find((option) => option.number === number);
+        const now = poll.options.find((option) => option.number === number);
+        return {
+          number,
+          ...(descriptions.has(number) ? { description: { from: old.description, to: now.description } } : {}),
+          ...(emojis.has(number) ? { emoji: { from: old.emoji?.display, to: now.emoji?.display } } : {}),
+          ...(replacements.has(number)
+            ? { image: { from: old.media?.originalName ?? old.media?.localFile, to: now.media?.originalName ?? "edited image" } }
+            : {}),
+        };
+      }),
     };
   });
+}
+
+/*
+ * Votes counted somewhere else (the Steam group chat has no API, so
+ * editors type them in). One entry per source; `counts` null removes it.
+ * They count towards the statistics everywhere (website, embeds).
+ */
+async function setExternalVotes(pollId, { actorId, source, label, counts }) {
+  return serial(async () => {
+    await initialize();
+    const poll = await findPoll(pollId);
+
+    const id = String(source ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").slice(0, 40);
+    if (!id) throw statusError(400, "Name the source of the votes.");
+
+    poll.externalVotes ??= {};
+    const previous = poll.externalVotes[id] ? structuredClone(poll.externalVotes[id]) : null;
+
+    if (counts === null) {
+      delete poll.externalVotes[id];
+    } else {
+      const clean = {};
+      for (const option of poll.options) {
+        const value = Number(counts?.[option.number] ?? 0);
+        if (!Number.isInteger(value) || value < 0 || value > 10000) {
+          throw statusError(400, `Option ${option.number} needs a whole number of votes.`);
+        }
+        if (value) clean[option.number] = value;
+      }
+      poll.externalVotes[id] = {
+        label: String(label ?? source).trim().slice(0, 40) || id,
+        counts: clean,
+        updatedAt: timestamp(),
+        updatedBy: actorId ?? null,
+      };
+    }
+
+    await refreshDiscordResults(poll);
+    poll.externalEmbedSignature = JSON.stringify(poll.externalVotes);
+    await persist(poll);
+    return {
+      date: poll.date,
+      source: id,
+      previous,
+      current: poll.externalVotes[id] ?? null,
+      externalVotes: poll.externalVotes,
+      statistics: poll.statistics,
+    };
+  });
+}
+
+/* Keeps the bot's own poll / results embeds in step with changed counts. */
+async function refreshDiscordResults(poll) {
+  const runtime = live.get(poll.id);
+  if (runtime && poll.status === "active") {
+    scheduleEmbed(poll);
+    return;
+  }
+  if (!registeredClient || poll.status !== "closed") return;
+
+  try {
+    const channel = await registeredClient.channels.fetch(poll.channelId);
+    const own = async (id) => {
+      if (!id) return null;
+      const message = await channel.messages.fetch(id).catch(() => null);
+      return message?.author?.id === registeredClient.user?.id ? message : null;
+    };
+    await (await own(poll.messageId))?.edit({ embeds: [pollEmbed(poll, true)] });
+    await (await own(poll.resultsMessageId))?.edit({ embeds: [resultsEmbed(poll)] });
+  } catch (error) {
+    console.error(`[FDC] Results refresh failed for ${poll.id}:`, error);
+  }
 }
 
 /** Ends a running poll now: final embed and results message as usual. */
@@ -1403,7 +1599,7 @@ async function closeNow(pollId, { actorId } = {}) {
     poll.endsAt = timestamp();
 
     await closePoll(poll);
-    return { status: poll.status, closedAt: poll.closedAt };
+    return { status: poll.status, closedAt: poll.closedAt, date: poll.date, votes: poll.statistics.totalVoters };
   });
 }
 
@@ -1458,15 +1654,59 @@ async function discardPoll(pollId, { actorId } = {}) {
     );
 
     console.log(`[FDC] Discarded ${poll.date}: ${poll.id} (by ${actorId ?? "unknown"})`);
-    return { discarded: true, date: poll.date };
+    return { discarded: true, date: poll.date, votes: poll.votes.length };
+  });
+}
+
+/**
+ * Adds an FDC that only exists elsewhere (Steam group chat, older ones):
+ * archive only, no Discord messages. Uses services/fdcManual.cjs.
+ */
+async function createManual(input) {
+  return serial(async () => {
+    await initialize();
+    const { buildManualPoll } = require("./fdcManual.cjs");
+
+    const date = dateKey(input.endsAt.getTime());
+    if (reservedDates.has(date) || [...records.values()].some((poll) => poll.date === date)) {
+      throw statusError(409, `There already is an FDC for ${date}.`);
+    }
+
+    const folder = path.join(ROOT, date);
+    try {
+      await fs.access(folder);
+      throw statusError(409, `The archive folder ${date} already exists.`);
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+
+    reservedDates.add(date);
+    const staging = path.join(ROOT, `.manual-${Date.now()}`);
+    try {
+      await fs.mkdir(staging);
+      const poll = await buildManualPoll({ ...input, date, folder: staging, timeZone: TIME_ZONE });
+      await fs.rename(staging, folder);
+      normalizePoll(poll);
+      calculate(poll);
+      records.set(poll.id, poll);
+      await persist(poll);
+      return { id: poll.id, date: poll.date, options: poll.options.length, votes: poll.statistics.totalVoters };
+    } catch (error) {
+      await fs.rm(staging, { recursive: true, force: true }).catch(() => {});
+      throw error;
+    } finally {
+      reservedDates.delete(date);
+    }
   });
 }
 
 module.exports = {
+  createManual,
   create,
   recover,
   voteFromWeb,
   editPoll,
+  setExternalVotes,
   closeNow,
   discardPoll,
 };

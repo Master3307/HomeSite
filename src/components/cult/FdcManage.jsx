@@ -10,6 +10,11 @@ import {
   publicPollImage,
 } from '../../lib/fdc'
 import ImageEditor from './ImageEditor'
+import EmojiPicker from './EmojiPicker'
+
+/* An option's emoji as a picker value: `<:name:id>` or the Unicode emoji. */
+const emojiValue = (emoji) =>
+  emoji?.id && emoji?.name ? `<${emoji.animated ? 'a' : ''}:${emoji.name}:${emoji.id}>` : emoji?.display ?? ''
 
 const MAX_DESCRIPTION = 400
 
@@ -19,7 +24,7 @@ const MAX_DESCRIPTION = 400
  * the bot, which updates the Discord messages in place (same order).
  */
 
-function OptionManager({ poll, option, change, onChange, disabled }) {
+function OptionManager({ poll, option, change, onChange, disabled, archived }) {
   const { t } = useTranslation('voting')
   const [editor, setEditor] = useState(null) // { file, settings }
   const [loading, setLoading] = useState(false)
@@ -27,7 +32,9 @@ function OptionManager({ poll, option, change, onChange, disabled }) {
   const inputRef = useRef(null)
 
   const description = change.description ?? option.description
-  const preview = change.preview ?? publicPollImage(poll, option)
+  // No image yet (some past FDCs): a text card until one is added.
+  const hasImage = Boolean(change.preview) || option.image !== null
+  const preview = change.preview ?? (option.image !== null ? publicPollImage(poll, option) : null)
 
   async function editCurrent() {
     setError(null)
@@ -71,8 +78,14 @@ function OptionManager({ poll, option, change, onChange, disabled }) {
         )}
       </legend>
 
-      <div className="fdc-manage__image">
-        <img src={preview} alt="" />
+      <div className={`fdc-manage__image${hasImage ? '' : ' fdc-option__media--text'}`}>
+        {hasImage ? (
+          <img src={preview} alt="" />
+        ) : (
+          <span className="fdc-option__text-card">
+            {option.description || t('fdc.manage.noImage', { defaultValue: 'No image' })}
+          </span>
+        )}
       </div>
 
       <div className="fdc-create__image-actions">
@@ -80,12 +93,14 @@ function OptionManager({ poll, option, change, onChange, disabled }) {
           <span className="material-symbols-outlined" aria-hidden="true">add_photo_alternate</span>
           {t('fdc.manage.replace', { defaultValue: 'Replace' })}
         </button>
-        <button type="button" className="fdc-link" onClick={editCurrent} disabled={loading}>
-          <span className="material-symbols-outlined" aria-hidden="true">crop</span>
-          {loading
-            ? t('fdc.editor.loading', { defaultValue: 'Loading image…' })
-            : t('fdc.editor.open', { defaultValue: 'Edit image' })}
-        </button>
+        {hasImage && (
+          <button type="button" className="fdc-link" onClick={editCurrent} disabled={loading}>
+            <span className="material-symbols-outlined" aria-hidden="true">crop</span>
+            {loading
+              ? t('fdc.editor.loading', { defaultValue: 'Loading image…' })
+              : t('fdc.editor.open', { defaultValue: 'Edit image' })}
+          </button>
+        )}
         {change.file && (
           <button type="button" className="fdc-link" onClick={() => onChange({ source: null, file: null, edit: null, edits: null })}>
             <span className="material-symbols-outlined" aria-hidden="true">undo</span>
@@ -117,6 +132,23 @@ function OptionManager({ poll, option, change, onChange, disabled }) {
           onChange({ description: event.target.value === option.description ? undefined : event.target.value })
         }
       />
+
+      {/* Archived polls only: reactions of a running poll can't change. */}
+      {archived && (
+        <>
+          <span className="fdc-create__label" id={`manage-${poll.id}-${option.number}-emoji`}>
+            {t('fdc.create.emoji', { defaultValue: 'Reaction emoji' })}
+          </span>
+          <EmojiPicker
+            labelledBy={`manage-${poll.id}-${option.number}-emoji`}
+            value={change.emoji ?? emojiValue(option.emoji)}
+            fallback={emojiValue(option.emoji)}
+            onChange={(value) =>
+              onChange({ emoji: !value || value === emojiValue(option.emoji) ? undefined : value })
+            }
+          />
+        </>
+      )}
 
       {error && <p className="fdc-error">{error}</p>}
 
@@ -191,7 +223,7 @@ function Confirm({ action, onConfirm, onCancel, busy }) {
   )
 }
 
-export default function FdcManage({ poll, onDone, onClose }) {
+export default function FdcManage({ poll, onDone, onClose, archived = false }) {
   const { t } = useTranslation('voting')
 
   const [changes, setChanges] = useState({}) // number -> { file, source, edits, preview, description }
@@ -237,8 +269,9 @@ export default function FdcManage({ poll, onDone, onClose }) {
         entry.edit = change.edit ?? null
       }
       if (description !== undefined && description !== option.description) entry.description = description
+      if (archived && change.emoji) entry.emoji = change.emoji
 
-      return entry.file || entry.description !== undefined ? entry : null
+      return entry.file || entry.description !== undefined || entry.emoji ? entry : null
     })
     .filter(Boolean)
 
@@ -300,10 +333,15 @@ export default function FdcManage({ poll, onDone, onClose }) {
       </header>
 
       <p className="fdc-note">
-        {t('fdc.manage.intro', {
-          defaultValue:
-            'New images replace the old ones on Discord and in the archive. The bot keeps the option order and adds the number and emoji to the Discord copies only.',
-        })}
+        {archived
+          ? t('fdc.manage.archiveIntro', {
+              defaultValue:
+                'This poll has ended: changes only update the archive (website, recycling bin). Discord stays as it was.',
+            })
+          : t('fdc.manage.intro', {
+              defaultValue:
+                'New images replace the old ones on Discord and in the archive. The bot keeps the option order and adds the number and emoji to the Discord copies only.',
+            })}
       </p>
 
       <div className="fdc-manage__grid">
@@ -312,6 +350,7 @@ export default function FdcManage({ poll, onDone, onClose }) {
             key={option.number}
             poll={poll}
             option={option}
+            archived={archived}
             change={changes[option.number] ?? {}}
             disabled={Boolean(busy)}
             onChange={(patch) => updateChange(option.number, patch)}
@@ -342,6 +381,7 @@ export default function FdcManage({ poll, onDone, onClose }) {
         </button>
       </div>
 
+      {!archived && (
       <div className="fdc-manage__danger">
         {confirm ? (
           <Confirm
@@ -373,6 +413,7 @@ export default function FdcManage({ poll, onDone, onClose }) {
           </>
         )}
       </div>
+      )}
     </section>
   )
 }

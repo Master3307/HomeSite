@@ -13,6 +13,8 @@ import FdcPoll from './FdcPoll'
 import FdcArchive from './FdcArchive'
 import FdcCreate from './FdcCreate'
 import FdcDrafts from './FdcDrafts'
+import FdcManualEntry from './FdcManualEntry'
+import { Link } from 'react-router'
 
 import '../../styles/fdc.css'
 
@@ -72,12 +74,20 @@ export default function Voting() {
   const latestEntry = summary?.polls[0]
   const canCreate = summary?.viewer?.canCreate === true
 
-  const showCreate = view === 'create' && canCreate
+  const showCreate = (view === 'create' || view === 'manual') && canCreate
   const showArchive = view === 'archive' && summary
 
   let content
 
-  if (showCreate) {
+  if (showCreate && view === 'manual') {
+    content = (
+      <FdcManualEntry
+        onCancel={() => setView('current')}
+        onCreated={() => reloadSummary()}
+        viewerDiscordId={account.user?.discordUserId}
+      />
+    )
+  } else if (showCreate) {
     content = (
       <FdcCreate
         onCancel={() => setView('current')}
@@ -193,6 +203,37 @@ export default function Voting() {
                 </span>
                 {t('fdc.newPoll', { defaultValue: 'New FDC' })}
               </button>
+            )}
+
+            {canCreate && (
+              <button
+                type="button"
+                className="fdc-button fdc-button--ghost fdc-button--small"
+                onClick={() => setView('manual')}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  history_edu
+                </span>
+                {t('fdc.manual.open', { defaultValue: 'Add past FDC' })}
+              </button>
+            )}
+
+            {account.user?.isAdminSession && (
+              <Link className="fdc-button fdc-button--ghost fdc-button--small" to="/admin-settings">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  admin_panel_settings
+                </span>
+                {t('fdc.adminSettings', { defaultValue: 'Admin settings' })}
+              </Link>
+            )}
+
+            {canCreate && (
+              <Link className="fdc-button fdc-button--ghost fdc-button--small" to="/activity">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  manage_history
+                </span>
+                {t('fdc.activityLog', { defaultValue: 'Activity log' })}
+              </Link>
             )}
           </div>
         )}
