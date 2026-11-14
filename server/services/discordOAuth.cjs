@@ -1,6 +1,8 @@
 const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { twoFactorEnabled, checkTwoFactor } = require("./totp.cjs");
+const { setting, origin } = require("../config.cjs");
 const rateLimit = require("express-rate-limit");
 
 const Database = require("better-sqlite3");
@@ -15,18 +17,30 @@ const DB_PATH = path.join(DB_DIR, "accounts.sqlite");
 const AVATAR_DIR = path.join(__dirname, "avatars");
 
 const AUTH_COOKIE_NAME = "__Secure-homesite_auth";
-const AUTH_COOKIE_DOMAIN = "master3307.org";
+// Shared with the site's subdomains (AUTH_COOKIE_DOMAIN); empty: host-only.
+const AUTH_COOKIE_DOMAIN = setting("AUTH_COOKIE_DOMAIN") || undefined;
+const ACCOUNT_API_HOST = (() => {
+  try {
+    return new URL(origin("ACCOUNT_API_ORIGIN")).hostname;
+  } catch {
+    return undefined;
+  }
+})();
 
 const OAUTH_STATE_COOKIE_NAME = "__Secure-homesite_oauth_state";
 const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
 
 /*
- * ADMIN_KEY login: signs in as the bot's own Discord identity ("Cultbot")
+ * ADMIN_KEY login: signs in as the bot's own Discord identity (BOT_DISPLAY_NAME)
  * with the owner role, without going through Discord OAuth.
  */
-const ADMIN_DISCORD_USER_ID = "1525217425987993752";
-const ADMIN_USERNAME = "cultbot";
-const ADMIN_DISPLAY_NAME = "Cultbot";
+// The bot's user ID is its application ID; "admin" when not configured yet.
+const ADMIN_DISCORD_USER_ID = setting("DISCORD_CLIENT_ID") || "admin";
+// Empty: derived from the account API's public address.
+const DISCORD_REDIRECT_URI =
+  setting("DISCORD_REDIRECT_URI") || (origin("ACCOUNT_API_ORIGIN") ? `${origin("ACCOUNT_API_ORIGIN")}/auth/discord/callback` : "");
+const ADMIN_DISPLAY_NAME = setting("BOT_DISPLAY_NAME");
+const ADMIN_USERNAME = ADMIN_DISPLAY_NAME.toLowerCase().replace(/[^a-z0-9_.]/g, "") || "admin";
 const ADMIN_KEY_MIN_LENGTH = 16;
 
 const ADMIN_SESSION_TTL_HOURS = Math.max(
@@ -384,7 +398,9 @@ async function downloadAndSaveAvatar(discordUser, userId) {
   return `avatars/${userId}.webp`;
 }
 
-function registerDiscordOAuth(app) {
+function registerDiscordOAuth(app, { activity = null } = {}) {
+  const logActivity = (entry) => activity?.append(entry);
+
   const authRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 20,
@@ -684,18 +700,20 @@ function registerDiscordOAuth(app) {
     });
 
     // Also clear an explicitly accounts-scoped version, if present.
-    res.clearCookie(AUTH_COOKIE_NAME, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      domain: "accounts-api.master3307.org",
-      path: "/",
-    });
+    if (ACCOUNT_API_HOST) {
+      res.clearCookie(AUTH_COOKIE_NAME, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        domain: ACCOUNT_API_HOST,
+        path: "/",
+      });
+    }
   }
 
   function setAuthCookie(res, rawToken, maxAge = getSessionMaxAgeMs()) {
     // Prevent old and new scopes from retaining the same cookie name.
-    clearLegacyHostAuthCookie(res);
+    if (AUTH_COOKIE_DOMAIN) clearLegacyHostAuthCookie(res);
 
     res.cookie(AUTH_COOKIE_NAME, rawToken, {
       httpOnly: true,
@@ -718,7 +736,7 @@ function registerDiscordOAuth(app) {
     });
 
     // Clear the old accounts-only cookie as well.
-    clearLegacyHostAuthCookie(res);
+    if (AUTH_COOKIE_DOMAIN) clearLegacyHostAuthCookie(res);
   }
 
   function setOAuthStateCookie(res, state) {
@@ -742,7 +760,8 @@ function registerDiscordOAuth(app) {
   }
 
   function toPublicUser(accountSession) {
-    const apiOrigin = String(process.env.API_ORIGIN || "").replace(/\/$/, "");
+    // Avatars are served by this API (/avatars); empty: relative, the site resolves it.
+    const apiOrigin = origin("ACCOUNT_API_ORIGIN");
 
     return {
       id: accountSession.user_id,
@@ -782,7 +801,7 @@ function registerDiscordOAuth(app) {
 
     const query = new URLSearchParams({
       client_id: process.env.DISCORD_CLIENT_ID,
-      redirect_uri: process.env.DISCORD_REDIRECT_URI,
+      redirect_uri: DISCORD_REDIRECT_URI,
       response_type: "code",
       scope: "identify",
       state,
@@ -822,7 +841,7 @@ function registerDiscordOAuth(app) {
             client_secret: process.env.DISCORD_CLIENT_SECRET,
             grant_type: "authorization_code",
             code,
-            redirect_uri: process.env.DISCORD_REDIRECT_URI,
+            redirect_uri: DISCORD_REDIRECT_URI,
           }),
         });
 
@@ -881,6 +900,12 @@ function registerDiscordOAuth(app) {
         const persistentSession = createPersistentSession(user.id);
 
         setAuthCookie(res, persistentSession.token);
+        logActivity({
+          level: "normal",
+          action: "login",
+          actor: { discordId: user.discord_user_id, name: user.display_name || user.username },
+          summary: "logged in with Discord",
+        });
 
         return res.redirect(
           process.env.FRONTEND_REDIRECT_URL || process.env.FRONTEND_ORIGIN,
@@ -941,7 +966,7 @@ function registerDiscordOAuth(app) {
   }
 
   app.get("/auth/admin", accountReadRateLimiter, (_req, res) => {
-    res.json({ enabled: Boolean(getAdminKey()) });
+    res.json({ enabled: Boolean(getAdminKey()), twoFactor: twoFactorEnabled() });
   });
 
   app.post(
@@ -956,6 +981,17 @@ function registerDiscordOAuth(app) {
       if (!adminKeyMatches(req.body?.key)) {
         console.warn(`[Accounts] Failed admin login from ${req.ip}.`);
         return res.status(401).json({ error: "Invalid admin code." });
+      }
+
+      // ADMIN_2FA=on: the authenticator code is needed too.
+      if (twoFactorEnabled()) {
+        if (!req.body?.code) {
+          return res.status(401).json({ error: "Enter the 2FA code from your authenticator app.", twoFactor: true });
+        }
+        if (!checkTwoFactor(req.body.code, "login")) {
+          console.warn(`[Accounts] Wrong admin 2FA code from ${req.ip}.`);
+          return res.status(401).json({ error: "Wrong or already used 2FA code.", twoFactor: true });
+        }
       }
 
       try {
@@ -989,6 +1025,12 @@ function registerDiscordOAuth(app) {
 
         setAuthCookie(res, session.token, session.maxAgeMs);
         console.log(`[Accounts] Admin session started from ${req.ip}.`);
+        logActivity({
+          level: "normal",
+          action: "login-admin",
+          actor: { discordId: user.discord_user_id, name: user.display_name || user.username },
+          summary: "logged in with the admin code",
+        });
 
         return res.json({
           authenticated: true,
@@ -1074,9 +1116,18 @@ function registerDiscordOAuth(app) {
     requireStorage,
     (req, res) => {
       const rawToken = req.cookies?.[AUTH_COOKIE_NAME];
+      const leaving = rawToken ? getAuthenticatedUser(rawToken) : null;
 
       deletePersistentSession(rawToken);
       clearAuthCookie(res);
+      if (leaving) {
+        logActivity({
+          level: "detail",
+          action: "logout",
+          actor: { discordId: leaving.discord_user_id, name: leaving.display_name || leaving.username },
+          summary: "logged out",
+        });
+      }
 
       return res.status(204).end();
     },
@@ -1120,5 +1171,6 @@ function registerDiscordOAuth(app) {
 
 module.exports = {
   ADMIN_DISCORD_USER_ID,
+  adminKeyMatches,
   registerDiscordOAuth,
 };

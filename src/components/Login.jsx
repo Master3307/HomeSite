@@ -15,6 +15,9 @@ function LoginPanel({ onClose }) {
 
   const [showAdmin, setShowAdmin] = useState(false)
   const [code, setCode] = useState('')
+  // Asked for once the server says 2FA is on.
+  const [needsTotp, setNeedsTotp] = useState(false)
+  const [totp, setTotp] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -44,9 +47,13 @@ function LoginPanel({ onClose }) {
     setError(null)
 
     try {
-      await loginWithAdminCode(code.trim())
+      await loginWithAdminCode(code.trim(), needsTotp ? totp.replace(/\s/g, '') : '')
       window.location.reload()
     } catch (loginError) {
+      if (loginError.twoFactor) {
+        setNeedsTotp(true)
+        setTotp('')
+      }
       setError(loginError.message)
       setBusy(false)
     }
@@ -107,10 +114,37 @@ function LoginPanel({ onClose }) {
                   disabled={busy}
                 />
 
-                <button type="submit" disabled={busy || !code.trim()}>
-                  {busy ? '…' : t('adminSubmit', { defaultValue: 'Log in' })}
-                </button>
+                {!needsTotp && (
+                  <button type="submit" disabled={busy || !code.trim()}>
+                    {busy ? '…' : t('adminSubmit', { defaultValue: 'Log in' })}
+                  </button>
+                )}
               </div>
+
+              {needsTotp && (
+                <>
+                  <label htmlFor={`${codeId}-totp`}>
+                    {t('twoFactor', { defaultValue: '2FA code (authenticator app)' })}
+                  </label>
+                  <div className="login-panel__row">
+                    <input
+                      id={`${codeId}-totp`}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="[0-9 ]*"
+                      maxLength={7}
+                      value={totp}
+                      onChange={(event) => setTotp(event.target.value)}
+                      autoFocus
+                      disabled={busy}
+                    />
+                    <button type="submit" disabled={busy || totp.replace(/\s/g, '').length !== 6}>
+                      {busy ? '…' : t('adminSubmit', { defaultValue: 'Log in' })}
+                    </button>
+                  </div>
+                </>
+              )}
 
               {error && (
                 <p className="login-panel__error" role="alert">

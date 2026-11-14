@@ -12,5 +12,6 @@
     "localAdminBadge": "Admin",
     "localAdminTitle": "Offline admin session in this browser",
     "unavailableTitle": "Login is currently unavailable",
-    "unavailableText": "Logging in with Discord is turned off for now. Everything else on the site works without an account."
+    "unavailableText": "Logging in with Discord is turned off for now. Everything else on the site works without an account.",
+    "twoFactor": "2FA code (authenticator app)"
 }
