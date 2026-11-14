@@ -12,6 +12,8 @@ import { SearchHighlight } from './components/Search.jsx'
 
 const themeSwitchHiddenPaths = [
   '/cult*',
+  // The hub has its own theme button and navigation.
+  '/hub*',
 
   // Everything below /cult:
   // '/cult/*',
@@ -66,7 +68,7 @@ export default function Root() {
       <SearchHighlight />
       <App />
       {!hideThemeSwitch && <ThemeSwitch />}
-      <LanguageSwitch />
+      {!matchesPath(pathname, '/hub*') && <LanguageSwitch />}
     </div>
   )
 }

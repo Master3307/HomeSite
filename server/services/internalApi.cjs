@@ -13,6 +13,7 @@ const {
   resolveEndTime,
   resolveTarget,
   resolveOptions,
+  resolveEmoji,
 } = require("./fdcSetup.cjs");
 const { isValidInternalKey, getBotInternalUrl } = require("./internalKey.cjs");
 
@@ -434,8 +435,17 @@ function startInternalApi(client) {
   };
 
   app.get("/health", (_req, res) => {
-    res.json({ ok: true, ready: client.isReady() });
+    res.json({
+      ok: true,
+      ready: client.isReady(),
+      ping: client.ws.ping,
+      uptimeMs: Math.round(process.uptime() * 1000),
+      memoryMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+    });
   });
+
+  // /hub data (members, live feed, commands); see hubBot.cjs.
+  require("./hubBot.cjs").registerHubRoutes(app, client, route);
 
   app.get(
     "/discord/widget",
@@ -587,16 +597,72 @@ function startInternalApi(client) {
         throw httpError(400, "Invalid changes.");
       }
 
+      const guild = await getGuild(client);
       const changes = await Promise.all(
         rawChanges.map(async (change) => ({
           number: Number(change?.number),
           description:
             change?.description === undefined ? undefined : String(change.description),
           media: change?.image ? await prepareUpload(change.image, change.number) : undefined,
+          // Emoji can only change on ended polls (archive edits).
+          emoji: change?.emoji
+            ? await resolveEmoji(client, guild, String(change.emoji).trim()).catch((error) => {
+                throw httpError(400, `Option ${change.number}: ${error.message}`);
+              })
+            : undefined,
         })),
       );
 
       return archive.editPoll(req.params.pollId, { actorId, changes });
+    }),
+  );
+
+  /* An FDC from before (Steam group chat …), added by an editor: archive only. */
+  app.post(
+    "/fdc/polls/manual",
+    route(async (req) => {
+      const { creatorId, endsAt, question, options: rawOptions, votes, winner } = req.body ?? {};
+      if (!isSnowflake(creatorId)) throw httpError(400, "Invalid editor.");
+      if (!Array.isArray(rawOptions)) throw httpError(400, "Missing options.");
+
+      const end = new Date(String(endsAt ?? ""));
+      if (Number.isNaN(end.getTime())) throw httpError(400, "Pick the day the FDC ended.");
+      if (end.getTime() > Date.now()) throw httpError(400, "Past FDCs only; use “New FDC” for new polls.");
+
+      const guild = await getGuild(client);
+      const options = await Promise.all(
+        rawOptions.map(async (option, index) => ({
+          description: option?.description,
+          // Optional: old Steam polls had no emoji.
+          emoji: String(option?.emoji ?? "").trim()
+            ? await resolveEmoji(client, guild, String(option.emoji).trim()).catch((error) => {
+                throw httpError(400, `Option ${index + 1}: ${error.message}`);
+              })
+            : null,
+          // Optional for past FDCs (then a name is required).
+          media: option?.image ? await prepareUpload(option.image, index + 1) : null,
+        })),
+      );
+
+      return archive.createManual({
+        endsAt: end,
+        question,
+        options,
+        votes: votes ? { label: votes.label, counts: votes.counts } : null,
+        winner: winner ?? null,
+        creatorId,
+        via: "web",
+      });
+    }),
+  );
+
+  /* Votes counted elsewhere (Steam group chat …), entered by an editor. */
+  app.post(
+    "/fdc/polls/:pollId/external-votes",
+    route(async (req) => {
+      const { actorId, source, label, counts } = req.body ?? {};
+      if (!isSnowflake(actorId)) throw httpError(400, "Invalid editor.");
+      return archive.setExternalVotes(req.params.pollId, { actorId, source, label, counts: counts ?? null });
     }),
   );
 

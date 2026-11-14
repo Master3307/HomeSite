@@ -1,4 +1,8 @@
+require("./services/processLog.cjs").capture("accounts");
 require("dotenv").config();
+const { origin } = require("./config.cjs");
+
+const path = require("node:path");
 
 const express = require("express");
 const cors = require("cors");
@@ -7,23 +11,24 @@ const cookieParser = require("cookie-parser");
 const { registerDiscordOAuth } = require("./services/discordOAuth.cjs");
 const { registerFdcWeb, LARGE_BODY_PATHS } = require("./services/fdcWeb.cjs");
 const { registerLobbyCat } = require("./services/lobbyCat.cjs");
+const { createActivityLog } = require("./services/activityLog.cjs");
+const { registerAdminBackup } = require("./services/adminBackup.cjs");
+const { registerHub } = require("./services/hub.cjs");
 
 const PORT = Number(process.env.ACCOUNT_API_PORT || 3002);
 
-const FRONTEND_ORIGIN = String(process.env.FRONTEND_ORIGIN || "").replace(
-  /\/$/,
-  "",
+// Default http://localhost:5173 (config/settings.cjs); set it with pnpm setup:gui.
+const FRONTEND_ORIGIN = origin("FRONTEND_ORIGIN");
+
+const allowedOrigins = new Set(
+  [
+    FRONTEND_ORIGIN,
+    // The profile API's /<id>-ui pages log in to the hub from there.
+    origin("PROFILE_API_ORIGIN"),
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+  ].filter(Boolean),
 );
-
-if (!FRONTEND_ORIGIN) {
-  throw new Error("Missing FRONTEND_ORIGIN");
-}
-
-const allowedOrigins = new Set([
-  FRONTEND_ORIGIN,
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-]);
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -41,7 +46,8 @@ const corsOptions = {
   origin: corsOrigin,
   credentials: true,
   methods: ["GET", "POST", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "X-Requested-With"],
+  allowedHeaders: ["Content-Type", "X-Requested-With", "X-Admin-Key", "X-Backup-Key", "X-Admin-Unlock"],
+  exposedHeaders: ["Content-Disposition", "X-Backup-Files", "X-Backup-Time-Differences"],
   optionsSuccessStatus: 204,
 };
 
@@ -85,10 +91,15 @@ app.use(cookieParser());
 
 app.use(requireTrustedMutation);
 
-const accounts = registerDiscordOAuth(app);
+// Append-only activity log (server/services/db/activity-log.jsonl).
+const activity = createActivityLog(path.join(__dirname, "services", "db"));
 
-registerFdcWeb(app, accounts);
+const accounts = registerDiscordOAuth(app, { activity });
+
+registerFdcWeb(app, { ...accounts, activity });
+registerAdminBackup(app, { ...accounts, activity });
 registerLobbyCat(app, accounts);
+const hub = registerHub(app, { ...accounts, activity, allowedOrigins });
 
 app.get("/health", (_req, res) => {
   res.json({
@@ -121,7 +132,10 @@ app.use((error, _req, res, _next) => {
   });
 });
 
-app.listen(PORT, "127.0.0.1", () => {
+const server = app.listen(PORT, "127.0.0.1", () => {
   console.log(`[Account API] Listening on http://127.0.0.1:${PORT}`);
   console.log(`[Account API] Allowed frontend origin: ${FRONTEND_ORIGIN}`);
 });
+
+// WebSockets for the /hub terminal.
+hub.attach(server);

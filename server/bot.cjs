@@ -5,6 +5,7 @@
  * @version 3.3.0
  */
 
+require("./services/processLog.cjs").capture("bot");
 require("dotenv").config();
 
 const fs = require("fs");

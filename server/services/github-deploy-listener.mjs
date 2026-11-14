@@ -1,6 +1,9 @@
 import http from "node:http";
+import processLog from "./processLog.cjs";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { spawn } from "node:child_process";
+
+processLog.capture("deploy");
 
 const host = "127.0.0.1";
 const port = 9080;
@@ -51,10 +54,14 @@ function startDeployment(commit, deliveryId) {
   const deployment = spawn(deployScript, [], {
     cwd: deployDirectory,
     detached: false,
-    stdio: "inherit",
+    // Piped (not inherited) so the deploy output also lands in .logs/services/deploy.log.
+    stdio: ["ignore", "pipe", "pipe"],
     shell: false,
     env: process.env,
   });
+
+  deployment.stdout.on("data", (chunk) => process.stdout.write(chunk));
+  deployment.stderr.on("data", (chunk) => process.stderr.write(chunk));
 
   deployment.once("error", (error) => {
     deploymentRunning = false;

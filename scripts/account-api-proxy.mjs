@@ -1,3 +1,4 @@
+import { request } from "node:http";
 /*
  * Same-origin proxy for the account API in `vite dev` and `vite preview`.
  *
@@ -166,20 +167,61 @@ export function accountApiProxy({ targets, frontendOrigin }) {
         res.setHeader("Set-Cookie", cookies.map((cookie) => rewriteSetCookie(cookie, secure)));
       }
 
-      res.end(Buffer.from(await upstream.arrayBuffer()));
+      // Streamed, so server-sent events (/hub live feed, logs, terminal) work too.
+      if (!upstream.body) return res.end();
+      res.flushHeaders?.();
+      req.on("close", () => upstream.body.cancel().catch(() => {}));
+      for await (const chunk of upstream.body) res.write(chunk);
+      res.end();
     } catch (error) {
+      // A stream that was already running just ends (closed tab, API restart).
+      if (res.headersSent) {
+        res.destroy();
+        return;
+      }
       checkedAt = 0; // re-check targets on the next request
       send(502, { error: `The account API is unreachable (${error.name}).` });
     }
+  }
+
+  /* WebSocket upgrades (the /hub terminal) are passed through as raw sockets. */
+  function upgrade(req, socket, head) {
+    const url = req.url ?? "";
+    if (!url.startsWith(`${ACCOUNT_API_PROXY_PREFIX}/hub/terminal/ws`)) return;
+    pickTarget().then((target) => {
+      if (!target) return socket.destroy();
+      const headers = { ...req.headers, origin: frontendOrigin };
+      if (headers.cookie) headers.cookie = restoreCookieHeader(headers.cookie);
+      const upstream = request(`${target}${url.slice(ACCOUNT_API_PROXY_PREFIX.length)}`, { method: "GET", headers });
+      upstream.on("upgrade", (response, upstreamSocket, upstreamHead) => {
+        socket.write(
+          `HTTP/1.1 101 Switching Protocols\r\n${Object.entries(response.headers)
+            .map(([name, value]) => `${name}: ${value}`)
+            .join("\r\n")}\r\n\r\n`,
+        );
+        if (upstreamHead?.length) socket.write(upstreamHead);
+        if (head?.length) upstreamSocket.write(head);
+        upstreamSocket.pipe(socket).pipe(upstreamSocket);
+        upstreamSocket.on("error", () => socket.destroy());
+        socket.on("error", () => upstreamSocket.destroy());
+      });
+      upstream.on("response", (response) => {
+        socket.end(`HTTP/1.1 ${response.statusCode} ${response.statusMessage}\r\nConnection: close\r\n\r\n`);
+      });
+      upstream.on("error", () => socket.destroy());
+      upstream.end();
+    });
   }
 
   return {
     name: "account-api-proxy",
     configureServer(server) {
       server.middlewares.use(middleware);
+      server.httpServer?.on("upgrade", upgrade);
     },
     configurePreviewServer(server) {
       server.middlewares.use(middleware);
+      server.httpServer?.on("upgrade", upgrade);
     },
   };
 }

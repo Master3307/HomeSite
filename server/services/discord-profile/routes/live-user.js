@@ -1,6 +1,7 @@
 import { Routes } from "discord.js";
 
-import { DISCORD_GUILD_ID } from "../config.js";
+import { DISCORD_GUILD_ID, DISCORD_USER_ID } from "../config.js";
+import { denyJson, hubAccess } from "../hub-auth.js";
 
 import {
   avatarDecorationUrl,
@@ -440,8 +441,13 @@ export function registerLiveUserRoute(app, { client }) {
       return next();
     }
 
-    console.log(`Live Discord user request: ${discordUserId}`);
+    // The site owner's card is public (home page); everyone else needs the hub key.
+    if (discordUserId !== DISCORD_USER_ID && !(await hubAccess(req))) {
+      return denyJson(req, res);
+    }
+
     res.setHeader("Cache-Control", "no-store");
+    res.vary("Cookie");
 
     try {
       const data = await getLiveUserResponse(client, discordUserId);

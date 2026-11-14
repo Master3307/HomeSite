@@ -9,52 +9,6 @@ import "/src/styles/LobbyCode.css";
 // The account API asks the bot for avatars and mention names; the static
 // file written by /lobby-code is the fallback when it is unreachable.
 const LOBBY_SOURCES = [`${ACCOUNT_API_URL}/discord/lobby`, "/lobby-code.json"];
-const DISCORD_API_URL = "https://discord-api.master3307.org";
-const REFRESH_INTERVAL = 30_000;
-
-function resolveAvatarUrl(payload) {
-  const objects = [
-    payload,
-    payload?.user,
-    payload?.data,
-    payload?.data?.user,
-    payload?.discord_user,
-    payload?.data?.discord_user,
-  ];
-
-  for (const object of objects) {
-    const candidates = [
-      object?.avatarUrl,
-      object?.avatarURL,
-      object?.avatar_url,
-      object?.avatar?.url,
-      object?.avatar,
-    ];
-
-    for (const candidate of candidates) {
-      if (typeof candidate !== "string" || !candidate.trim()) {
-        continue;
-      }
-
-      try {
-        const url = new URL(candidate, `${DISCORD_API_URL}/`);
-
-        if (
-          (candidate.startsWith("https://") ||
-            candidate.startsWith("http://") ||
-            candidate.startsWith("/")) &&
-          (url.protocol === "https:" || url.protocol === "http:")
-        ) {
-          return url.href;
-        }
-      } catch {
-        // Try the next candidate.
-      }
-    }
-  }
-
-  return null;
-}
 
 function getUpdatedDate(lobby) {
   if (!lobby) {
@@ -231,49 +185,11 @@ export default function LobbyCode() {
     };
   }, [reloadToken]);
 
+  // User lookups on the profile API need the hub key, so the bot's lobby
+  // data (updatedBy.avatarUrl) is the only avatar source.
   useEffect(() => {
-    const controller = new AbortController();
-    let stopped = false;
-
     setAvatar(null);
-    setAvatarFailed(false);
-
-    if (!updaterId || botAvatar) {
-      return () => {
-        stopped = true;
-        controller.abort();
-      };
-    }
-
-    async function loadAvatar() {
-      try {
-        const response = await fetch(
-          `${DISCORD_API_URL}/${encodeURIComponent(updaterId)}`,
-          { signal: controller.signal },
-        );
-
-        if (!response.ok) {
-          throw new Error(`Avatar request failed (${response.status}).`);
-        }
-
-        const data = await response.json();
-
-        if (!stopped) {
-          setAvatar(resolveAvatarUrl(data));
-        }
-      } catch (error) {
-        if (!stopped && error.name !== "AbortError") {
-          setAvatarFailed(true);
-        }
-      }
-    }
-
-    loadAvatar();
-
-    return () => {
-      stopped = true;
-      controller.abort();
-    };
+    setAvatarFailed(Boolean(updaterId) && !botAvatar);
   }, [updaterId, botAvatar]);
 
   useEffect(() => {

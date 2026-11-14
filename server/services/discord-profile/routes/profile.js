@@ -14,6 +14,7 @@ import {
   normalizeActivityKind,
   safeJsonParseArray,
 } from "../utils.js";
+import { requireHubAccess } from "../hub-auth.js";
 
 export function registerProfileRoutes(
   app,
@@ -75,7 +76,8 @@ export function registerProfileRoutes(
     }
   });
 
-  app.get("/history", async (req, res) => {
+  // Activity history: hub key only.
+  app.get("/history", requireHubAccess, async (req, res) => {
     try {
       const limit = Math.max(1, Math.min(500, Number(req.query.limit || 1000)));
 
