@@ -1,3 +1,4 @@
+import { siteConfig } from "./siteConfig";
 import {
   clearLocalAdminSession,
   getLocalAdminSession,
@@ -14,7 +15,7 @@ import {
  */
 export const ACCOUNT_API_URL =
   import.meta.env.VITE_ACCOUNT_API_URL ||
-  (import.meta.env.DEV ? "/account-api" : "https://accounts-api.master3307.org");
+  (import.meta.env.DEV ? "/account-api" : siteConfig.accountApiOrigin || "/account-api");
 
 const CSRF_HEADER_NAME = "X-Requested-With";
 const CSRF_HEADER_VALUE = "homesite-web";
@@ -26,7 +27,7 @@ export const LOGIN_AVAILABLE = true;
 
 /*
  * Cached avatars are served by the account API (/avatars/<id>.webp). The API
- * prefixes them with API_ORIGIN; when that isn't set the path is relative and
+ * prefixes them with ACCOUNT_API_ORIGIN; when that isn't set the path is relative and
  * would wrongly resolve against the website, so resolve it against the API.
  */
 function withApiAvatar(user) {
@@ -154,7 +155,11 @@ async function loginLocally(key) {
  * does not support admin login, the code is checked in the browser and a
  * local admin session is started instead (`user.local === true`).
  */
-export async function loginWithAdminCode(key) {
+/**
+ * Admin login. With ADMIN_2FA on, the server answers `twoFactor: true` and
+ * the login needs `code` (from the authenticator app) as well.
+ */
+export async function loginWithAdminCode(key, code = "") {
   let response;
 
   try {
@@ -163,7 +168,7 @@ export async function loginWithAdminCode(key) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ key }),
+      body: JSON.stringify(code ? { key, code } : { key }),
     });
   } catch {
     return loginLocally(key);
@@ -178,7 +183,7 @@ export async function loginWithAdminCode(key) {
 
   // The server rejected the code itself: do not fall back.
   if ([400, 401, 429].includes(response.status) && data?.error) {
-    throw new Error(data.error);
+    throw Object.assign(new Error(data.error), { twoFactor: Boolean(data.twoFactor) });
   }
 
   // Server down (5xx), admin login missing (404) or disabled: work locally.

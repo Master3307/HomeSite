@@ -2,15 +2,16 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_API_URL } from '../lib/account'
 import { getFaviconSrc } from '../lib/seasonalAssets'
+import { discordInviteUrl, siteConfig } from '../lib/siteConfig'
 
 import '../styles/discord-widget.css'
 
-const INVITE_CODE = '3vCGMRapHT'
-const GUILD_ID = '1479192792386375852'
+const INVITE_CODE = siteConfig.inviteCode
+const GUILD_ID = siteConfig.guildId
 const DISCORD_API = 'https://discord.com/api/v10'
 const CDN = 'https://cdn.discordapp.com'
 
-export const DISCORD_INVITE_URL = `https://discord.gg/${INVITE_CODE}`
+export const DISCORD_INVITE_URL = discordInviteUrl
 
 /*
  * Serverless fallback: Discord's public invite and widget endpoints allow

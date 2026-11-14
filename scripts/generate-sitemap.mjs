@@ -1,6 +1,11 @@
+import "dotenv/config";
+import { writeFile } from "node:fs/promises";
 import { Sitemap } from "@mongez/sitemap";
+import settings from "../config/settings.cjs";
 
-const sitemap = new Sitemap("https://home.master3307.org");
+// The site's address comes from FRONTEND_ORIGIN (.env).
+const SITE_URL = settings.resolve(process.env, "FRONTEND_ORIGIN").replace(/\/+$/, "");
+const sitemap = new Sitemap(SITE_URL);
 const today = new Date().toISOString();
 
 const routes = [
@@ -18,3 +23,4 @@ for (const route of routes) {
 }
 
 await sitemap.saveTo("./public/sitemap.xml");
+await writeFile("./public/robots.txt", `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);

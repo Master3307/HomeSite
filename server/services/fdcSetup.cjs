@@ -1,13 +1,15 @@
 const { PermissionFlagsBits } = require("discord.js");
+const { setting } = require("../config.cjs");
 
 /*
  * Shared validation for creating an FDC poll, used by the /fdc slash command
  * and by website-created polls (server/services/internalApi.cjs).
  */
 
-const MOD_ROLE_ID = "1479193858565865472";
-const ROLE_ID = "1483524975959736484";
-const DEFAULT_CHANNEL_ID = "1479219328258674709";
+const MOD_ROLE_ID = setting("MOD_ROLE_ID");
+// Optional: pinged for new polls and allowed to create them.
+const ROLE_ID = setting("FDC_ROLE_ID");
+const DEFAULT_CHANNEL_ID = setting("FDC_CHANNEL_ID");
 const DEFAULT_POLL_DURATION = 24 * 60 * 60 * 1000;
 const DEFAULT_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣"];
 const OPTION_COUNT = 4;
@@ -212,6 +214,9 @@ function resolveEndTime(endInput) {
 
 /** Fetches the FDC channel and role and checks the bot's permissions there. */
 async function resolveTarget(guild) {
+  if (!DEFAULT_CHANNEL_ID) {
+    throw new Error("FDC polls are not set up yet: set FDC_CHANNEL_ID (admin settings or pnpm setup:gui).");
+  }
   const channel = await guild.channels
     .fetch(DEFAULT_CHANNEL_ID)
     .catch(() => null);
@@ -242,10 +247,13 @@ async function resolveTarget(guild) {
     );
   }
 
+  // No FDC role: polls are posted without a ping.
+  if (!ROLE_ID) return { channel, role: null };
+
   const role = await guild.roles.fetch(ROLE_ID).catch(() => null);
 
   if (!role) {
-    throw new Error(`The required FDC role (${ROLE_ID}) was not found.`);
+    throw new Error(`The FDC role (${ROLE_ID}, FDC_ROLE_ID) was not found.`);
   }
 
   if (!role.mentionable && !permissions.has(PermissionFlagsBits.MentionEveryone)) {
@@ -322,4 +330,5 @@ module.exports = {
   resolveEndTime,
   resolveTarget,
   resolveOptions,
+  resolveEmoji,
 };

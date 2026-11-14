@@ -196,3 +196,6 @@ typings/
 # MkDocs #
 ##########
 /site
+
+# pnpm setup:gui / setup:cli answers
+.setup-state.json

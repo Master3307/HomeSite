@@ -1,0 +1,11 @@
+/* Admin settings page (src/pages/AdminSettings.jsx); the workspace itself: settings-workspace.css. */
+
+.as-page.is-unlocked {
+  width: min(1240px, 100%);
+}
+
+.as-backup {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}

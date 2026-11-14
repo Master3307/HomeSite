@@ -1,8 +1,9 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { EmbedBuilder } = require("discord.js");
+const { setting } = require("../config.cjs");
 
-const BIRTHDAY_CHANNEL_ID = "1542832215195648030";
+const BIRTHDAY_CHANNEL_ID = setting("BIRTHDAY_CHANNEL_ID");
 
 /*
  * Normal randomized birthday-message pool.
@@ -309,6 +310,7 @@ function markBirthdaysAsWished(birthdays, now = new Date()) {
 
 async function getBirthdayChannel(client) {
   let channel;
+  if (!BIRTHDAY_CHANNEL_ID) return null; // birthdays are off
 
   try {
     channel = await client.channels.fetch(BIRTHDAY_CHANNEL_ID);

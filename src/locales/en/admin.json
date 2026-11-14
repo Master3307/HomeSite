@@ -1,0 +1,9 @@
+{
+    "title": "Admin settings",
+    "back": "Back to the cult",
+    "intro": "Everything this site, its APIs and the bot are configured with, plus backups. Only the admin account can open it.",
+    "twoFactorOn": "2FA is on",
+    "twoFactorOff": "2FA is off",
+    "loading": "Loading…",
+    "adminOnly": "Only the admin account (log in with the admin code) can open the admin settings."
+}

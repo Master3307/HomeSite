@@ -2,8 +2,9 @@ import { memo, useEffect, useRef, useState } from 'react'
 import ProfilePicture from './ProfilePicture.jsx'
 import OverflowPan from './OverflowPan.jsx'
 import { useTranslation } from 'react-i18next'
+import { siteConfig } from '../lib/siteConfig'
 
-const DISCORD_USER_ID = '817826076486139985'
+const DISCORD_USER_ID = siteConfig.ownerDiscordId
 const SPOTIFY_PROGRESS_DRIFT_MS = 10_000
 const PROFILE_POLL_INTERVAL_MS = 6_500
 
@@ -734,8 +735,7 @@ export default function DiscordProfileCard() {
   const { t } = useTranslation('discord')
 
   const DISCORD_API_URL =
-    import.meta.env.VITE_DISCORD_API_URL ??
-    'https://discord-api.master3307.org'
+    import.meta.env.VITE_DISCORD_API_URL || siteConfig.profileApiOrigin || '/api'
 
   const lastProfileSignatureRef = useRef('')
   const profileRef = useRef(null)

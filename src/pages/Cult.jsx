@@ -11,6 +11,7 @@ import {
   getDiscordPicSrc,
   getFaviconSrc,
 } from '/src/lib/seasonalAssets'
+import { siteConfig } from '/src/lib/siteConfig'
 import '/src/styles/cult.css'
 
 export default function Home() {
@@ -71,19 +72,21 @@ export default function Home() {
         <Voting />
       </main>
 
-      <footer className="cult-footer">
-        <p>
-          <span className="material-symbols-outlined" aria-hidden="true">code</span>
-          <Trans
-            ns="cult"
-            i18nKey="footer.source"
-            defaults="View source on <0>GitHub</0>"
-            components={[
-              <a key="github" href="https://github.com/Master3307/HomeSite" target="_blank" rel="noopener noreferrer" />,
-            ]}
-          />
-        </p>
-      </footer>
+      {siteConfig.sourceRepoUrl && (
+        <footer className="cult-footer">
+          <p>
+            <span className="material-symbols-outlined" aria-hidden="true">code</span>
+            <Trans
+              ns="cult"
+              i18nKey="footer.source"
+              defaults="View source on <0>GitHub</0>"
+              components={[
+                <a key="github" href={siteConfig.sourceRepoUrl} target="_blank" rel="noopener noreferrer" />,
+              ]}
+            />
+          </p>
+        </footer>
+      )}
     </>
   )
 }

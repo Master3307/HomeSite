@@ -2,6 +2,7 @@ const { Collection, ChannelType } = require("discord.js");
 
 const levels = require("../services/levels.cjs");
 const minecraftStatus = require("../services/minecraftStatus.cjs");
+const { setting } = require("../config.cjs");
 
 const prefix = process.env.BOT_PREFIX || "!";
 const owners = process.env.BOT_OWNERS ? process.env.BOT_OWNERS.split(",") : [];
@@ -12,8 +13,8 @@ const {
   TARGET_CHANNEL_ID,
 } = require("../interactions/slash/utility/lobby-code.cjs");
 const lobbySubmissions = require("../services/lobbySubmissions.cjs");
-const STICKY_CHANNEL_ID = "1479219328258674709";
-const MINECRAFT_STATUS_THREAD_ID = "1543613705651093624";
+const STICKY_CHANNEL_ID = setting("STICKY_CHANNEL_ID");
+const MINECRAFT_STATUS_THREAD_ID = setting("MINECRAFT_STATUS_THREAD_ID");
 
 const { sendStickyMessageToChannel } = require("../services/stickyMessage.cjs");
 
@@ -59,7 +60,7 @@ module.exports = {
       - Queue a debounced refresh/repost after chat settles.
       - The service deletes the old card and sends the replacement at bottom.
     */
-    if (message.channelId === MINECRAFT_STATUS_THREAD_ID) {
+    if (MINECRAFT_STATUS_THREAD_ID && message.channelId === MINECRAFT_STATUS_THREAD_ID) {
       try {
         minecraftStatus.bumpMinecraftStatusSoon(client);
       } catch (error) {
@@ -81,7 +82,7 @@ module.exports = {
       It deletes only that recorded ID. It will never search for and delete
       arbitrary messages authored by this bot.
     */
-    if (message.channelId === STICKY_CHANNEL_ID) {
+    if (STICKY_CHANNEL_ID && message.channelId === STICKY_CHANNEL_ID) {
       try {
         await sendStickyMessageToChannel(client, message.channelId);
       } catch (error) {
@@ -91,7 +92,7 @@ module.exports = {
       return;
     }
 
-    if (guild && channel.id === TARGET_CHANNEL_ID) {
+    if (guild && TARGET_CHANNEL_ID && channel.id === TARGET_CHANNEL_ID) {
       // First line is the code, the rest is the description (#27).
       const { code, description } = lobbySubmissions.parseLobbyMessage(content);
 

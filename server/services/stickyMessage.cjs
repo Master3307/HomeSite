@@ -1,10 +1,10 @@
 const { getSticky, setSticky, removeSticky } = require("./sticky.cjs");
+const { setting } = require("../config.cjs");
 
-const STICKY_CHANNEL_ID = "1479219328258674709";
+const STICKY_CHANNEL_ID = setting("STICKY_CHANNEL_ID");
 
-const STICKY_TEXT =
-  "Vote for a Friday dress code **here** every Thursday!\n" +
-  "Suggest Outfits in https://discord.com/channels/1479192792386375852/1479366652239024239!";
+// "\n" in .env becomes a line break.
+const STICKY_TEXT = setting("STICKY_MESSAGE").replace(/\\n/g, "\n");
 
 /*
   Prevent simultaneous messageCreate events from both trying to:
@@ -136,6 +136,7 @@ async function sendStickyMessageToChannel(client, channelOrId) {
 }
 
 async function sendStickyToStickyChannel(client) {
+  if (!STICKY_CHANNEL_ID || !STICKY_TEXT) return null;
   return sendStickyMessageToChannel(client, STICKY_CHANNEL_ID);
 }
 

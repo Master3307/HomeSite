@@ -5,16 +5,19 @@ const dns = require("node:dns").promises;
 const { JavaPingClient } = require("craftping");
 const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
 
+const { setting, number } = require("../config.cjs");
+
+// Empty MINECRAFT_HOST: the status updater stays off.
 const MINECRAFT_SERVER = {
-  host: "nigelserver2026.aternos.me",
-  port: 25565,
+  host: setting("MINECRAFT_HOST"),
+  port: number("MINECRAFT_PORT") || 25565,
 };
 
 const STATUS_FILE = path.join(__dirname, "db", "minecraft-status.json");
 const THUMBNAIL_FILE = path.join(__dirname, "db", "minecraft-server.png");
 
 const DEFAULT_STATE = {
-  threadId: "1543613705651093624",
+  threadId: setting("MINECRAFT_STATUS_THREAD_ID"),
   messageId: null,
 };
 
@@ -421,6 +424,10 @@ function bumpMinecraftStatusSoon(client) {
 }
 
 function startMinecraftStatusUpdater(client) {
+  if (!MINECRAFT_SERVER.host || !DEFAULT_STATE.threadId) {
+    return null;
+  }
+
   if (intervalHandle) {
     return intervalHandle;
   }

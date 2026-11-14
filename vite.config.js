@@ -3,6 +3,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { accountApiProxy } from "./scripts/account-api-proxy.mjs";
 import { previewCacheHeaders } from "./scripts/preview-cache-headers.mjs";
+import settings from "./config/settings.cjs";
 
 const ADMIN_KEY_ITERATIONS = 600_000;
 
@@ -22,6 +23,9 @@ function adminKeyVerifier(adminKey) {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  // Public settings (config/settings.cjs, `public: true`) for src/lib/siteConfig.js.
+  const siteConfig = settings.publicConfig(env);
+  const accountApiOrigin = siteConfig.ACCOUNT_API_ORIGIN.replace(/\/+$/, "");
 
   return {
     plugins: [
@@ -33,7 +37,7 @@ export default defineConfig(({ mode }) => {
       accountApiProxy({
         targets: (
           env.ACCOUNT_API_PROXY_TARGETS ||
-          `http://127.0.0.1:${env.ACCOUNT_API_PORT || 3002},https://accounts-api.master3307.org`
+          [`http://127.0.0.1:${env.ACCOUNT_API_PORT || 3002}`, accountApiOrigin].filter(Boolean).join(",")
         )
           .split(",")
           .map((target) => target.trim())
@@ -43,6 +47,7 @@ export default defineConfig(({ mode }) => {
     ],
     base: "/",
     define: {
+      "import.meta.env.SITE_CONFIG": JSON.stringify(siteConfig),
       "import.meta.env.VITE_ADMIN_KEY_VERIFIER": JSON.stringify(
         adminKeyVerifier(env.ADMIN_KEY),
       ),
@@ -51,8 +56,14 @@ export default defineConfig(({ mode }) => {
       host: true,
       proxy: {
         "/api": {
-          target: "http://127.0.0.1:3001",
+          target: `http://127.0.0.1:${env.PORT || 3001}`,
           changeOrigin: true,
+        },
+        // The profile API without a prefix (its /<id>-ui pages, used by /hub in dev).
+        "/profile-api": {
+          target: `http://127.0.0.1:${env.PORT || 3001}`,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/profile-api/, "") || "/",
         },
       },
     },

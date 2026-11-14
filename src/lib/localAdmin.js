@@ -1,3 +1,4 @@
+import { siteConfig } from "./siteConfig";
 /*
  * Local admin mode: the admin code also works when the account API is
  * unreachable. The code is checked in the browser against a salted PBKDF2
@@ -13,12 +14,12 @@ const SESSION_MS = 12 * 60 * 60 * 1000;
 
 export const LOCAL_ADMIN_USER = Object.freeze({
   id: "local-admin",
-  discordUserId: "1525217425987993752",
+  discordUserId: siteConfig.botUserId || "admin",
   role: "owner",
   isAdminSession: true,
   local: true,
-  username: "cultbot",
-  displayName: "Cultbot",
+  username: siteConfig.botName.toLowerCase().replace(/[^a-z0-9_.]/g, "") || "admin",
+  displayName: siteConfig.botName,
   avatarUrl: null,
   settings: {},
 });

@@ -1,6 +1,7 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { setting } = require("../config.cjs");
 const {
   ActionRowBuilder,
   ButtonBuilder,
@@ -41,7 +42,7 @@ const REQUEST_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const LIMITS = { code: 100, description: 1000, name: 32 };
 
 // The cult leader (RottedFox13) can always post directly, roles or not.
-const LEADER_DISCORD_ID = "1233908962550616085";
+const LEADER_DISCORD_ID = setting("COMMUNITY_LEADER_ID");
 
 let storeQueue = Promise.resolve();
 
@@ -132,7 +133,7 @@ async function sendApprovalRequest(client, request) {
       (fromChannel
         ? "A non-privileged user submitted a lobby code that requires approval.\n\n"
         : "A lobby code was submitted on the website and requires approval.\n\n") +
-        `<@&${REVIEW_ROLE_ID}>`,
+        (REVIEW_ROLE_ID ? `<@&${REVIEW_ROLE_ID}>` : ""),
     )
     .addFields(
       {
@@ -223,7 +224,7 @@ async function submitFromWeb(client, guild, input) {
 
   if (mode === "user") {
     const member = await guild.members.fetch(userId).catch(() => null);
-    direct = userId === LEADER_DISCORD_ID || hasPrivilegedRole(member);
+    direct = !REVIEW_CHANNEL_ID || (LEADER_DISCORD_ID && userId === LEADER_DISCORD_ID) || hasPrivilegedRole(member);
   }
 
   if (direct) {

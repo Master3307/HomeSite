@@ -1,11 +1,12 @@
-const JOIN_ROLE_ID = "1479193968679059647";
+const { setting } = require("../config.cjs");
+const JOIN_ROLE_ID = setting("JOIN_ROLE_ID");
 
 module.exports = {
   name: "guildMemberAdd",
   once: false,
 
   async execute(member) {
-    if (member.user.bot) return;
+    if (member.user.bot || !JOIN_ROLE_ID) return;
 
     try {
       const role = member.guild.roles.cache.get(JOIN_ROLE_ID);

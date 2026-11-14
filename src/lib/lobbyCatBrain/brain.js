@@ -1,3 +1,4 @@
+import { siteConfig } from "../siteConfig";
 import { getSavedGuestName } from "../lobby";
 import {
   addMilestone,
@@ -46,15 +47,15 @@ let pageVisit = null;
 
 // Special people, matched by Discord ID (never by name):
 // LobbyCat's owner (~ MrKoby07 ~) and the cult leader (RottedFox13, "Fox").
-export const OWNER_DISCORD_ID = "817826076486139985";
-export const LEADER_DISCORD_ID = "1233908962550616085";
+export const OWNER_DISCORD_ID = siteConfig.ownerDiscordId;
+export const LEADER_DISCORD_ID = siteConfig.leaderDiscordId;
 const LEADER_NAME = "Fox";
 
 function accountKind(account) {
   if (!account) return "guest";
   if (account.isAdminSession) return "admin";
-  if (account.discordUserId === LEADER_DISCORD_ID) return "leader";
-  if (account.discordUserId === OWNER_DISCORD_ID) return "owner";
+  if (LEADER_DISCORD_ID && account.discordUserId === LEADER_DISCORD_ID) return "leader";
+  if (OWNER_DISCORD_ID && account.discordUserId === OWNER_DISCORD_ID) return "owner";
   return "user";
 }
 

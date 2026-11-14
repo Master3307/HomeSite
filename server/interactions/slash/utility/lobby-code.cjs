@@ -9,17 +9,16 @@ const {
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
+const { setting, ids } = require("../../../config.cjs");
 
-const TARGET_CHANNEL_ID = "1479194712111059137";
+const TARGET_CHANNEL_ID = setting("LOBBY_CHANNEL_ID");
 // Where lobby codes from unprivileged users are reviewed.
-const REVIEW_CHANNEL_ID = "1532015231671472399";
-const REVIEW_ROLE_ID = "1479193560778805300";
-const PING_ROLE_ID = "1487023716658319400";
-const PRIVILEGED_ROLE_IDS = [
-  "1479193560778805300",
-  "1479193858565865472",
-  "1479222319711780904",
-];
+// Empty review channel: everyone posts directly.
+const REVIEW_CHANNEL_ID = setting("LOBBY_REVIEW_CHANNEL_ID");
+const REVIEW_ROLE_ID = setting("LOBBY_REVIEW_ROLE_ID");
+const PING_ROLE_ID = setting("LOBBY_PING_ROLE_ID");
+// Roles whose codes skip the review (LOBBY_TRUSTED_ROLE_IDS).
+const PRIVILEGED_ROLE_IDS = ids("LOBBY_TRUSTED_ROLE_IDS");
 
 const LOBBY_CODE_FILES = [
   path.resolve(__dirname, "../../../services/db/lobby-code.json"),
@@ -150,10 +149,10 @@ async function performLobbyUpdate(
   }
 
   const sentMessage = await channel.send({
-    content: `||<@&${PING_ROLE_ID}>||\n**Current Lobby Code:**`,
+    content: `${PING_ROLE_ID ? `||<@&${PING_ROLE_ID}>||\n` : ""}**Current Lobby Code:**`,
     embeds: [embed],
     allowedMentions: {
-      roles: [PING_ROLE_ID],
+      roles: PING_ROLE_ID ? [PING_ROLE_ID] : [],
       users: updatedById ? [updatedById] : [],
     },
   });

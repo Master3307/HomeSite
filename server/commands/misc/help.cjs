@@ -1,7 +1,8 @@
 const { EmbedBuilder, PermissionFlagsBits } = require("discord.js");
+const { setting } = require("../../config.cjs");
 
 const prefix = process.env.BOT_PREFIX || "!";
-const MOD_ROLE_ID = "1479193858565865472";
+const MOD_ROLE_ID = setting("MOD_ROLE_ID");
 
 const COLORS = {
   primary: 0x5865f2,

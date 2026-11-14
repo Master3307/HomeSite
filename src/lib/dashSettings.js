@@ -1,3 +1,4 @@
+import { siteConfig } from './siteConfig'
 import { useSyncExternalStore } from 'react'
 
 /*
@@ -18,14 +19,11 @@ export const DASH_SETTINGS_KEY = 'dashSettings'
 export const DASH_SETTINGS_VERSION = 1
 export const SEARCH_PLACEHOLDER = '%s'
 
+// SEARCH_ENGINE_URL / SEARCH_ENGINE_NAME in .env add your own engine first.
 export const BUILTIN_PROVIDERS = [
-  {
-    id: 'searxng',
-    name: 'MasterXNG',
-    url: 'https://search.master3307.org/search?q=%s',
-    keyword: 'sx',
-    builtin: true,
-  },
+  ...(siteConfig.searchEngineUrl
+    ? [{ id: 'searxng', name: siteConfig.searchEngineName, url: siteConfig.searchEngineUrl, keyword: 'sx', builtin: true }]
+    : []),
   {
     id: 'duckduckgo',
     name: 'DuckDuckGo',

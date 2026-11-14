@@ -3,10 +3,12 @@ const path = require("node:path");
 const { parse } = require("csv-parse/sync");
 const { stringify } = require("csv-stringify/sync");
 const { EmbedBuilder } = require("discord.js");
+const { setting, ids } = require("../config.cjs");
 
 const DATA_FILE = path.join(__dirname, "db", "levels.csv");
 
-const LEVEL_UP_CHANNEL_ID = "1483528579722514472";
+// Empty: XP and roles still work, level-ups are just not announced.
+const LEVEL_UP_CHANNEL_ID = setting("LEVEL_UP_CHANNEL_ID");
 
 const MAX_LEVEL = 13;
 
@@ -20,60 +22,27 @@ const MIN_MESSAGE_LENGTH = 7;
 const MIN_MESSAGE_POINTS = 13;
 const MAX_MESSAGE_POINTS = 26;
 
-const LEVEL_REWARDS = {
-  1: {
-    roleId: "1537933506766966924",
-    label: "Meowcomer",
-  },
-  2: {
-    roleId: "1537935662915780739",
-    label: "Black Cat",
-  },
-  3: {
-    roleId: "1537935742557364326",
-    label: "Talcative",
-  },
-  4: {
-    roleId: "1537935823981387786",
-    label: "Seeker of News",
-  },
-  5: {
-    roleId: "1537936248281497610",
-    label: "Gossip Spreader",
-  },
-  6: {
-    roleId: "1537936305147744336",
-    label: "Purrfect Listener",
-  },
-  7: {
-    roleId: "1537936407048359976",
-    label: "Knowledgeable Cat",
-  },
-  8: {
-    roleId: "1537936470109855774",
-    label: "Cult Worshiper",
-  },
-  9: {
-    roleId: "1537936530645975201",
-    label: "True Cult Member",
-  },
-  10: {
-    roleId: "1537936583091552470",
-    label: "Taught Leader",
-  },
-  11: {
-    roleId: "1537936674338639933",
-    label: "Wisdom Keeper",
-  },
-  12: {
-    roleId: "1537936764101206096",
-    label: "Catful Diety",
-  },
-  13: {
-    roleId: "1537936830937440266",
-    label: "Bastet",
-  },
-};
+// Level names; the role for each level comes from LEVEL_ROLE_IDS (in order).
+const LEVEL_LABELS = [
+  "Meowcomer",
+  "Black Cat",
+  "Talcative",
+  "Seeker of News",
+  "Gossip Spreader",
+  "Purrfect Listener",
+  "Knowledgeable Cat",
+  "Cult Worshiper",
+  "True Cult Member",
+  "Taught Leader",
+  "Wisdom Keeper",
+  "Catful Diety",
+  "Bastet",
+];
+const LEVEL_ROLE_IDS = ids("LEVEL_ROLE_IDS");
+
+const LEVEL_REWARDS = Object.fromEntries(
+  LEVEL_LABELS.map((label, index) => [index + 1, { roleId: LEVEL_ROLE_IDS[index] || null, label }]),
+);
 
 const users = new Map();
 const messageCooldowns = new Map();
@@ -319,6 +288,11 @@ async function grantRewards(member, oldLevel, newLevel) {
 }
 
 async function announceLevelUp(member, oldLevel, newLevel, points) {
+  if (!LEVEL_UP_CHANNEL_ID) {
+    await grantRewards(member, oldLevel, newLevel);
+    return;
+  }
+
   const channel = await member.client.channels
     .fetch(LEVEL_UP_CHANNEL_ID)
     .catch(() => null);

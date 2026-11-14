@@ -438,6 +438,9 @@ async function main() {
 
   await commandCheck("oxlint", "Oxlint", "pnpm", ["exec", "oxlint", "."]);
 
+  // .env.example is generated from config/settings.cjs (pnpm env:example).
+  await commandCheck("env-example", ".env.example matches config/settings.cjs", "node", ["scripts/env-example.cjs", "--check"]);
+
   await runCheck("syntax", "JavaScript syntax", async () => {
     const files = findJavaScriptFiles(projectRoot);
 

@@ -1,5 +1,24 @@
 require("dotenv").config();
 
+/*
+ * Imports FDC polls into the archive (server/services/db/fdc-polls).
+ *
+ *   pnpm fdc:import                     Discord: the old bot's polls and native
+ *                                       Discord polls in the FDC channel
+ *   pnpm fdc:import --manifest f.json   FDCs that only exist elsewhere (the
+ *                                       oldest ones are Steam group chat polls);
+ *                                       no Discord connection needed
+ *   … --with-discord                    with --manifest: also scan Discord
+ *   … --dry  (or --dry-run)             only report what would be imported
+ *
+ * Steam has no API for group chat messages or polls, so a manifest lists
+ * them by hand (see scripts/fdc-manifest.example.json): per poll the date,
+ * and per option, as far as known, an image file, a name, an emoji and a
+ * vote count (an option needs at least an image or a name). When the counts are lost, give `"winner": <number>` (or a single
+ * option, which is then the winner). Polls whose date is already archived
+ * are skipped.
+ */
+
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { once } = require("node:events");
@@ -14,15 +33,18 @@ const {
 
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 
-const ROOT = path.join(PROJECT_ROOT, "server", "services", "db", "fdc-polls");
+const ROOT = process.env.FDC_ARCHIVE_DIR
+  ? path.resolve(process.env.FDC_ARCHIVE_DIR)
+  : path.join(PROJECT_ROOT, "server", "services", "db", "fdc-polls");
 
 const SUMMARY_PATH = path.join(ROOT, "summary.json");
 const LOCK_PATH = path.join(ROOT, ".import.lock");
 const REPORT_PATH = path.join(ROOT, "import-report.json");
 
-const CHANNEL_ID = process.env.FDC_IMPORT_CHANNEL_ID || "1479219328258674709";
+const CHANNEL_ID = process.env.FDC_IMPORT_CHANNEL_ID || process.env.FDC_CHANNEL_ID || "";
 
-const AUTHOR_ID = process.env.FDC_IMPORT_AUTHOR_ID || "1525217425987993752";
+// The bot posts the FDC messages; its user ID is the application ID.
+const AUTHOR_ID = process.env.FDC_IMPORT_AUTHOR_ID || process.env.DISCORD_CLIENT_ID || "";
 
 const TIME_ZONE = "Europe/Berlin";
 const MAX_IMAGE_BYTES = 30 * 1024 * 1024;
@@ -30,11 +52,27 @@ const MAX_IMAGE_BYTES = 30 * 1024 * 1024;
 const MEDIA_WINDOW_MS = 5 * 60 * 1000;
 const RESULTS_WINDOW_MS = 10 * 60 * 1000;
 
-const DRY_RUN = process.argv.includes("--dry-run");
+// `--dry` / `--dry-run`: report what would be imported, write nothing.
+const DRY_RUN = process.argv.includes("--dry-run") || process.argv.includes("--dry");
+
+/*
+ * Native Discord polls (the FDCs from before the bot): 4–6 answers, the
+ * option images in the poll author's messages right before (or after) it.
+ */
+const NATIVE_MIN_OPTIONS = 4;
+const NATIVE_MAX_OPTIONS = 6;
+const NATIVE_MEDIA_WINDOW_MS = 60 * 60 * 1000;
+const DEFAULT_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"];
+
+const MANIFEST = (() => {
+  const index = process.argv.indexOf("--manifest");
+  return index !== -1 ? process.argv[index + 1] : null;
+})();
+const USE_DISCORD = !MANIFEST || process.argv.includes("--with-discord");
 
 const token = process.env.DISCORD_BOT_TOKEN;
 
-if (!token) {
+if (USE_DISCORD && !token) {
   throw new Error("Missing DISCORD_BOT_TOKEN.");
 }
 
@@ -56,6 +94,7 @@ const report = {
   authorId: AUTHOR_ID,
   scannedMessages: 0,
   detectedPolls: 0,
+  detectedNativePolls: 0,
   imported: [],
   skipped: [],
   failed: [],
@@ -397,10 +436,21 @@ function chooseMedia(poll, media, polls) {
   return candidates[0];
 }
 
+function imageAttachments(message) {
+  return [...message.attachments.values()].filter(
+    (attachment) =>
+      attachment.contentType?.startsWith("image/") ||
+      /\.(png|jpe?g|gif|webp|avif)$/i.test(attachment.name ?? ""),
+  );
+}
+
 async function scanChannel(channel) {
   const polls = [];
   const media = [];
   const results = [];
+  // Every message, oldest first after sorting (to find images next to native polls).
+  const timeline = [];
+  const nativePolls = [];
 
   let before;
 
@@ -416,6 +466,26 @@ async function scanChannel(channel) {
     report.scannedMessages += batch.size;
 
     for (const message of batch.values()) {
+      timeline.push({
+        id: message.id,
+        authorId: message.author.id,
+        at: message.createdTimestamp,
+        images: imageAttachments(message),
+        message,
+      });
+
+      if (message.poll) {
+        const count = message.poll.answers.size;
+        if (count >= NATIVE_MIN_OPTIONS && count <= NATIVE_MAX_OPTIONS) {
+          nativePolls.push(message);
+        } else {
+          report.skipped.push({
+            messageId: message.id,
+            reason: `native_poll_with_${count}_options`,
+          });
+        }
+      }
+
       if (
         message.author.id !== AUTHOR_ID ||
         !message.author.bot ||
@@ -466,7 +536,11 @@ async function scanChannel(channel) {
 
   report.detectedPolls = polls.length;
 
-  return { polls, media, results };
+  timeline.sort(compareIds);
+  nativePolls.sort(compareIds);
+  report.detectedNativePolls = nativePolls.length;
+
+  return { polls, media, results, timeline, nativePolls };
 }
 
 async function downloadImage(attachment, destination) {
@@ -722,7 +796,7 @@ async function rebuildSummary() {
   for (const poll of polls) {
     for (const event of poll.voteHistory) {
       if (
-        !["add", "switch", "recovered_add", "recovered_switch"].includes(
+        !["add", "switch", "recovered_add", "recovered_switch", "imported"].includes(
           event.action,
         )
       ) {
@@ -1006,6 +1080,450 @@ async function buildRecord(poll, mediaMessage, result, end, staging) {
   };
 }
 
+/* ---------- native Discord polls ---------- */
+
+/** A poll answer's emoji in the archive's shape (default keycap when it has none). */
+function nativeEmoji(raw, number) {
+  if (raw?.id) {
+    const markup = `<${raw.animated ? "a" : ""}:${raw.name}:${raw.id}>`;
+    return {
+      requested: markup,
+      display: `:${raw.name}:`,
+      discord: markup,
+      name: raw.name,
+      id: raw.id,
+      animated: Boolean(raw.animated),
+      source: "discord_poll",
+      key: `custom:${raw.id}`,
+      reaction: raw.id,
+    };
+  }
+  return parseEmoji(raw?.name || DEFAULT_EMOJIS[number - 1]);
+}
+
+/*
+ * The option images of a native poll: images from the poll author's
+ * messages directly before the poll (the usual "Options:" post), or right
+ * after it, within an hour. The number of images has to match the options
+ * exactly, so a random image is never picked up by mistake.
+ */
+function findNativeImages(message, timeline) {
+  const count = message.poll.answers.size;
+  const index = timeline.findIndex((entry) => entry.id === message.id);
+  const author = message.author.id;
+
+  const collect = (step) => {
+    const found = [];
+    for (let i = index + step; i >= 0 && i < timeline.length; i += step) {
+      const entry = timeline[i];
+      if (entry.authorId !== author) break;
+      if (Math.abs(entry.at - message.createdTimestamp) > NATIVE_MEDIA_WINDOW_MS) break;
+      if (entry.message.poll) break;
+      if (entry.images.length) found.push(entry);
+      if (found.reduce((sum, item) => sum + item.images.length, 0) >= count) break;
+    }
+    // Chronological order, attachments in their message order.
+    return (step < 0 ? found.reverse() : found);
+  };
+
+  const flatten = (entries) => entries.flatMap((entry) => entry.images.map((image) => ({ image, message: entry.message })));
+
+  const before = flatten(collect(-1));
+  if (before.length === count) return { images: before, where: "before" };
+
+  const after = flatten(collect(1));
+  if (after.length === count) return { images: after, where: "after" };
+  if (before.length + after.length === count) return { images: [...before, ...after], where: "around" };
+
+  throw new Error(
+    `Expected ${count} option images next to the poll, found ${before.length} before and ${after.length} after.`,
+  );
+}
+
+/* "1 - Wounded Knight" -> "Wounded Knight": the number is shown separately. */
+function cleanAnswerText(text, number) {
+  const value = String(text ?? "").trim();
+  const stripped = value.replace(new RegExp(`^${number}\\s*[-–—:.]\\s+`), "").trim();
+  return stripped || value || `Option ${number}`;
+}
+
+async function fetchVoters(answer) {
+  const users = [];
+  let after;
+  for (;;) {
+    const batch = await answer.voters.fetch({ limit: 100, after });
+    users.push(...batch.values());
+    if (batch.size < 100) break;
+    after = [...batch.keys()].reduce((highest, id) => (BigInt(id) > BigInt(highest) ? id : highest), "0");
+  }
+  return users.filter((user) => !user.bot);
+}
+
+async function buildNativeRecord(message, found, staging) {
+  const importedAt = stamp();
+  const poll = message.poll;
+  const answers = [...poll.answers.values()].sort((a, b) => a.id - b.id);
+  const endMs = poll.expiresTimestamp ?? message.createdTimestamp;
+  const warnings = [];
+
+  const options = [];
+  const votes = [];
+  const history = [];
+  const counts = [];
+
+  for (const [index, answer] of answers.entries()) {
+    const number = index + 1;
+    const { image } = found.images[index];
+    const localFile = `${number}.webp`;
+
+    console.log(`[FDC import] ${message.id}: downloading option ${number}`);
+    const saved = await downloadImage(image, path.join(staging, localFile));
+
+    options.push({
+      number,
+      description: cleanAnswerText(answer.text, number),
+      emoji: nativeEmoji(answer._emoji, number),
+      media: {
+        originalAttachmentId: image.id,
+        originalName: image.name,
+        originalUrl: image.url,
+        originalProxyUrl: image.proxyURL,
+        originalContentType: image.contentType,
+        originalSize: image.size,
+        originalWidth: image.width,
+        originalHeight: image.height,
+        localFile,
+        ...saved,
+      },
+    });
+
+    if (!answer.emoji && !answer._emoji) {
+      warnings.push(`Option ${number} had no emoji; ${DEFAULT_EMOJIS[index]} is used.`);
+    }
+
+    const voters = await fetchVoters(answer);
+    counts.push(answer.voteCount ?? voters.length);
+
+    for (const user of voters) {
+      const sequence = history.length + 1;
+      const event = {
+        sequence,
+        action: "imported",
+        userId: user.id,
+        optionNumber: number,
+        previousOptionNumber: null,
+        votedAt: null,
+        observedAt: importedAt,
+        timestampSource: "discord_poll",
+      };
+      history.push(event);
+      votes.push({
+        userId: user.id,
+        optionNumber: number,
+        votedAt: null,
+        observedAt: importedAt,
+        timestampSource: "discord_poll",
+        sequence,
+      });
+    }
+  }
+
+  const total = counts.reduce((sum, count) => sum + count, 0);
+  const highest = Math.max(0, ...counts);
+  const winners = total ? options.filter((_, index) => counts[index] === highest).map((option) => option.number) : [];
+
+  if (poll.allowMultiselect) warnings.push("The poll allowed several answers per person.");
+
+  // Discord's "poll has closed" system message, if there is one.
+  const resultMessage = found.resultMessage ?? null;
+  const media = found.images[0].message;
+
+  return {
+    version: 1,
+    id: message.id,
+    date: dateKey(endMs),
+    timeZone: TIME_ZONE,
+    status: "closed",
+    guildId: message.guildId,
+    channelId: message.channelId,
+    senderUserId: message.author.id,
+    interactionId: null,
+    roleId: message.content.match(/<@&(\d+)>/)?.[1] ?? null,
+    commandName: "discord-poll",
+    createdVia: "discord-poll",
+    createdAt: stamp(message.createdTimestamp),
+    sentAt: stamp(message.createdTimestamp),
+    mediaSentAt: stamp(media.createdTimestamp),
+    endsAt: stamp(endMs),
+    originalEndInput: null,
+    closedAt: stamp(endMs),
+    closingStartedAt: null,
+    resultsSentAt: resultMessage ? stamp(resultMessage.createdTimestamp) : null,
+    messageId: message.id,
+    messageUrl: message.url,
+    mediaMessageId: media.id,
+    mediaMessageIds: [...new Set(found.images.map((item) => item.message.id))],
+    resultsMessageId: resultMessage?.id ?? null,
+    question: poll.question?.text ?? null,
+    options,
+    votes,
+    voteHistory: history,
+    lastSequence: history.length,
+    lastReconciledAt: importedAt,
+    lastRecoveryError: null,
+    updatedAt: importedAt,
+    statistics: calculateStatistics(options, votes),
+
+    officialResults: {
+      source: "discord_poll_results",
+      final: true,
+      totalVoters: total,
+      options: options.map((option, index) => ({
+        optionNumber: option.number,
+        votes: counts[index],
+        percentage: total ? Number(((counts[index] / total) * 100).toFixed(2)) : 0,
+      })),
+      winningOptionNumbers: winners,
+      isTie: winners.length > 1,
+      resultsDescription: null,
+      resultsEmbedTimestamp: null,
+    },
+
+    importMetadata: {
+      importedAt,
+      source: "discord_native_poll",
+      scheduledEndKnown: Boolean(poll.expiresTimestamp),
+      endTimestampSource: poll.expiresTimestamp ? "poll_expiry" : "message_created",
+      imagesFound: found.where,
+      senderKnown: true,
+      voteTimestampsKnown: false,
+      voteOrderKnown: false,
+      originalEndInputKnown: false,
+      warnings,
+    },
+
+    sourceMessages: {
+      poll: snapshot(message),
+      media: snapshot(media),
+      results: snapshot(resultMessage),
+    },
+  };
+}
+
+async function importNativePolls({ nativePolls, timeline, existingIds, existingDates }) {
+  for (const message of nativePolls) {
+    const id = message.id;
+    let staging;
+
+    try {
+      if (existingIds.has(id)) {
+        report.skipped.push({ messageId: id, reason: "already_archived" });
+        continue;
+      }
+
+      const poll = message.poll;
+      const ended = poll.resultsFinalized || (poll.expiresTimestamp && poll.expiresTimestamp <= Date.now());
+      if (!ended) {
+        report.skipped.push({ messageId: id, reason: "native_poll_still_running" });
+        continue;
+      }
+
+      const date = dateKey(poll.expiresTimestamp ?? message.createdTimestamp);
+      if (existingDates.has(date)) {
+        report.skipped.push({ messageId: id, date, reason: "date_already_archived" });
+        continue;
+      }
+
+      const found = findNativeImages(message, timeline);
+      found.resultMessage =
+        timeline.find(
+          (entry) => entry.message.type === 46 && entry.message.reference?.messageId === id,
+        )?.message ?? null;
+
+      const answers = [...poll.answers.values()].sort((a, b) => a.id - b.id);
+
+      if (DRY_RUN) {
+        report.imported.push({
+          messageId: id,
+          date,
+          kind: "native_poll",
+          optionCount: answers.length,
+          imagesFound: found.where,
+          mediaMessageIds: [...new Set(found.images.map((item) => item.message.id))],
+          options: answers.map((answer, index) => ({
+            number: index + 1,
+            emoji: answer._emoji?.id ? `:${answer._emoji.name}:` : (answer._emoji?.name ?? DEFAULT_EMOJIS[index]),
+            description: cleanAnswerText(answer.text, index + 1),
+            votes: answer.voteCount ?? null,
+          })),
+          plannedOnly: true,
+        });
+        existingDates.add(date);
+        console.log(
+          `[FDC import] Would import native poll ${date}: ${answers.length} options, images ${found.where} the poll`,
+        );
+        continue;
+      }
+
+      staging = path.join(ROOT, `.import-${id}`);
+      await fs.mkdir(staging);
+
+      const record = await buildNativeRecord(message, found, staging);
+      await atomicJson(path.join(staging, "data.json"), record);
+      await fs.rename(staging, path.join(ROOT, date));
+      staging = null;
+
+      existingIds.add(id);
+      existingDates.add(date);
+      await rebuildSummary();
+
+      report.imported.push({
+        messageId: id,
+        date,
+        kind: "native_poll",
+        optionCount: record.options.length,
+        officialVoters: record.officialResults.totalVoters,
+        warnings: record.importMetadata.warnings,
+      });
+      console.log(`[FDC import] Imported native poll ${date}: ${id} (${record.options.length} options)`);
+    } catch (error) {
+      if (staging) await fs.rm(staging, { recursive: true, force: true }).catch(() => {});
+      report.failed.push({ messageId: id, kind: "native_poll", error: error.message });
+      console.error(`[FDC import] Failed native poll ${id}: ${error.message}`);
+    }
+  }
+}
+
+/* ---------- manifests (Steam group chat polls, no Discord) ---------- */
+
+/* Berlin wall-clock time -> Date (same approach as src/lib/fdcTime.js). */
+function berlinDate(year, month, day, hour, minute) {
+  const offset = (ms) => {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: TIME_ZONE,
+        hourCycle: "h23",
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+      })
+        .formatToParts(new Date(ms))
+        .map((part) => [part.type, part.value]),
+    );
+    return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour % 24, parts.minute) - Math.floor(ms / 60000) * 60000;
+  };
+  const guess = Date.UTC(year, month - 1, day, hour, minute);
+  let result = guess - offset(guess);
+  const second = guess - offset(result);
+  if (second !== result) result = second;
+  return new Date(result);
+}
+
+/** "2026-03-27" or "2026-03-27 10:00" / "2026-03-27T10:00" (Berlin time); default 10:00. */
+function manifestEnd(poll) {
+  const value = String(poll.endsAt ?? poll.date ?? "").trim();
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?$/);
+  if (!match) throw new Error(`Invalid date "${value}" (use YYYY-MM-DD or YYYY-MM-DD HH:MM).`);
+  const [, year, month, day, hour = "10", minute = "0"] = match;
+  return berlinDate(Number(year), Number(month), Number(day), Number(hour), Number(minute));
+}
+
+async function importManifest(existingDates) {
+  const { buildManualPoll } = require("../server/services/fdcManual.cjs");
+  const file = path.resolve(MANIFEST);
+  const base = path.dirname(file);
+  const manifest = JSON.parse(await fs.readFile(file, "utf8"));
+  const polls = Array.isArray(manifest) ? manifest : manifest.polls ?? [];
+  const defaultLabel = manifest.label ?? "Steam group";
+
+  console.log(`[FDC import] Manifest ${path.relative(PROJECT_ROOT, file)}: ${polls.length} poll(s).`);
+
+  for (const entry of polls) {
+    let staging;
+    try {
+      const end = manifestEnd(entry);
+      const date = dateKey(end.getTime());
+      if (existingDates.has(date)) {
+        report.skipped.push({ date, reason: "date_already_archived", kind: "manifest" });
+        console.log(`[FDC import] ${date}: already archived, skipped.`);
+        continue;
+      }
+
+      const options = [];
+      for (const [index, option] of (entry.options ?? []).entries()) {
+        // Image optional; without one the option needs a name.
+        const imagePath = option.image ? path.resolve(base, String(option.image)) : null;
+        const buffer = imagePath
+          ? await fs.readFile(imagePath).catch(() => {
+              throw new Error(`Option ${index + 1}: image ${option.image} not found.`);
+            })
+          : null;
+        options.push({
+          // Name and emoji are optional (old Steam polls often had neither).
+          description: option.description ?? option.name ?? "",
+          emoji: String(option.emoji ?? "").trim() ? parseEmoji(String(option.emoji).trim()) : null,
+          media: buffer ? { buffer, name: path.basename(imagePath), contentType: null } : null,
+          votes: Number(option.votes ?? 0),
+          winner: option.winner === true,
+        });
+      }
+
+      const counts = Object.fromEntries(options.map((option, index) => [index + 1, option.votes]));
+      // Only the winner known: `"winner": 2` on the poll or `"winner": true` on an option,
+      // and no vote counts. A poll with a single option is that winner.
+      const anyVotes = options.some((option) => option.votes > 0);
+      const winner =
+        entry.winner ?? (options.findIndex((option) => option.winner) + 1 || (!anyVotes && options.length === 1 ? 1 : null));
+
+      if (DRY_RUN) {
+        report.imported.push({
+          date,
+          kind: "manifest",
+          optionCount: options.length,
+          options: options.map((option, index) => ({
+            number: index + 1,
+            emoji: option.emoji?.display ?? "(none)",
+            description: option.description,
+            votes: option.votes,
+          })),
+          plannedOnly: true,
+        });
+        existingDates.add(date);
+        console.log(`[FDC import] Would add ${date} from the manifest (${options.length} options).`);
+        continue;
+      }
+
+      staging = path.join(ROOT, `.manifest-${date}`);
+      await fs.mkdir(staging);
+      const record = await buildManualPoll({
+        date,
+        folder: staging,
+        timeZone: TIME_ZONE,
+        endsAt: end,
+        question: entry.question,
+        note: entry.note,
+        options,
+        votes: winner ? null : { label: entry.label ?? defaultLabel, counts },
+        winner,
+        via: "manifest",
+      });
+      await fs.rename(staging, path.join(ROOT, date));
+      staging = null;
+
+      existingDates.add(date);
+      await rebuildSummary();
+      report.imported.push({ date, kind: "manifest", optionCount: record.options.length, messageId: record.id });
+      console.log(`[FDC import] Added ${date} from the manifest (${record.options.length} options).`);
+    } catch (error) {
+      if (staging) await fs.rm(staging, { recursive: true, force: true }).catch(() => {});
+      report.failed.push({ date: entry.date ?? null, kind: "manifest", error: error.message });
+      console.error(`[FDC import] Manifest poll ${entry.date ?? "?"} failed: ${error.message}`);
+    }
+  }
+}
+
 async function main() {
   await fs.mkdir(ROOT, {
     recursive: true,
@@ -1056,6 +1574,18 @@ async function main() {
       );
     }
 
+    if (MANIFEST) {
+      await importManifest(new Set(existing.map((poll) => poll.date)));
+      if (!USE_DISCORD) {
+        console.log(
+          `[FDC import] ${DRY_RUN ? "Would add" : "Added"}: ${report.imported.length}; ` +
+            `skipped: ${report.skipped.length}; failed: ${report.failed.length}.`,
+        );
+        if (report.failed.length) process.exitCode = 1;
+        return;
+      }
+    }
+
     const ready = once(client, "clientReady");
 
     await client.login(token);
@@ -1077,7 +1607,7 @@ async function main() {
       throw new Error("The bot needs View Channel and Read Message History.");
     }
 
-    const { polls, media, results } = await scanChannel(channel);
+    const { polls, media, results, timeline, nativePolls } = await scanChannel(channel);
 
     const existingIds = new Set(existing.map((poll) => poll.id));
 
@@ -1238,6 +1768,8 @@ async function main() {
         console.error(`[FDC import] Failed ${id}: ${error.message}`);
       }
     }
+
+    await importNativePolls({ nativePolls, timeline, existingIds, existingDates });
 
     report.unmatchedResults = results
       .filter((result) => !matchedResultIds.has(result.message.id))

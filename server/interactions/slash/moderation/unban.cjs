@@ -1,3 +1,4 @@
+const { setting } = require("../../../config.cjs");
 const {
   SlashCommandBuilder,
   PermissionFlagsBits,
@@ -39,7 +40,7 @@ module.exports = {
 
     await interaction.deferReply({ ephemeral: true });
 
-    const MOD_ROLE_ID = "1479193858565865472";
+    const MOD_ROLE_ID = setting("MOD_ROLE_ID");
 
     if (
       !interaction.member.roles.cache.has(MOD_ROLE_ID) &&

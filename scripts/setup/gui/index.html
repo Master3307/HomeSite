@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>HomeSite setup</title>
+    <link rel="stylesheet" href="/gui/style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <span class="icon" aria-hidden="true">rocket_launch</span>
+        <div>
+          <strong>HomeSite setup</strong>
+          <small id="file"></small>
+        </div>
+      </div>
+      <nav class="tabs" role="tablist">
+        <button role="tab" id="tab-setup" aria-selected="true" data-tab="setup">
+          <span class="icon" aria-hidden="true">checklist</span>Setup
+        </button>
+        <button role="tab" id="tab-settings" aria-selected="false" data-tab="settings">
+          <span class="icon" aria-hidden="true">tune</span>Settings
+        </button>
+      </nav>
+      <span class="live" id="live" title="Updates live when .env changes"><i></i>Live</span>
+    </header>
+    <main id="app"><p class="muted center">Loading…</p></main>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="/gui/app.js"></script>
+  </body>
+</html>

@@ -4,7 +4,9 @@
  * @since 3.0.0
  */
 
-const { prefix } = require("../config.json");
+const { setting } = require("../config.cjs");
+
+const prefix = setting("BOT_PREFIX");
 
 module.exports = {
 	/**

@@ -1,3 +1,4 @@
+const { setting } = require("../../../config.cjs");
 const {
   EmbedBuilder,
   SlashCommandBuilder,
@@ -6,7 +7,7 @@ const {
   MessageFlags,
 } = require("discord.js");
 
-const MOD_ROLE_ID = "1479193858565865472";
+const MOD_ROLE_ID = setting("MOD_ROLE_ID");
 
 const COLORS = {
   primary: 0x5865f2,

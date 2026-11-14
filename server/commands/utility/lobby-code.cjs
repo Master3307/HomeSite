@@ -1,15 +1,13 @@
 const { EmbedBuilder, ChannelType } = require("discord.js");
+const { setting, ids } = require("../../config.cjs");
 
 const prefix = process.env.BOT_PREFIX || "!";
 
-const TARGET_CHANNEL_ID = "1479194712111059137";
-const PING_ROLE_ID = "1487023716658319400";
+const TARGET_CHANNEL_ID = setting("LOBBY_CHANNEL_ID");
+const PING_ROLE_ID = setting("LOBBY_PING_ROLE_ID");
 
-const PRIVILEGED_ROLE_IDS = [
-  "1479193560778805300",
-  "1479193858565865472",
-  "1479222319711780904",
-];
+// Roles whose codes skip the review (LOBBY_TRUSTED_ROLE_IDS).
+const PRIVILEGED_ROLE_IDS = ids("LOBBY_TRUSTED_ROLE_IDS");
 
 /**
  * @param {import("discord.js").GuildMember | null | undefined} member
@@ -107,10 +105,10 @@ async function postLobbyCode(client, code, description = null) {
   }
 
   return channel.send({
-    content: `||<@&${PING_ROLE_ID}>||\n**Current Lobby Code:**`,
+    content: `${PING_ROLE_ID ? `||<@&${PING_ROLE_ID}>||\n` : ""}**Current Lobby Code:**`,
     embeds: [embed],
     allowedMentions: {
-      roles: [PING_ROLE_ID],
+      roles: PING_ROLE_ID ? [PING_ROLE_ID] : [],
     },
   });
 }
