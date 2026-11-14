@@ -13,8 +13,8 @@ const sharp = require("sharp");
  */
 
 const ASPECTS = { "16:10": 16 / 10, "16:9": 16 / 9, "4:3": 4 / 3, "1:1": 1, "4:5": 4 / 5 };
-// Fill around the image when it is zoomed out past the frame.
-const FILL = { r: 0x20, g: 0x21, b: 0x28, alpha: 1 }; // #202128
+// Default fill around the image when it is zoomed out past the frame (the editor can change it).
+const FILL = "#202128";
 const MAX_OUTPUT = 2560;
 const MAX_ANIMATED_OUTPUT = 960;
 const MAX_FRAMES = 300;
@@ -43,6 +43,7 @@ function normalizeSettings(input) {
     brightness: clamp(settings.brightness, 50, 150, 100),
     contrast: clamp(settings.contrast, 50, 150, 100),
     saturation: clamp(settings.saturation, 0, 200, 100),
+    fill: /^#[0-9a-f]{6}$/i.test(String(settings.fill ?? "")) ? String(settings.fill).toLowerCase() : FILL,
   };
 }
 
@@ -106,9 +107,15 @@ async function orient(frame, settings) {
   return buffer;
 }
 
-function background(plan) {
+function background(plan, fill) {
+  const value = parseInt(fill.slice(1), 16);
   return sharp({
-    create: { width: plan.frameWidth, height: plan.frameHeight, channels: 4, background: FILL },
+    create: {
+      width: plan.frameWidth,
+      height: plan.frameHeight,
+      channels: 4,
+      background: { r: (value >> 16) & 255, g: (value >> 8) & 255, b: value & 255, alpha: 1 },
+    },
   });
 }
 
@@ -127,7 +134,7 @@ async function renderFrame(frame, settings, plan) {
   const right = Math.min(plan.frameWidth, plan.left + plan.imageWidth);
   const bottom = Math.min(plan.frameHeight, plan.top + plan.imageHeight);
 
-  const base = background(plan);
+  const base = background(plan, settings.fill);
   if (right <= left || bottom <= top) return base.png().toBuffer();
 
   const visible = await sharp(scaledBuffer)

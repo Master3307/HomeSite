@@ -34,7 +34,9 @@ const MAX_OUTPUT = 2560
 const MIN_ZOOM = 0.2
 const MAX_ZOOM = 5
 const OUTPUT_QUALITY = 0.92
-const FILL = '#202128' // around the image when zoomed out past it
+const FILL = '#202128' // default fill around the image when zoomed out past it
+const FILL_PRESETS = [FILL, '#000000', '#ffffff', '#313338', '#5865f2', '#ff73fa']
+const HEX = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i
 const SNAP_PX = 10
 const ZOOM_SNAP = 0.04
 const HISTORY_LIMIT = 100
@@ -50,6 +52,15 @@ const DEFAULT_SETTINGS = {
   brightness: 100,
   contrast: 100,
   saturation: 100,
+  fill: FILL, // background where the image doesn't cover the frame
+}
+
+/** "#abc", "abc" or "#aabbcc" -> "#aabbcc"; null when it isn't a hex colour. */
+function parseHex(value) {
+  const match = String(value ?? '').trim().match(HEX)
+  if (!match) return null
+  const digits = match[1].length === 3 ? [...match[1]].map((digit) => digit + digit).join('') : match[1]
+  return `#${digits.toLowerCase()}`
 }
 
 const SNAP_STORAGE = 'homesite:fdcEditorSnap'
@@ -157,7 +168,7 @@ function placeImage(context, image, settings, fx, fy, fw, fh) {
 /* Draws the edit into a frame of fw × fh whose top-left is at (fx, fy). */
 function drawImage(context, image, settings, fx, fy, fw, fh) {
   context.save()
-  context.fillStyle = FILL
+  context.fillStyle = parseHex(settings.fill) ?? FILL
   context.fillRect(fx, fy, fw, fh)
   context.beginPath()
   context.rect(fx, fy, fw, fh)
@@ -263,6 +274,76 @@ function Slider({ label, value, min, max, step = 1, onChange, format }) {
   )
 }
 
+/*
+ * Background colour: preset swatches, the system colour picker, a hex
+ * field, and picking a colour straight from the image.
+ */
+function FillPicker({ value, onChange, picking, onTogglePick, t }) {
+  const id = useId()
+  const [text, setText] = useState(value)
+  const [editing, setEditing] = useState(false)
+  const shown = editing ? text : value
+  const valid = parseHex(shown) !== null
+
+  return (
+    <div className="image-editor__group image-editor__fill">
+      <label className="fdc-create__label" htmlFor={id}>
+        {t('fdc.editor.background', { defaultValue: 'Background' })}
+      </label>
+      <div className="image-editor__swatches" role="radiogroup" aria-label={t('fdc.editor.background', { defaultValue: 'Background' })}>
+        {FILL_PRESETS.map((color) => (
+          <button
+            key={color}
+            type="button"
+            role="radio"
+            aria-checked={value === color}
+            className={`image-editor__swatch${value === color ? ' is-active' : ''}`}
+            style={{ '--swatch': color }}
+            title={color === FILL ? t('fdc.editor.backgroundDefault', { defaultValue: 'Default ({{color}})', color }) : color}
+            onClick={() => onChange(color)}
+          />
+        ))}
+        <label className="image-editor__swatch image-editor__swatch--custom" style={{ '--swatch': value }} title={t('fdc.editor.backgroundCustom', { defaultValue: 'Choose any colour' })}>
+          <input type="color" value={value} onChange={(event) => onChange(event.target.value.toLowerCase(), 'fill')} />
+          <span className="material-symbols-outlined" aria-hidden="true">palette</span>
+        </label>
+      </div>
+      <div className="image-editor__hexrow">
+        <input
+          id={id}
+          className={`image-editor__hex${valid ? '' : ' is-invalid'}`}
+          value={shown}
+          spellCheck={false}
+          autoComplete="off"
+          maxLength={7}
+          aria-invalid={!valid}
+          aria-label={t('fdc.editor.backgroundHex', { defaultValue: 'Hex colour' })}
+          onFocus={() => {
+            setText(value)
+            setEditing(true)
+          }}
+          onChange={(event) => {
+            setText(event.target.value)
+            const color = parseHex(event.target.value)
+            if (color) onChange(color, 'fill')
+          }}
+          onBlur={() => setEditing(false)}
+          onKeyDown={(event) => event.key === 'Enter' && event.currentTarget.blur()}
+        />
+        <button
+          type="button"
+          className={`fdc-button fdc-button--ghost image-editor__pick${picking ? ' is-active' : ''}`}
+          aria-pressed={picking}
+          onClick={onTogglePick}
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">colorize</span>
+          {picking ? t('fdc.editor.pickCancel', { defaultValue: 'Click the image…' }) : t('fdc.editor.pick', { defaultValue: 'From image' })}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function ImageEditor({ file, settings: initialSettings, onApply, onCancel }) {
   const { t } = useTranslation('voting')
   const titleId = useId()
@@ -288,6 +369,7 @@ export default function ImageEditor({ file, settings: initialSettings, onApply, 
   const [snap, setSnapState] = useState(readSnap)
 
   const [animated, setAnimated] = useState(false)
+  const [picking, setPicking] = useState(false)
   const settings = history.settings
 
   function setSnap(value) {
@@ -511,8 +593,32 @@ export default function ImageEditor({ file, settings: initialSettings, onApply, 
     [commit, snap, image],
   )
 
+  /* The colour of the edited image under the pointer, or null outside the image. */
+  function sampleColor(event) {
+    const box = frameRef.current
+    const rect = stageRef.current?.getBoundingClientRect()
+    if (!box || !rect || !image) return null
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(stage.width))
+    canvas.height = Math.max(1, Math.round(stage.height))
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    placeImage(context, image, settings, box.x, box.y, box.width, box.height)
+    const x = Math.round(event.clientX - rect.left)
+    const y = Math.round(event.clientY - rect.top)
+    if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return null
+    const [red, green, blue, alpha] = context.getImageData(x, y, 1, 1).data
+    if (alpha < 16) return null
+    return `#${[red, green, blue].map((value) => value.toString(16).padStart(2, '0')).join('')}`
+  }
+
   function onPointerDown(event) {
     if (!image) return
+    if (picking) {
+      const color = sampleColor(event)
+      if (color) commit({ fill: color })
+      setPicking(false)
+      return
+    }
     event.currentTarget.setPointerCapture(event.pointerId)
     dragCount.current += 1
     dragRef.current = { x: event.clientX, y: event.clientY, start: settings, group: `drag-${dragCount.current}` }
@@ -643,7 +749,7 @@ export default function ImageEditor({ file, settings: initialSettings, onApply, 
         <div className="image-editor__body">
           <div
             ref={stageRef}
-            className="image-editor__stage"
+            className={`image-editor__stage${picking ? ' is-picking' : ''}`}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -746,6 +852,14 @@ export default function ImageEditor({ file, settings: initialSettings, onApply, 
                 {t('fdc.editor.flip', { defaultValue: 'Mirror' })}
               </button>
             </div>
+
+            <FillPicker
+              value={parseHex(settings.fill) ?? FILL}
+              onChange={(fill, group) => commit({ fill }, group)}
+              picking={picking}
+              onTogglePick={() => setPicking((value) => !value)}
+              t={t}
+            />
 
             <details className="image-editor__adjust">
               <summary>

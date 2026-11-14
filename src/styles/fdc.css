@@ -1257,6 +1257,119 @@
   background: var(--fdc-accent-soft);
 }
 
+/* background colour */
+.fdc .image-editor__fill {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fdc .image-editor__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.fdc .image-editor__swatch {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 22%, transparent);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.fdc .image-editor__swatch:hover {
+  transform: scale(1.08);
+}
+
+.fdc .image-editor__swatch.is-active {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 22%, transparent),
+    0 0 0 2px var(--bg-primary),
+    0 0 0 4px var(--text-primary);
+}
+
+.fdc .image-editor__swatch:focus-within,
+.fdc .image-editor__swatch:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, white);
+  outline-offset: 3px;
+}
+
+/* the custom one: a rainbow ring around the current colour, opens the system picker */
+.fdc .image-editor__swatch--custom {
+  background:
+    radial-gradient(circle, var(--swatch) 0 52%, transparent 54%),
+    conic-gradient(#ff4d4d, #ffd84d, #4dff88, #4dd2ff, #7a4dff, #ff4dd8, #ff4d4d);
+  box-shadow: none;
+}
+
+.fdc .image-editor__swatch--custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.fdc .image-editor__swatch--custom .material-symbols-outlined {
+  font-size: 0.95rem;
+  color: #fff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+
+.fdc .image-editor__hexrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.fdc .image-editor__hex {
+  flex: 1 1 6.2rem;
+  min-width: 6.2rem;
+  max-width: 9rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--fdc-border);
+  border-radius: var(--fdc-radius-small);
+  background: color-mix(in srgb, var(--bg-primary) 55%, transparent);
+  color: var(--text-primary);
+  font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+  font-size: 0.88rem;
+  text-transform: lowercase;
+}
+
+.fdc .image-editor__hex:focus {
+  border-color: color-mix(in srgb, var(--accent) 70%, white);
+  outline: none;
+}
+
+.fdc .image-editor__hex.is-invalid {
+  border-color: var(--fdc-danger);
+}
+
+.fdc .image-editor__pick {
+  padding-inline: 0.7rem;
+  white-space: nowrap;
+}
+
+.fdc .image-editor__pick.is-active {
+  background: var(--fdc-accent-soft);
+}
+
+.fdc .image-editor__stage.is-picking,
+.fdc .image-editor__stage.is-picking canvas {
+  cursor: crosshair;
+}
+
 .fdc .image-editor__slider {
   display: flex;
   flex-direction: column;
