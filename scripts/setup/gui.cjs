@@ -211,6 +211,15 @@ async function handle(req, res) {
       broadcast();
       return send(res, 200, { ok: true });
     }
+    case "/api/bongo/import": {
+      const assets = require("../../server/services/bongoAssets.cjs");
+      try {
+        const report = await assets.importFromFolder(String(body.folder ?? "").trim().replace(/^~(?=\/|$)/, require("node:os").homedir()), { label: "pnpm setup:gui" });
+        return send(res, 200, { report });
+      } catch (error) {
+        return send(res, 400, { error: error.message });
+      }
+    }
     case "/api/2fa/new": {
       const QRCode = require("qrcode");
       const secret = totp.generateSecret();

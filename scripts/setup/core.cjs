@@ -90,7 +90,9 @@ function stageStatus(env, state, stage) {
   // Required + needed values decide; "important" ones are recommended, not blocking.
   const essential = entries.filter((entry) => entry.importance === "required" || entry.needed);
   const isSet = (key) => settings.isSet(env, key);
-  if (stage.special === "twofa") {
+  if (stage.special === "bongo") {
+    if (fs.existsSync(path.join(ROOT, "server", "services", "db", "bongo-cat", "catalog.json"))) return "done";
+  } else if (stage.special === "twofa") {
     if (settings.ON.has(String(env.ADMIN_2FA ?? "").toLowerCase()) && isSet("ADMIN_2FA_SECRET")) return "done";
   } else if (essential.length ? essential.every((entry) => isSet(entry.key)) : entries.some((entry) => isSet(entry.key))) {
     return "done";

@@ -188,6 +188,27 @@ function flush(pending) {
 
 /* ---------- 2FA ---------- */
 
+/* Imports the Bongo Cat assets from an AssetRipper export folder (empty answer = later). */
+async function bongoStage() {
+  const assets = require("../../server/services/bongoAssets.cjs");
+  for (;;) {
+    const folder = (await ask(`  ${bold("Path of the AssetRipper export folder")} ${dim("(empty = later)")}: `)).trim().replace(/^~(?=\/|$)/, require("node:os").homedir());
+    if (!folder) return;
+    try {
+      const report = await assets.importFromFolder(folder, {
+        label: "pnpm setup:cli",
+        onProgress: (done, total, step = "Checking textures") => process.stdout.isTTY && process.stdout.write(`\r  ${dim(`${step} ${done}/${total}`)}\x1b[K`),
+      });
+      process.stdout.write("\r\x1b[K");
+      console.log(green(`  Imported: ${report.counts.skin} skins, ${report.counts.hat} accessories, ${report.counts.bongos} bongos, ${report.counts.themes ?? 0} UI themes.`));
+      return;
+    } catch (error) {
+      process.stdout.write("\r\x1b[K");
+      console.log(`  ${error.message}`);
+    }
+  }
+}
+
 async function twofaStage(env) {
   const QRCode = require("qrcode");
   let secret = env.ADMIN_2FA_SECRET;
@@ -261,6 +282,10 @@ async function main() {
 
       if (stage.special === "twofa") {
         await twofaStage(env);
+        continue;
+      }
+      if (stage.special === "bongo") {
+        await bongoStage();
         continue;
       }
       for (const key of stage.keys) {

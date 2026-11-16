@@ -172,6 +172,17 @@
         <button class="chip" style="align-self:center" data-stage-action="skip" data-id="${stage.id}"><span class="icon">skip_next</span>Decide later</button></div>`;
     } else if (stage.special === "twofa") {
       body = twofaHtml(stage);
+    } else if (stage.special === "bongo") {
+      body = `<div class="stack" style="gap:.6rem">
+        ${stage.status === "done" ? `<p class="muted">Assets are imported. Import a newer export to update them.</p>` : ""}
+        <label for="bongo-folder">AssetRipper export folder</label>
+        <div class="control"><input id="bongo-folder" class="mono" placeholder="/home/you/BongoCatExport" autocomplete="off">
+        <button class="button" data-bongo-import ${view.bongoBusy ? "disabled" : ""}><span class="icon">upload</span>${view.bongoBusy ? "Importing…" : "Import"}</button></div>
+        ${view.errors.__bongo ? `<p class="error">${esc(view.errors.__bongo)}</p>` : ""}
+        <div class="row end">
+          ${stage.status !== "done" ? `<button class="button ghost" data-stage-action="skip" data-id="${stage.id}"><span class="icon">skip_next</span>Skip for now</button>` : ""}
+          <button class="button" data-next><span class="icon">arrow_forward</span>Next</button>
+        </div></div>`;
     } else {
       body = `<ul class="fields">${stage.keys.map((key) => setting(key)).filter(Boolean).map(fieldHtml).join("")}</ul>
         <div class="row end">
@@ -424,6 +435,20 @@
       if (dataset.want !== "1") goToNext(dataset.id);
     } else if (dataset.next !== undefined) {
       goToNext();
+    } else if (dataset.bongoImport !== undefined) {
+      view.bongoBusy = true;
+      delete view.errors.__bongo;
+      const folder = document.getElementById("bongo-folder").value;
+      render();
+      try {
+        const { report } = await api("/api/bongo/import", { folder });
+        toast(`Imported ${report.counts.skin} skins, ${report.counts.hat} accessories, ${report.counts.bongos} bongos.`);
+        await load();
+      } catch (error) {
+        view.errors.__bongo = error.message;
+      }
+      view.bongoBusy = false;
+      render();
     } else if (dataset.twofaNew !== undefined) {
       view.twofa = await api("/api/2fa/new", {});
       view.savingUntil = Date.now() + 1500;

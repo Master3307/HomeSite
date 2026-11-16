@@ -18,8 +18,12 @@ export const siteConfig = Object.freeze({
   botName: config.BOT_DISPLAY_NAME || "Admin",
   inviteCode: config.DISCORD_INVITE_CODE || "",
   sourceRepoUrl: config.SOURCE_REPO_URL || "",
+  translateUrl: config.TRANSLATE_URL || "",
   searchEngineUrl: config.SEARCH_ENGINE_URL || "",
   searchEngineName: config.SEARCH_ENGINE_NAME || "My search",
+  privacyName: config.PRIVACY_CONTACT_NAME || "",
+  privacyEmail: config.PRIVACY_CONTACT_EMAIL || "",
+  inactiveDays: Number(config.ACCOUNT_INACTIVE_DAYS ?? 730) || 0,
 });
 
 export const discordInviteUrl = siteConfig.inviteCode ? `https://discord.gg/${siteConfig.inviteCode}` : "";

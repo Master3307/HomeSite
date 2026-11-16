@@ -7,6 +7,7 @@
  *   keys      settings asked in this stage
  *   steps     the guide, one line per step
  *   special   "twofa": the GUI/CLI also create the 2FA secret and QR code
+ *             "bongo": the GUI/CLI import the Bongo Cat assets from a folder
  */
 const { youtube } = require("../../config/settings.cjs");
 
@@ -104,6 +105,36 @@ const STAGES = [
     keys: ["ADMIN_2FA_SECRET", "ADMIN_2FA"],
   },
   {
+    id: "members",
+    icon: "group",
+    feature: "members",
+    title: "Members & privacy",
+    intro: "Who can log in, when accounts of people who left are removed, where member reports go, and who is named on the privacy page (/cult/privacy).",
+    steps: [
+      "Keep \"Only server members can log in\" on, unless the site should be open to everyone with Discord.",
+      "Put your name and an email address for privacy questions; they are shown on the privacy page.",
+      "Optional: a channel for member reports (otherwise they go to the lobby review channel).",
+    ],
+    keys: ["MEMBERS_ONLY_LOGIN", "ACCOUNT_INACTIVE_DAYS", "REPORT_CHANNEL_ID", "PRIVACY_CONTACT_NAME", "PRIVACY_CONTACT_EMAIL"],
+  },
+  {
+    id: "email",
+    icon: "mail",
+    feature: "email",
+    title: "Email (login codes)",
+    intro: "Lets the site send verification and login codes, so members can also log in with a verified email and a password (with optional two-step login). Accounts are still only created with Discord.",
+    steps: [
+      "Use a mailbox that allows SMTP (your mail host, mailbox.org, Gmail with an app password, …).",
+      "Fill in the server, port, user, password and the sender address.",
+      "Check it with `pnpm mail:test you@example.com`, then restart the account API.",
+    ],
+    links: [
+      { label: "Gmail app passwords", url: "https://myaccount.google.com/apppasswords" },
+      { label: "Nodemailer SMTP guide", url: "https://nodemailer.com/smtp/" },
+    ],
+    keys: ["SMTP_HOST", "SMTP_PORT", "SMTP_SECURE", "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM"],
+  },
+  {
     id: "hub",
     icon: "hub",
     feature: "hub",
@@ -173,6 +204,22 @@ const STAGES = [
     keys: ["FDC_CHANNEL_ID", "FDC_ROLE_ID"],
   },
   {
+    id: "bongo",
+    icon: "pets",
+    special: "bongo",
+    title: "Bongo Cat assets",
+    intro:
+      "The lobby cat on /cult, the cat designer and designed FDC options use the textures of your own copy of Bongo Cat. Without them the lobby cat stays hidden. Import again after a game update: only what changed is copied.",
+    steps: [
+      "Download AssetRipper (GUI release) and start it; it opens in your browser.",
+      "File → Open Folder → the game's folder (Steam: right-click Bongo Cat → Manage → Browse local files).",
+      "Export → Export All Files into an empty folder (default Unity project format).",
+      "Give the path of that export folder here. Later you can also upload it on /admin-settings or in the hub's settings.",
+    ],
+    links: [{ label: "AssetRipper releases", url: "https://github.com/AssetRipper/AssetRipper/releases" }],
+    keys: [],
+  },
+  {
     id: "community",
     icon: "forum",
     title: "Community extras",
@@ -185,6 +232,9 @@ const STAGES = [
       "LEVEL_ROLE_IDS",
       "BIRTHDAY_CHANNEL_ID",
       "JOIN_ROLE_ID",
+      "PROFILE_ROLE_ID",
+      "PROFILE_GENDER_ROLES",
+      "PROFILE_HOBBY_ROLES",
     ],
   },
   {
@@ -216,7 +266,7 @@ const STAGES = [
     intro: "A source link, your own search engine for the dashboard and automatic deploys from GitHub.",
     steps: ["Auto deploy: add a GitHub webhook (push events) pointing at your deploy listener, with this secret."],
     links: [{ label: "GitHub: creating webhooks", url: "https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks" }],
-    keys: ["SOURCE_REPO_URL", "SEARCH_ENGINE_URL", "SEARCH_ENGINE_NAME", "GITHUB_WEBHOOK_SECRET"],
+    keys: ["SOURCE_REPO_URL", "TRANSLATE_URL", "SEARCH_ENGINE_URL", "SEARCH_ENGINE_NAME", "GITHUB_WEBHOOK_SECRET"],
   },
 ];
 
