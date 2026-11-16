@@ -86,6 +86,9 @@
       "errors": {
         "designOrName": "Option {{number}} braucht eine gestaltete Katze oder einen Namen."
       }
+    },
+    "create": {
+      "introDesigns": "Der Bot schickt die Umfrage in den FDC-Kanal, pingt die FDC-Rolle und archiviert die Optionen. Gestalte für jede eine Katze; Nummer und Emoji fügt der Bot nur in der Discord-Kopie hinzu."
     }
   }
 }

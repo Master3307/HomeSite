@@ -497,7 +497,14 @@ export default function CatPicker({ catalog, mode = 'single', value, onChange, e
 
         <div className="bp-foot">
           <ThemeMenu catalog={catalog} theme={theme} onChange={changeTheme} />
-          <span className="bp-foot__hint">{extra ? '' : 'Right-click an item for favourites and search words'}</span>
+          <span className="bp-foot__hint">
+            {!extra && (
+              <>
+                <span className="bongo-hint-mouse">Right-click an item for favourites and search words</span>
+                <span className="bongo-hint-touch">Hold an item for favourites and search words</span>
+              </>
+            )}
+          </span>
           {current && (
             <button type="button" className="bp-tool" title={mode === 'multi' ? 'Add a random one' : 'Random'} aria-label="Pick a random item" onClick={random}>
               <span className="material-symbols-outlined" aria-hidden="true">casino</span>

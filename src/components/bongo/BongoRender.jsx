@@ -161,7 +161,8 @@ export function ItemIcon({ catalog, item, size = 56 }) {
  * An FDC design, exactly as the server renders it (16:10, background,
  * every combination a frame). `frame`: which frame; `play`: cycle frames.
  * `selected`: the cat to outline; `onSelect(index)` / `onMove(index, patch)`:
- * click a cat to pick it, drag to move it, scroll on it to resize it.
+ * click a cat to pick it, drag to move it, scroll (or pinch with two
+ * fingers) on it to resize it.
  */
 export function DesignPreview({ catalog, design, frame = null, play = true, selected = null, onSelect = null, onMove = null, onFrame = null, className = '' }) {
   const layout = useMemo(() => (catalog ? layoutDesign(design, catalog) : null), [catalog, design])
@@ -169,6 +170,9 @@ export function DesignPreview({ catalog, design, frame = null, play = true, sele
   const [width, setWidth] = useState(0)
   const boxRef = useRef(null)
   const dragRef = useRef(null)
+  // Touch: the fingers on the stage, and the pinch they make (two fingers resize).
+  const pointersRef = useRef(new Map())
+  const pinchRef = useRef(null)
   const count = layout?.frames.length ?? 0
   const steps = layout?.steps ?? 1
   // `frame` counts variations; with tapping each one is `steps` pictures.
@@ -233,8 +237,23 @@ export function DesignPreview({ catalog, design, frame = null, play = true, sele
 
   if (!layout) return <div className={`bongo-design is-empty ${className}`} />
 
+  const fingerGap = () => {
+    const [a, b] = [...pointersRef.current.values()]
+    return Math.hypot(a.x - b.x, a.y - b.y) || 1
+  }
+
   function onPointerDown(event) {
     if (!onMove && !onSelect) return
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    if (onMove && pointersRef.current.size === 2) {
+      // A second finger: resize the cat the first one picked instead of moving it.
+      event.currentTarget.setPointerCapture(event.pointerId)
+      const catIndex = dragRef.current?.catIndex ?? selected ?? 0
+      dragRef.current = null
+      pinchRef.current = { catIndex, gap: fingerGap(), scale: layout.design.cats[catIndex]?.scale ?? 1 }
+      return
+    }
+    if (pointersRef.current.size > 2) return
     const catIndex = catAt(event)
     onSelect?.(catIndex)
     if (!onMove) return
@@ -244,11 +263,23 @@ export function DesignPreview({ catalog, design, frame = null, play = true, sele
   }
 
   function onPointerMove(event) {
+    if (pointersRef.current.has(event.pointerId)) pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    const pinch = pinchRef.current
+    if (pinch && pointersRef.current.size >= 2) {
+      onMove(pinch.catIndex, { scale: Math.min(2, Math.max(0.3, (pinch.scale * fingerGap()) / pinch.gap)) })
+      return
+    }
     const drag = dragRef.current
     if (!drag) return
     const x = drag.start.x + (event.clientX - drag.x) / drag.width
     const y = drag.start.y + (event.clientY - drag.y) / drag.height
     onMove(drag.catIndex, { x: Math.max(-1, Math.min(1, x)), y: Math.max(-1, Math.min(1, y)) })
+  }
+
+  function endPointer(event) {
+    pointersRef.current.delete(event.pointerId)
+    if (pointersRef.current.size < 2) pinchRef.current = null
+    dragRef.current = null
   }
 
   const outline = selected !== null && layout.design.cats.length > 1 ? layout.boxes[selected] : null
@@ -260,8 +291,8 @@ export function DesignPreview({ catalog, design, frame = null, play = true, sele
       style={{ background: layout.background }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
-      onPointerUp={() => (dragRef.current = null)}
-      onPointerCancel={() => (dragRef.current = null)}
+      onPointerUp={endPointer}
+      onPointerCancel={endPointer}
     >
       {ready ? (
         <div className="bongo-design__stage" style={{ width: layout.width, height: layout.height, transform: `scale(${scale || 0})` }}>

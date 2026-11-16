@@ -199,41 +199,47 @@ export default function DesignEditor({ catalog, design: initial, title = 'Design
                 </figcaption>
               </figure>
             )}
-            <DesignPreview
-              catalog={catalog}
-              design={design}
-              frame={playing ? null : frame}
-              play={playing}
-              selected={index}
-              onSelect={setActive}
-              onFrame={playing ? setFrame : undefined}
-              onMove={(catIndex, patch) => updateCat(catIndex, patch)}
-            />
-            <p className="bd-hint">Drag a cat to move it, scroll on it to resize it.</p>
+            {/* The preview, its hint and the frames: pinned at the top on phones while the rest scrolls. */}
+            <div className="bd-view">
+              <DesignPreview
+                catalog={catalog}
+                design={design}
+                frame={playing ? null : frame}
+                play={playing}
+                selected={index}
+                onSelect={setActive}
+                onFrame={playing ? setFrame : undefined}
+                onMove={(catIndex, patch) => updateCat(catIndex, patch)}
+              />
+              <p className="bd-hint bd-stage__hint">
+                <span className="bongo-hint-mouse">Drag a cat to move it, scroll on it to resize it.</span>
+                <span className="bongo-hint-touch">Drag a cat to move it, pinch with two fingers to resize it.</span>
+              </p>
 
-            {total > 1 && (
-              <div className="bd-frames">
-                <button type="button" className="bongo-icon-button" onClick={() => setPlaying((value) => !value)} aria-label={playing ? 'Pause' : 'Play'}>
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    {playing ? 'pause' : 'play_arrow'}
+              {total > 1 && (
+                <div className="bd-frames">
+                  <button type="button" className="bongo-icon-button" onClick={() => setPlaying((value) => !value)} aria-label={playing ? 'Pause' : 'Play'}>
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      {playing ? 'pause' : 'play_arrow'}
+                    </span>
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={shown - 1}
+                    value={Math.min(frame, shown - 1)}
+                    aria-label="Frame"
+                    onChange={(event) => {
+                      setPlaying(false)
+                      setFrame(Number(event.target.value))
+                    }}
+                  />
+                  <span className="bd-frames__count">
+                    {Math.min(frame, shown - 1) + 1}/{shown}
                   </span>
-                </button>
-                <input
-                  type="range"
-                  min={0}
-                  max={shown - 1}
-                  value={Math.min(frame, shown - 1)}
-                  aria-label="Frame"
-                  onChange={(event) => {
-                    setPlaying(false)
-                    setFrame(Number(event.target.value))
-                  }}
-                />
-                <span className="bd-frames__count">
-                  {Math.min(frame, shown - 1) + 1}/{shown}
-                </span>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
 
             <div className="bd-row">
               <span className="bd-label">Background</span>

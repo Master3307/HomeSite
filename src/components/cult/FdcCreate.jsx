@@ -532,10 +532,15 @@ export default function FdcCreate({ onCancel, onCreated, viewerDiscordId }) {
       {binOpen && <RecycleBin viewerDiscordId={viewerDiscordId} onClose={() => setBinOpen(false)} />}
 
       <p className="fdc-note">
-        {t('fdc.create.intro', {
-          defaultValue:
-            'The bot sends the poll to the FDC channel, pings the FDC role and archives the images. Pick an image to crop it; the bot adds the number and emoji to the Discord copy only.',
-        })}
+        {catalog
+          ? t('fdc.create.introDesigns', {
+              defaultValue:
+                'The bot sends the poll to the FDC channel, pings the FDC role and archives the options. Design a cat for each one; the bot adds the number and emoji to the Discord copy only.',
+            })
+          : t('fdc.create.intro', {
+              defaultValue:
+                'The bot sends the poll to the FDC channel, pings the FDC role and archives the images. Pick an image to crop it; the bot adds the number and emoji to the Discord copy only.',
+            })}
       </p>
 
       <div className="fdc-create__grid">

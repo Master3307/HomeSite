@@ -900,10 +900,11 @@ label.bp-tool:hover {
   aspect-ratio: 16 / 10;
   border-radius: 12px;
   overflow: hidden;
-  touch-action: none;
 }
+/* Only the designer's stage keeps the fingers (drag, pinch); previews elsewhere scroll the page. */
 .bongo-design.is-movable {
   cursor: grab;
+  touch-action: none;
 }
 .bongo-design.is-movable:active {
   cursor: grabbing;
@@ -963,6 +964,23 @@ label.bp-tool:hover {
   margin: 0;
   color: var(--b-muted);
   font-size: 0.8rem;
+}
+.bd-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* Hints that name the wheel / right-click on a mouse and the fingers on touch. */
+.bongo-hint-touch {
+  display: none;
+}
+@media (pointer: coarse) {
+  .bongo-hint-mouse {
+    display: none;
+  }
+  .bongo-hint-touch {
+    display: inline;
+  }
 }
 .bd-frames {
   display: flex;
@@ -1669,6 +1687,51 @@ label.bp-tool:hover {
   .bd-slots {
     max-width: none;
   }
+  /*
+   * One column: the preview stays pinned at the top while the cats and the
+   * picker scroll under it; background, drumming and speed come last.
+   */
+  .bd .bd-body {
+    padding-top: 0;
+  }
+  .bd-stage {
+    display: contents;
+  }
+  .bd-view {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    order: 1;
+    padding: 12px 0 10px;
+    background: var(--b-surface);
+    box-shadow: 0 8px 12px -10px rgb(0 0 0 / 0.5);
+  }
+  .bd-view .bongo-design {
+    width: min(100%, calc(23dvh * 1.6));
+    margin-inline: auto;
+  }
+  .bd-stage__hint {
+    text-align: center;
+  }
+  .bd-reference {
+    order: 0;
+    margin-top: 12px;
+  }
+  .bd-edit {
+    order: 2;
+  }
+  .bd-stage > :not(.bd-view, .bd-reference) {
+    order: 3;
+  }
+  .bd-edit > * {
+    max-width: none;
+  }
+  .bd-tools {
+    flex-wrap: wrap;
+  }
+  .bd-size {
+    min-width: 120px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1680,6 +1743,14 @@ label.bp-tool:hover {
     width: 100%;
     max-height: 100dvh;
     border-radius: 16px 16px 0 0;
+  }
+  /* The designer takes the whole screen; the buttons stay above the home bar. */
+  .bongo-dialog.bd {
+    height: 100dvh;
+    border-radius: 0;
+  }
+  .bd .bongo-dialog__foot {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   }
   .bd-body,
   .bw,

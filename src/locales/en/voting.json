@@ -45,6 +45,7 @@
             "description": "Name and description",
             "emoji": "Reaction emoji",
             "intro": "The bot sends the poll to the FDC channel, pings the FDC role and archives the images. Pick an image to crop it; the bot adds the number and emoji to the Discord copy only.",
+            "introDesigns": "The bot sends the poll to the FDC channel, pings the FDC role and archives the options. Design a cat for each one; the bot adds the number and emoji to the Discord copy only.",
             "endsAt": "Voting ends",
             "custom": "Custom",
             "inHours": "in {{hours}} h",
