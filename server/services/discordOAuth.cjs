@@ -68,17 +68,21 @@ const SESSION_TTL_DAYS = Math.max(
 );
 
 
-const ALLOWED_LANGUAGES = new Set([
-  "bar",
-  "de",
-  "en",
-  "es",
-  "fr",
-  "hr",
-  "it",
-  "lv",
-  "uk",
-]);
+// Every folder in src/locales is a language (like the site's i18n), so a new
+// one (e.g. "swg") can be saved without touching this list.
+const ALLOWED_LANGUAGES = (() => {
+  const folder = path.join(__dirname, "..", "..", "src", "locales");
+  try {
+    const found = require("node:fs")
+      .readdirSync(folder, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && /^[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(entry.name))
+      .map((entry) => entry.name);
+    if (found.length) return new Set(found);
+  } catch {
+    // no source tree (unusual deploy): the known ones
+  }
+  return new Set(["bar", "de", "en", "es", "fr", "hr", "it", "lv", "swg", "uk"]);
+})();
 
 function nowIso() {
   return new Date().toISOString();
@@ -1076,15 +1080,27 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
     });
   });
 
+  // Settings save often (a colour picker, theme toggles); the browser bundles
+  // them, but they get their own, roomier limit so they can't lock out logins.
+  const settingsRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 400,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: {
+      error: "Too many settings changes. Please try again in a few minutes.",
+    },
+  });
+
   app.patch(
     "/account/settings",
-    accountMutationRateLimiter,
+    settingsRateLimiter,
     requireStorage,
     requireAuthenticatedUser,
     (req, res) => {
       const body = req.body && typeof req.body === "object" ? req.body : {};
-      const { updates, error } = accountPrefs.cleanUpdates(body, ALLOWED_LANGUAGES);
-      if (error) return res.status(400).json({ error });
+      const { updates, rejected, error } = accountPrefs.cleanUpdates(body, ALLOWED_LANGUAGES);
+      if (error) return res.status(400).json({ error, rejected });
 
       const currentSettings = parseSettings(req.accountSession.settings_json);
       // The newest change time stays (an old browser can't make newer settings look older).
@@ -1096,8 +1112,10 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
         updates,
       );
 
+      // Keys that were left out (invalid), so the browser stops sending them.
       return res.json({
         settings,
+        rejected,
       });
     },
   );

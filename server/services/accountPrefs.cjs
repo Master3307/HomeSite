@@ -120,16 +120,24 @@ function parseSettings(json, languages) {
   return settings;
 }
 
-/** A PATCH body -> `{ updates }` or `{ error }` (the first invalid key). */
+/**
+ * A PATCH body -> `{ updates, rejected }`: the valid settings, and the keys
+ * that weren't (they are skipped, so one bad value can't block every other
+ * change). `{ error }` only when nothing valid is left.
+ */
 function cleanUpdates(body, languages) {
   const updates = {};
+  const rejected = [];
   for (const key of KEYS) {
     if (!Object.prototype.hasOwnProperty.call(body ?? {}, key)) continue;
     const result = cleanSetting(key, body[key], languages);
-    if (!result.ok) return { error: `Invalid ${key}.` };
-    updates[key] = result.value;
+    if (result.ok) updates[key] = result.value;
+    else rejected.push(key);
   }
-  return Object.keys(updates).length ? { updates } : { error: "No valid settings were provided." };
+  if (!Object.keys(updates).filter((key) => key !== "_at").length) {
+    return { error: rejected.length ? `Invalid ${rejected.join(", ")}.` : "No valid settings were provided.", rejected };
+  }
+  return { updates, rejected };
 }
 
 module.exports = { KEYS, parseSettings, cleanUpdates, MAX_CSS };

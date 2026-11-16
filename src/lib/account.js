@@ -115,6 +115,31 @@ export async function updateAccountSettings(settings) {
   return data.settings;
 }
 
+/**
+ * Like updateAccountSettings, with what the server left out:
+ * `{ settings, rejected }`, or null when not logged in. A failed save
+ * throws with `status` (and `rejected` when nothing in it was valid).
+ */
+export async function patchAccountSettings(settings) {
+  if (getLocalAdminSession()) return null;
+
+  const response = await accountFetch("/account/settings", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
+  if (response.status === 401) return null;
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error = new Error(data?.error || `Settings update failed: ${response.status}`);
+    error.status = response.status;
+    error.rejected = Array.isArray(data?.rejected) ? data.rejected : [];
+    throw error;
+  }
+  return { settings: data?.settings ?? null, rejected: Array.isArray(data?.rejected) ? data.rejected : [] };
+}
+
 export async function logoutAccount() {
   const local = getLocalAdminSession();
   clearLocalAdminSession();

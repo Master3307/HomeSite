@@ -4,6 +4,7 @@ import {
     useContext,
     useEffect,
     useMemo,
+    useRef,
     useState,
   } from 'react'
   import i18n, {
@@ -12,7 +13,7 @@ import {
   } from './i18n'
   import {
     getCurrentAccount,
-    updateAccountSettings,
+    patchAccountSettings,
   } from './account'
   import { getDashSettings, updateDashSettings } from './dashSettings'
   import { applyPrefs, PREF_KEYS, readPrefs, writePrefs } from './prefs'
@@ -130,38 +131,101 @@ import {
     /*
      * Every change is stamped (homesite:settingsAt) and kept as pending until
      * the account has it, so a save that fails (offline, server restarting)
-     * is sent again on the next load instead of being lost or overwritten.
+     * is sent again instead of being lost or overwritten. Changes are
+     * bundled (a colour picker fires on every move) and sent one request at
+     * a time; keys the server rejects are dropped so they can't block the
+     * rest. Logged out, everything simply stays in this browser.
      */
-    const syncSettingsToAccount = useCallback(async (settings) => {
+    const syncRef = useRef({ timer: null, retry: null, inFlight: null, again: false })
+    // undefined: not known yet; null: logged out; otherwise the account.
+    const accountRef = useRef(undefined)
+
+    const flushSettings = useCallback(function flush() {
+      const state = syncRef.current
+      if (state.inFlight) {
+        state.again = true
+        return state.inFlight
+      }
+      const sent = readPending()
+      const keys = Object.keys(sent).filter((key) => key !== '_at')
+      if (!keys.length) {
+        writePending(null)
+        return Promise.resolve(null)
+      }
+      clearTimeout(state.retry)
+
+      state.inFlight = (async () => {
+        let rejected = []
+        let saved = null
+        let failed = false
+        try {
+          const result = await patchAccountSettings(sent)
+          if (result === null) {
+            // Not logged in (any more): this browser keeps the settings.
+            writePending(null)
+            return null
+          }
+          saved = result.settings
+          rejected = result.rejected
+        } catch (error) {
+          rejected = error.rejected ?? []
+          failed = !rejected.length
+          console.error('Could not save the settings:', error)
+        }
+
+        // Forget what the account has now (or refused); keep anything changed meanwhile.
+        const now = readPending()
+        for (const key of Object.keys(sent)) {
+          const unchanged = JSON.stringify(now[key]) === JSON.stringify(sent[key])
+          if (rejected.includes(key) || (!failed && unchanged)) delete now[key]
+        }
+        writePending(Object.keys(now).some((key) => key !== '_at') ? now : null)
+
+        if (saved) {
+          setAccount((currentAccount) => (currentAccount ? { ...currentAccount, settings: saved } : currentAccount))
+        }
+        if (failed) {
+          // Try again a bit later (server restarting, offline, too many changes at once).
+          state.retry = setTimeout(() => flush(), 15_000)
+        }
+        return saved
+      })().finally(() => {
+        state.inFlight = null
+        if (state.again) {
+          state.again = false
+          flush()
+        }
+      })
+      return state.inFlight
+    }, [])
+
+    const syncSettingsToAccount = useCallback((settings, { now = false } = {}) => {
       const at = Date.now()
-      const pending = { ...readPending(), ...settings, _at: at }
-      writePending(pending)
       try {
         localStorage.setItem(SETTINGS_AT_KEY, String(at))
       } catch {
         // storage blocked
       }
-      try {
-        const savedSettings = await updateAccountSettings(pending)
-        writePending(null)
+      if (accountRef.current === null) return Promise.resolve(null)
+      writePending({ ...readPending(), ...settings, _at: at })
+      const state = syncRef.current
+      clearTimeout(state.timer)
+      if (now) return flushSettings()
+      state.timer = setTimeout(() => flushSettings(), 400)
+      return Promise.resolve(null)
+    }, [flushSettings])
 
-        if (savedSettings) {
-          setAccount((currentAccount) => (
-            currentAccount
-              ? {
-                  ...currentAccount,
-                  settings: savedSettings,
-                }
-              : currentAccount
-          ))
+    // Leaving the page: send what's still waiting.
+    useEffect(() => {
+      const onHide = () => {
+        if (document.visibilityState === 'hidden' && accountRef.current) {
+          clearTimeout(syncRef.current.timer)
+          flushSettings()
         }
-
-        return savedSettings
-      } catch (error) {
-        console.error('Could not sync account settings:', error)
-        return null
       }
-    }, [])
+      document.addEventListener('visibilitychange', onHide)
+      return () => document.removeEventListener('visibilitychange', onHide)
+    }, [flushSettings])
 
     const setTheme = useCallback((nextTheme) => {
       const normalizedTheme = normalizeTheme(nextTheme)
@@ -254,24 +318,30 @@ import {
           }
 
           if (!currentAccount) {
+            accountRef.current = null
+            writePending(null)
             setAccount(null)
             return
           }
+          accountRef.current = currentAccount
 
           // Changes this browser couldn't save yet go first; then the newer side wins.
-          const pending = readPending()
-          if (Object.keys(pending).length) {
-            const saved = await syncSettingsToAccount(pending)
+          if (Object.keys(readPending()).length) {
+            const saved = await flushSettings()
             if (!isActive) return
             if (saved) currentAccount.settings = saved
           }
           const remoteAt = Number(currentAccount.settings?._at) || 0
           if (localSettingsAt() > remoteAt) {
+            // This browser is newer: it wins, even if the upload fails now (it's retried).
             const local = { ...getLocalSettings(), ...readPrefs() }
             const dash = getDashSettings()
-            const saved = await syncSettingsToAccount({ ...local, customCss: dash.customCss ?? '', customCssEnabled: dash.customCssEnabled !== false })
+            const saved = await syncSettingsToAccount(
+              { ...local, customCss: dash.customCss ?? '', customCssEnabled: dash.customCssEnabled !== false },
+              { now: true },
+            )
             if (!isActive) return
-            if (saved) currentAccount.settings = saved
+            currentAccount.settings = saved || { ...currentAccount.settings, ...local, _at: localSettingsAt() }
           } else if (remoteAt) {
             try {
               localStorage.setItem(SETTINGS_AT_KEY, String(remoteAt))
@@ -287,7 +357,7 @@ import {
           const hasRemoteLanguage = Boolean(remoteLanguage)
 
           if (!hasRemoteTheme && !hasRemoteLanguage) {
-            const importedSettings = await syncSettingsToAccount(localSettings)
+            const importedSettings = await syncSettingsToAccount(localSettings, { now: true })
 
             if (!isActive) {
               return
@@ -349,12 +419,13 @@ import {
               missingSettings.language = nextLanguage
             }
 
-            await syncSettingsToAccount(missingSettings)
+            await syncSettingsToAccount(missingSettings, { now: true })
           }
         } catch (error) {
           console.error('Could not load account settings:', error)
 
           if (isActive) {
+            // Unknown (offline?): keep changes pending, they're sent on the next load.
             setAccount(null)
           }
         } finally {
@@ -369,7 +440,7 @@ import {
       return () => {
         isActive = false
       }
-    }, [syncSettingsToAccount])
+    }, [syncSettingsToAccount, flushSettings])
 
     const value = useMemo(() => ({
       account,
