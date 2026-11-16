@@ -65,6 +65,12 @@ Discord Bot Template by [NamVr](https://github.com/NamVr/) found [here](https://
 
 Card Tilt effect by [Stormxxboy](https://stormxxboy.com/card/) found [here](https://stormxxboy.com/card/script.js)
 
+Brand icons from [Simple Icons](https://simpleicons.org) (CC0)
+
+## License
+
+[Apache License 2.0](./LICENSE). If you use or build on this project, keep the [NOTICE](./NOTICE) file and credit MrKoby07 visibly. The license is also shown on the site at `/license`.
+
 ---------------------------------------------------------------------
 
 <p align="center"><img src="public/img/HomeSiteIconAnimated.svg" alt="HomeSite" style="height: 46px; width: auto;"></p>

@@ -1,0 +1,16 @@
+HomeSite
+Copyright 2024-2026 MrKoby07 (Korbinian, formerly Master3307)
+https://github.com/Master3307/HomeSite
+
+This product includes software developed by MrKoby07.
+
+If you use, copy or build on this code or site, keep this NOTICE file and
+credit MrKoby07 visibly, for example in your site's footer, about page or
+README: "Based on HomeSite by MrKoby07 (https://github.com/Master3307/HomeSite)".
+
+Code from earlier versions was published under the MIT License; those copies
+keep that license. Third-party parts keep their own licenses:
+- Brand icons: Simple Icons (CC0 1.0), https://simpleicons.org
+- Emoji: Twemoji (CC-BY 4.0), https://github.com/jdecked/twemoji
+- Material Symbols (Apache 2.0), Google Sans Flex (OFL 1.1),
+  JetBrains Mono Nerd Font (OFL 1.1)

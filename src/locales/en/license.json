@@ -1,0 +1,15 @@
+{
+    "title": "License",
+    "heading": "License",
+    "lead": "The code of this website is open source under the Apache License 2.0. You're welcome to use it, as long as you credit me.",
+    "summaryTitle": "In short",
+    "canTitle": "You can",
+    "canText": "Use, copy, change and share the code, also commercially.",
+    "mustTitle": "You must",
+    "mustText": "Keep the license and the NOTICE file, mark what you changed and credit MrKoby07.",
+    "cannotTitle": "You can't",
+    "cannotText": "Use my name or logo as if I made or endorse your version.",
+    "credit": "A visible credit like \"Based on HomeSite by MrKoby07\" with a link is all I ask.",
+    "full": "Full license text",
+    "note": "This summary is just a summary. The license text is what counts."
+}
