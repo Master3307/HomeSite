@@ -42,8 +42,8 @@
 
 .errorButton {
   background-color: color-mix(in srgb, var(--bg-accent) 70%, transparent);
-  backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px); /* Safari */
+  backdrop-filter: blur(13px);
   padding: 10px 12px;
   border-radius: 13px;
   box-shadow:

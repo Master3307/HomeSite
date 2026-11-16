@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router'
 import { HelmetProvider } from 'react-helmet-async'
 import "./styles/google-sans-flex.css";
 import './styles/main.css'
+import './styles/personal.css'
 import './lib/i18n.js'
 import { AccountSettingsProvider } from './lib/accountSettings.jsx'
 import Root from './Root.jsx'

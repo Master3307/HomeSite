@@ -53,7 +53,13 @@ have fun and enjoy!
 
           if (savedTheme === "light" || savedTheme === "dark") {
             theme = savedTheme;
+          } else if (savedTheme === "system") {
+            theme = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
           }
+          // Animations: "none" switches them off before anything moves.
+          const motion = JSON.parse(localStorage.getItem("homesite:prefs") || "{}").motion;
+          if (motion === "reduce" || motion === "none") root.classList.add("motion-reduce");
+          if (motion === "none") root.classList.add("motion-none");
         } catch {
           // Keep the dark default if storage is unavailable.
         }
@@ -64,6 +70,41 @@ have fun and enjoy!
           "--theme-progress",
           theme === "dark" ? "1" : "0",
         );
+      })();
+    </script>
+
+    <!--
+      Settings → "Block Cloudflare analytics" (src/lib/prefs.js): the Cloudflare
+      tunnel adds a Web Analytics beacon to every page. When the visitor turns
+      it off, the beacon script is kept from loading and nothing it would send
+      (to cloudflareinsights.com or /cdn-cgi/rum) leaves the browser.
+    -->
+    <script>
+      (() => {
+        let block = false;
+        try {
+          block = JSON.parse(localStorage.getItem("homesite:prefs") || "{}").blockInsights === true;
+        } catch {
+          return;
+        }
+        if (!block) return;
+        const blocked = (url) => /cloudflareinsights\.com|\/cdn-cgi\/rum/i.test(String(url && url.url ? url.url : url));
+        const sendBeacon = navigator.sendBeacon && navigator.sendBeacon.bind(navigator);
+        if (sendBeacon) navigator.sendBeacon = (url, data) => (blocked(url) ? true : sendBeacon(url, data));
+        const fetchOriginal = window.fetch.bind(window);
+        window.fetch = (input, init) => (blocked(input) ? Promise.resolve(new Response(null, { status: 204 })) : fetchOriginal(input, init));
+        const open = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+          if (blocked(url)) url = "data:text/plain,";
+          return open.call(this, method, url, ...rest);
+        };
+        const stop = (node) => {
+          if (node.tagName === "SCRIPT" && blocked(node.src)) {
+            node.type = "javascript/blocked";
+            node.remove();
+          }
+        };
+        new MutationObserver((changes) => changes.forEach((change) => change.addedNodes.forEach(stop))).observe(document.documentElement, { childList: true, subtree: true });
       })();
     </script>
 

@@ -9,11 +9,18 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
 const { registerDiscordOAuth } = require("./services/discordOAuth.cjs");
-const { registerFdcWeb, LARGE_BODY_PATHS } = require("./services/fdcWeb.cjs");
+const { registerFdcWeb, canCreateFdc, LARGE_BODY_PATHS } = require("./services/fdcWeb.cjs");
+const { registerBongo } = require("./services/bongoWeb.cjs");
 const { registerLobbyCat } = require("./services/lobbyCat.cjs");
+const { registerMembers } = require("./services/members.cjs");
+const { registerEmailAuth } = require("./services/emailAuth.cjs");
+const { registerModeration } = require("./services/moderation.cjs");
+const { registerEmailUnsubscribe } = require("./services/emailUnsubscribe.cjs");
+const { registerBirthdaysWeb } = require("./services/birthdaysWeb.cjs");
+const { isValidInternalKey } = require("./services/internalKey.cjs");
 const { createActivityLog } = require("./services/activityLog.cjs");
 const { registerAdminBackup } = require("./services/adminBackup.cjs");
-const { registerHub } = require("./services/hub.cjs");
+const { registerHub, hubSessionOf } = require("./services/hub.cjs");
 
 const PORT = Number(process.env.ACCOUNT_API_PORT || 3002);
 
@@ -45,14 +52,25 @@ function corsOrigin(origin, callback) {
 const corsOptions = {
   origin: corsOrigin,
   credentials: true,
-  methods: ["GET", "POST", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "X-Requested-With", "X-Admin-Key", "X-Backup-Key", "X-Admin-Unlock"],
-  exposedHeaders: ["Content-Disposition", "X-Backup-Files", "X-Backup-Time-Differences"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "X-Requested-With", "X-Admin-Key", "X-Backup-Key", "X-Admin-Unlock", "X-Upload-Id"],
+  exposedHeaders: ["Content-Disposition", "Content-Length", "X-Backup-Files", "X-Backup-Time-Differences"],
   optionsSuccessStatus: 204,
 };
 
 function requireTrustedMutation(req, res, next) {
   if (SAFE_METHODS.has(req.method)) {
+    return next();
+  }
+
+  // Server-to-server calls from the bot (/internal/*) prove themselves with the internal key instead.
+  if (req.path.startsWith("/internal/") && isValidInternalKey(req.get("X-Internal-Key"))) {
+    return next();
+  }
+
+  // One-click unsubscribe (RFC 8058) from mail providers: the signed token in the link is the
+  // only authority (no cookies are used), so it can't be forged from another site.
+  if (req.path === "/email/unsubscribe") {
     return next();
   }
 
@@ -94,12 +112,37 @@ app.use(requireTrustedMutation);
 // Append-only activity log (server/services/db/activity-log.jsonl).
 const activity = createActivityLog(path.join(__dirname, "services", "db"));
 
-const accounts = registerDiscordOAuth(app, { activity });
+// Filled in once moderation is registered: banned people can't log in.
+const loginGate = { banned: () => false };
+const accounts = registerDiscordOAuth(app, { activity, isBanned: (discordId) => loginGate.banned(discordId) });
 
-registerFdcWeb(app, { ...accounts, activity });
-registerAdminBackup(app, { ...accounts, activity });
+// Moderation comes later (it needs the members); FDC asks for it when used.
+let moderationRef = null;
+registerFdcWeb(app, { ...accounts, activity, getModeration: () => moderationRef });
+const adminSettings = registerAdminBackup(app, { ...accounts, activity, hubSessionOf });
 registerLobbyCat(app, accounts);
+const emailAuth = registerEmailAuth(app, { ...accounts, activity, isBanned: (discordId) => loginGate.banned(discordId) });
+const members = registerMembers(app, { ...accounts, activity, emailAuth });
+const moderation = registerModeration(app, { ...accounts, activity, members });
+moderationRef = moderation;
+registerEmailUnsubscribe(app, { ...accounts, activity });
+registerBirthdaysWeb(app, { ...accounts, activity, members, getModeration: () => moderation });
+members.attachModeration(moderation);
+loginGate.banned = (discordId) => {
+  try {
+    return Boolean(moderation.standing(discordId).banned);
+  } catch {
+    return false;
+  }
+};
 const hub = registerHub(app, { ...accounts, activity, allowedOrigins });
+// Bongo Cat assets, the lobby cat's wardrobe and favourites.
+registerBongo(app, {
+  ...accounts,
+  activity,
+  canEdit: canCreateFdc,
+  isAdmin: (req) => hub.isHub(req) || adminSettings.isUnlocked(req),
+});
 
 app.get("/health", (_req, res) => {
   res.json({

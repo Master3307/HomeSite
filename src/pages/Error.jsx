@@ -35,7 +35,6 @@ export default function Error({ forcedCode }) {
       <h2>{t('about.header', { ns: 'about'})}</h2>
       <p>
         {t('about.card.line1', { ns: 'about'})} <br />
-        {t('about.card.line2', { ns: 'about'})} <br />
         <Link to='/about'>{t('about.card.line3', { ns: 'about'})}</Link>
       </p>
     </div>

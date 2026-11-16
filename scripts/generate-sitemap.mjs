@@ -12,7 +12,10 @@ const routes = [
   { path: "/", priority: 1.0 },
   { path: "/card", priority: 0.9 },
   { path: "/about", priority: 0.8 },
+  { path: "/license", priority: 0.3 },
   { path: "/maps", priority: 0.7 },
+  { path: "/cult", priority: 0.8 },
+  { path: "/cult/birthdays", priority: 0.4 },
 ];
 
 for (const route of routes) {

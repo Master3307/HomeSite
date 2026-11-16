@@ -189,8 +189,8 @@ button:hover {
   background-color: color-mix(in srgb, var(--bg-secondary) 13%, transparent);
 
   /* Blur content scrolling underneath */
-  backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px); /* Safari */
+  backdrop-filter: blur(13px);
 
   /* Optional: define the lower edge more clearly */
 }
@@ -235,8 +235,8 @@ button:hover {
   border: 0px solid var(--accent);
   border-radius: 13px;
   background-color: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
-  backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px); /* Safari */
+  backdrop-filter: blur(13px);
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.047);
@@ -330,6 +330,8 @@ button:hover {
   position: absolute;
   right: 4px;
   bottom: 4px;
+  /* Above the avatar decoration (z-index 3): the frame never hides the status. */
+  z-index: 4;
   width: 24px;
   height: 24px;
   pointer-events: none;
@@ -412,8 +414,8 @@ button:hover {
   border: 0px solid var(--accent);
   border-radius: 13px;
   background-color: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
-  backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px); /* Safari */
+  backdrop-filter: blur(13px);
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.047);
@@ -461,8 +463,8 @@ button:hover {
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
 }
 
 @supports (corner-shape: squircle) {
@@ -866,8 +868,8 @@ button.loginButton {
   text-align: left;
   background-color: color-mix(in srgb, var(--bg-secondary) 72%, transparent);
   border-radius: 13px;
-  backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   box-shadow:
     0 14px 36px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -1018,6 +1020,56 @@ button.loginButton {
   opacity: 0.55;
 }
 
+/* Email login (EmailLogin.jsx): inputs outside rows, notes, method buttons. */
+.login-panel__admin > input {
+  padding: 9px 11px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-primary) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 16%, transparent);
+  border-radius: 10px;
+  font: inherit;
+}
+
+.login-panel__admin > input:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.login-panel__row .login-panel__plain {
+  margin-right: auto;
+  padding: 9px 4px;
+  color: var(--text-secondary);
+  background: none;
+}
+
+.login-panel__note {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.login-panel__methods {
+  display: grid;
+  gap: 4px;
+}
+
+.login-panel__methods button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  font-size: 0.88rem;
+}
+
+.login-panel__methods button.is-active {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
 .login-panel__error {
   margin: 2px 0 0;
   color: #ff9aa8;
@@ -1052,8 +1104,8 @@ button.loginButton {
   );
   border-radius: 13px;
 
-  backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
 
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.14),
@@ -1080,6 +1132,113 @@ button.loginButton {
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.accountMenu {
+  position: relative;
+}
+
+.accountMenu__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 4px 0 0;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.accountMenu__toggle:hover,
+.accountMenu__toggle[aria-expanded="true"] {
+  background: none;
+}
+
+.accountMenu__toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.accountMenu__chevron {
+  flex: none;
+  font-size: 20px;
+  opacity: 0.7;
+}
+
+.accountMenu__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  display: grid;
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--bg-secondary) 92%, black);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.accountMenu__list :is(a, button) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 0;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.accountMenu__list :is(a, button):hover,
+.accountMenu__list :is(a, button):focus-visible {
+  background: color-mix(in srgb, var(--text-primary) 9%, transparent);
+  outline: none;
+}
+
+.accountMenu__list .material-symbols-outlined {
+  font-size: 20px;
+  opacity: 0.85;
+}
+
+.accountMenu__unread {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e5484d;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.accountMenu__count {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #e5484d;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.accountMenu__logout {
+  margin-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent) !important;
+  border-radius: 0 0 9px 9px !important;
 }
 
 .accountLogoutButton {
@@ -1274,4 +1433,604 @@ img.discord-emoji {
   transition: transform 0.5s ease-out;
   -webkit-backdrop-filter: blur(13px);
   backdrop-filter: blur(13px);
+}
+
+/*
+ * Controls and pictures aren't text to copy: a double-click or a drag over
+ * them shouldn't select them. Inputs, text areas and running text stay
+ * selectable (inputs are never affected by user-select).
+ */
+button,
+summary,
+select,
+label,
+img,
+svg,
+video,
+[role="button"],
+[role="tab"],
+[role="tablist"],
+[role="radio"],
+[role="option"],
+[role="menuitem"],
+[role="switch"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+img {
+  -webkit-user-drag: none;
+}
+
+/* UI labels by their naming: badges, tags, chips, pills, stats, counts, link buttons. */
+a:is([class*="button" i], [class*="btn" i], [class*="join" i], [class*="link" i]),
+:is([class*="badge" i], [class*="__tag" i], [class*="-tag" i], [class*="chip" i], [class*="pill" i], [class*="__stat" i], [class*="-stat" i], [class*="kicker" i], [class*="eyebrow" i], [class*="__label" i], [class*="-label" i], [class*="__count" i], [class*="__more" i], [class*="__number" i], [class*="__live" i], [class*="-live" i], [class*="__meta" i], [class*="__hint" i], [class*="__status" i], [class*="-status" i], [class*="__dot" i]),
+legend,
+.login-wrap :is(.accountName, .accountMenu, .loginButton) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Settings → Animations (lib/prefs.js): fewer, or all of them even when the device asks for less. */
+:root.motion-reduce *,
+:root.motion-reduce *::before,
+:root.motion-reduce *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Rolling numbers (components/cult/RollingNumber.jsx): plain text at rest, odometer digits while changing. */
+.rolling-number {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+  /* Same digit widths for the plain number and the rolling one: no jump when they swap. */
+  font-variant-numeric: tabular-nums;
+}
+/* At rest: the plain number. While changing: the rolling digits over it. */
+.rolling-number.is-rolling .rolling-number__ghost {
+  visibility: hidden;
+}
+.rolling-number__roll {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  will-change: transform;
+  overflow: hidden;
+  visibility: hidden;
+}
+.rolling-number.is-rolling .rolling-number__roll {
+  visibility: visible;
+}
+.rolling-number__digit,
+.rolling-number__separator {
+  display: block;
+  height: 1lh;
+  overflow: hidden;
+}
+/* The digits fade in and out at the top and bottom of their window while they roll. */
+.rolling-number.is-rolling .rolling-number__digit {
+  -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+  mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+}
+.rolling-number__strip {
+  display: block;
+  transform: translateY(calc(var(--digit) * -1lh));
+  transition: transform 0.56s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.rolling-number__strip > span {
+  display: block;
+  height: 1lh;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rolling-number__strip {
+    transition: none;
+  }
+}
+:root.motion-reduce .rolling-number__strip {
+  transition: none;
+}
+
+/*
+ * Activity cards (DiscordCard.jsx, /card and member profiles): the artwork
+ * blurred behind the card, the cover on the left, a clear title, and a
+ * thin progress bar for music. Overrides the older card styles above.
+ */
+.discord-presence-card {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  justify-content: stretch;
+  gap: 14px;
+  width: min(100%, 34rem);
+  min-height: 0;
+  margin: 0.9rem auto 0;
+  padding: 12px 14px 12px 12px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg-secondary) 78%, transparent);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.18);
+  text-align: left;
+}
+.discord-presence-card::before {
+  position: absolute;
+  inset: -30%;
+  z-index: -1;
+  background: var(--presence-art, none) center / cover no-repeat;
+  content: "";
+  filter: blur(28px) saturate(1.4);
+  opacity: 0.32;
+  transform: scale(1.1);
+}
+.discord-presence-card::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(110deg, color-mix(in srgb, var(--bg-secondary) 55%, transparent), transparent 70%);
+  content: "";
+}
+.discord-presence-card .discord-presence__image {
+  position: static;
+  width: 76px;
+  height: 76px;
+  margin: 0;
+  border-radius: 12px;
+  object-fit: cover;
+  transform: none;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.3);
+}
+/* No cover: the text takes the whole card. */
+.discord-presence-card:not(:has(> .discord-presence__image)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.discord-presence-card .discord-presence__line-wrap {
+  justify-content: flex-start;
+  max-width: 100%;
+  text-align: left;
+}
+.discord-presence-card--game .discord-presence__image {
+  height: 76px;
+  border-radius: 10px;
+}
+.discord-presence-card .discord-presence__content {
+  display: grid;
+  align-items: start;
+  justify-content: stretch;
+  justify-items: start;
+  gap: 2px;
+  min-width: 0;
+  width: 100%;
+  text-align: left;
+}
+.discord-presence-card .discord-presence__content {
+  max-width: none;
+}
+.discord-presence-card .discord-presence__content > * {
+  max-width: 100%;
+}
+.discord-presence-card .discord-presence__line-wrap,
+.discord-presence-card .discord-presence__line-inner,
+.discord-presence-card .discord-presence__music-link {
+  justify-content: flex-start;
+  margin-inline: 0;
+  text-align: left;
+}
+.discord-presence-card .discord-presence__progress-wrap {
+  width: 100%;
+}
+/* On profiles the card fills its box. */
+.member-presence .discord-presence-card {
+  width: 100%;
+  margin: 0;
+}
+.discord-presence-card .discord-presence__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 2px;
+  color: color-mix(in srgb, var(--text-primary) 62%, transparent);
+  font-size: 0.74rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.discord-presence-card .discord-presence__eyebrow .material-symbols-outlined {
+  font-size: 15px;
+}
+.discord-presence-card--music .discord-presence__eyebrow {
+  color: color-mix(in oklab, #1db954, var(--text-primary) 30%);
+}
+.discord-presence-card .discord-presence__title {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+.discord-presence-card .discord-presence__subtitle,
+.discord-presence-card .discord-presence__album,
+.discord-presence-card .discord-presence__artist,
+.discord-presence-card .discord-presence__artists {
+  color: color-mix(in srgb, var(--text-primary) 72%, transparent);
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+.discord-presence-card .discord-presence__album {
+  color: color-mix(in srgb, var(--text-primary) 55%, transparent);
+  font-size: 0.8rem;
+}
+.discord-presence-card .discord-presence__progress-wrap {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+.discord-presence-card .discord-presence__progress {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 16%, transparent);
+}
+.discord-presence-card .discord-presence__progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in oklab, #1db954, var(--text-primary) 15%);
+  transition: width 1s linear;
+}
+.discord-presence-card .discord-presence__times {
+  display: flex;
+  justify-content: space-between;
+  color: color-mix(in srgb, var(--text-primary) 55%, transparent);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.discord-presence-card .discord-presence__meta-row {
+  margin-top: 6px;
+}
+.discord-presence-card .discord-presence__meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  color: color-mix(in srgb, var(--text-primary) 80%, transparent);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+.discord-presence-card .discord-presence__meta-pill .material-symbols-outlined {
+  font-size: 14px;
+}
+@media (max-width: 420px) {
+  .discord-presence-card {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+  .discord-presence-card .discord-presence__image {
+    width: 60px;
+    height: 60px;
+  }
+}
+
+/*
+ * Desktop: one header bar for everything up there. The theme + language
+ * switches (left), the title (centre) and the login (right) share one
+ * line; the bar is exactly as tall as the 40px controls with the same
+ * space above and below (8px).
+ */
+@media (min-width: 751px) {
+  :root {
+    --bar-gap: 8px;
+    --bar-control: 40px;
+    --bar-height: calc(var(--bar-control) + 2 * var(--bar-gap));
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--bar-height);
+    padding: 0 220px;
+  }
+
+  .head .tit,
+  .head h1,
+  .head p.tit {
+    margin: 0;
+    font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .site-pickers {
+    top: var(--bar-gap) !important;
+    left: 12px !important;
+    height: var(--bar-control);
+  }
+
+  .login-below-head {
+    top: var(--bar-gap);
+    right: 12px;
+    height: var(--bar-control);
+    align-items: center;
+  }
+
+
+
+  .settings-below-head {
+    top: calc(var(--bar-height) + 6px) !important;
+  }
+}
+
+/* Login button and account menu: exactly as tall as the theme and language switches (40px). */
+.login-below-head .loginButton,
+.login-below-head .accountMenu {
+  box-sizing: border-box;
+  height: 40px;
+  min-height: 0;
+}
+.login-below-head .loginButton {
+  display: inline-flex;
+  align-items: center;
+  padding-block: 0;
+  border-radius: 13px;
+  background-color: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
+  -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.login-below-head .loginButton:hover {
+  background-color: color-mix(in srgb, var(--bg-secondary) 65%, transparent);
+}
+.login-below-head .accountMenu {
+  padding-block: 0;
+  border-radius: 13px;
+}
+.login-below-head .accountAvatar {
+  width: 30px;
+  height: 30px;
+}
+
+/*
+ * Phones: the login / account button joins the theme and language switches
+ * in the bottom row (centre), so no page needs room for it at the top.
+ * Its menus open upward; the account button shows just the avatar.
+ */
+@media (max-width: 750px) {
+  /* Centred without a transform (a transform would trap the fixed login panel inside it). */
+  .login-below-head {
+    top: auto;
+    right: 0;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    z-index: 1000;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .login-below-head > * {
+    pointer-events: auto;
+  }
+
+  .login-below-head .accountMenu {
+    max-width: none;
+    padding: 0 6px;
+  }
+
+  .login-below-head .accountMenu .accountName,
+  .login-below-head .accountMenu .accountBadge,
+  .login-below-head .accountMenu .accountMenu__chevron {
+    display: none;
+  }
+
+  .login-below-head .accountMenu__list {
+    top: auto;
+    right: 50%;
+    bottom: calc(100% + 8px);
+    transform: translateX(50%);
+  }
+
+  .login-below-head .login-panel {
+    position: fixed;
+    top: auto;
+    right: 12px;
+    bottom: calc(16px + 40px + 10px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    width: auto;
+    max-height: calc(100dvh - 100px);
+    overflow-y: auto;
+  }
+}
+
+/* ---------- ImageViewer.jsx: a picture shown large ---------- */
+.image-viewer {
+  max-width: min(1100px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  overflow: visible;
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+}
+.image-viewer::backdrop {
+  background: rgba(0, 0, 0, 0.72);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.image-viewer[open] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: image-viewer-in 0.2s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.image-viewer__figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: 0;
+  margin: 0;
+}
+.image-viewer__figure img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100dvh - 150px);
+  object-fit: contain;
+  border-radius: 13px;
+  background: #202228;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.image-viewer__figure figcaption {
+  max-width: 60ch;
+  color: #eee;
+  font-size: 0.95rem;
+  text-align: center;
+}
+.image-viewer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  user-select: none;
+}
+.image-viewer__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  color: #eee;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 13px;
+  background: rgba(30, 30, 36, 0.86);
+  transition: background-color 0.15s ease;
+}
+.image-viewer__button:hover,
+.image-viewer__button:focus-visible {
+  background: rgba(60, 60, 70, 0.95);
+}
+.image-viewer__button .material-symbols-outlined {
+  font-size: 20px;
+}
+@keyframes image-viewer-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+:root.motion-reduce .image-viewer[open] {
+  animation: none;
+}
+
+/* ---------- RichTextarea.jsx: @mentions + emoji button ---------- */
+.rich-textarea {
+  position: relative;
+  display: grid;
+  gap: 6px;
+}
+.rich-textarea__field {
+  position: relative;
+}
+.rich-textarea__field textarea {
+  width: 100%;
+  padding-right: 40px;
+  box-sizing: border-box;
+}
+.rich-textarea__tools {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+.rich-textarea__people {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-secondary) 94%, black);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+}
+.rich-textarea__people li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.rich-textarea__people li.is-active {
+  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+.rich-textarea__people img {
+  border-radius: 50%;
+}
+.rich-textarea__people small {
+  color: var(--text-secondary);
+}
+.rich-textarea__preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+.rich-textarea__preview .material-symbols-outlined {
+  font-size: 16px;
+  margin-top: 2px;
+}
+
+/*
+ * Animations (Settings → Look): all (default) | fewer | none.
+ * Fewer: small, quick transitions stay; looping decoration stops (loading
+ * spinners keep turning). None: nothing moves, every change is instant.
+ * JS checks `motion-reduce` (set for both) before animating.
+ */
+:root.motion-reduce {
+  scroll-behavior: auto;
+}
+:root.motion-reduce *,
+:root.motion-reduce *::before,
+:root.motion-reduce *::after {
+  transition-duration: 0.12s !important;
+  transition-delay: 0s !important;
+}
+:root.motion-reduce *:not([class*="spin"], [class*="loading"], [role="progressbar"] *),
+:root.motion-reduce *:not([class*="spin"], [class*="loading"], [role="progressbar"] *)::before,
+:root.motion-reduce *:not([class*="spin"], [class*="loading"], [role="progressbar"] *)::after {
+  animation-duration: 0.15s !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0s !important;
+}
+:root.motion-none *,
+:root.motion-none *::before,
+:root.motion-none *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+.login-panel__trust {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  cursor: pointer;
 }

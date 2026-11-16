@@ -6,12 +6,14 @@ import './styles/picker.css'
 import './styles/theme-transition.css'
 import App from './App.jsx'
 import ThemeSwitch from './components/ThemeSwitch.jsx'
+import Login from './components/Login'
 import LanguageSwitch from './components/LanguageSwitch.jsx'
 import CustomCss from './components/CustomCss.jsx'
 import { SearchHighlight } from './components/Search.jsx'
+import { installBongoTap } from './lib/bongo'
+import { installRangeWheel } from './lib/rangeWheel'
 
 const themeSwitchHiddenPaths = [
-  '/cult*',
   // The hub has its own theme button and navigation.
   '/hub*',
 
@@ -56,6 +58,11 @@ export default function Root() {
     matchesPath(pathname, pattern)
   )
 
+  // Every click / key press is a Bongo Cat tap (left, right, …) for the lobby cat.
+  useEffect(() => installBongoTap(), [])
+  // Scrolling over any slider moves it step by step.
+  useEffect(() => installRangeWheel(), [])
+
   useEffect(() => {
     if (!rootRef.current) return
 
@@ -67,8 +74,17 @@ export default function Root() {
       <CustomCss />
       <SearchHighlight />
       <App />
-      {!hideThemeSwitch && <ThemeSwitch />}
-      {!matchesPath(pathname, '/hub*') && <LanguageSwitch />}
+      {/* The login / account menu on every page (the hub has its own). */}
+      {!matchesPath(pathname, '/hub*') && (
+        <div className="login-below-head">
+          <Login />
+        </div>
+      )}
+      {/* Desktop: together at the top left (picker.css); phones: bottom corners. */}
+      <div className="site-pickers">
+        {!hideThemeSwitch && <ThemeSwitch />}
+        {!matchesPath(pathname, '/hub*') && <LanguageSwitch />}
+      </div>
     </div>
   )
 }
