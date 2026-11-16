@@ -8,6 +8,7 @@ import ErrorCard from '../components/ErrorCard.jsx'
 import { getErrorMessage } from '../lib/error.js'
 
 import '../styles/error.css'
+import SiteLogo from '../components/SiteLogo.jsx'
 
 export default function Error({ forcedCode }) {
   const location = useLocation()
@@ -25,6 +26,7 @@ export default function Error({ forcedCode }) {
   return (
     <div className="errorPage">
       <header className="head">
+        <SiteLogo />
         <h1 className="tit">
           {t('error', { ns: 'title', defaultValue: 'Error of' })} <b>&nbsp;MrKoby07</b>
         </h1>

@@ -12,6 +12,7 @@ import SettingsWorkspace from '/src/components/admin/SettingsWorkspace'
 import BongoAssetsCard from '/src/components/admin/BongoAssetsCard'
 import '/src/styles/backup.css'
 import '/src/styles/admin-settings.css'
+import SiteLogo from '/src/components/SiteLogo'
 
 /*
  * /admin-settings: merged into the hub (/hub/settings, with backups and the
@@ -102,6 +103,7 @@ export default function AdminSettings() {
       </Helmet>
 
       <header className="bk-header">
+        <SiteLogo variant="logo" className="bk-logo" />
         <Link to="/cult#fdc" className="bk-back">
           <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
           {t('back', { defaultValue: 'Back to the cult' })}

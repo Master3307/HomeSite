@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import AboutCard from '../components/AboutCardFull.jsx'
+import SiteLogo from '../components/SiteLogo.jsx'
 
 export default function Home() {
   const { t } = useTranslation('title')
@@ -8,6 +9,7 @@ export default function Home() {
     <>
       <title>About – MrKoby07</title>
       <header className="head">
+        <SiteLogo />
         <h1 className="tit">
           {t('about')} <strong>&nbsp;MrKoby07</strong>
         </h1>

@@ -31,6 +31,7 @@ import { hasPendingLogin } from '../lib/maps/pkce.js'
 import { WIKIMEDIA_PENDING_KEY, completeWikimediaLogin } from '../lib/maps/wikimedia.js'
 import { getRoutes } from '../lib/maps/routing.js'
 import '../styles/maps.css'
+import SiteLogo from '../components/SiteLogo.jsx'
 
 const DARK_THEMES = new Set(['midnight', 'forest', 'ocean', 'sunset'])
 
@@ -454,6 +455,7 @@ export default function Maps() {
     <div className={`maps maps-theme--${settings.theme}${isDarkUi ? ' maps--dark' : ' maps--light'}`}>
       <title>Maps – MrKoby07</title>
       <header className="head">
+        <SiteLogo />
         <h1 className="tit">
           {t('title:maps')} <strong>&nbsp;MrKoby07</strong>
         </h1>

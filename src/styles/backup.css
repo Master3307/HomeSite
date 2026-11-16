@@ -18,6 +18,13 @@
   text-align: left;
 }
 
+.bk-logo {
+  margin-bottom: 18px;
+}
+.bk-logo img {
+  height: 40px;
+}
+
 .bk-header h1 {
   margin: 0.4rem 0 0.3rem;
   font-size: clamp(1.6rem, 4vw, 2.2rem);

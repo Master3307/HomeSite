@@ -19,6 +19,7 @@ import Database from '/src/components/hub/Database'
 import '/src/styles/backup.css'
 import '/src/styles/admin-settings.css'
 import '/src/styles/hub.css'
+import SiteLogo from '/src/components/SiteLogo'
 
 // xterm.js is big; only load it when the console is opened.
 const Console = lazy(() => import('/src/components/hub/Console'))
@@ -92,9 +93,7 @@ function Login({ session, onDone }) {
   return (
     <main className="hub-login">
       <form className="hub-login__card" onSubmit={submit}>
-        <span className="hub-login__mark">
-          <Icon name="hub" />
-        </span>
+        <SiteLogo variant="icon" className="hub-login__mark" />
         <h1>Hub</h1>
         <p>
           {!session.configured
@@ -375,10 +374,10 @@ export default function Hub() {
     <div className={`hub hub--${tab}`}>
       {head}
       <aside className="hub-nav">
-        <Link to="/" className="hub-nav__brand" title="Back to the site">
-          <Icon name="hub" />
+        <div className="hub-nav__brand">
+          <SiteLogo variant="icon" className="hub-nav__logo" />
           <span>Hub</span>
-        </Link>
+        </div>
         <nav className="hub-nav__list" aria-label="Hub">
           <NavLinks tab={tab} />
         </nav>
@@ -428,6 +427,8 @@ export default function Hub() {
       )}
 
       <main className="hub-main">
+        {/* Phones (no sidebar): the house, back to the site. */}
+        <SiteLogo variant="icon" className="hub-main__logo" />
         {tab === 'overview' ? (
           <Welcome overview={data} session={session} onLogout={lock} />
         ) : (

@@ -641,17 +641,8 @@
   backdrop-filter: blur(16px);
 }
 
-.hub-login__mark {
-  display: grid;
-  place-items: center;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 14px;
-  background: var(--accent);
-}
-
-.hub-login__mark .material-symbols-outlined {
-  font-size: 1.7rem;
+.hub-login__mark img {
+  height: 3.2rem;
 }
 
 .hub-login h1 {
@@ -732,12 +723,13 @@
   text-decoration: none !important;
 }
 
-.hub-nav__brand .material-symbols-outlined {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 10px;
-  background: var(--accent);
-  font-size: 1.25rem;
+.hub-nav__logo img {
+  height: 2.1rem;
+}
+
+/* Phones have no sidebar: the house sits above the page, back to the site. */
+.hub-main__logo {
+  display: none;
 }
 
 .hub-nav__list {
@@ -3104,6 +3096,15 @@
 
   .hub-nav {
     display: none;
+  }
+
+  .hub-main__logo {
+    display: inline-flex;
+    margin-bottom: 0.6rem;
+  }
+
+  .hub-main__logo img {
+    height: 2rem;
   }
 
   .hub-main {
