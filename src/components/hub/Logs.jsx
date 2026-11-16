@@ -29,7 +29,7 @@ const bytes = (value) => (value == null ? '' : value > 1048576 ? `${(value / 104
 
 export default function Logs({ onLocked }) {
   const { data, error, reload } = useHubData('/hub/logs', null, { onLocked })
-  const [sourceId, setSourceId] = useState(null)
+  const [pickedId, setSourceId] = useState(null)
   const [lines, setLines] = useState([])
   const [count, setCount] = useState(500)
   const [follow, setFollow] = useState(true)
@@ -41,11 +41,9 @@ export default function Logs({ onLocked }) {
   const stick = useRef(true)
 
   const sources = data?.sources ?? []
+  // The picked log, or the first one until something is picked.
+  const sourceId = pickedId ?? sources[0]?.id ?? null
   const source = sources.find((entry) => entry.id === sourceId)
-
-  useEffect(() => {
-    if (!sourceId && sources.length) setSourceId(sources[0].id)
-  }, [sources, sourceId])
 
   useEffect(() => {
     if (!sourceId) return
