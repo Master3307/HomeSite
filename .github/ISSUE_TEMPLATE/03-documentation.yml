@@ -1,0 +1,41 @@
+name: Documentation
+description: Something in the README, CONTRIBUTING, CLAUDE.md, code comments or setup guides is missing, wrong or unclear.
+title: "[Docs]: "
+labels:
+  - docs
+assignees:
+  - Master3307
+projects:
+  - Master3307/2
+
+body:
+  - type: input
+    id: where
+    attributes:
+      label: Which document?
+      description: A file name or link, e.g. CONTRIBUTING.md, README.md, the setup guide.
+      placeholder: CONTRIBUTING.md
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What's the problem?
+      options:
+        - Something is wrong or outdated
+        - Something is missing
+        - It's hard to understand
+        - It's too long / messy
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What should change? Quote the part you mean, or suggest a better wording.
+      placeholder: The section about … says … but …
+    validations:
+      required: true
