@@ -46,6 +46,26 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     base: "/",
+    build: {
+      /*
+       * three.js (the /card setup viewer) and xterm (the hub console) get
+       * their own chunks: both load only when needed, and they stay cached
+       * when our own code around them changes. three.js on its own is about
+       * 540 kB minified (WebGL renderer + shaders, already tree-shaken) and
+       * can't be split usefully, so the warning limit sits just above it.
+       */
+      chunkSizeWarningLimit: 560,
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              { name: "three", test: /node_modules[\\/](?:\.pnpm[\\/])?three[@\\/]/ },
+              { name: "xterm", test: /node_modules[\\/](?:\.pnpm[\\/])?@xterm[+\\/]/ },
+            ],
+          },
+        },
+      },
+    },
     define: {
       "import.meta.env.SITE_CONFIG": JSON.stringify(siteConfig),
       "import.meta.env.VITE_ADMIN_KEY_VERIFIER": JSON.stringify(
