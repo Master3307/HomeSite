@@ -12,8 +12,10 @@ const LEVEL_UP_CHANNEL_ID = setting("LEVEL_UP_CHANNEL_ID");
 
 const MAX_LEVEL = 13;
 
-// Progression tuning
-const BASE_LEVEL_POINTS = 1300;
+// Progression tuning. Every level needs half the points it did before
+// November 2026 (1300 → 650), so levelling is exactly twice as fast; the
+// curve keeps its shape and everyone keeps their points.
+const BASE_LEVEL_POINTS = 650;
 const LEVEL_GROWTH = 2.613;
 
 // Message XP tuning
@@ -72,6 +74,16 @@ function getUser(userId, username = "Unknown User") {
   }
 
   return user;
+}
+
+/** The level the member last got a level-up message for. */
+function celebratedLevel(user) {
+  return Math.min(user.level, user.celebrated ?? user.level);
+}
+
+/** Levels reached without a message are remembered for the next one. */
+function rememberUncelebrated(user, oldLevel) {
+  if (user.level > oldLevel && user.celebrated === undefined) user.celebrated = oldLevel;
 }
 
 /*
@@ -179,7 +191,7 @@ async function write() {
       userId: user.userId,
       username: user.username ?? "Unknown User",
       points: user.points,
-      level: user.level,
+      level: user.celebrated ?? user.level,
     }));
 
   const csv = stringify(rows, {
@@ -223,12 +235,18 @@ async function load() {
       }
 
       const points = Math.max(0, Number.parseInt(row.points, 10) || 0);
+      const level = calculateLevel(points);
+      const stored = Number.parseInt(row.level, 10);
 
       users.set(row.userId, {
         userId: row.userId,
         username: row.username || "Unknown User",
         points,
-        level: calculateLevel(points),
+        level,
+        // The CSV keeps the last level that was celebrated. A level they
+        // reached without a level-up message (the faster curve, petting
+        // points) is celebrated with their next message, roles included.
+        ...(Number.isFinite(stored) && stored >= 0 && stored < level ? { celebrated: stored } : {}),
       });
     }
 
@@ -379,10 +397,11 @@ async function applyPoints(member, pointsDelta) {
   }
 
   const user = getUser(member.id, member.user.username);
-  const oldLevel = user.level;
+  const oldLevel = celebratedLevel(user);
 
   user.points = Math.max(0, user.points + Math.floor(pointsDelta));
   user.level = calculateLevel(user.points);
+  delete user.celebrated;
 
   await save();
 
@@ -410,6 +429,7 @@ async function addPoints(userId, pointsDelta, reason = "Unknown source") {
 
   user.points = Math.max(0, user.points + safePointsDelta);
   user.level = calculateLevel(user.points);
+  rememberUncelebrated(user, oldLevel);
 
   await save();
 
@@ -419,9 +439,9 @@ async function addPoints(userId, pointsDelta, reason = "Unknown source") {
 
   /*
     No role rewards or level-up embed are sent here because this function
-    only receives a user ID, not a GuildMember. The /pet command can fetch
-    members and handle announcements if you want petting level-ups to be
-    publicly announced.
+    only receives a user ID, not a GuildMember. The level is remembered as
+    not celebrated yet, so the member's next message announces it and
+    gives the roles.
   */
   return {
     ...user,
@@ -437,10 +457,11 @@ async function setPoints(member, points) {
   }
 
   const user = getUser(member.id, member.user.username);
-  const oldLevel = user.level;
+  const oldLevel = celebratedLevel(user);
 
   user.points = Math.max(0, Math.floor(points));
   user.level = calculateLevel(user.points);
+  delete user.celebrated;
 
   await save();
 
@@ -459,10 +480,11 @@ async function setLevel(member, level) {
   const safeLevel = Math.max(0, Math.min(MAX_LEVEL, Math.floor(level)));
 
   const user = getUser(member.id, member.user.username);
-  const oldLevel = user.level;
+  const oldLevel = celebratedLevel(user);
 
   user.level = safeLevel;
   user.points = totalPointsForLevel(safeLevel);
+  delete user.celebrated;
 
   await save();
 
