@@ -2,7 +2,8 @@ const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { twoFactorEnabled, checkTwoFactor } = require("./totp.cjs");
-const { setting, origin } = require("../config.cjs");
+const { setting, origin, enabled } = require("../config.cjs");
+const accountPrefs = require("./accountPrefs.cjs");
 const rateLimit = require("express-rate-limit");
 
 const Database = require("better-sqlite3");
@@ -15,6 +16,19 @@ const DISCORD_CDN = "https://cdn.discordapp.com";
 const DB_DIR = path.join(__dirname, "db");
 const DB_PATH = path.join(DB_DIR, "accounts.sqlite");
 const AVATAR_DIR = path.join(__dirname, "avatars");
+
+
+/* Asks the bot to move someone's onboarding profile roles to the site (best effort, in the background). */
+function requestProfileRoles(discordId) {
+  const { getInternalKey, getBotInternalUrl } = require("./internalKey.cjs");
+  const key = getInternalKey();
+  if (!key) return;
+  fetch(`${getBotInternalUrl()}/members/${encodeURIComponent(discordId)}/profile-roles`, {
+    method: "POST",
+    headers: { "X-Internal-Key": key },
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => {});
+}
 
 const AUTH_COOKIE_NAME = "__Secure-homesite_auth";
 // Shared with the site's subdomains (AUTH_COOKIE_DOMAIN); empty: host-only.
@@ -53,7 +67,6 @@ const SESSION_TTL_DAYS = Math.max(
   Number(process.env.SESSION_TTL_DAYS || 30),
 );
 
-const ALLOWED_THEMES = new Set(["dark", "light"]);
 
 const ALLOWED_LANGUAGES = new Set([
   "bar",
@@ -122,31 +135,7 @@ function isUuid(value) {
 }
 
 function parseSettings(value) {
-  if (!value || typeof value !== "string") {
-    return {};
-  }
-
-  try {
-    const parsed = JSON.parse(value);
-
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
-    }
-
-    const settings = {};
-
-    if (ALLOWED_THEMES.has(parsed.theme)) {
-      settings.theme = parsed.theme;
-    }
-
-    if (ALLOWED_LANGUAGES.has(parsed.language)) {
-      settings.language = parsed.language;
-    }
-
-    return settings;
-  } catch {
-    return {};
-  }
+  return accountPrefs.parseSettings(value, ALLOWED_LANGUAGES);
 }
 
 function getDefaultDiscordAvatarUrl(discordUser) {
@@ -398,7 +387,7 @@ async function downloadAndSaveAvatar(discordUser, userId) {
   return `avatars/${userId}.webp`;
 }
 
-function registerDiscordOAuth(app, { activity = null } = {}) {
+function registerDiscordOAuth(app, { activity = null, isBanned = () => false } = {}) {
   const logActivity = (entry) => activity?.append(entry);
 
   const authRateLimiter = rateLimit({
@@ -518,6 +507,9 @@ function registerDiscordOAuth(app, { activity = null } = {}) {
       )
     `,
     ).run(user);
+
+    // A new account: the bot moves the person's Discord profile roles into it (services/profileRoles.cjs).
+    requestProfileRoles(user.discordUserId);
 
     return getUserById(user.id);
   }
@@ -879,7 +871,30 @@ function registerDiscordOAuth(app, { activity = null } = {}) {
             .send("Discord returned an invalid user profile.");
         }
 
+        // Banned by the moderators (services/moderation.cjs): no login, not even a new account.
+        if (isBanned(discordUser.id)) {
+          const target = new URL(process.env.FRONTEND_REDIRECT_URL || process.env.FRONTEND_ORIGIN);
+          target.searchParams.set("login", "banned");
+          return res.redirect(target.toString());
+        }
+
+        // Only members of the server get an account (MEMBERS_ONLY_LOGIN, on by default; the owner always).
+        const owner = discordUser.id === setting("DISCORD_USER_ID");
+        if (!owner && enabled("MEMBERS_ONLY_LOGIN") && process.env.DISCORD_BOT_TOKEN && process.env.DISCORD_GUILD_ID) {
+          const member = await fetchGuildMember(discordUser.id).catch(() => undefined);
+          if (member === null) {
+            const target = new URL(process.env.FRONTEND_REDIRECT_URL || process.env.FRONTEND_ORIGIN);
+            target.searchParams.set("login", "not-member");
+            return res.redirect(target.toString());
+          }
+        }
+
         let user = upsertUserFromDiscord(discordUser);
+        try {
+          db.prepare("UPDATE users SET last_member_at = ? WHERE id = ?").run(nowIso(), user.id);
+        } catch {
+          // column not added yet (services/members.cjs migrates on start)
+        }
 
         try {
           const avatarPath = await downloadAndSaveAvatar(discordUser, user.id);
@@ -1068,35 +1083,12 @@ function registerDiscordOAuth(app, { activity = null } = {}) {
     requireAuthenticatedUser,
     (req, res) => {
       const body = req.body && typeof req.body === "object" ? req.body : {};
-      const updates = {};
-
-      if (Object.prototype.hasOwnProperty.call(body, "theme")) {
-        if (!ALLOWED_THEMES.has(body.theme)) {
-          return res.status(400).json({
-            error: "Invalid theme.",
-          });
-        }
-
-        updates.theme = body.theme;
-      }
-
-      if (Object.prototype.hasOwnProperty.call(body, "language")) {
-        if (!ALLOWED_LANGUAGES.has(body.language)) {
-          return res.status(400).json({
-            error: "Invalid language.",
-          });
-        }
-
-        updates.language = body.language;
-      }
-
-      if (Object.keys(updates).length === 0) {
-        return res.status(400).json({
-          error: "No valid settings were provided.",
-        });
-      }
+      const { updates, error } = accountPrefs.cleanUpdates(body, ALLOWED_LANGUAGES);
+      if (error) return res.status(400).json({ error });
 
       const currentSettings = parseSettings(req.accountSession.settings_json);
+      // The newest change time stays (an old browser can't make newer settings look older).
+      updates._at = Math.max(Number(updates._at) || Date.now(), Number(currentSettings._at) || 0);
 
       const settings = updateUserSettings(
         req.accountSession.user_id,
@@ -1163,6 +1155,15 @@ function registerDiscordOAuth(app, { activity = null } = {}) {
     requireStorage,
     getRequestSession,
     toPublicUser,
+    clearAuthCookie,
+    fetchGuildMember,
+    /** Logs a user in (email login, services/emailAuth.cjs): a new session + the cookie. */
+    startSession(res, req, userId) {
+      const oldToken = req.cookies?.[AUTH_COOKIE_NAME];
+      if (oldToken) deletePersistentSession(oldToken);
+      const session = createPersistentSession(userId);
+      setAuthCookie(res, session.token);
+    },
     // For other account-backed features (e.g. services/lobbyCat.cjs).
     // Only valid after requireStorage has passed.
     getDatabase: () => db,

@@ -1,5 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
+import { profilePath } from '../lib/members'
+import EmailLogin from './EmailLogin'
+import { loadNotifications, loadStaff, NOTIFICATIONS_EVENT } from '../lib/moderation'
 import {
   DISCORD_LOGIN_URL,
   LOGIN_AVAILABLE,
@@ -96,6 +100,8 @@ function LoginPanel({ onClose }) {
             <span>{t('or', { defaultValue: 'or' })}</span>
           </div>
 
+          <EmailLogin />
+
           {showAdmin ? (
             <form className="login-panel__admin" onSubmit={submitAdmin}>
               <label htmlFor={codeId}>
@@ -175,7 +181,8 @@ export default function Login() {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [open, setOpen] = useState(false)
+  // The reset link in security emails opens the login panel right away.
+  const [open, setOpen] = useState(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('login') === 'reset')
 
   useEffect(() => {
     let isActive = true
@@ -243,43 +250,143 @@ export default function Login() {
     )
   }
 
+  const badge =
+    user.role === 'owner'
+      ? user.local
+        ? t('localAdminBadge', { defaultValue: 'Admin · local' })
+        : user.isAdminSession
+          ? t('adminBadge', { defaultValue: 'Admin' })
+          : t('ownerBadge', { defaultValue: 'Owner' })
+      : null
+  // Admin-key and local sessions have no member profile.
+  const hasProfile = !user.local && !user.isAdminSession
+
   return (
-    <div className="accountMenu">
-      {user.avatarUrl ? (
-        <img
-          className="accountAvatar"
-          src={user.avatarUrl}
-          alt=""
-          width="36"
-          height="36"
-        />
-      ) : null}
+    <AccountMenu
+      user={user}
+      badge={badge}
+      hasProfile={hasProfile}
+      loggingOut={isLoggingOut}
+      onLogout={handleLogout}
+      title={user.local ? t('localAdminTitle', { defaultValue: 'Offline admin session in this browser' }) : `@${user.username}`}
+      logoutLabel={t('logout')}
+    />
+  )
+}
 
-      <span
-        className="accountName"
-        title={user.local ? t('localAdminTitle', { defaultValue: 'Offline admin session in this browser' }) : user.username}
-      >
-        {user.displayName}
-      </span>
+/** Avatar + name; a click opens Profile, Settings and Log out. */
+function AccountMenu({ user, badge, hasProfile, loggingOut, onLogout, title, logoutLabel }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const menuId = useId()
+  const [unread, setUnread] = useState(0)
+  const [staff, setStaff] = useState(false)
 
-      {user.role === 'owner' && (
-        <span className="accountBadge">
-          {user.local
-            ? t('localAdminBadge', { defaultValue: 'Admin · local' })
-            : user.isAdminSession
-              ? t('adminBadge', { defaultValue: 'Admin' })
-              : t('ownerBadge', { defaultValue: 'Owner' })}
+  // Unread notifications (checked every minute) and whether to show Moderation.
+  useEffect(() => {
+    if (!hasProfile) return undefined
+    let alive = true
+    const check = () =>
+      loadNotifications()
+        .then((data) => alive && setUnread(data.unread))
+        .catch(() => {})
+    check()
+    loadStaff().then((role) => alive && setStaff(role.staff))
+    const timer = setInterval(check, 60_000)
+    const onChange = (event) => setUnread(event.detail?.unread ?? 0)
+    window.addEventListener(NOTIFICATIONS_EVENT, onChange)
+    return () => {
+      alive = false
+      clearInterval(timer)
+      window.removeEventListener(NOTIFICATIONS_EVENT, onChange)
+    }
+  }, [hasProfile])
+
+  useEffect(() => {
+    if (!open) return undefined
+    const onPointer = (event) => !ref.current?.contains(event.target) && setOpen(false)
+    const onKey = (event) => event.key === 'Escape' && setOpen(false)
+    window.addEventListener('pointerdown', onPointer)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onPointer)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div className="accountMenu" ref={ref}>
+      <button type="button" className="accountMenu__toggle" aria-expanded={open} aria-haspopup="menu" aria-controls={menuId} title={title} onClick={() => setOpen((value) => !value)}>
+        {user.avatarUrl ? <img className="accountAvatar" src={user.avatarUrl} alt="" width="36" height="36" /> : null}
+        <span className="accountName">{user.displayName}</span>
+        {badge && <span className="accountBadge">{badge}</span>}
+        {unread > 0 && (
+          <span className="accountMenu__unread" aria-label={`${unread} new notifications`}>
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+        <span className="material-symbols-outlined accountMenu__chevron" aria-hidden="true">
+          {open ? 'expand_less' : 'expand_more'}
         </span>
-      )}
-
-      <button
-        className="accountLogoutButton"
-        type="button"
-        onClick={handleLogout}
-        disabled={isLoggingOut}
-      >
-        {isLoggingOut ? '…' : t('logout')}
       </button>
+
+      {open && (
+        <div className="accountMenu__list" role="menu" id={menuId}>
+          {hasProfile && (
+            <Link role="menuitem" to={profilePath(user)} onClick={() => setOpen(false)}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                account_circle
+              </span>
+              Profile
+            </Link>
+          )}
+          {hasProfile && (
+            <Link role="menuitem" to="/cult/notifications" onClick={() => setOpen(false)}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {unread ? 'notifications_unread' : 'notifications'}
+              </span>
+              Notifications
+              {unread > 0 && <span className="accountMenu__count">{unread}</span>}
+            </Link>
+          )}
+          {staff && (
+            <Link role="menuitem" to="/cult/moderation" onClick={() => setOpen(false)}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                shield
+              </span>
+              Moderation
+            </Link>
+          )}
+          {hasProfile && (
+            <Link role="menuitem" to="/cult/members" onClick={() => setOpen(false)}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                groups
+              </span>
+              Members
+            </Link>
+          )}
+          {hasProfile && (
+            <Link role="menuitem" to="/cult/birthdays" onClick={() => setOpen(false)}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                cake
+              </span>
+              Birthdays
+            </Link>
+          )}
+          <Link role="menuitem" to="/cult/settings" onClick={() => setOpen(false)}>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              settings
+            </span>
+            Settings
+          </Link>
+          <button role="menuitem" type="button" className="accountMenu__logout" onClick={onLogout} disabled={loggingOut}>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              logout
+            </span>
+            {loggingOut ? '…' : logoutLabel}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

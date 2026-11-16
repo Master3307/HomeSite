@@ -1,0 +1,90 @@
+{
+    "brand": "Kult der schwarzen Katzen",
+    "site": "MrKoby07s Website",
+    "greeting": "Hallo {{name}},",
+    "greetingAnon": "Hallo,",
+    "footer": {
+        "why": "Du bekommst diese E-Mail wegen deiner Benachrichtigungs-Einstellungen.",
+        "settings": "E-Mail-Einstellungen",
+        "unsubscribe": "Abmelden",
+        "security": "Das ist eine Sicherheits-E-Mail zu deinem Konto. Sie wird immer verschickt.",
+        "sent": "Gesendet von {{site}}"
+    },
+    "open": "Auf der Seite öffnen",
+    "code": {
+        "validity": "Der Code gilt 10 Minuten. Wenn du ihn nicht angefordert hast, ignoriere diese E-Mail: ohne den Code passiert nichts.",
+        "copy": "Dein Code"
+    },
+    "verify": {
+        "subject": "Bestätige deine E-Mail",
+        "title": "E-Mail bestätigen",
+        "intro": "Hier ist der Code, um diese E-Mail-Adresse für dein Konto zu bestätigen:"
+    },
+    "login": {
+        "subject": "Dein Anmelde-Code",
+        "title": "Anmeldung abschließen",
+        "intro": "Hier ist dein Code, um die Anmeldung abzuschließen:"
+    },
+    "password": {
+        "subject": "Bestätige dein neues Passwort",
+        "title": "Passwort festlegen",
+        "intro": "Hier ist dein Code, um ein Passwort für die Anmeldung mit deiner E-Mail festzulegen:"
+    },
+    "reset": {
+        "subject": "Passwort zurücksetzen",
+        "title": "Passwort zurücksetzen",
+        "intro": "Hier ist dein Code, um ein neues Passwort zu wählen:"
+    },
+    "test": {
+        "subject": "Test-E-Mail",
+        "title": "Deine E-Mail funktioniert",
+        "intro": "Das ist eine Test-E-Mail. Hier ist ein Code, der nichts macht:"
+    },
+    "notice": {
+        "title": "Neues von der Seite"
+    },
+    "securityNotice": {
+        "notYou": "Warst du das nicht? Setz jetzt dein Passwort zurück und prüf deine Anmeldemethoden.",
+        "resetButton": "Passwort zurücksetzen",
+        "passwordChanged": {
+            "subject": "Dein Passwort wurde geändert",
+            "title": "Dein Passwort wurde geändert",
+            "text": "Das Passwort für die Anmeldung mit deiner E-Mail wurde gerade geändert."
+        },
+        "passwordReset": {
+            "subject": "Dein Passwort wurde zurückgesetzt",
+            "title": "Dein Passwort wurde zurückgesetzt",
+            "text": "Jemand hat mit einem Code an diese Adresse ein neues Passwort festgelegt."
+        },
+        "passwordRemoved": {
+            "subject": "Anmeldung per E-Mail ausgeschaltet",
+            "title": "Anmeldung per E-Mail aus",
+            "text": "Das Passwort wurde entfernt: die Anmeldung mit deiner E-Mail ist aus, bis du wieder eins festlegst."
+        },
+        "twoFactor": {
+            "subject": "Dein zweiter Schritt wurde geändert",
+            "title": "Zweiter Schritt geändert",
+            "text": "Der zweite Schritt für die Anmeldung mit deiner E-Mail hat sich geändert: {{change}}."
+        },
+        "newBrowser": {
+            "subject": "Neue Anmeldung mit deiner E-Mail",
+            "title": "Neue Anmeldung",
+            "text": "Gerade hat sich jemand mit deiner E-Mail und deinem Passwort in einem neuen Browser angemeldet ({{browser}})."
+        }
+    },
+    "unsubscribe": {
+        "title": "Abmelden",
+        "question": "Keine E-Mails mehr zu „{{category}}“?",
+        "all": "allen Benachrichtigungen",
+        "button": "Abmelden",
+        "done": "Erledigt. Du bekommst diese E-Mails nicht mehr. In deinen Einstellungen kannst du sie wieder einschalten.",
+        "invalid": "Dieser Link funktioniert nicht (mehr). Ändere deine E-Mail-Einstellungen stattdessen auf der Seite."
+    },
+    "categories": {
+        "moderation": "deinem Konto",
+        "reports": "neuen Meldungen",
+        "fdc": "deinen Katzen-Designs",
+        "birthdays": "Geburtstagen",
+        "all": "allen Benachrichtigungen"
+    }
+}

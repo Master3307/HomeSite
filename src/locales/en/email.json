@@ -1,0 +1,90 @@
+{
+    "brand": "Cult of black Cats",
+    "site": "MrKoby07's website",
+    "greeting": "Hi {{name}},",
+    "greetingAnon": "Hi,",
+    "footer": {
+        "why": "You get this email because of your notification settings.",
+        "settings": "Email settings",
+        "unsubscribe": "Unsubscribe",
+        "security": "This is a security email about your account. It is always sent.",
+        "sent": "Sent by {{site}}"
+    },
+    "open": "Open it on the site",
+    "code": {
+        "validity": "The code works for 10 minutes. If you didn't ask for it, ignore this email: nothing happens without the code.",
+        "copy": "Your code"
+    },
+    "verify": {
+        "subject": "Confirm your email",
+        "title": "Confirm your email",
+        "intro": "Here is the code to confirm this email address for your account:"
+    },
+    "login": {
+        "subject": "Your login code",
+        "title": "Finish logging in",
+        "intro": "Here is your code to finish logging in:"
+    },
+    "password": {
+        "subject": "Confirm your new password",
+        "title": "Set a password",
+        "intro": "Here is your code to set a password for logging in with your email:"
+    },
+    "reset": {
+        "subject": "Reset your password",
+        "title": "Reset your password",
+        "intro": "Here is your code to choose a new password:"
+    },
+    "test": {
+        "subject": "Test email",
+        "title": "Your email works",
+        "intro": "This is a test email. Here is a code that doesn't do anything:"
+    },
+    "notice": {
+        "title": "News from the site"
+    },
+    "securityNotice": {
+        "notYou": "Wasn't you? Reset your password now and check your sign-in methods.",
+        "resetButton": "Reset my password",
+        "passwordChanged": {
+            "subject": "Your password was changed",
+            "title": "Your password was changed",
+            "text": "The password for logging in with your email was just changed."
+        },
+        "passwordReset": {
+            "subject": "Your password was reset",
+            "title": "Your password was reset",
+            "text": "Someone used a code sent to this address to set a new password."
+        },
+        "passwordRemoved": {
+            "subject": "Email login turned off",
+            "title": "Email login turned off",
+            "text": "The password was removed: logging in with your email is off until you set one again."
+        },
+        "twoFactor": {
+            "subject": "Your second step changed",
+            "title": "Your second step changed",
+            "text": "The second step for logging in with your email changed: {{change}}."
+        },
+        "newBrowser": {
+            "subject": "New login with your email",
+            "title": "New login",
+            "text": "Your account was just logged into with your email and password from a new browser ({{browser}})."
+        }
+    },
+    "unsubscribe": {
+        "title": "Unsubscribe",
+        "question": "Stop emails about \"{{category}}\"?",
+        "all": "all notifications",
+        "button": "Unsubscribe",
+        "done": "Done. You won't get these emails any more. You can turn them back on in your settings.",
+        "invalid": "This link doesn't work (any more). Change your email settings on the site instead."
+    },
+    "categories": {
+        "moderation": "your account",
+        "reports": "new reports",
+        "fdc": "your cat designs",
+        "birthdays": "birthdays",
+        "all": "all notifications"
+    }
+}

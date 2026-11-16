@@ -110,16 +110,49 @@ function twoFactorEnabled() {
 
 const usedSteps = new Map(); // purpose -> last accepted step (no replays)
 
+/*
+ * After a correct code, the same login (`holders`: e.g. "account:<session>",
+ * "hub:<session>") needs no new code for a short while
+ * (ADMIN_2FA_GRACE_MINUTES, default 10, 0 = always ask). Kept in memory
+ * only: a restart asks again. Another browser or login always needs a code.
+ */
+const grace = new Map(); // holder -> until (ms)
+
+function graceMs() {
+  const minutes = Number(process.env.ADMIN_2FA_GRACE_MINUTES ?? 10);
+  return Number.isFinite(minutes) && minutes >= 0 ? Math.min(minutes, 120) * 60_000 : 10 * 60_000;
+}
+
+const holderList = (holders) => [].concat(holders ?? []).filter(Boolean).map(String);
+
+/** Until when (ms) one of `holders` needs no code, or 0. */
+function twoFactorFreshUntil(holders) {
+  const now = Date.now();
+  for (const [holder, until] of grace) if (until < now) grace.delete(holder);
+  return Math.max(0, ...holderList(holders).map((holder) => grace.get(holder) ?? 0));
+}
+
+/** Marks `holders` as just checked (e.g. a new hub session after its login code). */
+function grantTwoFactor(holders) {
+  const until = Date.now() + graceMs();
+  if (graceMs() > 0) for (const holder of holderList(holders)) grace.set(holder, until);
+  return until;
+}
+
 /**
- * Checks a code for `purpose` (each code works once per purpose).
+ * Checks a code for `purpose` (each code works once per purpose). Without a
+ * code, passes while one of `holders` is within its grace time.
  * Returns true when 2FA is off.
  */
-function checkTwoFactor(code, purpose = "default") {
+function checkTwoFactor(code, purpose = "default", holders = []) {
   if (!twoFactorEnabled()) return true;
-  const step = verifyCode(process.env.ADMIN_2FA_SECRET, code);
+  const typed = String(code ?? "").replace(/\s/g, "");
+  if (!typed) return twoFactorFreshUntil(holders) > Date.now();
+  const step = verifyCode(process.env.ADMIN_2FA_SECRET, typed);
   if (step === null) return false;
   if ((usedSteps.get(purpose) ?? -1) >= step) return false;
   usedSteps.set(purpose, step);
+  grantTwoFactor(holders);
   return true;
 }
 
@@ -130,6 +163,8 @@ module.exports = {
   otpauthUrl,
   twoFactorEnabled,
   checkTwoFactor,
+  twoFactorFreshUntil,
+  grantTwoFactor,
   base32Decode,
   PERIOD,
 };
