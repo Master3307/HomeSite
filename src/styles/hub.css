@@ -97,9 +97,13 @@
 
 /* ---------- form controls ---------- */
 
-.hub input,
-.hub select,
-.hub textarea,
+/*
+ * Plain fields in the hub. :where() keeps this at the lowest weight, so
+ * fields that bring their own look (search bars, key and code fields with
+ * an icon inside, the console's typing field) win; checkboxes, radios,
+ * sliders, colour and file inputs keep their own shape.
+ */
+.hub :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]), select, textarea),
 .hub-input {
   min-width: 0;
   min-height: 2.5rem;
@@ -113,12 +117,19 @@
   transition: border-color 0.15s ease;
 }
 
-.hub input:focus,
-.hub select:focus,
-.hub textarea:focus,
+.hub :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]), select, textarea):focus,
 .hub-input:focus {
   border-color: color-mix(in srgb, var(--accent) 70%, white);
   outline: none;
+}
+
+.hub :where(input[type="checkbox"], input[type="radio"], input[type="range"]) {
+  accent-color: var(--accent);
+}
+.hub :where(input[type="checkbox"], input[type="radio"]) {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
 }
 
 .hub select option {
@@ -737,6 +748,12 @@
   flex: 1;
   flex-direction: column;
   gap: 2px;
+  min-height: 0;
+  /* The settings sections nest in here; short screens scroll the list, not the page. */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  margin-inline: -0.2rem;
+  padding-inline: 0.2rem;
 }
 
 .hub-nav__item {
@@ -3481,4 +3498,52 @@
     flex-direction: column;
     gap: 0.1rem;
   }
+}
+
+/*
+ * Light theme: the site's light purple carries white text, so the hub's
+ * glass gets a little deeper (instead of more white, which washed out every
+ * label) and the muted text brighter, for real contrast.
+ */
+:root[data-theme="light"] :is(.hub, .hub-login) {
+  --text-secondary: rgb(255 255 255 / 0.84);
+  --hub-soft: rgb(255 255 255 / 0.84);
+  --hub-faint: rgb(255 255 255 / 0.7);
+  --hub-line: rgb(255 255 255 / 0.22);
+  --hub-hover: rgb(36 12 74 / 0.12);
+  --hub-press: rgb(36 12 74 / 0.2);
+  --hub-panel: rgb(36 12 74 / 0.14);
+  --hub-field: rgb(36 12 74 / 0.22);
+  --hub-shadow: 0 10px 30px rgb(36 12 74 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.14);
+}
+:root[data-theme="light"] .hub .sw {
+  --sw-surface: rgb(36 12 74 / 0.13);
+  --sw-raised: rgb(36 12 74 / 0.2);
+  --sw-border: rgb(255 255 255 / 0.24);
+  --sw-field: rgb(36 12 74 / 0.22);
+}
+:root[data-theme="light"] .hub .hub-nav {
+  background: rgb(36 12 74 / 0.12);
+}
+
+/* A tab that failed (Hub.jsx TabBoundary). */
+.hub-broken {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1.1rem 1.2rem;
+}
+.hub-broken > .material-symbols-outlined {
+  color: var(--hub-bad);
+  font-size: 1.6rem;
+}
+.hub-broken h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.hub-broken p {
+  margin: 0.3rem 0 0.8rem;
+  color: var(--hub-soft);
+  font-family: var(--hub-mono);
+  font-size: 0.82rem;
 }

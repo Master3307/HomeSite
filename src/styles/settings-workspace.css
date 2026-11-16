@@ -1,4 +1,4 @@
-/* Settings workspace (src/components/admin/SettingsWorkspace.jsx): /admin-settings and /hub. */
+/* Settings workspace (src/components/admin/SettingsWorkspace.jsx): the hub's settings. */
 
 .sw {
   --sw-surface: color-mix(in srgb, var(--text-primary) 5%, transparent);
@@ -186,12 +186,11 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  margin: 0.4rem 0 0;
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  margin: 0.5rem 0 0;
+  color: color-mix(in srgb, var(--text-primary) 86%, transparent);
+  font-size: 0.98rem;
+  font-weight: 650;
+  letter-spacing: -0.005em;
 }
 
 .sw-cluster {
@@ -272,8 +271,8 @@
   font-size: 0.95rem;
 }
 
-.sw input,
-.sw textarea {
+/* Plain fields; :where() keeps it light so fields with their own look (search, key fields) win. */
+.sw :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]), textarea) {
   width: 100%;
   min-width: 0;
   padding: 0.62rem 0.75rem;
@@ -290,14 +289,12 @@
   resize: vertical;
 }
 
-.sw input:focus,
-.sw textarea:focus {
+.sw :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]), textarea):focus {
   border-color: color-mix(in srgb, var(--accent) 80%, white);
   outline: none;
 }
 
-.sw input:disabled,
-.sw textarea:disabled {
+.sw :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]), textarea):disabled {
   opacity: 0.5;
 }
 
@@ -704,9 +701,7 @@
 
 .sw-feature__top small {
   font-weight: 700;
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.76rem;
 }
 
 .sw-feature strong {
@@ -910,4 +905,97 @@
   .sw-new {
     flex-wrap: wrap;
   }
+}
+
+/* Backup & restore and the Bongo Cat assets inside the hub's settings. */
+.as-backup {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ---------- inside the hub: one navigation ---------- */
+
+/* The sections live in the hub's sidebar (under "Settings"); the page is one column. */
+.sw.sw--docked {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.sw-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.sw--docked .sw-search {
+  max-width: 560px;
+  background: var(--sw-surface);
+}
+
+.sw--docked .sw-search:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 70%, white);
+}
+
+/* Desktop: the sidebar has them, so no chips. */
+.sw-tabs--chips {
+  display: none;
+}
+
+/* The section list nested under "Settings" in the hub's sidebar: a quiet indented tree. */
+.sw-tabs__list--sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0.15rem 0 0.35rem 1.05rem;
+  padding-left: 0.55rem;
+  border-left: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
+}
+
+.sw-tabs__list--sidebar .sw-tab {
+  min-height: 2rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 9px;
+  font-size: 0.86rem;
+  gap: 0.55rem;
+}
+
+.sw-tabs__list--sidebar .sw-tab .material-symbols-outlined {
+  font-size: 1.02rem;
+}
+
+.sw-tabs__list--sidebar .sw-tab.is-active {
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+  color: var(--text-primary);
+  box-shadow: none;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .sw-tabs--chips {
+    display: flex;
+    padding: 0;
+    border: 0;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .sw--docked .sw-search {
+    max-width: none;
+  }
+
+  .sw-tabs--chips .sw-tab {
+    border: 1px solid var(--sw-border);
+    background: var(--sw-surface);
+  }
+
+  .sw-tabs--chips .sw-tab.is-active {
+    border-color: transparent;
+  }
+}
+
+.sw-search input::placeholder,
+.bk-key input::placeholder {
+  color: color-mix(in srgb, var(--text-primary) 58%, transparent);
+  opacity: 1;
 }
