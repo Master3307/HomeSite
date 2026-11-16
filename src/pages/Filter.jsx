@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { PageTitle } from '../components/SiteLogo.jsx'
 
 function matchesMedia(query) {
   return window.matchMedia?.(query).matches ?? null
@@ -236,9 +237,7 @@ export default function Home() {
       <title>Filter – MrKoby07</title>
 
       <header className="head">
-        <h1 className="tit">
-          {t('filter')} <strong>&nbsp;MrKoby07</strong>
-        </h1>
+        <PageTitle text={t('filter')} />
       </header>
 
       <p

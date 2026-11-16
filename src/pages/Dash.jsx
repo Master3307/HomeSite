@@ -9,7 +9,7 @@ import { mergeDashSettingsFromAccount, setDashSyncAccount, useDashSettings, with
 import { timeOptions } from '../lib/prefs.js'
 import { siteConfig } from '../lib/siteConfig.js'
 import '../styles/dash.css'
-import SiteLogo from '../components/SiteLogo.jsx'
+import { PageTitle } from '../components/SiteLogo.jsx'
 
 /*
  * /dash: a start page. Optional title, a big time + greeting, the search
@@ -80,10 +80,7 @@ export default function Dash() {
       {backdrop && <div className="dash-backdrop" style={backdrop} aria-hidden="true" />}
       {look.showHeader && (
         <header className="head">
-          <SiteLogo />
-          <h1 className="tit">
-            {t('title:dash')} <strong>&nbsp;MrKoby07</strong>
-          </h1>
+          <PageTitle text={t('title:dash')} />
         </header>
       )}
 

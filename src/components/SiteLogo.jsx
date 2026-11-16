@@ -31,3 +31,28 @@ export default function SiteLogo({ variant = 'auto', className = '', label = 'Ho
     </Link>
   )
 }
+
+/*
+ * A page title from the "title" locales ("Card of HomeSite", "HomeSite of
+ * MrKoby07"): the word HomeSite becomes the logo (a link home), MrKoby07
+ * is bold. Every language puts the words where its grammar wants them.
+ */
+export function PageTitle({ text }) {
+  const parts = String(text ?? '')
+    .split(/(HomeSite|MrKoby07)/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+  return (
+    <h1 className="tit">
+      {parts.map((part, index) =>
+        part === 'HomeSite' ? (
+          <SiteLogo key={index} variant="logo" className="site-logo--title" label="HomeSite" />
+        ) : part === 'MrKoby07' ? (
+          <strong key={index}>MrKoby07</strong>
+        ) : (
+          <span key={index}>{part}</span>
+        ),
+      )}
+    </h1>
+  )
+}

@@ -2011,7 +2011,12 @@ legend,
   cursor: pointer;
 }
 
-/* The HomeSite logo in the header (components/SiteLogo.jsx): a link home, in front of the title. */
+/*
+ * The HomeSite logo (components/SiteLogo.jsx), a link home. In page titles
+ * it is the word "HomeSite" ("Card of [logo]"), sized from the title's
+ * font: its badge (69% of the picture) stands a little taller than the
+ * capitals.
+ */
 .site-logo {
   display: inline-flex;
   flex: none;
@@ -2024,8 +2029,15 @@ legend,
   display: block;
   width: auto;
   height: 44px;
-  margin-block: -2px;
   -webkit-user-drag: none;
+}
+.site-logo--title img {
+  height: 1.75em;
+  /* Centred on the badge, not the picture (the roof sticks out above it). */
+  margin-top: -0.5em;
+  margin-bottom: -0.1em;
+  /* Lifts the purple badge off the purple header bar. */
+  filter: drop-shadow(0 3px 8px rgb(20 5 38 / 0.35));
 }
 .site-logo:focus-visible {
   outline: 2px solid currentColor;
@@ -2040,20 +2052,22 @@ legend,
 .site-logo:active {
   transform: scale(0.96);
 }
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-}
-@media (max-width: 750px) {
-  .head {
-    gap: 10px;
-  }
-  .site-logo img {
-    height: 30px;
-  }
-}
 :root.motion-reduce .site-logo {
   transition: none;
+}
+/* The title's words and the logo sit side by side with even gaps. */
+.tit {
+  gap: 0.3em;
+}
+/* Phones: the title grows with the screen, so "[logo] of MrKoby07" always fits one line. */
+@media (max-width: 750px) {
+  .head .tit {
+    font-size: clamp(1.35rem, 7.2vw, 2rem);
+    white-space: nowrap;
+    margin-block: 0.55em 0.45em;
+  }
+  .site-logo--title img {
+    margin-top: -0.3em;
+    margin-bottom: -0.05em;
+  }
 }

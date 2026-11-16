@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import BackButton from '../components/BackButton.jsx'
-import SiteLogo from '../components/SiteLogo.jsx'
+import { PageTitle } from '../components/SiteLogo.jsx'
 
 /*
  * /license: the project's license (Apache 2.0) and NOTICE, served as plain
@@ -33,8 +33,7 @@ export default function License() {
     <>
       <title>{`${t('title')} – MrKoby07`}</title>
       <header className="head">
-        <SiteLogo />
-        <h1 className="tit">{t('title')}</h1>
+        <PageTitle text={t('license', { ns: 'title', defaultValue: 'License of HomeSite' })} />
       </header>
 
       <div className="card site-about license-page">

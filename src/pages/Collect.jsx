@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import About from '../components/AboutCard.jsx'
+import { PageTitle } from '../components/SiteLogo.jsx'
 
 export default function Home() {
   const { t } = useTranslation(['collect', 'title'])
@@ -8,9 +9,7 @@ export default function Home() {
     <>
       <title>Collect – MrKoby07</title>
       <header className="head">
-        <h1 className="tit">
-          {t('collect', { ns:'title'})} <strong>&nbsp;MrKoby07</strong>
-        </h1>
+        <PageTitle text={t('collect', { ns:'title'})} />
       </header>
 
       <div className='card'>

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import ThemeSwitch from '../components/ThemeSwitch.jsx'
 import LanguageSwitch from '../components/LanguageSwitch.jsx'
+import { PageTitle } from '../components/SiteLogo.jsx'
 
 
 export default function Home() {
@@ -10,9 +11,7 @@ export default function Home() {
     <>
       <title>Home – MrKoby07</title>
       <header className="head">
-        <h1 className="tit">
-          {t('home')} <strong>&nbsp;MrKoby07</strong>
-        </h1>
+        <PageTitle text={t('home')} />
       </header>
 
 

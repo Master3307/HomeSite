@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import About from '../components/AboutCard.jsx'
 import Greeting from '../components/GreetingCard.jsx'
 import Search from '../components/Search.jsx'
-import SiteLogo from '../components/SiteLogo.jsx'
+import { PageTitle } from '../components/SiteLogo.jsx'
 
 export default function Home() {
   const { t } = useTranslation('title')
@@ -11,10 +11,7 @@ export default function Home() {
     <>
       <title>Home – MrKoby07</title>
       <header className="head">
-        <SiteLogo />
-        <h1 className="tit">
-          {t('home')} <strong>&nbsp;MrKoby07</strong>
-        </h1>
+        <PageTitle text={t('home')} />
       </header>
 
       {/* A full-height column: the about line sits 32px above the bottom
