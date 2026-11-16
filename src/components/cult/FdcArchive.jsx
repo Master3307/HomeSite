@@ -1,7 +1,7 @@
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import FdcPoll from './FdcPoll'
+import { useUrlParam } from '/src/lib/urlState'
 
 import {
   formatPollDate,
@@ -17,8 +17,12 @@ export default function FdcArchive({
 }) {
   const { t, i18n } = useTranslation('voting')
   const now = useFdcClock()
+  // Editors see which FDCs still have picture-only options.
+  const editor = summary.viewer?.canCreate === true
 
-  const [selectedId, setSelectedId] = useState(null)
+  // ?poll=<id>: the opened poll (Back returns to the list); ?manage=edit | votes on it.
+  const [selectedId, setSelectedParam] = useUrlParam('poll', { push: true })
+  const setSelectedId = (id) => setSelectedParam(id, { clear: ['manage'] })
 
   const selected = summary.polls.find(
     (poll) => poll.id === selectedId,
@@ -30,7 +34,9 @@ export default function FdcArchive({
     error,
     reload,
   } = useFdcPoll(selected, { live: isRunningPoll(selected, now) })
-  const [managing, setManaging] = useState(false)
+  const [manageParam, setManageParam] = useUrlParam('manage')
+  const managing = ['edit', 'votes'].includes(manageParam) ? manageParam : false
+  const setManaging = (value) => setManageParam(value === true ? 'edit' : value)
 
   if (selected) {
     return (
@@ -40,7 +46,6 @@ export default function FdcArchive({
           className="fdc-link"
           onClick={() => {
             setSelectedId(null)
-            setManaging(false)
           }}
         >
           <span
@@ -173,6 +178,16 @@ export default function FdcArchive({
                     })}
                   </span>
                 </span>
+
+                {editor && entry.pictureOnly > 0 && (
+                  <span
+                    className="fdc-todo-dot"
+                    title={t('fdc.migrate.left', { count: entry.pictureOnly })}
+                    aria-label={t('fdc.migrate.left', { count: entry.pictureOnly })}
+                  >
+                    !
+                  </span>
+                )}
 
                 <span
                   className="material-symbols-outlined"

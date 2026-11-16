@@ -14,6 +14,7 @@ const { toPublicPoll } = require("./fdcPublic.cjs");
  *     <item>.webp       items without a folder
  *     <folder dir>/     one directory per folder: "<slug>-<folderId>"
  *       <item>.webp
+ *     designs/<item>.png|gif   the item's designed cat (item.design), if it has one
  *
  * Moving an item to another folder moves its file too. Every read runs
  * `reconcile`, which finds image files that were moved by hand and drops
@@ -65,6 +66,7 @@ function emojiValue(emoji) {
 
 function createRecycleBin(archiveRoot) {
   const BIN = path.join(archiveRoot, "recycling-bin");
+  const DESIGNS = path.join(BIN, "designs");
   const INDEX = path.join(BIN, "index.json");
   const HISTORY = path.join(BIN, "history.jsonl");
 
@@ -275,8 +277,24 @@ function createRecycleBin(archiveRoot) {
             throw httpError(404, `The image of option ${number} (${date}) is missing.`);
           });
 
+          // A designed option keeps its design (spec + rendered picture).
+          let design = null;
+          if (rawOption?.design?.spec && rawOption.design.file) {
+            const extension = path.extname(rawOption.design.file).toLowerCase() === ".gif" ? "gif" : "png";
+            const designFile = path.posix.join("designs", `${id}.${extension}`);
+            await fs.mkdir(DESIGNS, { recursive: true });
+            const copied = await fs
+              .copyFile(path.join(archiveRoot, date, rawOption.design.file), path.join(BIN, designFile))
+              .then(() => true)
+              .catch(() => false);
+            if (copied) {
+              design = { spec: rawOption.design.spec, file: designFile, frames: rawOption.design.frames ?? 1, revision: 1, at: new Date().toISOString(), by: null, from: "poll" };
+            }
+          }
+
           const item = {
             ...describeOption(poll, option),
+            design,
             id,
             folderId: folder?.id ?? null,
             file,
@@ -309,7 +327,10 @@ function createRecycleBin(archiveRoot) {
       return change(async (state) => {
         await reconcile(state);
         const removed = state.items.filter((item) => wanted.has(item.id));
-        for (const item of removed) await fs.rm(path.join(BIN, item.file), { force: true });
+        for (const item of removed) {
+          await fs.rm(path.join(BIN, item.file), { force: true });
+          if (item.design?.file) await fs.rm(path.join(BIN, item.design.file), { force: true });
+        }
         state.items = state.items.filter((item) => !wanted.has(item.id));
         await log("remove", actor, { items: removed.map((item) => ({ id: item.id, key: item.key })) });
         return { removed: removed.length, items: removed.map((item) => ({ key: item.key, description: item.description })) };
@@ -403,6 +424,45 @@ function createRecycleBin(archiveRoot) {
         await log("folder-delete", actor, { folder: { id, name: folder.name } });
         return { deleted: true, name: folder.name };
       });
+    },
+
+    /**
+     * Gives an item its designed cat. `rendered`: bongoRender.renderDesign's
+     * result. `extra.suggestedBy`: the member whose suggestion this was.
+     */
+    async setDesign(id, rendered, actor, extra = {}) {
+      if (!ID_PATTERN.test(String(id))) throw httpError(400, "Invalid item.");
+      return change(async (state) => {
+        await reconcile(state);
+        const item = state.items.find((entry) => entry.id === id);
+        if (!item) throw httpError(404, "That cat isn't in the recycling bin anymore.");
+        await fs.mkdir(DESIGNS, { recursive: true });
+        const file = path.posix.join("designs", `${id}.${rendered.extension}`);
+        const temporary = path.join(DESIGNS, `${id}.${crypto.randomBytes(4).toString("hex")}.tmp`);
+        await fs.writeFile(temporary, rendered.buffer);
+        await fs.rename(temporary, path.join(BIN, file));
+        if (item.design?.file && item.design.file !== file) await fs.rm(path.join(BIN, item.design.file), { force: true });
+        item.design = {
+          spec: rendered.design,
+          file,
+          frames: rendered.frames,
+          revision: (item.design?.revision ?? 0) + 1,
+          at: new Date().toISOString(),
+          by: actor ? { discordId: actor.discordId, name: actor.name } : null,
+          ...(extra.suggestedBy ? { suggestedBy: extra.suggestedBy } : {}),
+        };
+        await log("design", actor, { item: { id, key: item.key }, suggestedBy: extra.suggestedBy ?? null });
+        return { id, key: item.key, description: item.description, design: item.design.spec };
+      });
+    },
+
+    /** Absolute path + type of an item's rendered design, or null. */
+    async designPath(id) {
+      if (!ID_PATTERN.test(String(id))) return null;
+      const state = await snapshot();
+      const item = state.items.find((entry) => entry.id === id);
+      if (!item?.design?.file) return null;
+      return { file: path.join(BIN, item.design.file), type: item.design.file.endsWith(".gif") ? "image/gif" : "image/png" };
     },
 
     /** Absolute path of an item's image, or null. */

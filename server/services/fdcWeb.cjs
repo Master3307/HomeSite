@@ -10,6 +10,9 @@ const {
   buildPublicSummary,
 } = require("./fdcPublic.cjs");
 const { getInternalKey, getBotInternalUrl } = require("./internalKey.cjs");
+const { renderDesign, normalize: normalizeDesignSpec } = require("./bongoRender.cjs");
+const { createMigration } = require("./fdcMigration.cjs");
+const bongoAssets = require("./bongoAssets.cjs");
 const { createRecycleBin } = require("./fdcRecycle.cjs");
 
 /*
@@ -34,6 +37,10 @@ const CREATE_BODY_LIMIT = "48mb";
 function httpError(status, message) {
   return Object.assign(new Error(message), { status });
 }
+
+/* With the Bongo Cat assets imported, options are designed cats: no new or changed pictures. */
+const PICTURES_RETIRED = "FDC options are designed cats now: pictures can't be added or changed anymore.";
+const picturesRetired = () => Boolean(bongoAssets.readCatalog());
 
 function ownerIds() {
   return new Set(
@@ -152,7 +159,8 @@ function canVote(session) {
   return Boolean(session && session.discord_user_id !== ADMIN_DISCORD_USER_ID);
 }
 
-async function voterList(poll) {
+/* `profileKeyOf(id)`: "@name" when the voter has a public profile (their name links to it). */
+async function voterList(poll, profileKeyOf = () => null) {
   const votes = Array.isArray(poll.votes) ? poll.votes : [];
   if (!votes.length) return [];
 
@@ -176,6 +184,7 @@ async function voterList(poll) {
       avatarUrl: members[vote.userId]?.avatarUrl ?? null,
       votedAt: vote.votedAt?.iso ?? vote.observedAt?.iso ?? null,
       via: vote.timestampSource === "web" ? "web" : "discord",
+      profile: profileKeyOf(vote.userId),
     }))
     .sort((a, b) => a.optionNumber - b.optionNumber);
 }
@@ -217,7 +226,18 @@ async function inviteWidget() {
 
 /* ---------- routes ---------- */
 
-function registerFdcWeb(app, { requireStorage, getRequestSession, activity = null }) {
+function registerFdcWeb(app, { requireStorage, getRequestSession, getDatabase = () => null, activity = null, getModeration = () => null }) {
+  const privacy = require("./privacy.cjs");
+  const profileKeyOf = (discordId) => {
+    try {
+      if (!/^\d{17,20}$/.test(String(discordId)) || privacy.isHidden(discordId)) return null;
+      // The voter list is only shown to logged-in members: everyone- and members-profiles are linked.
+      const row = getDatabase()?.prepare("SELECT username, profile_public, profile_visibility FROM users WHERE discord_user_id = ?").get(String(discordId));
+      return row && (row.profile_visibility ? row.profile_visibility !== "private" : row.profile_public) ? `@${row.username}` : null;
+    } catch {
+      return null;
+    }
+  };
   /* Activity log entry for an editor action (services/activityLog.cjs). */
   const actorOf = (session) =>
     session ? { discordId: session.discord_user_id, name: session.display_name || session.username } : null;
@@ -226,6 +246,14 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, activity = nul
   const readLimiter = rateLimit({
     windowMs: 60 * 1000,
     limit: 120,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+  });
+
+  // Pictures (archive, recycling bin, designs): a page like the migration loads a hundred at once.
+  const imageLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 1500,
     standardHeaders: "draft-8",
     legacyHeaders: false,
   });
@@ -310,15 +338,16 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, activity = nul
               : null,
         },
         // Voter identities are only shown to logged-in users.
-        voters: session ? await voterList(poll) : null,
+        voters: session ? await voterList(poll, profileKeyOf) : null,
       };
     }),
   );
 
-  app.get("/fdc/images/:date/:file", readLimiter, async (req, res) => {
+  app.get("/fdc/images/:date/:file", imageLimiter, async (req, res) => {
     const { date, file } = req.params;
 
-    if (!DATE_PATTERN.test(date) || !/^[1-6]\.webp$/.test(file)) {
+    // Option images (1.webp) and designed cats (1-design.png / .gif).
+    if (!DATE_PATTERN.test(date) || !/^[1-6](\.webp|-design\.(png|gif))$/.test(file)) {
       return res.status(400).send("Invalid image.");
     }
 
@@ -326,7 +355,7 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, activity = nul
       const imagePath = path.join(ARCHIVE_ROOT, date, file);
       await fs.access(imagePath);
 
-      res.setHeader("Content-Type", "image/webp");
+      res.setHeader("Content-Type", file.endsWith(".webp") ? "image/webp" : file.endsWith(".gif") ? "image/gif" : "image/png");
       res.setHeader("Cache-Control", "public, max-age=86400, immutable");
       res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
       return res.sendFile(imagePath);
@@ -376,7 +405,27 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, activity = nul
         throw httpError(403, "You are not allowed to create an FDC.");
       }
 
-      const { endsAt, options } = req.body ?? {};
+      const { endsAt, options: rawOptions } = req.body ?? {};
+      if (!Array.isArray(rawOptions)) throw httpError(400, "Missing options.");
+
+      // Every new option is a designed cat (pictures only without imported Bongo Cat assets).
+      const options = await Promise.all(
+        rawOptions.map(async (option, index) => {
+          // Without imported Bongo Cat assets there is nothing to design with: images only.
+          if (picturesRetired()) {
+            if (!option?.design) throw httpError(400, `Option ${index + 1} needs a designed cat.`);
+            if (option.image) throw httpError(400, PICTURES_RETIRED);
+          }
+          if (!option?.design && !option?.image) throw httpError(400, `Option ${index + 1} needs an image.`);
+          return {
+            description: option.description,
+            emoji: option.emoji,
+            image: option.image ?? null,
+            design: option.design ? await renderForBot(option.design, index + 1) : null,
+            display: !option.design || (option.image && option.display === "image") ? "image" : "design",
+          };
+        }),
+      );
 
       const result = await botFetch("/fdc/polls", {
         method: "POST",
@@ -401,6 +450,7 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, activity = nul
             emoji: option?.emoji || "default",
             image: option?.image?.name ?? null,
             editedByBot: Boolean(option?.image?.edit),
+            design: option?.design ? { frames: option.design.frames, display: option.display } : null,
           })),
         },
       });
@@ -408,6 +458,23 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, activity = nul
       return result;
     }),
   );
+
+  /* A design spec -> the rendered image the bot stores and posts. */
+  async function renderForBot(spec, number) {
+    try {
+      const rendered = await renderDesign(spec);
+      return {
+        spec: rendered.design,
+        data: rendered.buffer.toString("base64"),
+        extension: rendered.extension,
+        frames: rendered.frames,
+        width: rendered.width,
+        height: rendered.height,
+      };
+    } catch (error) {
+      throw httpError(error.status ?? 400, `Option ${number}'s design: ${error.message}`);
+    }
+  }
 
   const manageLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
@@ -438,6 +505,7 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, activity = nul
     requireStorage,
     route(async (req) => {
       const { session, pollId } = await requireEditor(req);
+      if (picturesRetired() && (req.body?.options ?? []).some?.((option) => option?.image)) throw httpError(400, PICTURES_RETIRED);
 
       const result = await botFetch(`/fdc/polls/${pollId}/edit`, {
         method: "POST",
@@ -462,6 +530,46 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, activity = nul
           details: { changes: result.changes },
         });
       }
+      return result;
+    }),
+  );
+
+  /*
+   * Option designs of a running or ended poll: add / change / remove a
+   * design, switch between image and design. Body: `{ changes: [{ number,
+   * design?: spec | null, display?: "image" | "design" }] }`.
+   */
+  app.post(
+    "/fdc/polls/:pollId/designs",
+    manageLimiter,
+    express.json({ limit: "256kb" }),
+    requireStorage,
+    route(async (req) => {
+      const { session, pollId } = await requireEditor(req);
+      const rawChanges = Array.isArray(req.body?.changes) ? req.body.changes.slice(0, 6) : [];
+      if (!rawChanges.length) throw httpError(400, "Nothing to change.");
+      // Migrated for good: a design isn't taken away and the poll doesn't go back to the picture.
+      if (picturesRetired() && rawChanges.some((change) => change?.design === null || change?.display === "image")) throw httpError(400, PICTURES_RETIRED);
+      const changes = await Promise.all(
+        rawChanges.map(async (change) => ({
+          number: Number(change?.number),
+          design: change?.design === null ? null : change?.design ? await renderForBot(change.design, change.number) : undefined,
+          display: change?.display,
+        })),
+      );
+      const result = await botFetch(`/fdc/polls/${pollId}/designs`, {
+        method: "POST",
+        body: { actorId: session.discord_user_id, changes },
+        timeout: 180_000,
+      });
+      readCache.clear();
+      audit(session, {
+        level: result.archiveOnly ? "risky" : "normal",
+        action: "fdc-design",
+        summary: `changed the designs of the ${result.archiveOnly ? "ended " : ""}FDC ${result.date} (${result.options.map((option) => `option ${option.number}: shows ${option.display}`).join(", ")})`,
+        target: { pollId, date: result.date },
+        details: { options: result.options },
+      });
       return result;
     }),
   );
@@ -573,7 +681,7 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, activity = nul
   );
 
   // Item images (ids are random, the images come from public polls anyway).
-  app.get("/fdc/recycle/images/:id", readLimiter, async (req, res) => {
+  app.get("/fdc/recycle/images/:id", imageLimiter, async (req, res) => {
     const file = await recycleBin.imagePath(req.params.id).catch(() => null);
     if (!file) return res.status(404).send("Image not found.");
     res.setHeader("Content-Type", "image/webp");
@@ -581,6 +689,155 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, activity = nul
     res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     return res.sendFile(file);
   });
+
+  /* ---------- migration: picture options to designed cats (services/fdcMigration.cjs) ---------- */
+
+  // Every poll in the archive (running ones too), the public shape plus the raw file.
+  async function archivePolls() {
+    const polls = [];
+    for (const entry of await fs.readdir(ARCHIVE_ROOT, { withFileTypes: true }).catch(() => [])) {
+      if (!entry.isDirectory() || !DATE_PATTERN.test(entry.name)) continue;
+      const raw = await readArchivedPoll(entry.name).catch(() => null);
+      if (!raw || !Array.isArray(raw.options)) continue;
+      try {
+        polls.push({ raw, public: toPublicPoll(raw, entry.name) });
+      } catch {
+        // A broken archive entry: skip it.
+      }
+    }
+    return polls.sort((a, b) => b.public.date.localeCompare(a.public.date));
+  }
+
+  // Saves a migrated design on a poll option (the bot owns the archive); the option then shows it.
+  async function designPollOption(pollId, number, spec, actor) {
+    if (!/^\d{17,20}$/.test(String(pollId))) throw httpError(400, "Invalid poll.");
+    const design = await renderForBot(spec, number);
+    const result = await botFetch(`/fdc/polls/${pollId}/designs`, {
+      method: "POST",
+      body: { actorId: actor.discordId, changes: [{ number, design, display: "design" }] },
+      timeout: 180_000,
+    });
+    readCache.clear();
+    return result;
+  }
+
+  const nameOfMember = (discordId) => {
+    try {
+      const row = getDatabase()?.prepare("SELECT display_name, username FROM users WHERE discord_user_id = ?").get(String(discordId));
+      return row ? row.display_name || row.username : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const migration = createMigration(ARCHIVE_ROOT, { recycleBin, renderDesign, polls: archivePolls, designPoll: designPollOption, nameOf: nameOfMember });
+
+  const suggestLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 30,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { error: "That's a lot of suggestions. Please try again later." },
+  });
+
+  function memberOf(req) {
+    const session = getRequestSession(req);
+    if (!session) throw httpError(401, "Log in to help with the migration.");
+    return {
+      session,
+      actor: { discordId: session.discord_user_id, name: session.display_name || session.username },
+    };
+  }
+
+  // Images of bin items (the old picture is the reference), public like the polls they come from.
+  app.get("/fdc/recycle/designs/:id", imageLimiter, async (req, res) => {
+    const found = await recycleBin.designPath(req.params.id).catch(() => null);
+    if (!found) return res.status(404).send("Design not found.");
+    res.setHeader("Content-Type", found.type);
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    return res.sendFile(found.file);
+  });
+
+  // Counts only: the FDC section shows "Migration" / "Contribute" while cats are left.
+  app.get(
+    "/fdc/migration/status",
+    readLimiter,
+    requireStorage,
+    route(async (req) => {
+      const session = getRequestSession(req);
+      if (!session) return { remaining: 0, total: 0, migrated: 0, editor: false, loggedIn: false };
+      return { ...(await migration.counts()), editor: await canCreateFdc(session), loggedIn: true };
+    }),
+  );
+
+  app.get(
+    "/fdc/migration",
+    readLimiter,
+    requireStorage,
+    route(async (req) => {
+      const { session, actor } = memberOf(req);
+      return migration.overview(actor, { editor: await canCreateFdc(session) });
+    }),
+  );
+
+  app.post(
+    "/fdc/migration/:id/design",
+    manageLimiter,
+    express.json({ limit: "64kb" }),
+    requireStorage,
+    recycleRoute(
+      (req, actor) => migration.design(req.params.id, req.body?.design, actor),
+      (result) => ({
+        level: "normal",
+        action: "fdc-migrate",
+        summary: result.source === "poll" ? `designed option ${result.optionNumber} ("${result.description}") of the FDC ${result.date}` : `designed the recycled cat "${result.description}"`,
+        details: { id: result.id, date: result.date, option: result.optionNumber },
+      }),
+    ),
+  );
+
+  app.post(
+    "/fdc/migration/:id/suggest",
+    suggestLimiter,
+    express.json({ limit: "64kb" }),
+    requireStorage,
+    route(async (req) => {
+      const { actor } = memberOf(req);
+      const standing = getModeration()?.standing?.(actor.discordId);
+      if (standing?.banned || standing?.limited) throw httpError(403, "Your account is limited right now.");
+      const result = await migration.suggest(req.params.id, req.body?.design, req.body?.note, actor, normalizeDesignSpec);
+      activity?.append({ actor, level: "detail", action: "fdc-migrate-suggest", summary: `suggested a cat design for "${result.item}"` });
+      return { ok: true, id: result.id };
+    }),
+  );
+
+  app.post(
+    "/fdc/migration/suggestions/:id/:decision",
+    manageLimiter,
+    express.json({ limit: "64kb" }),
+    requireStorage,
+    recycleRoute(
+      async (req, actor) => {
+        const decision = req.params.decision;
+        if (decision !== "approve" && decision !== "reject") throw httpError(400, "Approve or reject.");
+        const result = await migration.decide(req.params.id, decision === "approve", actor, req.body?.design ?? null);
+        // Tell the member how it went (site notification, their preferences decide).
+        if (result.by?.discordId && result.by.discordId !== actor.discordId) {
+          getModeration()
+            ?.notifyDiscord?.([result.by.discordId], {
+              category: "fdc",
+              title: result.approved ? "Your cat design was approved" : "Your cat design wasn't used",
+              body: result.approved ? `Thanks! "${result.item}" is a designed cat now.` : "An editor looked at your suggestion and chose something else this time.",
+              link: "/cult?fdc=migrate#fdc",
+            })
+            ?.catch?.(() => {});
+        }
+        return result;
+      },
+      (result) => ({ level: "normal", action: result.approved ? "fdc-migrate-approve" : "fdc-migrate-reject", summary: `${result.approved ? "approved" : "rejected"} a suggested cat design${result.by?.name ? ` by ${result.by.name}` : ""}` }),
+    ),
+  );
 
   let emojiCache = null;
 
@@ -736,7 +993,10 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, activity = nul
       if (!session) throw httpError(401, "Log in to add an FDC.");
       if (!(await canCreateFdc(session))) throw httpError(403, "You are not allowed to add FDCs.");
 
-      const { endsAt, question, options, votes, winner } = req.body ?? {};
+      const { endsAt, question, votes, winner } = req.body ?? {};
+      const rawOptions = Array.isArray(req.body?.options) ? req.body.options.slice(0, 6) : [];
+      if (picturesRetired() && rawOptions.some((option) => option?.image)) throw httpError(400, PICTURES_RETIRED);
+      const options = await Promise.all(rawOptions.map(async (option, index) => ({ ...option, design: option?.design ? await renderForBot(option.design, index + 1) : null })));
       const result = await botFetch("/fdc/polls/manual", {
         method: "POST",
         body: { creatorId: session.discord_user_id, endsAt, question, options, votes, winner },
@@ -903,6 +1163,16 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, activity = nul
         value = { ...((await readJson(LOBBY_FILE)) ?? { code: null }), mentions: {} };
       }
 
+      // Mentioned people with a site profile (not private) link to it.
+      const users = value.mentions?.users;
+      const db = getDatabase();
+      if (users && db) {
+        for (const [id, user] of Object.entries(users)) {
+          const row = db.prepare("SELECT username, profile_visibility FROM users WHERE discord_user_id = ?").get(id);
+          if (row && row.profile_visibility !== "private") user.key = `@${row.username}`;
+        }
+      }
+
       lobbyCache = { value, expires: Date.now() + LOBBY_CACHE_MS };
       return value;
     }),
@@ -911,6 +1181,7 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, activity = nul
 
 module.exports = {
   registerFdcWeb,
+  canCreateFdc,
   /** Paths whose body is parsed by their own (larger) JSON parser. */
   // Upload routes: new polls and image edits of running polls.
   LARGE_BODY_PATHS: {
@@ -918,6 +1189,8 @@ module.exports = {
       requestPath === "/fdc/polls" ||
       requestPath === "/fdc/polls/manual" ||
       requestPath === "/fdc/emojis" ||
-      /^\/fdc\/polls\/\d{17,20}\/edit$/.test(requestPath),
+      requestPath === "/bongo/admin/import/start" ||
+      /^\/bongo\/admin\/import\/[0-9a-f]+\/file$/.test(requestPath) ||
+      /^\/fdc\/polls\/\d{17,20}\/(edit|designs)$/.test(requestPath),
   },
 };

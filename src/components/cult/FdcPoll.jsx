@@ -14,7 +14,27 @@ import { LOGIN_AVAILABLE } from '../../lib/account'
 import { catNotice } from '../../lib/lobbyCat'
 import FdcManage from './FdcManage'
 import FdcExternalVotes from './FdcExternalVotes'
+import RollingNumber from './RollingNumber'
+import { Link } from 'react-router'
+import { keyPath } from '../../lib/members'
 import { recycleOptions } from '../../lib/fdcRecycle'
+import ImageViewer from '../ImageViewer'
+import DiscordText from '../DiscordText'
+
+/* A translated sentence with its count rolling (the count is found in the text, so any language works). */
+function RollingIn({ text, count, language }) {
+  const variants = [String(count), Number(count).toLocaleString(language)]
+  const found = variants.find((variant) => text.includes(variant))
+  if (!found) return text
+  const at = text.indexOf(found)
+  return (
+    <>
+      {text.slice(0, at)}
+      <RollingNumber value={count} locale={language} />
+      {text.slice(at + found.length)}
+    </>
+  )
+}
 
 function OptionEmoji({ emoji }) {
   const url = customEmojiUrl(emoji)
@@ -36,6 +56,15 @@ function OptionEmoji({ emoji }) {
   }
 
   return <span className="fdc-option__emoji">{emoji?.display}</span>
+}
+
+function VoterFace({ voter }) {
+  return (
+    <>
+      {voter.avatarUrl ? <img src={voter.avatarUrl} alt="" width="22" height="22" loading="lazy" /> : <span className="fdc-voters__avatar" aria-hidden="true" />}
+      <span>{voter.displayName || 'Someone'}</span>
+    </>
+  )
 }
 
 function VoterList({ voters, options }) {
@@ -73,12 +102,13 @@ function VoterList({ voters, options }) {
               <ul>
                 {group.map((voter) => (
                   <li key={voter.userId} title={voter.via === 'web' ? t('fdc.votedOnWebsite', { defaultValue: 'Voted on the website' }) : undefined}>
-                    {voter.avatarUrl ? (
-                      <img src={voter.avatarUrl} alt="" width="22" height="22" loading="lazy" />
+                    {voter.profile ? (
+                      <Link className="fdc-voters__link" to={keyPath(voter.profile)} title={`Open ${voter.displayName || voter.profile}'s profile`}>
+                        <VoterFace voter={voter} />
+                      </Link>
                     ) : (
-                      <span className="fdc-voters__avatar" aria-hidden="true" />
+                      <VoterFace voter={voter} />
                     )}
-                    <span>{voter.displayName || voter.userId}</span>
                   </li>
                 ))}
               </ul>
@@ -110,6 +140,7 @@ export default function FdcPoll({
   // Editors on ended polls: option numbers already in the recycling bin.
   const [recycled, setRecycled] = useState(() => new Set(poll.viewer?.recycled ?? []))
   const [recycling, setRecycling] = useState(null)
+  const [viewing, setViewing] = useState(null)
   const canRecycle = Array.isArray(poll.viewer?.recycled) && poll.live !== false
   const managing = managingProp ?? managingState
   const setManaging = onManagingChange ?? setManagingState
@@ -120,8 +151,9 @@ export default function FdcPoll({
   const isEditor = poll.live !== false && poll.viewer?.isEditor === true
   const canEditArchive = !running && isEditor && !canManage
   // `managing`: false | 'edit' (true = 'edit') | 'votes'
-  const editing = managing === true || managing === 'edit'
-  const enteringVotes = managing === 'votes'
+  // Only for those allowed to (it can come from the address, ?manage=…).
+  const editing = (managing === true || managing === 'edit') && (canManage || canEditArchive)
+  const enteringVotes = managing === 'votes' && isEditor
   const externalTotal = (poll.externalVotes ?? []).reduce((sum, source) => sum + source.total, 0)
   const statistics = result?.statistics ?? poll.statistics
   const myVote = result ? result.optionNumber : poll.viewer?.myVote ?? null
@@ -310,6 +342,11 @@ export default function FdcPoll({
                 <span className="fdc-option__tag">
                   <span className="fdc-option__number">{option.number}</span>
                   <OptionEmoji emoji={option.emoji} />
+                  {isEditor && option.imageFile && !option.designFile && (
+                    <span className="fdc-todo-dot" title={t('fdc.migrate.needsDesign', { defaultValue: 'Still a picture: this cat needs a design' })} aria-label={t('fdc.migrate.needsDesign', { defaultValue: 'Still a picture: this cat needs a design' })}>
+                      !
+                    </span>
+                  )}
                 </span>
 
                 {mine ? (
@@ -354,27 +391,29 @@ export default function FdcPoll({
                 )}
 
                 {option.image !== null && (
-                <a
-                  className="fdc-option__zoom"
-                  href={publicPollImage(poll, option)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={t('fdc.openImage', {
-                    defaultValue: 'Open image for option {{number}}',
-                    number: option.number,
-                  })}
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    open_in_full
-                  </span>
-                </a>
+                  <button
+                    type="button"
+                    className="fdc-option__zoom"
+                    onClick={() => setViewing(option)}
+                    aria-label={t('fdc.openImage', {
+                      defaultValue: 'Open image for option {{number}}',
+                      number: option.number,
+                    })}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      open_in_full
+                    </span>
+                  </button>
                 )}
               </div>
 
               <div className="fdc-option__body">
                 <p className="fdc-option__description">
-                  {option.description ||
-                    t('fdc.create.option', { defaultValue: 'Option {{number}}', number: option.number })}
+                  {option.description ? (
+                    <DiscordText text={option.description} />
+                  ) : (
+                    t('fdc.create.option', { defaultValue: 'Option {{number}}', number: option.number })
+                  )}
                 </p>
 
                 {votesKnown && (
@@ -392,17 +431,18 @@ export default function FdcPoll({
 
                   <p className="fdc-option__counts">
                     <strong>
-                      {percentage.toLocaleString(i18n.language, {
-                        maximumFractionDigits: 0,
-                      })}
-                      %
+                      <RollingNumber value={percentage} locale={i18n.language} />%
                     </strong>
                     <span>
-                      {t('fdc.votes', {
-                        count: votes,
-                        defaultValue: '{{count}} vote',
-                        defaultValue_other: '{{count}} votes',
-                      })}
+                      <RollingIn
+                        text={t('fdc.votes', {
+                          count: votes,
+                          defaultValue: '{{count}} vote',
+                          defaultValue_other: '{{count}} votes',
+                        })}
+                        count={votes}
+                        language={i18n.language}
+                      />
                     </span>
                   </p>
                 </div>
@@ -448,10 +488,16 @@ export default function FdcPoll({
             {votesKnown ? 'how_to_vote' : 'trophy'}
           </span>
           {votesKnown
-            ? t('fdc.totalVoters', {
-                defaultValue: '{{count}} total voters',
-                count: statistics.totalVoters ?? 0,
-              })
+            ? (
+                <RollingIn
+                  text={t('fdc.totalVoters', {
+                    defaultValue: '{{count}} total voters',
+                    count: statistics.totalVoters ?? 0,
+                  })}
+                  count={statistics.totalVoters ?? 0}
+                  language={i18n.language}
+                />
+              )
             : t('fdc.winnerOnly', { defaultValue: 'Only the winner of this FDC is known; the vote counts were lost.' })}
         </p>
 
@@ -506,6 +552,16 @@ export default function FdcPoll({
           )
         )}
       </footer>
+
+      {viewing && (
+        <ImageViewer
+          src={publicPollImage(poll, viewing)}
+          alt={viewing.description}
+          caption={`${viewing.number}. ${viewing.description ?? ''}`}
+          fileName={`fdc-${poll.date ?? 'poll'}-${viewing.number}.${(viewing.image ?? 'x.webp').split('.').pop()}`}
+          onClose={() => setViewing(null)}
+        />
+      )}
     </article>
   )
 }

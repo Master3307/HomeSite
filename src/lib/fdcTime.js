@@ -1,3 +1,4 @@
+import { timeOptions } from "./prefs.js";
 /*
  * FDC times are Europe/Berlin times (the server's and the cult's clock),
  * whatever time zone the visitor's browser is in. These helpers convert
@@ -89,12 +90,21 @@ export function differsFromLocal(date) {
   return ["year", "month", "day", "hour", "minute"].some((key) => berlin[key] !== local[key]);
 }
 
+/* The viewer's 12 / 24 hour choice (Settings, lib/prefs.js) for times with hours. */
+const clockOf = (options) => {
+  if (!options?.hour && !options?.timeStyle) return {};
+  const { hour12, hourCycle } = timeOptions();
+  return hour12 !== undefined ? { hour12 } : hourCycle ? { hourCycle } : {};
+};
+
 export function formatZoned(date, language, options, timeZone = FDC_TIME_ZONE) {
-  return new Intl.DateTimeFormat(language || undefined, { ...options, timeZone }).format(date);
+  return new Intl.DateTimeFormat(language || undefined, { ...options, ...clockOf(options), timeZone }).format(date);
 }
 
+/** In the viewer's time zone: the one chosen in Settings, else the device's. */
 export function formatLocal(date, language, options) {
-  return new Intl.DateTimeFormat(language || undefined, options).format(date);
+  const { timeZone } = timeOptions();
+  return new Intl.DateTimeFormat(language || undefined, { ...options, ...clockOf(options), ...(timeZone ? { timeZone } : {}) }).format(date);
 }
 
 /*

@@ -64,3 +64,26 @@ export async function recycledItemFile(item) {
   const blob = await response.blob();
   return new File([blob], `recycled-${item.date}-${item.optionNumber}.webp`, { type: blob.type || "image/webp" });
 }
+
+/* ---------- migration: picture options to designed cats (server/services/fdcMigration.cjs) ---------- */
+
+/** A migration cat's old picture / rendered design (`imageUrl`, `designUrl` are relative to the API). */
+export const migrationImageUrl = (entry) => (entry?.imageUrl ? `${ACCOUNT_API_URL}${entry.imageUrl}` : null);
+export const migrationDesignUrl = (entry) => (entry?.designUrl ? `${ACCOUNT_API_URL}${entry.designUrl}` : null);
+
+/** The rendered design of a bin item (null when it is still just a picture). */
+export function recycledDesignUrl(item) {
+  if (!item?.design) return null;
+  const version = item.designVersion ?? item.design?.revision ?? 0;
+  return `${ACCOUNT_API_URL}/fdc/recycle/designs/${encodeURIComponent(item.id)}?v=${version}`;
+}
+
+/** `{ total, remaining, migrated, editor, loggedIn }` */
+export const loadMigrationStatus = () => request("/fdc/migration/status");
+/** `{ total, migrated, remaining: [...], done: [...], suggestions: [...], editor }` */
+export const loadMigration = () => request("/fdc/migration");
+export const designMigrated = (id, design) => request(`/fdc/migration/${encodeURIComponent(id)}/design`, { design });
+export const suggestMigratedDesign = (id, design, note = "") =>
+  request(`/fdc/migration/${encodeURIComponent(id)}/suggest`, { design, note });
+export const decideSuggestion = (id, approve, design = null) =>
+  request(`/fdc/migration/suggestions/${encodeURIComponent(id)}/${approve ? "approve" : "reject"}`, design ? { design } : {});

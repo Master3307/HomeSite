@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -8,10 +8,16 @@ import {
   createFdc,
 } from '../../lib/fdc'
 import ImageEditor from './ImageEditor'
+import { DesignSlot } from '../bongo/OptionDesign'
+
+const DesignEditor = lazy(() => import('../bongo/DesignEditor'))
+import { useCatalog } from '../../lib/bongo'
+import { useUrlParam } from '../../lib/urlState'
 import EmojiPicker from './EmojiPicker'
+import RichTextarea from '../RichTextarea'
 import DateTimePicker from './DateTimePicker'
 import RecycleBin, { RecycledCleanup } from './RecycleBin'
-import { recycledItemFile } from '../../lib/fdcRecycle'
+import { designMigrated, recycledImageUrl, recycledItemFile } from '../../lib/fdcRecycle'
 import { differsFromLocal, formatLocal, formatZoned, tomorrowAt } from '../../lib/fdcTime'
 
 /*
@@ -42,14 +48,31 @@ function emptyOption() {
  * `optionalDetails`: name and emoji may stay empty (past Steam FDCs often
  * had neither); without an emoji the option just shows its number.
  */
-export function OptionEditor({ index, option, onChange, disabled, viewerDiscordId, optionalDetails = false }) {
+/* With the Bongo Cat assets imported every new option is a designed cat; without them, a picture. */
+
+export function OptionEditor({ index, option, onChange, disabled, viewerDiscordId, optionalDetails = false, catalog = null }) {
   const { t } = useTranslation('voting')
   const id = useId()
   const number = index + 1
   const [editing, setEditing] = useState(false)
-  const [binOpen, setBinOpen] = useState(false)
+  // ?bin=<n>: the recycling bin picking for this option; ?design=<n>: its cat designer.
+  const [binParam, setBinParam] = useUrlParam('bin')
+  const binOpen = binParam === String(number)
+  const setBinOpen = (open) => setBinParam(open ? number : null, { clear: ['folder'] })
+  const [designParam, setDesignParam] = useUrlParam('design')
+  const [migrating, setMigrating] = useState(null)
+  const [savingDesign, setSavingDesign] = useState(false)
 
   async function useRecycled(item) {
+    if (catalog) {
+      // Designed cats only: a picture-only item gets its design first.
+      if (!item.design?.spec) {
+        setMigrating(item)
+        return
+      }
+      onChange({ design: item.design.spec, recycled: item, description: '', emoji: '' })
+      return
+    }
     const file = await recycledItemFile(item)
     if (option.preview) URL.revokeObjectURL(option.preview)
     onChange({
@@ -89,6 +112,21 @@ export function OptionEditor({ index, option, onChange, disabled, viewerDiscordI
         {t('fdc.create.option', { defaultValue: 'Option {{number}}', number })}
       </legend>
 
+      {catalog && (
+        <DesignSlot
+          catalog={catalog}
+          design={option.design}
+          required={!optionalDetails}
+          disabled={disabled}
+          onChange={(design) => onChange({ design })}
+          open={designParam === String(number)}
+          onOpenChange={(open) => setDesignParam(open ? number : null)}
+        />
+      )}
+
+      {/* Without the Bongo Cat assets: options are pictures, like before. */}
+      {!catalog && (
+      <>
       <div className="fdc-create__media">
       <label
         className={`fdc-create__drop${option.preview ? ' fdc-create__drop--filled' : ''}`}
@@ -142,28 +180,9 @@ export function OptionEditor({ index, option, onChange, disabled, viewerDiscordI
             {t('fdc.editor.open', { defaultValue: 'Edit image' })}
           </button>
         )}
-        <button type="button" className="fdc-link" onClick={() => setBinOpen(true)}>
-          <span className="material-symbols-outlined" aria-hidden="true">backpack</span>
-          {t('fdc.recycle.fromBin', { defaultValue: 'From recycling bin' })}
-        </button>
       </div>
 
-      {option.recycled && (
-        <p className="fdc-create__recycled">
-          <span className="material-symbols-outlined" aria-hidden="true">recycling</span>
-          {t('fdc.recycle.recycledFrom', { defaultValue: 'Recycled from the FDC of {{date}}', date: option.recycled.date })}
-        </p>
-      )}
 
-      {binOpen && (
-        <RecycleBin
-          mode="pick"
-          optionNumber={number}
-          viewerDiscordId={viewerDiscordId}
-          onPick={useRecycled}
-          onClose={() => setBinOpen(false)}
-        />
-      )}
 
       {option.source && option.edits && (
         <div className="fdc-create__image-actions">
@@ -190,13 +209,68 @@ export function OptionEditor({ index, option, onChange, disabled, viewerDiscordI
         />
       )}
 
+      </>
+      )}
+
+
+      <div className="fdc-create__image-actions">
+        <button type="button" className="fdc-link" onClick={() => setBinOpen(true)}>
+          <span className="material-symbols-outlined" aria-hidden="true">backpack</span>
+          {t('fdc.recycle.fromBin', { defaultValue: 'From recycling bin' })}
+        </button>
+      </div>
+
+      {option.recycled && (
+        <p className="fdc-create__recycled">
+          <span className="material-symbols-outlined" aria-hidden="true">recycling</span>
+          {t('fdc.recycle.recycledFrom', { defaultValue: 'Recycled from the FDC of {{date}}', date: option.recycled.date })}
+        </p>
+      )}
+
+      {binOpen && (
+        <RecycleBin
+          mode="pick"
+          optionNumber={number}
+          viewerDiscordId={viewerDiscordId}
+          onPick={useRecycled}
+          onClose={() => setBinOpen(false)}
+        />
+      )}
+
+      {/* A recycled cat that is still a picture: design it first (it stays designed in the bin). */}
+      {migrating && (
+        <Suspense fallback={null}>
+          <DesignEditor
+            catalog={catalog}
+            title={t('fdc.migrate.designTitle', { defaultValue: 'Design "{{name}}"', name: migrating.description || `#${migrating.optionNumber}` })}
+            reference={{ src: recycledImageUrl(migrating), label: t('fdc.migrate.oldPicture', { defaultValue: 'The old picture' }) }}
+            applyLabel={t('fdc.migrate.saveAndUse', { defaultValue: 'Save design and use it' })}
+            busy={savingDesign}
+            onCancel={() => setMigrating(null)}
+            onApply={async (design) => {
+              setSavingDesign(true)
+              try {
+                const saved = await designMigrated(`b.${migrating.id}`, design)
+                onChange({ design: saved.design ?? design, recycled: { ...migrating, design: { spec: saved.design ?? design } }, description: '', emoji: '' })
+                setMigrating(null)
+              } catch (error) {
+                window.alert(error.message)
+              } finally {
+                setSavingDesign(false)
+              }
+            }}
+          />
+        </Suspense>
+      )}
+
       <label className="fdc-create__label" htmlFor={`${id}-description`}>
         {t('fdc.create.description', { defaultValue: 'Name and description' })}
         {optionalDetails && <span className="fdc-optional"> {t('fdc.create.optional', { defaultValue: '(optional)' })}</span>}
       </label>
-      <textarea
+      <RichTextarea
         id={`${id}-description`}
-        className="fdc-input"
+        inputClassName="fdc-input"
+        mentions={false}
         rows={2}
         maxLength={MAX_DESCRIPTION}
         value={option.description}
@@ -204,7 +278,7 @@ export function OptionEditor({ index, option, onChange, disabled, viewerDiscordI
           option.recycled?.description ||
           (optionalDetails ? t('fdc.create.option', { defaultValue: 'Option {{number}}', number: index + 1 }) : undefined)
         }
-        onChange={(event) => onChange({ description: event.target.value })}
+        onChange={(description) => onChange({ description })}
       />
 
       <span className="fdc-create__label" id={`${id}-emoji`}>
@@ -226,10 +300,17 @@ export function OptionEditor({ index, option, onChange, disabled, viewerDiscordI
 const effectiveDescription = (option) => option.description.trim() || option.recycled?.description?.trim() || ''
 const effectiveEmoji = (option) => option.emoji.trim() || option.recycled?.emoji?.value || ''
 
-function validate(options, t) {
+function validate(options, t, designs) {
   for (const [index, option] of options.entries()) {
     const number = index + 1
 
+    if (designs && !option.design) {
+      return t('fdc.create.errors.design', { defaultValue: 'Option {{number}} needs a designed cat.', number })
+    }
+    if (designs) {
+      if (!effectiveDescription(option)) return t('fdc.create.errors.description', { defaultValue: 'Option {{number}} needs a description.', number })
+      continue
+    }
     if (!option.file) {
       return t('fdc.create.errors.image', { defaultValue: 'Option {{number}} needs an image.', number })
     }
@@ -303,11 +384,15 @@ export default function FdcCreate({ onCancel, onCreated, viewerDiscordId }) {
   )
   const [duration, setDuration] = useState('tomorrow10')
   const [customEnd, setCustomEnd] = useState(null) // Date
+  const { catalog } = useCatalog()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [created, setCreated] = useState(null)
   const [usedRecycled, setUsedRecycled] = useState([])
-  const [binOpen, setBinOpen] = useState(false)
+  // ?bin=all: the recycling bin (managing it).
+  const [binParam, setBinParam] = useUrlParam('bin')
+  const binOpen = binParam === 'all'
+  const setBinOpen = (open) => setBinParam(open ? 'all' : null, { clear: ['folder'] })
   const { i18n } = useTranslation()
   const [now, setNow] = useState(() => Date.now())
 
@@ -334,7 +419,7 @@ export default function FdcCreate({ onCancel, onCreated, viewerDiscordId }) {
     event.preventDefault()
     if (busy) return
 
-    const problem = validate(options, t)
+    const problem = validate(options, t, Boolean(catalog))
     if (problem) {
       setError(problem)
       return
@@ -358,12 +443,16 @@ export default function FdcCreate({ onCancel, onCreated, viewerDiscordId }) {
     try {
       const result = await createFdc({
         endsAt,
-        options: options.map((option) => ({
-          file: option.file,
-          edit: option.edit,
-          description: effectiveDescription(option),
-          emoji: effectiveEmoji(option),
-        })),
+        options: options.map((option) => {
+          return {
+            file: catalog ? null : option.file,
+            edit: catalog ? null : option.edit,
+            design: catalog ? option.design : null,
+            display: catalog ? 'design' : null,
+            description: effectiveDescription(option),
+            emoji: effectiveEmoji(option),
+          }
+        }),
       })
       setUsedRecycled(options.map((option) => option.recycled).filter(Boolean))
       setCreated(result)
@@ -457,6 +546,7 @@ export default function FdcCreate({ onCancel, onCreated, viewerDiscordId }) {
             option={option}
             viewerDiscordId={viewerDiscordId}
             disabled={busy}
+            catalog={catalog}
             onChange={(patch) => updateOption(index, patch)}
           />
         ))}

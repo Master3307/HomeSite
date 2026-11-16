@@ -1,3 +1,6 @@
+const privacy = require("./privacy.cjs");
+const memberData = require("./memberData.cjs");
+const { ids, setting } = require("../config.cjs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const express = require("express");
@@ -91,6 +94,27 @@ async function prepareUpload(image, number) {
     if (error.status) throw error;
     throw httpError(400, `Option ${number}'s image could not be edited.`);
   }
+}
+
+/*
+ * A designed cat from the website (shared/bongo-design.mjs), already
+ * rendered by the account API: `{ spec, data (base64), extension, frames, width, height }`.
+ */
+function decodeDesign(design, number) {
+  if (!design) return null;
+  const buffer = Buffer.from(String(design.data ?? ""), "base64");
+  if (!buffer.length) throw httpError(400, `Option ${number}'s design is empty.`);
+  if (buffer.length > MAX_UPLOAD_BYTES) throw httpError(413, `Option ${number}'s design is too big.`);
+  const extension = design.extension === "gif" ? "gif" : "png";
+  return {
+    spec: design.spec && typeof design.spec === "object" ? design.spec : null,
+    buffer,
+    extension,
+    contentType: extension === "gif" ? "image/gif" : "image/png",
+    frames: Number(design.frames) || 1,
+    width: Number(design.width) || null,
+    height: Number(design.height) || null,
+  };
 }
 
 /* ---------- emojis for the FDC emoji picker ---------- */
@@ -270,7 +294,7 @@ async function resolveUsers(client, guild, ids, size = 64) {
     const member = guild.members.cache.get(id);
 
     if (member) {
-      members[id] = memberSummary(member, size);
+      members[id] = { ...memberSummary(member, size), inServer: true };
       continue;
     }
 
@@ -282,6 +306,7 @@ async function resolveUsers(client, guild, ids, size = 64) {
         username: user.username,
         avatarUrl: user.displayAvatarURL({ size, extension: "webp" }),
         bot: user.bot,
+        inServer: false,
       };
     }
   }
@@ -357,8 +382,9 @@ function activityLabel(presence) {
 async function buildWidget(client) {
   const guild = await getGuild(client);
 
+  // Private profiles and deleted accounts are never shown as online (they still count as members).
   const presences = [...guild.presences.cache.values()].filter(
-    (presence) => presence.status && presence.status !== "offline",
+    (presence) => presence.status && presence.status !== "offline" && !privacy.isPrivate(presence.userId) && !ids("WIDGET_HIDDEN_IDS").includes(presence.userId),
   );
 
   const online = presences
@@ -443,6 +469,24 @@ function startInternalApi(client) {
       memoryMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
     });
   });
+
+  /* Members on the website: profiles, presence, reports, deleting an account (memberData.cjs). */
+  app.get("/members/:id/profile", route((req) => memberData.profile(client, String(req.params.id))));
+  app.get("/members/:id/staff", route((req) => memberData.staff(client, String(req.params.id))));
+  app.get("/members/:id/member", route((req) => memberData.isMember(client, String(req.params.id))));
+  app.post("/members/:id/nickname", route((req) => memberData.setNickname(client, String(req.params.id), req.body?.nickname ?? null)));
+  app.post("/members/presence", route((req) => memberData.presence(client, req.body?.ids)));
+  // A new website account: move its onboarding profile roles into it (profileRoles.cjs).
+  app.post(
+    "/members/:id/profile-roles",
+    route(async (req) => {
+      const guild = client.guilds.cache.get(setting("DISCORD_GUILD_ID"));
+      const member = guild ? await guild.members.fetch(String(req.params.id)).catch(() => null) : null;
+      return require("./profileRoles.cjs").migrateMember(member);
+    }),
+  );
+  app.post("/members/report", route((req) => memberData.report(client, req.body ?? {})));
+  app.post("/privacy/forget", route((req) => memberData.forget(client, String(req.body?.discordId ?? ""))));
 
   // /hub data (members, live feed, commands); see hubBot.cjs.
   require("./hubBot.cjs").registerHubRoutes(app, client, route);
@@ -538,7 +582,10 @@ function startInternalApi(client) {
           rawOptions.map(async (option, index) => ({
             description: option?.description,
             emoji: option?.emoji,
-            media: await prepareUpload(option?.image, index + 1),
+            // A design (rendered by the account API) can replace the image.
+            media: option?.image || !option?.design ? await prepareUpload(option?.image, index + 1) : null,
+            design: decodeDesign(option?.design, index + 1),
+            display: option?.display === "design" ? "design" : option?.display === "image" ? "image" : null,
           })),
         ),
       );
@@ -617,6 +664,22 @@ function startInternalApi(client) {
     }),
   );
 
+  /* Adds, changes or removes option designs and switches what an option shows. */
+  app.post(
+    "/fdc/polls/:pollId/designs",
+    route(async (req) => {
+      const { actorId, changes: rawChanges } = req.body ?? {};
+      if (!isSnowflake(actorId)) throw httpError(400, "Invalid editor.");
+      if (!Array.isArray(rawChanges) || !rawChanges.length || rawChanges.length > 6) throw httpError(400, "Invalid changes.");
+      const changes = rawChanges.map((change) => ({
+        number: Number(change?.number),
+        design: change?.design === null ? null : change?.design ? decodeDesign(change.design, change.number) : undefined,
+        display: change?.display === "design" || change?.display === "image" ? change.display : undefined,
+      }));
+      return archive.setDesigns(req.params.pollId, { actorId, changes });
+    }),
+  );
+
   /* An FDC from before (Steam group chat …), added by an editor: archive only. */
   app.post(
     "/fdc/polls/manual",
@@ -641,6 +704,8 @@ function startInternalApi(client) {
             : null,
           // Optional for past FDCs (then a name is required).
           media: option?.image ? await prepareUpload(option.image, index + 1) : null,
+          // A designed cat (rendered by the account API), the way new options are.
+          design: option?.design ? decodeDesign(option.design, index + 1) : null,
         })),
       );
 

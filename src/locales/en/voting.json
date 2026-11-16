@@ -147,7 +147,8 @@
             "working": "Working…",
             "archiveIntro": "This poll has ended: changes only update the archive (website, recycling bin). Discord stays as it was.",
             "editArchive": "Edit",
-            "noImage": "No image"
+            "noImage": "No image",
+            "introDesigns": "Change the designs, names and emoji. New designs replace the old ones on Discord and in the archive."
         },
         "emoji": {
             "title": "Choose an emoji",
@@ -286,7 +287,8 @@
         "manual": {
             "errors": {
                 "date": "Pick the day the FDC ended (today or earlier).",
-                "imageOrName": "Option {{number}} needs an image or a name."
+                "imageOrName": "Option {{number}} needs an image or a name.",
+                "designOrName": "Option {{number}} needs a designed cat or a name."
             },
             "done": "FDC {{date}} added to the archive",
             "doneNote": "{{options}} options and {{votes}} votes. You can still fix it from the archive (Edit, Add votes).",
@@ -308,6 +310,52 @@
         "activityLog": "Activity log",
         "winnerOnly": "Only the winner of this FDC is known; the vote counts were lost.",
         "backup": "Backup & restore",
-        "adminSettings": "Admin settings"
+        "adminSettings": "Admin settings",
+        "migrate": {
+            "saved": "\"{{name}}\" is a designed cat now.",
+            "suggested": "Thanks! An editor will look at your design.",
+            "todo": "To do",
+            "done": "Designed",
+            "suggestions": "Suggestions",
+            "title": "Migration",
+            "contributeTitle": "Contribute",
+            "introEditor": "Old FDC options are pictures. Give every one of them a design, using its old picture as a guide: the archive then shows the designed cat (the picture stays), and recycled cats can be used again. Once all are done, this disappears.",
+            "introMember": "Old FDC options are pictures. Help turn them into designed cats: pick one, rebuild it in the designer and send it in. An editor checks every suggestion, nothing changes before that.",
+            "progress": "Progress",
+            "counts": "{{migrated}} of {{total}} designed, {{remaining}} left",
+            "noAssets": "The Bongo Cat items are not imported on this server yet, so nothing can be designed.",
+            "design": "Design it",
+            "changeSuggestion": "Change my suggestion",
+            "suggest": "Suggest a design",
+            "allDone": "Every FDC option is a designed cat now. Thank you!",
+            "designedBy": "Designed by {{name}}",
+            "noneDone": "No designed cats yet.",
+            "oldPicture": "The old picture",
+            "suggestedBy": "Suggested by {{name}}",
+            "someone": "someone",
+            "approved": "Approved.",
+            "approve": "Approve",
+            "adjust": "Adjust and approve",
+            "rejected": "Rejected.",
+            "reject": "Reject",
+            "noSuggestions": "No suggestions waiting.",
+            "designTitle": "Design \"{{name}}\"",
+            "save": "Save design",
+            "send": "Send suggestion",
+            "noteLabel": "A note for the editors (optional)",
+            "adjustTitle": "Adjust the suggestion",
+            "needsDesign": "Still a picture: this cat needs a design",
+            "saveAndUse": "Save design and use it",
+            "suggestionCount_one": "{{count}} suggestion",
+            "suggestionCount_other": "{{count}} suggestions",
+            "left_one": "{{count}} old picture cat left",
+            "left_other": "{{count}} old picture cats left",
+            "running": "running now",
+            "inBin": "Recycling bin · {{date}}",
+            "inPoll": "FDC {{date}} · option {{number}}",
+            "fromEditor": "Still a picture: migrate it to a designed cat",
+            "showDesign": "Show the design instead of the picture"
+        },
+        "hub": "Hub"
     }
 }

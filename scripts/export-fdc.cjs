@@ -80,11 +80,10 @@ async function main() {
       await fs.mkdir(targetFolder);
 
       for (const option of publicPoll.options) {
-        if (!option.image) continue; // past FDC option without an image
-        await fs.copyFile(
-          path.join(sourceFolder, option.image),
-          path.join(targetFolder, option.image),
-        );
+        // The shown file plus the other version (image / design), if any.
+        for (const file of new Set([option.image, option.imageFile, option.designFile].filter(Boolean))) {
+          await fs.copyFile(path.join(sourceFolder, file), path.join(targetFolder, file));
+        }
       }
 
       await writeJson(path.join(targetFolder, "data.json"), publicPoll);

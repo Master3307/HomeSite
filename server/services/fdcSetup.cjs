@@ -293,7 +293,8 @@ async function resolveOptions(client, guild, rawOptions) {
       );
     }
 
-    if (!raw.media || !isImageOrGif(raw.media)) {
+    // A designed cat (website) can stand in for the image.
+    if (raw.media ? !isImageOrGif(raw.media) : !raw.design) {
       throw new Error(`Option ${number} must contain an image or GIF.`);
     }
 
@@ -309,7 +310,7 @@ async function resolveOptions(client, guild, rawOptions) {
       throw new Error(`Option ${number}: ${error.message}`);
     }
 
-    options.push({ number, media: raw.media, description, emoji });
+    options.push({ number, media: raw.media ?? null, design: raw.design ?? null, display: raw.display ?? null, description, emoji });
   }
 
   if (new Set(options.map((option) => option.emoji.key)).size !== OPTION_COUNT) {

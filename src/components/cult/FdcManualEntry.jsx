@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { FDC_MAX_IMAGE_BYTES, createManualFdc } from '../../lib/fdc'
 import { formatZoned, fromZoned, localHint, zonedParts } from '../../lib/fdcTime'
 import { OptionEditor } from './FdcCreate'
+import { useCatalog } from '../../lib/bongo'
 
 /*
  * Add an FDC that only exists elsewhere, e.g. the oldest ones from the
@@ -40,6 +41,8 @@ export default function FdcManualEntry({ onCancel, onCreated, viewerDiscordId })
   const [resultMode, setResultMode] = useState('counts')
   const [winner, setWinner] = useState(1)
   const [busy, setBusy] = useState(false)
+  // With the Bongo Cat assets imported, options are designed cats (no pictures).
+  const { catalog } = useCatalog()
   const [error, setError] = useState(null)
   const [done, setDone] = useState(null)
 
@@ -70,9 +73,9 @@ export default function FdcManualEntry({ onCancel, onCreated, viewerDiscordId })
     }
     for (const [index, option] of shown.entries()) {
       const number = index + 1
-      // Image optional, but then the option needs a name.
-      if (!option.file && !(option.description.trim() || option.recycled?.description)) {
-        return setError(t('fdc.manual.errors.imageOrName', { defaultValue: 'Option {{number}} needs an image or a name.', number }))
+      // A designed cat (a picture without Bongo Cat assets) is optional, but then the option needs a name.
+      if (!option.file && !option.design && !(option.description.trim() || option.recycled?.description)) {
+        return setError(t('fdc.manual.errors.designOrName', { defaultValue: 'Option {{number}} needs a designed cat or a name.', number }))
       }
       if (option.file && option.file.size > FDC_MAX_IMAGE_BYTES) {
         return setError(t('fdc.create.errors.size', { defaultValue: "Option {{number}}'s image is larger than 10 MB.", number }))
@@ -92,8 +95,9 @@ export default function FdcManualEntry({ onCancel, onCreated, viewerDiscordId })
         endsAt: end.toISOString(),
         question: question.trim() || null,
         options: shown.map((option, index) => ({
-          file: option.file,
+          file: catalog ? null : option.file,
           edit: option.edit,
+          design: catalog ? (option.design ?? null) : null,
           description: option.description.trim() || option.recycled?.description || '',
           emoji: emojis[index],
         })),
@@ -196,6 +200,7 @@ export default function FdcManualEntry({ onCancel, onCreated, viewerDiscordId })
             option={option}
             viewerDiscordId={viewerDiscordId}
             optionalDetails
+            catalog={catalog}
             disabled={busy}
             onChange={(patch) => update(index, patch)}
           />

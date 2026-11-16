@@ -14,7 +14,7 @@ const sharp = require("sharp");
 
 const ASPECTS = { "16:10": 16 / 10, "16:9": 16 / 9, "4:3": 4 / 3, "1:1": 1, "4:5": 4 / 5 };
 // Default fill around the image when it is zoomed out past the frame (the editor can change it).
-const FILL = "#202128";
+const FILL = "#202228";
 const MAX_OUTPUT = 2560;
 const MAX_ANIMATED_OUTPUT = 960;
 const MAX_FRAMES = 300;

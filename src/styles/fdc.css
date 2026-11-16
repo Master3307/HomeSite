@@ -4,6 +4,20 @@
  * page palette: glass surfaces, 13px radii and the accent colour.
  */
 
+/* The emoji picker is also used outside the FDC section (lobby codes): same tokens. */
+.emoji-picker,
+.emoji-menu {
+  --fdc-raised: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  --fdc-hover: color-mix(in srgb, var(--text-primary) 11%, transparent);
+  --fdc-border: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  --fdc-muted: var(--text-secondary);
+  --fdc-accent: var(--accent);
+  --fdc-accent-soft: color-mix(in srgb, var(--accent) 28%, transparent);
+  --fdc-danger: #ff9aa8;
+  --fdc-radius: 16px;
+  --fdc-radius-small: 10px;
+}
+
 .fdc {
   --fdc-surface: color-mix(in srgb, var(--bg-secondary) 46%, transparent);
   --fdc-raised: color-mix(in srgb, var(--text-primary) 6%, transparent);
@@ -281,15 +295,24 @@
 
   border-radius: var(--fdc-radius);
   background: var(--fdc-surface);
-  box-shadow:
-    inset 0 0 0 1px var(--fdc-border),
-    0 12px 30px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
   outline: 2px solid transparent;
   outline-offset: -2px;
   transition:
     outline-color 0.18s ease,
     background-color 0.18s ease,
     transform 0.18s ease;
+}
+
+/* The 1px edge drawn over the picture: underneath, its rounded corners peeked out past the image's. */
+.fdc .fdc-option::after {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--fdc-border);
+  content: "";
+  pointer-events: none;
 }
 
 .fdc .fdc-option--votable:hover {
@@ -321,7 +344,7 @@
   position: relative;
   aspect-ratio: 16 / 10;
   overflow: hidden;
-  background: color-mix(in srgb, black 30%, transparent);
+  background: #202228; /* the options' default fill (image editor, designs) */
 }
 
 .fdc .fdc-option__media > img {
@@ -341,8 +364,8 @@
   border-radius: 999px;
   background: rgba(10, 6, 12, 0.62);
   color: #fff;
-  backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .fdc .fdc-option__tag {
@@ -1566,17 +1589,17 @@
 
 /* ---------- emoji picker ---------- */
 
-.fdc .emoji-picker {
+.emoji-picker {
   position: relative;
 }
 
-.fdc .emoji-picker__field {
+.emoji-picker__field {
   display: flex;
   align-items: center;
   gap: 0.25rem;
 }
 
-.fdc .emoji-picker__trigger {
+.emoji-picker__trigger {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -1592,38 +1615,38 @@
   cursor: pointer;
 }
 
-.fdc .emoji-picker__trigger:hover,
-.fdc .emoji-picker__trigger[aria-expanded="true"] {
+.emoji-picker__trigger:hover,
+.emoji-picker__trigger[aria-expanded="true"] {
   border-color: color-mix(in srgb, var(--text-primary) 28%, transparent);
 }
 
-.fdc .emoji-picker__trigger--default img {
+.emoji-picker__trigger--default img {
   opacity: 0.55;
 }
 
-.fdc .emoji-picker__trigger--default .emoji-picker__value {
+.emoji-picker__trigger--default .emoji-picker__value {
   color: var(--fdc-muted);
 }
 
-.fdc .emoji-picker__value {
+.emoji-picker__value {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.fdc .emoji-picker__clear {
+.emoji-picker__clear {
   padding: 0.35rem;
 }
 
-.fdc .emoji-picker__panel {
+.emoji-picker__panel {
   position: absolute;
   z-index: 50;
   top: calc(100% + 0.4rem);
   left: 0;
   display: flex;
   flex-direction: column;
-  width: min(352px, calc(100vw - 32px));
-  height: 380px;
+  width: min(420px, calc(100vw - 32px));
+  height: 420px;
   overflow: hidden;
   border: 1px solid var(--fdc-border);
   border-radius: var(--fdc-radius);
@@ -1632,7 +1655,7 @@
   animation: fdc-confirm-in 0.15s ease-out;
 }
 
-.fdc .emoji-picker__search {
+.emoji-picker__search {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -1643,7 +1666,7 @@
   color: var(--fdc-muted);
 }
 
-.fdc .emoji-picker__search input {
+.emoji-picker__search input {
   flex: 1;
   min-width: 0;
   padding: 0.5rem 0;
@@ -1655,16 +1678,25 @@
   outline: none;
 }
 
-.fdc .emoji-picker__tabs {
+/* Categories as a rail on the left (like Discord); the list scrolls top to bottom. */
+.emoji-picker__main {
   display: flex;
-  gap: 0.1rem;
-  padding: 0 0.45rem 0.4rem;
-  overflow-x: auto;
+  flex: 1;
+  min-height: 0;
+}
+.emoji-picker__tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  gap: 0.15rem;
+  padding: 0.35rem 0.3rem;
+  overflow-y: auto;
   scrollbar-width: none;
-  border-bottom: 1px solid var(--fdc-border);
+  border-right: 1px solid var(--fdc-border);
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
 }
 
-.fdc .emoji-picker__tabs button {
+.emoji-picker__tabs button {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
@@ -1679,19 +1711,19 @@
   cursor: pointer;
 }
 
-.fdc .emoji-picker__tabs button:hover {
+.emoji-picker__tabs button:hover {
   background: var(--fdc-hover);
   opacity: 1;
 }
 
-.fdc .emoji-picker__tabs button.is-active {
+.emoji-picker__tabs button.is-active {
   background: var(--fdc-raised);
   color: var(--text-primary);
   opacity: 1;
   filter: none;
 }
 
-.fdc .emoji-picker__body {
+.emoji-picker__body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -1699,7 +1731,7 @@
   overscroll-behavior: contain;
 }
 
-.fdc .emoji-picker__section h5 {
+.emoji-picker__section h5 {
   position: sticky;
   top: -0.35rem;
   z-index: 1;
@@ -1713,12 +1745,12 @@
   text-transform: uppercase;
 }
 
-.fdc .emoji-picker__grid {
+.emoji-picker__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(2.4rem, 1fr));
 }
 
-.fdc .emoji-picker__grid button {
+.emoji-picker__grid button {
   display: grid;
   place-items: center;
   aspect-ratio: 1;
@@ -1730,30 +1762,30 @@
   contain-intrinsic-size: 2.4rem;
 }
 
-.fdc .emoji-picker__grid button:hover,
-.fdc .emoji-picker__grid button:focus-visible {
+.emoji-picker__grid button:hover,
+.emoji-picker__grid button:focus-visible {
   background: var(--fdc-hover);
 }
 
-.fdc .emoji-picker__grid button.is-selected {
+.emoji-picker__grid button.is-selected {
   background: var(--fdc-accent-soft);
 }
 
-.fdc .emoji-picker__grid .emoji-image {
+.emoji-picker__grid .emoji-image {
   width: 1.75rem !important;
   height: 1.75rem !important;
   transition: transform 0.12s ease;
 }
 
-.fdc .emoji-picker__grid button:hover .emoji-image {
+.emoji-picker__grid button:hover .emoji-image {
   transform: scale(1.12);
 }
 
-.fdc .emoji-picker__grid button.is-favorite {
+.emoji-picker__grid button.is-favorite {
   position: relative;
 }
 
-.fdc .emoji-picker__grid button.is-favorite::after {
+.emoji-picker__grid button.is-favorite::after {
   content: "";
   position: absolute;
   top: 0.2rem;
@@ -1764,27 +1796,27 @@
   background: #f5c542;
 }
 
-.fdc .emoji-picker__grid button.is-drop-target {
+.emoji-picker__grid button.is-drop-target {
   box-shadow: inset 2px 0 0 var(--fdc-accent);
   background: var(--fdc-accent-soft);
 }
 
-.fdc .emoji-picker__grid button[draggable="true"] {
+.emoji-picker__grid button[draggable="true"] {
   cursor: grab;
 }
 
-.fdc .emoji-picker__placeholder {
+.emoji-picker__placeholder {
   display: grid;
   place-items: center;
   aspect-ratio: 1;
 }
 
-.fdc .emoji-picker__placeholder .emoji-image {
+.emoji-picker__placeholder .emoji-image {
   width: 1.6rem;
   height: 1.6rem;
 }
 
-.fdc .emoji-picker__section-hint {
+.emoji-picker__section-hint {
   margin-left: 0.4rem;
   font-weight: 500;
   letter-spacing: 0;
@@ -1793,7 +1825,7 @@
 }
 
 /* An emoji image: a soft shimmer until it has loaded. */
-.fdc .emoji-image {
+.emoji-image {
   position: relative;
   display: inline-grid;
   place-items: center;
@@ -1801,7 +1833,7 @@
   border-radius: 30%;
 }
 
-.fdc .emoji-image img {
+.emoji-image img {
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -1809,12 +1841,12 @@
   transition: opacity 0.18s ease;
 }
 
-.fdc .emoji-image--ready img {
+.emoji-image--ready img {
   opacity: 1;
 }
 
-.fdc .emoji-image--loading,
-.fdc .emoji-image--failed {
+.emoji-image--loading,
+.emoji-image--failed {
   background: linear-gradient(
     100deg,
     color-mix(in srgb, var(--text-primary) 7%, transparent) 30%,
@@ -1825,7 +1857,7 @@
   animation: emoji-shimmer 1.3s ease-in-out infinite;
 }
 
-.fdc .emoji-image--failed {
+.emoji-image--failed {
   animation: none;
 }
 
@@ -1840,7 +1872,7 @@
 
 /* ---------- emoji context menu ---------- */
 
-.fdc .emoji-menu {
+.emoji-menu {
   position: absolute;
   z-index: 5;
   display: flex;
@@ -1854,7 +1886,7 @@
   animation: fdc-confirm-in 0.12s ease-out;
 }
 
-.fdc .emoji-menu__head {
+.emoji-menu__head {
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -1868,7 +1900,7 @@
   text-overflow: ellipsis;
 }
 
-.fdc .emoji-menu > button {
+.emoji-menu > button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1882,26 +1914,26 @@
   cursor: pointer;
 }
 
-.fdc .emoji-menu > button:hover:not(:disabled),
-.fdc .emoji-menu > button:focus-visible {
+.emoji-menu > button:hover:not(:disabled),
+.emoji-menu > button:focus-visible {
   background: var(--fdc-hover);
   outline: none;
 }
 
-.fdc .emoji-menu > button:disabled {
+.emoji-menu > button:disabled {
   opacity: 0.35;
   cursor: default;
 }
 
-.fdc .emoji-menu > button .material-symbols-outlined {
+.emoji-menu > button .material-symbols-outlined {
   font-size: 1.05rem;
 }
 
-.fdc .emoji-menu__danger {
+.emoji-menu__danger {
   color: var(--fdc-danger) !important;
 }
 
-.fdc .emoji-menu__confirm {
+.emoji-menu__confirm {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -1910,26 +1942,26 @@
   line-height: 1.4;
 }
 
-.fdc .emoji-menu__confirm > div {
+.emoji-menu__confirm > div {
   display: flex;
   justify-content: flex-end;
   gap: 0.3rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fdc .emoji-image--loading {
+  .emoji-image--loading {
     animation: none;
   }
 }
 
-.fdc .emoji-picker__empty {
+.emoji-picker__empty {
   padding: 1.5rem 0.5rem;
   color: var(--fdc-muted);
   font-size: 0.85rem;
   text-align: center;
 }
 
-.fdc .emoji-picker__footer {
+.emoji-picker__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1939,7 +1971,7 @@
   border-top: 1px solid var(--fdc-border);
 }
 
-.fdc .emoji-picker__hovered {
+.emoji-picker__hovered {
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -1950,24 +1982,24 @@
   text-overflow: ellipsis;
 }
 
-.fdc .emoji-picker__footer .fdc-link {
+.emoji-picker__footer .fdc-link {
   padding: 0.35rem 0.5rem;
 }
 
-.fdc .emoji-picker__upload {
+.emoji-picker__upload {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
   padding: 0.4rem 0.25rem;
 }
 
-.fdc .emoji-picker__upload-row {
+.emoji-picker__upload-row {
   display: flex;
   align-items: flex-end;
   gap: 0.7rem;
 }
 
-.fdc .emoji-picker__upload-drop {
+.emoji-picker__upload-drop {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
@@ -1981,17 +2013,17 @@
   cursor: pointer;
 }
 
-.fdc .emoji-picker__upload-drop input {
+.emoji-picker__upload-drop input {
   display: none;
 }
 
-.fdc .emoji-picker__upload-drop img {
+.emoji-picker__upload-drop img {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-.fdc .emoji-picker__upload-fields {
+.emoji-picker__upload-fields {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
@@ -1999,14 +2031,14 @@
   min-width: 0;
 }
 
-.fdc .emoji-picker__upload-actions {
+.emoji-picker__upload-actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.4rem;
 }
 
 @media (max-width: 560px) {
-  .fdc .emoji-picker__panel {
+  .emoji-picker__panel {
     position: fixed;
     inset: auto 0 0;
     width: 100%;
@@ -2579,7 +2611,7 @@
   aspect-ratio: 16 / 10;
   overflow: hidden;
   border-radius: var(--fdc-radius-small) var(--fdc-radius-small) 0 0;
-  background: #202128;
+  background: #202228;
 }
 
 .fdc .recycle-item__image > img {
@@ -2772,7 +2804,7 @@
   aspect-ratio: 16 / 10;
   border-radius: 6px;
   object-fit: cover;
-  background: #202128;
+  background: #202228;
 }
 
 .fdc .recycle-row__position {
@@ -3262,7 +3294,7 @@
   aspect-ratio: 16 / 10;
   background:
     radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--fdc-accent) 30%, transparent), transparent 60%),
-    #202128;
+    #202228;
 }
 
 .fdc .fdc-option__text-card {
@@ -3278,4 +3310,348 @@
 .fdc .fdc-create__drop-hint small.fdc-optional {
   display: block;
   font-size: 0.72rem;
+}
+
+/* Tags, badges, numbers and status pills: labels on the UI, not text to copy. */
+.fdc :is(.fdc-status, .fdc-option__tag, .fdc-option__badge, .fdc-option__number, .fdc-option__zoom, .fdc-option__progress, .fdc-option__media, .fdc-create__drop, .dt-picker, .fdc-subheading, .fdc-section-header) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Voters with a public profile: their name opens it. */
+.fdc .fdc-voters__link {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+.fdc .fdc-voters__link > span:last-child {
+  overflow: hidden;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 30%, transparent);
+  text-overflow: ellipsis;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+.fdc .fdc-voters__link:hover > span:last-child {
+  text-decoration-color: currentColor;
+}
+
+/* The zoom control is a button (opens ImageViewer) */
+.fdc button.fdc-option__zoom {
+  padding: 0;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* A recycled cat that is still a picture (needs a design): small red "!" */
+.recycle-item__todo {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1;
+  background: #e5484d;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+  user-select: none;
+}
+
+/* ---------- migration (FdcMigration.jsx) ---------- */
+.fdc .fdc-migrate-button__count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+  color: #fff;
+  background: #e5484d;
+}
+.fdc .fdc-migrate {
+  display: grid;
+  gap: 16px;
+}
+.fdc .fdc-migrate__head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 14px;
+}
+.fdc .fdc-migrate__head h3 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+}
+.fdc .fdc-migrate__head p {
+  margin: 0;
+  color: var(--fdc-muted, var(--text-secondary));
+  line-height: 1.5;
+}
+.fdc .fdc-migrate__progress p {
+  margin: 6px 0 0;
+  color: var(--fdc-muted, var(--text-secondary));
+  font-size: 0.85rem;
+}
+.fdc .fdc-migrate__bar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+.fdc .fdc-migrate__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #3ecf8e, #5ee0a8);
+  transition: width 0.4s ease;
+}
+.fdc .fdc-migrate__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  user-select: none;
+}
+.fdc .fdc-migrate__tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-radius: 999px;
+  background: transparent;
+}
+.fdc .fdc-migrate__tabs button.is-active {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
+  font-weight: 700;
+}
+.fdc .fdc-migrate__tabs .material-symbols-outlined {
+  font-size: 18px;
+}
+.fdc .fdc-migrate__count {
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+.fdc .fdc-migrate__notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, #3ecf8e 16%, transparent);
+}
+.fdc .fdc-migrate__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fdc .fdc-migrate__card {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 8px;
+  padding: 8px 8px 10px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+.fdc .fdc-migrate__card .fdc-button {
+  justify-self: start;
+}
+.fdc .fdc-migrate__image {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #202228;
+}
+.fdc .fdc-migrate__image img,
+.fdc .fdc-migrate__pair img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: contain;
+  background: #202228;
+}
+.fdc .fdc-migrate__pair {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 4px;
+}
+.fdc .fdc-migrate__pair img {
+  border-radius: 6px;
+}
+.fdc .fdc-migrate__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.fdc .fdc-migrate__text strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+.fdc .fdc-migrate__text small {
+  color: var(--fdc-muted, var(--text-secondary));
+  font-size: 0.78rem;
+}
+.fdc .fdc-migrate__emoji {
+  width: 1.2em;
+  height: 1.2em;
+  flex: 0 0 auto;
+}
+.fdc .fdc-migrate__suggestions {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fdc .fdc-migrate__suggestion {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr);
+  gap: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+.fdc .fdc-migrate__compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.fdc .fdc-migrate__compare figure {
+  margin: 0;
+}
+.fdc .fdc-migrate__compare img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #202228;
+}
+.fdc .fdc-migrate__compare figcaption {
+  margin-top: 4px;
+  color: var(--fdc-muted, var(--text-secondary));
+  font-size: 0.78rem;
+}
+.fdc .fdc-migrate__suggestion-side {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+.fdc .fdc-migrate__suggestion-side blockquote {
+  margin: 0;
+  padding: 6px 10px;
+  border-left: 3px solid color-mix(in srgb, var(--text-primary) 25%, transparent);
+  font-size: 0.88rem;
+}
+.fdc .fdc-migrate__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fdc-migrate__note {
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+@media (max-width: 760px) {
+  .fdc .fdc-migrate__head {
+    grid-template-columns: 1fr;
+  }
+  .fdc .fdc-migrate__suggestion {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* "insert" variant: a small button next to a text field, a more compact panel. */
+.emoji-picker--insert {
+  position: relative;
+  display: inline-block;
+}
+.emoji-picker__insert {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+.emoji-picker__insert:hover,
+.emoji-picker__insert[aria-expanded="true"] {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+.emoji-picker__insert .material-symbols-outlined {
+  font-size: 20px;
+}
+.emoji-picker--insert .emoji-picker__panel {
+  top: auto;
+  bottom: calc(100% + 0.3rem);
+  left: auto;
+  right: 0;
+  width: min(360px, calc(100vw - 32px));
+  height: 340px;
+}
+.emoji-picker--insert .emoji-picker__grid {
+  grid-template-columns: repeat(auto-fill, minmax(2.1rem, 1fr));
+}
+@media (max-width: 640px) {
+  .emoji-picker--insert .emoji-picker__panel {
+    position: fixed;
+    inset: auto 0 0;
+    width: 100%;
+    height: min(60dvh, 400px);
+    border-radius: 16px 16px 0 0;
+  }
+}
+
+/* Editors: an option / FDC that is still only a picture (FDC migration). Small and quiet. */
+.fdc .fdc-todo-dot {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: color-mix(in srgb, #e5484d 85%, transparent);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  opacity: 0.85;
+  user-select: none;
 }

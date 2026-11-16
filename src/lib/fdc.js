@@ -1,3 +1,4 @@
+import { timeOptions } from "./prefs.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ACCOUNT_API_URL, accountFetch, getCurrentAccount } from "./account";
 import { deleteFdcDraft, draftToPayload, saveFdcDraft, updateFdcDraft } from "./fdcDrafts";
@@ -46,6 +47,7 @@ export function formatPollDate(value, language) {
   return new Intl.DateTimeFormat(language || undefined, {
     dateStyle: "medium",
     timeStyle: "short",
+    ...timeOptions(),
   }).format(new Date(ms));
 }
 
@@ -240,13 +242,18 @@ async function sendFdc({ endsAt, options }) {
     options.map(async (option) => ({
       description: option.description,
       emoji: option.emoji,
-      image: {
-        name: option.file.name,
-        type: option.file.type,
-        data: await fileToBase64(option.file),
-        // Editor settings the bot applies to every frame (GIFs).
-        ...(option.edit ? { edit: option.edit } : {}),
-      },
+      // The designed cat (shared/bongo-design.mjs); the server renders it.
+      design: option.design ?? null,
+      display: option.display ?? null,
+      image: option.file
+        ? {
+            name: option.file.name,
+            type: option.file.type,
+            data: await fileToBase64(option.file),
+            // Editor settings the bot applies to every frame (GIFs).
+            ...(option.edit ? { edit: option.edit } : {}),
+          }
+        : null,
     })),
   );
 
@@ -292,7 +299,8 @@ export async function createManualFdc({ endsAt, question, options, votes, winner
     options.map(async (option) => ({
       description: option.description,
       emoji: option.emoji,
-      // Optional for past FDCs (then the option needs a name).
+      // Optional for past FDCs (then the option needs a name): a designed cat, or a picture without Bongo Cat assets.
+      design: option.design ?? null,
       image: option.file
         ? {
             name: option.file.name,
@@ -509,3 +517,7 @@ export function useFdcClock(intervalMs = 1000) {
 
   return now;
 }
+
+/** "Nov 13, 2026" for a poll date ("2026-11-13"). */
+export const pollDate = (date, language) =>
+  new Intl.DateTimeFormat(language || undefined, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))

@@ -57,6 +57,13 @@ function cleanStatistics(statistics, options) {
   };
 }
 
+/* The archive file an option shows. */
+function shownFile(option) {
+  if (option.display === "design" && option.design?.file) return option.design.file;
+  if (option.media) return `${option.number}.webp`;
+  return option.design?.file ?? null;
+}
+
 function publicOptions(poll, date) {
   return poll.options.map((option) => {
     if (
@@ -82,10 +89,17 @@ function publicOptions(poll, date) {
         animated: Boolean(option.emoji?.animated),
       },
 
-      // null: no image (some past FDCs only have a name).
-      image: option.media === null ? null : `${option.number}.webp`,
-      // Bumped when an editor replaces the image (cache busting).
-      imageVersion: Number.isInteger(option.media?.revision) ? option.media.revision : 0,
+      // What the option shows: its image or its designed cat (option.display).
+      // null: neither (some past FDCs only have a name).
+      image: shownFile(option),
+      // Bumped when an editor replaces the image or the design (cache busting).
+      imageVersion: (Number.isInteger(option.media?.revision) ? option.media.revision : 0) + (option.design?.revision ?? 0) * 1000,
+      display: option.display === "design" && option.design ? "design" : option.media ? "image" : option.design ? "design" : null,
+      // Both versions, so editors can switch without losing either.
+      imageFile: option.media ? `${option.number}.webp` : null,
+      designFile: option.design?.file ?? null,
+      design: option.design?.spec ?? null,
+      designFrames: option.design?.frames ?? null,
     };
   });
 }
@@ -203,6 +217,8 @@ function toSummaryEntry(publicPoll) {
     endsAt: publicPoll.endsAt,
     closedAt: publicPoll.closedAt,
     totalVoters: publicPoll.statistics.totalVoters,
+    // Options that are still only a picture (editors see a "!", FDC migration).
+    pictureOnly: publicPoll.options.filter((option) => option.imageFile && !option.designFile).length,
     dataFile: `${publicPoll.date}/data.json`,
   };
 }

@@ -34,7 +34,7 @@ const MAX_OUTPUT = 2560
 const MIN_ZOOM = 0.2
 const MAX_ZOOM = 5
 const OUTPUT_QUALITY = 0.92
-const FILL = '#202128' // default fill around the image when zoomed out past it
+const FILL = '#202228' // default fill around the image when zoomed out past it
 const FILL_PRESETS = [FILL, '#000000', '#ffffff', '#313338', '#5865f2', '#ff73fa']
 const HEX = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i
 const SNAP_PX = 10
@@ -103,14 +103,16 @@ function imageBox(image, settings) {
 }
 
 /*
- * Bigger than the frame: no empty edges. Smaller (zoomed out): the image
- * stays inside the frame. Offsets are fractions of the frame, so this only
- * depends on the ratio.
+ * The image moves freely, also past the frame's edges (the background fill
+ * shows there); only a sliver of it stays inside so it can't get lost.
+ * Offsets are fractions of the frame, so this only depends on the ratio.
  */
+const KEEP_VISIBLE = 0.04
+
 function clampOffset(image, settings) {
   const box = imageBox(image, settings)
-  const maxX = Math.abs(box.width - 1) / 2
-  const maxY = Math.abs(box.height - box.frameHeight) / 2 / box.frameHeight
+  const maxX = Math.min(5, Math.max(0, (1 + box.width) / 2 - KEEP_VISIBLE))
+  const maxY = Math.min(5, Math.max(0, (box.frameHeight + box.height) / 2 / box.frameHeight - KEEP_VISIBLE))
 
   return {
     ...settings,

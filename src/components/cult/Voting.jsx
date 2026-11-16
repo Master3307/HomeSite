@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -11,17 +11,27 @@ import {
 
 import FdcPoll from './FdcPoll'
 import FdcArchive from './FdcArchive'
+import FdcMigration from './FdcMigration'
+import { loadMigrationStatus } from '../../lib/fdcRecycle'
 import FdcCreate from './FdcCreate'
 import FdcDrafts from './FdcDrafts'
 import FdcManualEntry from './FdcManualEntry'
 import { Link } from 'react-router'
+import { siteConfig } from '/src/lib/siteConfig'
+import { useScrollToParam, useUrlParam } from '/src/lib/urlState'
 
 import '../../styles/fdc.css'
+
+const VIEWS = ['archive', 'create', 'manual', 'migrate']
+const MANAGE_MODES = ['edit', 'votes']
 
 function PollLoader({ entry, account, live, onVoted }) {
   const { t } = useTranslation('voting')
   const { data, loading, error, reload } = useFdcPoll(entry, { live })
-  const [managing, setManaging] = useState(false)
+  // ?manage=edit | votes: the poll's edit / outside-votes panel (only works for those allowed to).
+  const [manageParam, setManageParam] = useUrlParam('manage')
+  const managing = MANAGE_MODES.includes(manageParam) ? manageParam : false
+  const setManaging = (value) => setManageParam(value === true ? 'edit' : value)
 
   if (loading) {
     return (
@@ -59,7 +69,11 @@ function PollLoader({ entry, account, live, onVoted }) {
 export default function Voting() {
   const { t } = useTranslation('voting')
 
-  const [view, setView] = useState('current') // current | archive | create
+  // ?fdc=archive | create | manual (current poll without it). Back returns to the previous view.
+  const [viewParam, setViewParam] = useUrlParam('fdc', { push: true })
+  const view = VIEWS.includes(viewParam) ? viewParam : 'current'
+  const setView = (next) => setViewParam(next === 'current' ? null : next, { clear: ['poll', 'manage', 'bin', 'folder', 'design', 'tab', 'cat'] })
+  useScrollToParam('fdc', ['fdc', 'poll', 'manage', 'bin', 'folder', 'design', 'cat'])
   const account = useFdcAccount()
   const now = useFdcClock(30_000)
 
@@ -74,12 +88,32 @@ export default function Voting() {
   const latestEntry = summary?.polls[0]
   const canCreate = summary?.viewer?.canCreate === true
 
+  // FDC options that are still pictures: "Migration" (editors) / "Contribute" (members).
+  const [migration, setMigration] = useState(null)
+  const reloadMigration = useCallback(() => {
+    loadMigrationStatus()
+      .then(setMigration)
+      .catch(() => setMigration(null))
+  }, [])
+  useEffect(() => {
+    if (account.user) reloadMigration()
+  }, [account.user, reloadMigration])
+  const showMigrate = view === 'migrate' && migration?.loggedIn
+
   const showCreate = (view === 'create' || view === 'manual') && canCreate
   const showArchive = view === 'archive' && summary
 
   let content
 
-  if (showCreate && view === 'manual') {
+  if (showMigrate) {
+    content = <FdcMigration
+        onBack={() => setView('current')}
+        onChanged={() => {
+          reloadMigration()
+          reloadSummary()
+        }}
+      />
+  } else if (showCreate && view === 'manual') {
     content = (
       <FdcManualEntry
         onCancel={() => setView('current')}
@@ -177,7 +211,7 @@ export default function Voting() {
           })}
         </p>
 
-        {!showCreate && !showArchive && (
+        {!showCreate && !showArchive && !showMigrate && (
           <div className="fdc-section-header__actions">
             <button
               type="button"
@@ -205,6 +239,21 @@ export default function Voting() {
               </button>
             )}
 
+            {migration?.loggedIn && migration.remaining > 0 && (
+              <button
+                type="button"
+                className="fdc-button fdc-button--ghost fdc-button--small fdc-migrate-button"
+                onClick={() => setView('migrate')}
+                title={t('fdc.migrate.left', { count: migration.remaining })}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  {migration.editor ? 'move_up' : 'volunteer_activism'}
+                </span>
+                {migration.editor ? t('fdc.migrate.title', { defaultValue: 'Migration' }) : t('fdc.migrate.contributeTitle', { defaultValue: 'Contribute' })}
+                <span className="fdc-migrate-button__count">{migration.remaining}</span>
+              </button>
+            )}
+
             {canCreate && (
               <button
                 type="button"
@@ -218,12 +267,13 @@ export default function Voting() {
               </button>
             )}
 
-            {account.user?.isAdminSession && (
-              <Link className="fdc-button fdc-button--ghost fdc-button--small" to="/admin-settings">
+            {/* The admin account, or the site owner logged in with Discord. */}
+            {(account.user?.isAdminSession || (siteConfig.ownerDiscordId && account.user?.discordUserId === siteConfig.ownerDiscordId)) && (
+              <Link className="fdc-button fdc-button--ghost fdc-button--small" to="/hub/settings">
                 <span className="material-symbols-outlined" aria-hidden="true">
                   admin_panel_settings
                 </span>
-                {t('fdc.adminSettings', { defaultValue: 'Admin settings' })}
+                {t('fdc.hub', { defaultValue: 'Hub' })}
               </Link>
             )}
 

@@ -29,18 +29,20 @@ import {
  *   <EmojiPicker value="🎀" fallback="1️⃣" onChange={(value) => …} />
  */
 
-// A representative emoji per Unicode group, used as the tab icon.
-const GROUP_ICONS = {
-  smileys_emotion: '😀',
-  people_body: '👋',
-  animals_nature: '🐱',
-  food_drink: '🍓',
-  travel_places: '🚗',
-  activities: '⚽',
-  objects: '💡',
-  symbols: '❤️',
-  flags: '🏳️',
-}
+/*
+ * Categories in Discord's order (Discord puts "Smileys & Emotion" and
+ * "People & Body" together as People, and Activities before Travel).
+ */
+const CATEGORIES = [
+  { id: 'people', groups: ['smileys_emotion', 'people_body'], icon: '😀', name: 'People' },
+  { id: 'nature', groups: ['animals_nature'], icon: '🐱', name: 'Nature' },
+  { id: 'food', groups: ['food_drink'], icon: '🍓', name: 'Food' },
+  { id: 'activities', groups: ['activities'], icon: '⚽', name: 'Activities' },
+  { id: 'travel', groups: ['travel_places'], icon: '🚗', name: 'Travel' },
+  { id: 'objects', groups: ['objects'], icon: '💡', name: 'Objects' },
+  { id: 'symbols', groups: ['symbols'], icon: '❤️', name: 'Symbols' },
+  { id: 'flags', groups: ['flags'], icon: '🏳️', name: 'Flags' },
+]
 
 const SEARCH_LIMIT = 160
 const UPLOAD_MAX_BYTES = 10 * 1024 * 1024
@@ -285,7 +287,13 @@ function ContextMenu({ menu, favorites, onFavorite, onMove, onForget, onDelete, 
   )
 }
 
-export default function EmojiPicker({ value, fallback, onChange, labelledBy, emptyLabel }) {
+/*
+ * `variant`: "field" (the reaction emoji of an FDC option: shows the chosen
+ * one) or "insert" (a small button next to a text field: every pick is
+ * handed to `onChange` to insert, nothing stays selected).
+ */
+export default function EmojiPicker({ value = '', fallback, onChange, labelledBy, emptyLabel, variant = 'field', label }) {
+  const inserting = variant === 'insert'
   const { t } = useTranslation('voting')
   const panelId = useId()
   const rootRef = useRef(null)
@@ -298,6 +306,7 @@ export default function EmojiPicker({ value, fallback, onChange, labelledBy, emp
   const [favorites, setFavorites] = useState(getFavoriteEmojis)
   const [recent, setRecent] = useState(getRecentEmojis)
   const [tab, setTab] = useState(() => (getFavoriteEmojis().length ? 'favorites' : 'recent'))
+  const bodyRef = useRef(null)
   const [query, setQuery] = useState('')
   const [groups, setGroups] = useState(null)
   const [custom, setCustom] = useState(null) // { guild, bot } | { error }
@@ -394,22 +403,53 @@ export default function EmojiPicker({ value, fallback, onChange, labelledBy, emp
     const words = search.split(/\s+/)
     const hits = [...lookup.values()].filter((item) => words.every((word) => item.keywords?.includes(word)))
     sections = [{ id: 'search', title: t('fdc.emoji.results', { defaultValue: 'Results' }), items: hits.slice(0, SEARCH_LIMIT) }]
-  } else if (tab === 'favorites') {
-    sections = [{ id: 'favorites', title: t('fdc.emoji.favorites', { defaultValue: 'Favorites' }), items: favorites.map(itemFor), sortable: true }]
-  } else if (tab === 'recent') {
-    sections = [{ id: 'recent', title: t('fdc.emoji.recent', { defaultValue: 'Recently used' }), items: recent.map(itemFor) }]
-  } else if (tab === 'custom') {
-    sections = [
-      { id: 'guild', title: t('fdc.emoji.server', { defaultValue: 'Server emojis' }), items: customItems.guild },
-      { id: 'bot', title: t('fdc.emoji.bot', { defaultValue: 'Cultbot’s emojis' }), items: customItems.bot },
-    ]
   } else {
-    const group = groups?.find((entry) => entry.slug === tab)
-    sections = group ? [{ id: group.slug, title: group.name, items: group.emojis }] : []
+    // Everything in one list, top to bottom; the rail on the left jumps to a part.
+    sections = [
+      ...(favorites.length ? [{ id: 'favorites', title: t('fdc.emoji.favorites', { defaultValue: 'Favorites' }), items: favorites.map(itemFor), sortable: true }] : []),
+      ...(recent.length ? [{ id: 'recent', title: t('fdc.emoji.recent', { defaultValue: 'Frequently used' }), items: recent.map(itemFor) }] : []),
+      { id: 'guild', tab: 'custom', title: t('fdc.emoji.server', { defaultValue: 'Server emojis' }), items: customItems.guild },
+      { id: 'bot', tab: 'custom', title: t('fdc.emoji.bot', { defaultValue: 'Cultbot’s emojis' }), items: customItems.bot },
+      ...CATEGORIES.map((category) => ({
+        id: category.id,
+        title: t(`fdc.emoji.categories.${category.id}`, { defaultValue: category.name }),
+        items: (groups ?? []).filter((group) => category.groups.includes(group.slug)).flatMap((group) => group.emojis),
+      })),
+    ]
+  }
+
+  /* The rail: jump to a part of the list. */
+  function jump(id) {
+    const body = bodyRef.current
+    const target = body?.querySelector(`[data-section="${id === 'custom' ? 'guild' : id}"]`)
+    setTab(id)
+    setUploading(false)
+    setMenu(null)
+    if (body && target) body.scrollTo({ top: target.offsetTop - body.offsetTop, behavior: document.documentElement.classList.contains('motion-reduce') ? 'auto' : 'smooth' })
+  }
+
+  /* The part at the top of the list lights up in the rail. */
+  function onBodyScroll() {
+    setMenu(null)
+    const body = bodyRef.current
+    if (!body || search) return
+    let current = null
+    for (const element of body.querySelectorAll('[data-section]')) {
+      if (element.offsetTop - body.offsetTop <= body.scrollTop + 12) current = element.dataset.tab || element.dataset.section
+    }
+    if (current && current !== tab) setTab(current)
   }
 
   function choose(item) {
     onChange(item.value)
+    if (inserting) {
+      rememberEmoji(item.value)
+      setRecent(getRecentEmojis())
+      setOpen(false)
+      setMenu(null)
+      setQuery('')
+      return
+    }
     rememberEmoji(item.value)
     setRecent(getRecentEmojis())
     setOpen(false)
@@ -530,33 +570,40 @@ export default function EmojiPicker({ value, fallback, onChange, labelledBy, emp
   }
 
   const tabs = [
-    { id: 'favorites', icon: <span className="material-symbols-outlined">star</span>, label: t('fdc.emoji.favorites', { defaultValue: 'Favorites' }) },
-    { id: 'recent', icon: <span className="material-symbols-outlined">history</span>, label: t('fdc.emoji.recent', { defaultValue: 'Recently used' }) },
+    ...(favorites.length ? [{ id: 'favorites', icon: <span className="material-symbols-outlined">star</span>, label: t('fdc.emoji.favorites', { defaultValue: 'Favorites' }) }] : []),
+    ...(recent.length ? [{ id: 'recent', icon: <span className="material-symbols-outlined">schedule</span>, label: t('fdc.emoji.recent', { defaultValue: 'Frequently used' }) }] : []),
     { id: 'custom', icon: <span className="material-symbols-outlined">diamond</span>, label: t('fdc.emoji.custom', { defaultValue: 'Server & bot emojis' }) },
-    ...(groups ?? Object.keys(GROUP_ICONS).map((slug) => ({ slug, name: slug }))).map((group) => ({
-      id: group.slug,
-      icon: <EmojiImage url={twemojiUrl(GROUP_ICONS[group.slug])} size={20} />,
-      label: group.name,
+    ...CATEGORIES.map((category) => ({
+      id: category.id,
+      icon: <EmojiImage url={twemojiUrl(category.icon)} size={20} />,
+      label: t(`fdc.emoji.categories.${category.id}`, { defaultValue: category.name }),
     })),
   ]
 
-  const loadingList =
-    !search &&
-    ((tab === 'custom' && !custom) ||
-      (!['recent', 'custom', 'favorites'].includes(tab) && !groups))
-  const empty = !loadingList && sections.every((section) => !section.items.length)
+  const loadingList = !search && !groups
+  const empty = Boolean(search) && !sections[0].items.length
 
-  const emptyText =
-    tab === 'favorites' && !search
-      ? t('fdc.emoji.noFavorites', { defaultValue: 'Right-click (or long-press) an emoji to add it to your favorites.' })
-      : tab === 'recent' && !search
-        ? t('fdc.emoji.noRecent', { defaultValue: 'Emojis you pick show up here.' })
-        : tab === 'custom' && !search && custom?.error
-          ? custom.error
-          : t('fdc.emoji.none', { defaultValue: 'No emojis found.' })
+  const emptyText = t('fdc.emoji.none', { defaultValue: 'No emojis found.' })
 
   return (
-    <div className="emoji-picker" ref={rootRef}>
+    <div className={`emoji-picker${inserting ? ' emoji-picker--insert' : ''}`} ref={rootRef}>
+      {inserting ? (
+        <button
+          type="button"
+          className="emoji-picker__insert"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-controls={open ? panelId : undefined}
+          title={label ?? t('fdc.emoji.insert', { defaultValue: 'Add an emoji' })}
+          aria-label={label ?? t('fdc.emoji.insert', { defaultValue: 'Add an emoji' })}
+          onClick={() => {
+            setOpen((state) => !state)
+            setMenu(null)
+          }}
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">add_reaction</span>
+        </button>
+      ) : (
       <div className="emoji-picker__field">
         <button
           type="button"
@@ -591,6 +638,7 @@ export default function EmojiPicker({ value, fallback, onChange, labelledBy, emp
           </button>
         )}
       </div>
+      )}
 
       {open && (
         <div
@@ -611,30 +659,26 @@ export default function EmojiPicker({ value, fallback, onChange, labelledBy, emp
             />
           </div>
 
+          <div className="emoji-picker__main">
           {!search && (
-            <div className="emoji-picker__tabs" role="tablist">
+            <nav className="emoji-picker__tabs" aria-label={t('fdc.emoji.categoriesLabel', { defaultValue: 'Categories' })}>
               {tabs.map((entry) => (
                 <button
                   key={entry.id}
                   type="button"
-                  role="tab"
-                  aria-selected={tab === entry.id}
+                  aria-current={tab === entry.id ? 'true' : undefined}
                   className={tab === entry.id ? 'is-active' : ''}
                   title={entry.label}
                   aria-label={entry.label}
-                  onClick={() => {
-                    setTab(entry.id)
-                    setUploading(false)
-                    setMenu(null)
-                  }}
+                  onClick={() => jump(entry.id)}
                 >
                   {entry.icon}
                 </button>
               ))}
-            </div>
+            </nav>
           )}
 
-          <div className="emoji-picker__body" onScroll={() => setMenu(null)}>
+          <div className="emoji-picker__body" ref={bodyRef} onScroll={onBodyScroll}>
             {uploading ? (
               <UploadForm
                 onCancel={() => setUploading(false)}
@@ -658,7 +702,7 @@ export default function EmojiPicker({ value, fallback, onChange, labelledBy, emp
 
                 {sections.map((section) =>
                   section.items.length ? (
-                    <section key={section.id} className="emoji-picker__section">
+                    <section key={section.id} className="emoji-picker__section" data-section={section.id} data-tab={section.tab}>
                       <h5>
                         {section.title}
                         {section.sortable && section.items.length > 1 && (
@@ -697,6 +741,8 @@ export default function EmojiPicker({ value, fallback, onChange, labelledBy, emp
                 {empty && <p className="emoji-picker__empty">{emptyText}</p>}
               </>
             )}
+          </div>
+
           </div>
 
           {!uploading && (

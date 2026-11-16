@@ -53,10 +53,13 @@ export async function saveFdcDraft({ endsAt, options }) {
       description: option.description,
       emoji: option.emoji,
       edit: option.edit ?? null,
-      // Blobs are stored as-is; File names live alongside.
-      file: option.file,
-      name: option.file.name,
-      type: option.file.type,
+      // A designed cat (spec) and which one the option shows.
+      design: option.design ?? null,
+      display: option.display ?? null,
+      // Blobs are stored as-is; File names live alongside (no image: design only).
+      file: option.file ?? null,
+      name: option.file?.name ?? null,
+      type: option.file?.type ?? null,
     })),
     lastError: null,
   };
@@ -95,8 +98,11 @@ export function draftToPayload(draft) {
       description: option.description,
       emoji: option.emoji,
       edit: option.edit ?? null,
-      file:
-        option.file instanceof File
+      design: option.design ?? null,
+      display: option.display ?? null,
+      file: !option.file
+        ? null
+        : option.file instanceof File
           ? option.file
           : new File([option.file], option.name || "image", {
               type: option.type || option.file.type,

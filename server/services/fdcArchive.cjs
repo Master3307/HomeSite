@@ -626,6 +626,43 @@ async function saveWebp(buffer, destination) {
   };
 }
 
+/*
+ * Option designs (a cat designed on the website, shared/bongo-design.mjs):
+ * the rendered PNG/GIF is kept next to the option image as
+ * `<number>-design.png|gif`, with the design itself in `option.design.spec`
+ * so it can be edited later. `option.display` says which one the option
+ * shows ("image" or "design"); neither is ever deleted by switching.
+ */
+async function saveDesign(folder, number, design, previous = null) {
+  const file = `${number}-design.${design.extension}`;
+  const temporary = path.join(folder, `${file}.${process.pid}.tmp`);
+  await fs.writeFile(temporary, design.buffer);
+  await fs.rename(temporary, path.join(folder, file));
+  if (previous?.file && previous.file !== file) await fs.rm(path.join(folder, previous.file), { force: true }).catch(() => {});
+  return {
+    spec: design.spec,
+    file,
+    extension: design.extension,
+    frames: design.frames,
+    width: design.width,
+    height: design.height,
+    bytes: design.buffer.length,
+    savedAt: timestamp(),
+    revision: (previous?.revision ?? 0) + 1,
+  };
+}
+
+function displayFor(requested, hasImage, hasDesign) {
+  if (requested === "image" && hasImage) return "image";
+  if (requested === "design" && hasDesign) return "design";
+  return hasImage ? "image" : "design";
+}
+
+/** The archive file an option shows (its image or its design). */
+function displayedFile(option) {
+  return option.display === "design" && option.design?.file ? option.design.file : option.media?.localFile ?? null;
+}
+
 async function fetchReactionUsers(message, poll) {
   const byUser = new Map();
 
@@ -1032,17 +1069,26 @@ async function create({
 
     for (const option of options) {
       const localFile = `${option.number}.webp`;
-      const buffer = await readMedia(option.media);
-      const image = await saveWebp(buffer, path.join(folder, localFile));
+      // Website polls: an image, a designed cat, or both (then `display` picks one).
+      const buffer = option.media ? await readMedia(option.media) : null;
+      const image = buffer ? await saveWebp(buffer, path.join(folder, localFile)) : null;
+      const design = option.design ? await saveDesign(folder, option.number, option.design) : null;
+      const display = displayFor(option.display, Boolean(buffer), Boolean(design));
 
-      // Discord gets a copy with the number + emoji badge.
-      discordFiles.push(await discordFile(option, buffer));
+      // Discord gets a copy of what the option shows, with the number + emoji badge.
+      discordFiles.push(
+        display === "design"
+          ? await discordFile({ ...option, media: { name: design.file } }, option.design.buffer)
+          : await discordFile(option, buffer),
+      );
 
       savedOptions.push({
         number: option.number,
         description: option.description,
         emoji: option.emoji,
-        media: {
+        design,
+        display,
+        media: !buffer ? null : {
           originalAttachmentId: option.media.id ?? null,
           originalName: option.media.name ?? null,
           originalUrl: option.media.url ?? null,
@@ -1321,9 +1367,10 @@ async function mediaFiles(poll, mediaMessage, replacements) {
       continue;
     }
 
-    // Missing on Discord: rebuild it from the archive copy.
-    const buffer = await fs.readFile(path.join(ROOT, poll.date, option.media.localFile));
-    files.push(await discordFile({ ...option, media: { name: `${option.number}.webp` } }, buffer));
+    // Missing on Discord: rebuild it from the archive copy of what the option shows.
+    const shown = displayedFile(option);
+    const buffer = await fs.readFile(path.join(ROOT, poll.date, shown));
+    files.push(await discordFile({ ...option, media: { name: shown } }, buffer));
   }
 
   return files;
@@ -1405,7 +1452,8 @@ async function editPoll(pollId, { actorId, changes }) {
           temporary,
           image,
           media: change.media,
-          discord: archived ? null : await discordFile({ ...option, media: change.media }, buffer),
+          // Options that show their design keep it on Discord; the image is still replaced.
+          discord: archived || option.display === "design" ? null : await discordFile({ ...option, media: change.media }, buffer),
         });
       }
     }
@@ -1426,9 +1474,10 @@ async function editPoll(pollId, { actorId, changes }) {
     }
 
     try {
-      if (replacements.size && !archived) {
+      const discordReplacements = new Map([...replacements].filter(([, replacement]) => replacement.discord));
+      if (discordReplacements.size && !archived) {
         const mediaMessage = await runtime.channel.messages.fetch(poll.mediaMessageId);
-        const files = await mediaFiles(poll, mediaMessage, replacements);
+        const files = await mediaFiles(poll, mediaMessage, discordReplacements);
 
         // `attachments: []` drops the old files; `files` re-adds all in order.
         await mediaMessage.edit({ content: "Options:", attachments: [], files });
@@ -1685,6 +1734,13 @@ async function createManual(input) {
     try {
       await fs.mkdir(staging);
       const poll = await buildManualPoll({ ...input, date, folder: staging, timeZone: TIME_ZONE });
+      // Designed options (pictures are retired once the Bongo Cat assets are imported).
+      for (const [index, entry] of (input.options ?? []).entries()) {
+        const option = poll.options[index];
+        if (!entry?.design || !option) continue;
+        option.design = await saveDesign(staging, option.number, entry.design, null);
+        option.display = "design";
+      }
       await fs.rename(staging, folder);
       normalizePoll(poll);
       calculate(poll);
@@ -1700,12 +1756,85 @@ async function createManual(input) {
   });
 }
 
+/**
+ * Adds, changes or removes option designs and switches what options show.
+ * `changes`: `[{ number, design?, display? }]`; `design` is a rendered
+ * design (`{ spec, buffer, extension, frames, width, height }`) or null to
+ * remove it (only when the option also has an image). Running polls get
+ * their Discord options message updated when what an option shows changes.
+ */
+async function setDesigns(pollId, { actorId, changes }) {
+  return serial(async () => {
+    await initialize();
+    const found = await findPoll(pollId);
+    const archived = !isRunning(found);
+    const { poll, runtime } = archived ? { poll: found, runtime: null } : runningPoll(pollId);
+    const folder = path.join(ROOT, poll.date);
+    if (!Array.isArray(changes) || !changes.length) throw statusError(400, "Nothing to change.");
+
+    const done = [];
+    const discordReplacements = new Map();
+    const seen = new Set();
+
+    for (const change of changes) {
+      const option = poll.options.find((item) => item.number === change.number);
+      if (!option) throw statusError(400, "Unknown option.");
+      if (seen.has(option.number)) throw statusError(400, `Option ${option.number} is listed twice.`);
+      seen.add(option.number);
+      const shownBefore = displayedFile(option);
+      const designBefore = option.design?.revision ?? 0;
+
+      if (change.design === null) {
+        if (!option.media) throw statusError(400, `Option ${option.number} has no image, so its design can't be removed.`);
+        if (option.design?.file) await fs.rm(path.join(folder, option.design.file), { force: true }).catch(() => {});
+        option.design = null;
+        option.display = "image";
+      } else if (change.design) {
+        option.design = await saveDesign(folder, option.number, change.design, option.design);
+        if (!option.media) option.display = "design";
+      }
+
+      if (change.display) {
+        if (change.display === "design" && !option.design) throw statusError(400, `Option ${option.number} has no design yet.`);
+        if (change.display === "image" && !option.media) throw statusError(400, `Option ${option.number} has no image.`);
+        option.display = change.display;
+      }
+      option.display = displayFor(option.display, Boolean(option.media), Boolean(option.design));
+
+      const shownAfter = displayedFile(option);
+      const changedShown = shownAfter !== shownBefore || (option.display === "design" && (option.design?.revision ?? 0) !== designBefore);
+      done.push({ number: option.number, display: option.display, design: Boolean(option.design), changedShown });
+      if (changedShown && !archived) {
+        const buffer = await fs.readFile(path.join(folder, shownAfter));
+        discordReplacements.set(option.number, { discord: await discordFile({ ...option, media: { name: shownAfter } }, buffer) });
+      }
+    }
+
+    if (discordReplacements.size && !archived) {
+      try {
+        const mediaMessage = await runtime.channel.messages.fetch(poll.mediaMessageId);
+        const files = await mediaFiles(poll, mediaMessage, discordReplacements);
+        await mediaMessage.edit({ content: "Options:", attachments: [], files });
+      } catch (error) {
+        console.error(`[FDC] Media update after a design change failed for ${poll.id}:`, error);
+        throw statusError(502, "Discord didn't accept the new images. The designs are saved; try switching again.");
+      }
+    }
+
+    poll.editHistory ??= [];
+    poll.editHistory.push({ at: timestamp(), by: actorId ?? null, archiveOnly: archived, designs: done });
+    await persist(poll);
+    return { changed: true, archiveOnly: archived, date: poll.date, options: done };
+  });
+}
+
 module.exports = {
   createManual,
   create,
   recover,
   voteFromWeb,
   editPoll,
+  setDesigns,
   setExternalVotes,
   closeNow,
   discardPoll,

@@ -10,6 +10,9 @@ import {
   publicPollImage,
 } from '../../lib/fdc'
 import ImageEditor from './ImageEditor'
+import { DesignSlot } from '../bongo/OptionDesign'
+import { saveDesigns, useCatalog } from '../../lib/bongo'
+import { useUrlParam } from '../../lib/urlState'
 import EmojiPicker from './EmojiPicker'
 
 /* An option's emoji as a picker value: `<:name:id>` or the Unicode emoji. */
@@ -24,7 +27,7 @@ const MAX_DESCRIPTION = 400
  * the bot, which updates the Discord messages in place (same order).
  */
 
-function OptionManager({ poll, option, change, onChange, disabled, archived }) {
+function OptionManager({ poll, option, change, onChange, disabled, archived, catalog }) {
   const { t } = useTranslation('voting')
   const [editor, setEditor] = useState(null) // { file, settings }
   const [loading, setLoading] = useState(false)
@@ -78,6 +81,9 @@ function OptionManager({ poll, option, change, onChange, disabled, archived }) {
         )}
       </legend>
 
+      {/* Without the Bongo Cat assets the options are still pictures; with them only designs change. */}
+      {!catalog && (
+      <>
       <div className={`fdc-manage__image${hasImage ? '' : ' fdc-option__media--text'}`}>
         {hasImage ? (
           <img src={preview} alt="" />
@@ -118,6 +124,12 @@ function OptionManager({ poll, option, change, onChange, disabled, archived }) {
           }}
         />
       </div>
+      </>
+      )}
+
+      {catalog && (
+        <OptionDesignManager poll={poll} option={option} change={change} onChange={onChange} disabled={disabled} catalog={catalog} />
+      )}
 
       <label className="fdc-create__label" htmlFor={`manage-${poll.id}-${option.number}`}>
         {t('fdc.create.description', { defaultValue: 'Name and description' })}
@@ -173,6 +185,48 @@ function OptionManager({ poll, option, change, onChange, disabled, archived }) {
   )
 }
 
+/*
+ * The option's designed cat: add, change or remove it (an option without an
+ * image keeps its design), and pick what the poll shows. Nothing is deleted
+ * by switching.
+ */
+function OptionDesignManager({ poll, option, change, onChange, disabled, catalog }) {
+  const { t } = useTranslation('voting')
+  const design = change.design !== undefined ? change.design : option.design ?? null
+  const hasImage = Boolean(change.file) || Boolean(option.imageFile)
+  const display = change.display ?? (option.display === 'design' && design ? 'design' : 'image')
+  // ?design=<n>: this option's cat designer.
+  const [designParam, setDesignParam] = useUrlParam('design')
+  // The picture to design after (straight from the API, the archive's own file).
+  const picture = change.preview ?? (option.imageFile ? publicPollImage({ imageBase: `/fdc/images/${poll.date}/`, date: poll.date }, { ...option, image: option.imageFile }) : null)
+  // A picture without a design: migrating it shows the new design in the poll.
+  const migrating = hasImage && !option.design
+  return (
+    <>
+      <DesignSlot
+        catalog={catalog}
+        design={design}
+        required
+        disabled={disabled}
+        migrate={migrating && !design ? t('fdc.migrate.fromEditor', { defaultValue: 'Still a picture: migrate it to a designed cat' }) : null}
+        reference={picture ? { src: picture, label: t('fdc.migrate.oldPicture', { defaultValue: 'The old picture' }) } : null}
+        onChange={(next) => next && onChange({ design: next, display: 'design' })}
+        open={designParam === String(option.number)}
+        onOpenChange={(open) => setDesignParam(open ? option.number : null)}
+      />
+      {/* Designed but the poll still shows the old picture: one step to finish the migration. */}
+      {hasImage && option.design && display === 'image' && (
+        <button type="button" className="fdc-link" disabled={disabled} onClick={() => onChange({ display: 'design' })}>
+          <span className="material-symbols-outlined" aria-hidden="true">
+            swap_horiz
+          </span>
+          {t('fdc.migrate.showDesign', { defaultValue: 'Show the design instead of the picture' })}
+        </button>
+      )}
+    </>
+  )
+}
+
 function Confirm({ action, onConfirm, onCancel, busy }) {
   const { t } = useTranslation('voting')
   const confirmRef = useRef(null)
@@ -225,6 +279,7 @@ function Confirm({ action, onConfirm, onCancel, busy }) {
 
 export default function FdcManage({ poll, onDone, onClose, archived = false }) {
   const { t } = useTranslation('voting')
+  const { catalog } = useCatalog()
 
   const [changes, setChanges] = useState({}) // number -> { file, source, edits, preview, description }
   const [busy, setBusy] = useState(null) // save | close | discard
@@ -275,8 +330,20 @@ export default function FdcManage({ poll, onDone, onClose, archived = false }) {
     })
     .filter(Boolean)
 
+  // Design changes go separately (the server renders them).
+  const designChanges = poll.options
+    .map((option) => {
+      const change = changes[option.number]
+      if (!change) return null
+      const entry = { number: option.number }
+      if (change.design !== undefined && JSON.stringify(change.design) !== JSON.stringify(option.design ?? null)) entry.design = change.design
+      if (change.display && change.display !== (option.display ?? 'image')) entry.display = change.display
+      return 'design' in entry || entry.display ? entry : null
+    })
+    .filter(Boolean)
+
   async function save() {
-    if (!pending.length || busy) return
+    if ((!pending.length && !designChanges.length) || busy) return
 
     for (const entry of pending) {
       if (entry.description === '') {
@@ -293,7 +360,8 @@ export default function FdcManage({ poll, onDone, onClose, archived = false }) {
     setError(null)
 
     try {
-      await editFdc(poll.id, pending)
+      if (pending.length) await editFdc(poll.id, pending)
+      if (designChanges.length) await saveDesigns(poll.id, designChanges)
       setChanges({})
       setSaved(true)
       onDone?.('edited')
@@ -338,10 +406,12 @@ export default function FdcManage({ poll, onDone, onClose, archived = false }) {
               defaultValue:
                 'This poll has ended: changes only update the archive (website, recycling bin). Discord stays as it was.',
             })
-          : t('fdc.manage.intro', {
-              defaultValue:
-                'New images replace the old ones on Discord and in the archive. The bot keeps the option order and adds the number and emoji to the Discord copies only.',
-            })}
+          : catalog
+            ? t('fdc.manage.introDesigns', { defaultValue: 'Change the designs, names and emoji. New designs replace the old ones on Discord and in the archive.' })
+            : t('fdc.manage.intro', {
+                defaultValue:
+                  'New images replace the old ones on Discord and in the archive. The bot keeps the option order and adds the number and emoji to the Discord copies only.',
+              })}
       </p>
 
       <div className="fdc-manage__grid">
@@ -352,6 +422,7 @@ export default function FdcManage({ poll, onDone, onClose, archived = false }) {
             option={option}
             archived={archived}
             change={changes[option.number] ?? {}}
+            catalog={catalog}
             disabled={Boolean(busy)}
             onChange={(patch) => updateChange(option.number, patch)}
           />
@@ -365,13 +436,13 @@ export default function FdcManage({ poll, onDone, onClose, archived = false }) {
       )}
 
       <div className="fdc-create__actions">
-        {saved && !pending.length && (
+        {saved && !pending.length && !designChanges.length && (
           <span className="fdc-manage__saved" role="status">
             <span className="material-symbols-outlined" aria-hidden="true">task_alt</span>
             {t('fdc.manage.saved', { defaultValue: 'Updated on Discord' })}
           </span>
         )}
-        <button type="button" className="fdc-button" onClick={save} disabled={!pending.length || Boolean(busy)}>
+        <button type="button" className="fdc-button" onClick={save} disabled={(!pending.length && !designChanges.length) || Boolean(busy)}>
           <span className="material-symbols-outlined" aria-hidden="true">save</span>
           {busy === 'save'
             ? t('fdc.manage.saving', { defaultValue: 'Updating Discord…' })

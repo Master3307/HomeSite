@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 import { describeEmoji } from '../../lib/emoji'
+import { useUrlParam } from '../../lib/urlState'
 import {
   candidateImageUrl,
   createRecycleFolder,
@@ -12,6 +13,7 @@ import {
   moveRecycled,
   recycleOptions,
   recycledImageUrl,
+  recycledDesignUrl,
   recyclerAvatarUrl,
   removeRecycled,
   renameRecycleFolder,
@@ -576,7 +578,16 @@ function ItemCard({ item, viewerDiscordId, selected, picking, onActivate, onTogg
         title={picking ? t('fdc.recycle.useThis', { defaultValue: 'Use this option' }) : undefined}
       >
         <span className="recycle-item__image">
-          <img src={recycledImageUrl(item)} alt="" loading="lazy" draggable="false" />
+          <img src={recycledDesignUrl(item) ?? recycledImageUrl(item)} alt="" loading="lazy" draggable="false" />
+          {!item.design && (
+            <span
+              className="recycle-item__todo"
+              title={t('fdc.migrate.needsDesign', { defaultValue: 'Still a picture: this cat needs a design' })}
+              aria-label={t('fdc.migrate.needsDesign', { defaultValue: 'Still a picture: this cat needs a design' })}
+            >
+              !
+            </span>
+          )}
           {item.won && (
             <span className="recycle-won recycle-item__won" title={t('fdc.winner', { defaultValue: 'Winner' })}>
               <span className="material-symbols-outlined" aria-hidden="true">trophy</span>
@@ -615,7 +626,9 @@ export default function RecycleBin({ mode = 'manage', optionNumber, viewerDiscor
 
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
-  const [view, setView] = useState(ALL)
+  // ?folder=<id>: the open folder (all items without it).
+  const [folderParam, setFolderParam] = useUrlParam('folder')
+  const setView = (next) => setFolderParam(next === ALL ? null : next)
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(() => new Set())
   const [menu, setMenu] = useState(null)
@@ -652,6 +665,8 @@ export default function RecycleBin({ mode = 'manage', optionNumber, viewerDiscor
     () => [...(data?.folders ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [data],
   )
+  // A folder id from the address that doesn't exist (any more): everything.
+  const view = !folderParam || (data && folderParam !== UNSORTED && !folders.some((folder) => folder.id === folderParam)) ? ALL : folderParam
   const currentFolder = folders.find((folder) => folder.id === view) ?? null
 
   const items = useMemo(() => {
@@ -1080,7 +1095,7 @@ export function RecycledCleanup({ items, onDone }) {
                       })
                     }
                   />
-                  <img className="recycle-row__thumb" src={recycledImageUrl(item)} alt="" />
+                  <img className="recycle-row__thumb" src={recycledDesignUrl(item) ?? recycledImageUrl(item)} alt="" />
                   <Emoji emoji={item.emoji} />
                   <span className="recycle-row__text">
                     <strong>{item.description || t('fdc.create.option', { defaultValue: 'Option {{number}}', number: item.optionNumber })}</strong>
