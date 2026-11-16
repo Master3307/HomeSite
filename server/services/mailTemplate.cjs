@@ -74,57 +74,63 @@ function prefsOf(user) {
   return { language, theme, accent, customCss, name: user?.display_name || user?.username || null };
 }
 
-/* ---------- colours (src/styles/cult.css) ---------- */
-
-const mix = (a, b, weight) => {
-  const parse = (hex) => [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16));
-  const [x, y] = [parse(a), parse(b)];
-  return `#${x.map((value, index) => Math.round(value * weight + y[index] * (1 - weight)).toString(16).padStart(2, "0")).join("")}`;
-};
+/* ---------- colours: exactly /cult's (src/styles/cult.css, discord-widget.css) ---------- */
 
 /*
- * The page is the same dusk as /cult (src/styles/cult.css: --bg-secondary at
- * the top to --bg-primary at the bottom); `page` is the solid colour for
- * mail apps that drop gradients. Button and the strip on top of the card
- * run from the accent to a deeper shade of it.
+ * The page is the site's background: --bg-secondary at the top to
+ * --bg-primary at 80% (main.css body::before). The card is the site's card
+ * (the Discord server card): --bg-secondary at 55% over the page, a border
+ * and wells of --text-primary at 12% / 6%, 18px corners, the same shadow.
+ * The accent is the cult red: /cult uses it even when a member picked
+ * their own colour. `*Solid` are the same colours mixed for mail apps
+ * without gradients or transparency (classic Outlook).
  */
-function palette(theme, accent) {
-  const red = accent || "#b60b0b";
-  const dark = {
-    page: "#240b0b",
+const PALETTES = {
+  light: {
+    pageTop: "#f4ebe6",
+    pageBottom: "#c79c95",
+    pageSolid: "#e2cbc6",
+    card: "rgba(244,235,230,0.55)",
+    cardSolid: "#f0e4df",
+    line: "rgba(44,22,24,0.12)",
+    lineSolid: "#d8cbc7",
+    raised: "rgba(44,22,24,0.06)",
+    raisedSolid: "#e4d8d3",
+    text: "#2c1618",
+    muted: "#73504f",
+    accent: "#b60b0b",
+    accentDeep: "#610000",
+    accentText: "#ffffff",
+    shadow: "0 18px 40px rgba(0,0,0,0.22)",
+  },
+  dark: {
     pageTop: "#1a0b0b",
     pageBottom: "#470404",
-    card: "#1d0c0d",
-    raised: "#2a1213",
-    line: "#43201f",
-    text: "#f1eaea",
-    muted: "#c2aeae",
-    accent: accent ? mix(accent, "#120a10", 0.85) : "#c8161a",
-    accentDeep: mix(red, "#000000", 0.62),
+    pageSolid: "#2c0808",
+    card: "rgba(26,11,11,0.55)",
+    cardSolid: "#1e0b0b",
+    line: "rgba(238,238,238,0.12)",
+    lineSolid: "#372626",
+    raised: "rgba(238,238,238,0.06)",
+    raisedSolid: "#2a1919",
+    text: "#eeeeee",
+    muted: "#c0bfe6",
+    accent: "#b60b0b",
+    accentDeep: "#610000",
     accentText: "#ffffff",
-    code: accent ? mix(accent, "#ffffff", 0.45) : "#ff8a80",
-    shadow: "0 18px 48px rgba(0,0,0,0.45)",
-  };
-  const light = {
-    page: "#ecd9d3",
-    pageTop: "#f7efeb",
-    pageBottom: "#d9b3ac",
-    card: "#fffcfa",
-    raised: "#f8eeea",
-    line: "#ead6cf",
-    text: "#2a1214",
-    muted: "#6b4a4b",
-    accent: accent ? mix(accent, "#2c1618", 0.85) : "#b60b0b",
-    accentDeep: mix(red, "#2a0303", 0.55),
-    accentText: "#ffffff",
-    code: accent ? mix(accent, "#2a1214", 0.7) : "#8f0a0a",
-    shadow: "0 14px 40px rgba(110,40,36,0.16)",
-  };
-  return theme === "dark" ? { main: dark, other: light } : { main: light, other: dark };
+    shadow: "0 18px 40px rgba(0,0,0,0.22)",
+  },
+};
+
+function palette(theme) {
+  return theme === "dark" ? { main: PALETTES.dark, other: PALETTES.light } : { main: PALETTES.light, other: PALETTES.dark };
 }
 
-/** A gradient background with a solid fallback (Outlook and some webmails only show the colour). */
-const gradient = (from, to, solid, angle = "180deg") => `background-color:${solid};background-image:linear-gradient(${angle},${from},${to})`;
+/** The site's page gradient on its solid fallback colour. */
+const pageBackground = (colors) => `background-color:${colors.pageSolid};background-image:linear-gradient(180deg,${colors.pageTop} 0%,${colors.pageBottom} 80%)`;
+
+/** A colour with transparency on its solid fallback (both are written; apps keep the last one they understand). */
+const layered = (solid, alpha) => `background:${solid};background-color:${alpha}`;
 
 /* ---------- links ---------- */
 
@@ -166,8 +172,9 @@ function seasonLogo(date = new Date()) {
   } catch {
     // general look
   }
-  const file = path.join(__dirname, "..", "..", "public", "hehehe", `${code}-logo.png`);
-  return fs.existsSync(file) ? { src: `cid:${LOGO_CID}`, attachment: { filename: "logo.png", path: file, cid: LOGO_CID } } : { src: `${siteOrigin()}/hehehe/${code}-logo.webp`, attachment: null };
+  // The site's server icon (a dark tile, the same in light and dark), as PNG for mail apps.
+  const file = path.join(__dirname, "..", "..", "public", "hehehe", `${code}-icon.png`);
+  return fs.existsSync(file) ? { src: `cid:${LOGO_CID}`, attachment: { filename: "icon.png", path: file, cid: LOGO_CID } } : { src: `${siteOrigin()}/hehehe/${code}-icon.webp`, attachment: null };
 }
 
 /**
@@ -179,7 +186,7 @@ function render({ user = null, language: forcedLanguage, theme: forcedTheme, sub
   const language = forcedLanguage ?? prefs.language;
   const theme = forcedTheme ?? prefs.theme;
   const t = translator(language);
-  const { main, other } = palette(theme, prefs.accent);
+  const { main, other } = palette(theme);
   const followsApp = theme === "system";
   const site = siteOrigin();
   const brand = t("brand");
@@ -196,15 +203,15 @@ function render({ user = null, language: forcedLanguage, theme: forcedTheme, sub
       }
       if (block.quote) {
         textParts.push(`> ${block.quote}`, "");
-        return `<p class="email-quote" style="margin:0 0 16px;padding:10px 14px;border-left:3px solid ${main.accent};background:${main.raised};border-radius:10px;font-size:15px;line-height:1.5;color:${main.text}">${escape(block.quote).replace(/\n/g, "<br>")}</p>`;
+        return `<p class="email-quote" style="margin:0 0 16px;padding:10px 14px;border-left:3px solid ${main.accent};${layered(main.raisedSolid, main.raised)};border-radius:12px;font-size:15px;line-height:1.5;color:${main.text}">${escape(block.quote).replace(/\n/g, "<br>")}</p>`;
       }
       if (block.code) {
         textParts.push(`    ${block.code}`, "");
-        return `<table role="presentation" class="email-code" cellpadding="0" cellspacing="0" style="margin:6px 0 20px"><tr><td style="padding:14px 24px;border-radius:14px;background:${main.raised};border:1px solid ${main.line};font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:32px;font-weight:700;letter-spacing:8px;color:${main.code}" aria-label="${escape(t("code.copy"))}">${escape(block.code)}</td></tr></table>`;
+        return `<table role="presentation" class="email-code" cellpadding="0" cellspacing="0" style="margin:6px 0 20px"><tr><td bgcolor="${main.raisedSolid}" style="padding:14px 24px;border-radius:12px;${layered(main.raisedSolid, main.raised)};border:1px solid ${main.line};font-family:'JetBrains Mono','SFMono-Regular',Menlo,Consolas,monospace;font-size:32px;font-weight:700;letter-spacing:8px;color:${main.text}" aria-label="${escape(t("code.copy"))}">${escape(block.code)}</td></tr></table>`;
       }
       if (block.button) {
         textParts.push(`${block.button.label}: ${block.button.url}`, "");
-        return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 20px"><tr><td class="email-button" style="border-radius:13px;${gradient(main.accent, main.accentDeep, main.accent, "135deg")}"><a href="${escape(block.button.url)}" style="display:inline-block;padding:13px 24px;border-radius:13px;font-size:15px;font-weight:700;color:${main.accentText};text-decoration:none">${escape(block.button.label)}</a></td></tr></table>`;
+        return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 20px"><tr><td class="email-button" bgcolor="${main.accent}" style="border-radius:12px;background-color:${main.accent};background-image:linear-gradient(135deg,${main.accent},${main.accentDeep})"><a href="${escape(block.button.url)}" style="display:inline-block;padding:12px 20px;border-radius:12px;font-size:15px;font-weight:650;color:${main.accentText};text-decoration:none">${escape(block.button.label)}</a></td></tr></table>`;
       }
       if (block.note) {
         textParts.push(block.note, "");
@@ -233,17 +240,15 @@ function render({ user = null, language: forcedLanguage, theme: forcedTheme, sub
   const appMode = followsApp
     ? `
 @media (prefers-color-scheme: dark) {
-  .email-page { background-color: ${other.page} !important; background-image: linear-gradient(180deg, ${other.pageTop}, ${other.pageBottom}) !important; }
-  body { background-color: ${other.pageBottom} !important; background-image: linear-gradient(180deg, ${other.pageTop}, ${other.pageBottom}) !important; }
-  .email-card { background: ${other.card} !important; border-color: ${other.line} !important; box-shadow: ${other.shadow} !important; }
-  .email-text, .email-title, .email-brand, .email-quote { color: ${other.text} !important; }
-  .email-code td { color: ${other.code} !important; }
-  .email-note, .email-footer, .email-footer a { color: ${other.muted} !important; }
-  .email-code td, .email-quote { background: ${other.raised} !important; border-color: ${other.line} !important; }
-  .email-button { background-color: ${other.accent} !important; background-image: linear-gradient(135deg, ${other.accent}, ${other.accentDeep}) !important; }
+  .email-page { background-color: ${other.pageSolid} !important; background-image: linear-gradient(180deg, ${other.pageTop} 0%, ${other.pageBottom} 80%) !important; }
+  body { background-color: ${other.pageBottom} !important; background-image: linear-gradient(180deg, ${other.pageTop} 0%, ${other.pageBottom} 80%) !important; }
+  .email-card { background-color: ${other.card} !important; border-color: ${other.line} !important; }
+  .email-text, .email-title, .email-brand, .email-quote, .email-code td { color: ${other.text} !important; }
+  .email-note, .email-footer, .email-footer a, .email-kicker { color: ${other.muted} !important; }
+  .email-code td, .email-quote { background-color: ${other.raised} !important; border-color: ${other.line} !important; }
 }
-[data-ogsc] .email-page { background: ${other.page} !important; }
-[data-ogsc] .email-card { background: ${other.card} !important; }
+[data-ogsc] .email-page { background: ${other.pageSolid} !important; }
+[data-ogsc] .email-card { background: ${other.cardSolid} !important; }
 [data-ogsc] .email-text, [data-ogsc] .email-title, [data-ogsc] .email-brand { color: ${other.text} !important; }`
     : "";
 
@@ -259,25 +264,25 @@ function render({ user = null, language: forcedLanguage, theme: forcedTheme, sub
 :root { color-scheme: ${followsApp ? "light dark" : theme}; supported-color-schemes: ${followsApp ? "light dark" : theme}; }
 body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; }
 a { color: ${main.accent}; }
-@media (max-width: 600px) { .email-card { border-radius: 0 !important; } .email-inner { padding: 22px 18px !important; } }${appMode}
+@media (max-width: 600px) { .email-inner { padding: 20px 18px 4px !important; } }${appMode}
 </style>
 ${prefs.customCss ? `<style data-custom-css>\n${safeCss(prefs.customCss)}\n</style>` : ""}
 </head>
-<body class="cult-page email" style="margin:0;padding:0;background-color:${main.pageBottom};background-image:linear-gradient(180deg,${main.pageTop},${main.pageBottom});background-repeat:no-repeat">
+<body class="cult-page email" style="margin:0;padding:0;background-color:${main.pageBottom};background-image:linear-gradient(180deg,${main.pageTop} 0%,${main.pageBottom} 80%);background-repeat:no-repeat">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${escape(title)}</div>
-<table role="presentation" class="email-page" width="100%" cellpadding="0" cellspacing="0" bgcolor="${main.page}" style="${gradient(main.pageTop, main.pageBottom, main.page)};font-family:Nunito,'Google Sans','Segoe UI',system-ui,-apple-system,sans-serif">
+<table role="presentation" class="email-page" width="100%" cellpadding="0" cellspacing="0" bgcolor="${main.pageSolid}" style="${pageBackground(main)};font-family:'Google Sans Flex','Google Sans','Segoe UI',system-ui,-apple-system,sans-serif">
 <tr><td align="center" style="padding:32px 12px 40px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
-    <tr><td style="padding:0 6px 16px">
-      <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-        <td style="padding-right:12px"><img src="${escape(logo.src)}" width="44" height="44" alt="" style="display:block;border-radius:50%"></td>
-        <td class="email-brand" style="font-size:20px;font-weight:800;letter-spacing:-0.01em;color:${main.text}">${escape(brand)}</td>
-      </tr></table>
-    </td></tr>
-    <tr><td class="email-card" bgcolor="${main.card}" style="background:${main.card};border:1px solid ${main.line};border-radius:20px;box-shadow:${main.shadow};overflow:hidden">
-      <div class="email-strip" style="height:5px;line-height:5px;font-size:0;${gradient(main.accent, main.accentDeep, main.accent, "90deg")}">&nbsp;</div>
-      <div class="email-inner" style="padding:28px 30px 14px">
-        <h1 class="email-title" style="margin:0 0 18px;font-size:24px;line-height:1.25;font-weight:800;color:${main.text}">${escape(title)}</h1>
+    <tr><td class="email-card" bgcolor="${main.cardSolid}" style="${layered(main.cardSolid, main.card)};border:1px solid ${main.line};border-radius:18px;box-shadow:${main.shadow}">
+      <div class="email-inner" style="padding:22px 22px 6px">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 22px"><tr>
+          <td style="padding-right:14px"><img src="${escape(logo.src)}" width="56" height="56" alt="" style="display:block;width:56px;height:56px;border-radius:16px"></td>
+          <td>
+            <div class="email-kicker" style="font-size:12px;font-weight:700;color:${main.muted}">${escape(t("kicker"))}</div>
+            <div class="email-brand" style="font-size:19px;font-weight:700;line-height:1.3;color:${main.text}">${escape(brand)}</div>
+          </td>
+        </tr></table>
+        <h1 class="email-title" style="margin:0 0 16px;font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-0.01em;color:${main.text}">${escape(title)}</h1>
         <p class="email-text" style="margin:0 0 16px;font-size:16px;line-height:1.55;color:${main.text}">${escape(greeting)}</p>
         ${htmlBlocks}
       </div>
