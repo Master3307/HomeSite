@@ -599,8 +599,8 @@
   border-radius: var(--hub-radius);
   background: var(--hub-panel);
   box-shadow: var(--hub-shadow);
-  backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
 }
 
 .hub-panel h2,
@@ -637,8 +637,8 @@
   border-radius: 18px;
   background: var(--hub-panel);
   box-shadow: var(--hub-shadow);
-  backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 
 .hub-login__mark {
@@ -898,8 +898,8 @@
   border-radius: var(--hub-radius);
   background: var(--hub-panel);
   box-shadow: var(--hub-shadow);
-  backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
 }
 
 .hub-figure {
@@ -1971,16 +1971,37 @@
   position: fixed;
   inset: 0;
   z-index: 100;
+  gap: 0.4rem;
   padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
   background: #0d0717;
 }
 
-.hub-console__tabs {
+/* Tabs on the left (they scroll sideways), the view buttons on the right. */
+.hub-console__head {
   display: flex;
   align-items: center;
   gap: 0.3rem;
+  min-width: 0;
+}
+
+.hub-console__tabs {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+}
+
+.hub-console__actions {
+  display: flex;
+  flex: none;
+}
+
+.hub-console__actions .hub-icon-button.is-on {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--hub-text) !important;
 }
 
 .hub-console__tab {
@@ -2059,10 +2080,6 @@
   color: var(--hub-text);
 }
 
-.hub-console__spacer {
-  flex: 1;
-}
-
 .hub-console__start {
   display: flex;
   flex-direction: column;
@@ -2093,6 +2110,7 @@
 .is-fullscreen .hub-term {
   flex: 1;
   height: auto;
+  min-height: 0;
 }
 
 .hub-term__bar {
@@ -2134,14 +2152,31 @@
   color: #b9b3d1 !important;
 }
 
+.hub-term__body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .hub-term__screen {
   flex: 1;
   min-height: 0;
   padding: 8px 4px 4px 12px;
+  /* Touches are handled by Console.jsx (scrolling with momentum, pinch for the text size). */
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
 .hub-term__screen .xterm {
   height: 100%;
+}
+
+/* The space under the last full row keeps the terminal's colour. */
+.hub-term__screen .xterm,
+.hub-term__screen .xterm-viewport {
+  background-color: #0d0717 !important;
 }
 
 /* The site sets a font on every element (main.css "*"); the terminal keeps its own. */
@@ -2155,14 +2190,153 @@
   scrollbar-color: #4b3a6e transparent;
 }
 
+/* "Back to the end" while older output is shown. */
+.hub-term__end {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.4rem;
+  padding: 0 0.9rem 0 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  box-shadow: 0 8px 24px #0008;
+  cursor: pointer;
+  animation: hub-term-pop 0.18s ease-out;
+}
+
+.hub-term__end .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+@keyframes hub-term-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* The output as selectable text. */
+.hub-term__text {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  background: #0d0717;
+}
+
+.hub-term__text-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.25rem 0.35rem 0.25rem 0.85rem;
+  color: #b9b3d1;
+  font-size: 0.82rem;
+  box-shadow: inset 0 -1px 0 #ffffff10;
+}
+
+.hub-term__text-bar span {
+  flex: 1;
+}
+
+.hub-term__text-bar .hub-icon-button {
+  color: #b9b3d1 !important;
+}
+
+.hub-term__text pre {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 10px 12px 16px;
+  overflow: auto;
+  color: #ece8ff;
+  font-family: "JetBrainsMono Nerd Font Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  white-space: pre;
+  user-select: text;
+  -webkit-user-select: text;
+  overscroll-behavior: contain;
+  outline: none;
+}
+
+/* The typing field (phones; or chosen with the keyboard button). */
+.hub-term__input {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.45rem 0.1rem 0.75rem;
+  background: #140b22;
+  box-shadow: inset 0 1px 0 #ffffff10;
+}
+
+.hub-term__prompt {
+  color: #b9a8ff;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.hub-term__input input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.6rem;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: 10px;
+  background: #241839;
+  color: #ece8ff;
+  caret-color: #b9a8ff;
+  font-family: "JetBrainsMono Nerd Font Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  /* 16px: iOS zooms into smaller fields. */
+  font-size: 16px;
+  outline: none;
+}
+
+.hub-term__input input::placeholder {
+  color: #8c84a8;
+}
+
+.hub-term__input input:focus {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 80%, white);
+}
+
+.hub-term__send {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
 .hub-term__keys {
   display: none;
   gap: 0.35rem;
   padding: 0.45rem;
   overflow-x: auto;
   background: #140b22;
-  box-shadow: inset 0 1px 0 #ffffff10;
   scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+.hub-term__input + .hub-term__keys {
+  padding-top: 0.35rem;
 }
 
 .hub-term__keys button {
@@ -2175,8 +2349,9 @@
   background: #241839;
   color: #ece8ff;
   font-family: var(--hub-mono);
-  font-size: 0.86rem;
-  touch-action: manipulation;
+  font-size: 0.9rem;
+  touch-action: pan-x;
+  cursor: pointer;
 }
 
 .hub-term__keys button:active,
@@ -2188,6 +2363,44 @@
   .hub-term__keys {
     display: flex;
   }
+
+  /* Page-wise scrolling and copy are touch gestures / the text view here. */
+  .hub-term__desk {
+    display: none !important;
+  }
+}
+
+/* Full screen on a phone: no rounded frame, everything for the terminal. */
+@media (max-width: 760px) {
+  .hub-console.is-fullscreen {
+    padding: max(4px, env(safe-area-inset-top)) max(4px, env(safe-area-inset-right)) 0 max(4px, env(safe-area-inset-left));
+  }
+
+  .is-fullscreen .hub-term {
+    border-radius: 12px 12px 0 0;
+  }
+
+  .is-fullscreen .hub-term__keys {
+    padding-bottom: max(0.45rem, env(safe-area-inset-bottom));
+  }
+
+  .hub-console__tab {
+    max-width: 52vw;
+  }
+
+  .hub-term__screen {
+    padding: 6px 2px 2px 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-term__end {
+    animation: none;
+  }
+}
+
+:root:is(.motion-reduce, .motion-none) .hub-term__end {
+  animation: none;
 }
 
 /* ---------- logs ---------- */
@@ -2914,8 +3127,8 @@
     padding: 0.3rem max(0.3rem, env(safe-area-inset-right)) calc(0.3rem + env(safe-area-inset-bottom)) max(0.3rem, env(safe-area-inset-left));
     background: color-mix(in srgb, var(--bg-primary) 90%, transparent);
     box-shadow: inset 0 1px 0 var(--hub-line);
-    backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
   }
 
   .hub-tabbar .hub-nav__item {

@@ -1,4 +1,7 @@
 import { Routes } from "discord.js";
+import { createRequire } from "node:module";
+
+const privacy = createRequire(import.meta.url)("../../privacy.cjs");
 
 import { DISCORD_GUILD_ID, DISCORD_USER_ID } from "../config.js";
 import { denyJson, hubAccess } from "../hub-auth.js";
@@ -430,6 +433,7 @@ export function registerLiveUserRoute(app, { client }) {
 
   app.get("/:discordUserId", async (req, res, next) => {
     const discordUserId = String(req.params.discordUserId || "").trim();
+    if (privacy.isHidden(discordUserId)) return res.status(404).json({ error: "Unknown user" });
 
     if (!isDiscordSnowflake(discordUserId)) {
       if (/^\d+$/.test(discordUserId)) {

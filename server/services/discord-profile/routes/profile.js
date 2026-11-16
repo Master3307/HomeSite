@@ -10,7 +10,6 @@ import {
 } from "../discord-formatters.js";
 
 import {
-  activityKey,
   normalizeActivityKind,
   safeJsonParseArray,
 } from "../utils.js";

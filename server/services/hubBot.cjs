@@ -1,3 +1,4 @@
+const privacy = require("./privacy.cjs");
 const fs = require("node:fs");
 const path = require("node:path");
 const { ActivityType, ChannelType } = require("discord.js");
@@ -193,7 +194,7 @@ async function members(client, { guild = "", q = "", limit = 300 }) {
   if (guildId && !guilds.length) throw httpError(404, "The bot is not in that server.");
   await Promise.all(guilds.map(ensureMembers));
 
-  const all = collectMembers(client, guildId);
+  const all = collectMembers(client, guildId).filter((entry) => !privacy.isHidden(entry.id));
   const words = normalize(q).split(/\s+/).filter(Boolean);
   let list;
   if (words.length) {
@@ -216,6 +217,7 @@ async function members(client, { guild = "", q = "", limit = 300 }) {
 
 async function lookupUser(client, id) {
   if (!isSnowflake(id)) throw httpError(400, "That is not a Discord user ID.");
+  if (privacy.isHidden(id)) throw httpError(404, "No Discord user with that ID.");
   const user = await client.users.fetch(id, { force: true }).catch(() => null);
   if (!user) throw httpError(404, "No Discord user with that ID.");
   const known = collectMembers(client).find((entry) => entry.id === id) ?? null;
@@ -374,6 +376,7 @@ function persist(entry) {
 }
 
 function emit(event) {
+  if (event.user?.id && privacy.isHidden(event.user.id)) return;
   const key = JSON.stringify([event.type, event.user?.id, event.changes ?? event.to?.id ?? event.text]);
   const now = Date.now();
   if (recent.has(key) && now - recent.get(key) < 3000) return;
@@ -385,6 +388,17 @@ function emit(event) {
   persist(entry);
   const data = `data: ${JSON.stringify(entry)}\n\n`;
   for (const res of subscribers) res.write(data);
+}
+
+/** A deleted account: its events leave the live log (memory and file). */
+function forgetLive(id) {
+  const text = String(id);
+  live = live.filter((entry) => !JSON.stringify(entry).includes(text));
+  try {
+    fs.writeFileSync(LIVE_FILE, live.map((item) => JSON.stringify(item)).join("\n") + (live.length ? "\n" : ""), { mode: 0o600 });
+  } catch (error) {
+    console.warn("[Hub] Could not rewrite the live log:", error.message);
+  }
 }
 
 function liveHistory({ before, limit = 200 } = {}) {
@@ -530,4 +544,4 @@ function registerHubRoutes(app, client, route) {
   });
 }
 
-module.exports = { registerHubRoutes };
+module.exports = { registerHubRoutes, forgetLive };

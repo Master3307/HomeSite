@@ -1,3 +1,4 @@
+const privacy = require("./privacy.cjs");
 const fs = require("node:fs/promises");
 const fsSync = require("node:fs");
 const path = require("node:path");
@@ -88,6 +89,8 @@ const toPosix = (value) => value.split(path.sep).join("/");
 
 function isExcluded(rel) {
   if (rel.endsWith(".tmp") || /\.tmp$|\.[0-9a-f-]{36}\.tmp$/.test(rel)) return true;
+  // Bongo Cat imports in progress (uploads, the next version, the one being replaced).
+  if (/^server\/services\/db\/bongo-cat\/\.(uploads|next-[^/]+|old-[^/]+)\//.test(rel)) return true;
   return EXCLUDED.some((entry) => (entry.endsWith("/") ? rel.startsWith(entry) : rel === entry));
 }
 
@@ -280,14 +283,18 @@ async function gitCommit() {
  * consistently with SQLite's backup API). Returns { file, name, manifest,
  * differences }; the caller streams `file` and removes it.
  */
-async function createBackup({ adminKey, db = null, reason = "export", into = null }) {
+async function createBackup({ adminKey, db = null, reason = "export", into = null, onProgress = () => {} }) {
   const stage = await workDir("export");
   try {
     const files = await listFiles();
     const { described, differences } = await describeFiles(files);
     const exportedAt = Date.now();
 
+    let copied = 0;
+    onProgress({ step: "Collecting files", done: 0, total: described.length });
     for (const file of described) {
+      copied += 1;
+      if (copied % 25 === 0) onProgress({ step: "Collecting files", done: copied, total: described.length });
       const target = path.join(stage, "files", file.path);
       await fs.mkdir(path.dirname(target), { recursive: true });
       if (file.path === ACCOUNTS_DB && db) {
@@ -318,12 +325,14 @@ async function createBackup({ adminKey, db = null, reason = "export", into = nul
     await writeJson(path.join(stage, "manifest.json"), manifest);
 
     const plain = path.join(stage, "backup.tar.gz");
+    onProgress({ step: "Compressing", done: 0, total: 0 });
     await tar(["-czf", plain, "-C", stage, "manifest.json", "file-times.json", "files"]);
 
     const stamp = new Date(exportedAt).toISOString().replace(/[:]/g, "-").replace(/\..+/, "");
     const name = `homesite-backup-${stamp}.tar.gz.enc`;
     await fs.mkdir(into ?? WORK_DIR, { recursive: true, mode: 0o700 });
     const output = path.join(into ?? WORK_DIR, name);
+    onProgress({ step: "Encrypting", done: 0, total: 0 });
     await encryptFile(plain, output, passwordFor(adminKey));
 
     return { file: output, name, manifest, differences };
@@ -354,6 +363,7 @@ function categoryOf(rel) {
   if (rel.startsWith("server/services/db/fdc-polls/")) return "fdc";
   if (rel.startsWith("server/services/avatars/")) return "avatars";
   if (rel === ACTIVITY_LOG || rel.startsWith(".logs/")) return "logs";
+  if (rel.startsWith("server/services/db/bongo-cat/")) return "bongo";
   if (rel.startsWith("server/services/db/")) return "data";
   return "other";
 }
@@ -529,14 +539,75 @@ const MERGERS = {
       if (!mine) {
         merged[user] = entry;
       } else if (mine.day === entry.day && mine.month === entry.month) {
-        merged[user] = { ...mine, year: mine.year ?? entry.year ?? null };
+        // The earliest "first saved" keeps its priority; a dress code from either side stays.
+        const setAt = [mine.setAt, entry.setAt].filter((value) => typeof value === "string").sort()[0];
+        merged[user] = { ...entry, ...mine, year: mine.year ?? entry.year ?? null, ...(setAt ? { setAt } : {}), ...(mine.dressCode || entry.dressCode ? { dressCode: mine.dressCode ?? entry.dressCode } : {}) };
       } else if (backupNewer) {
         merged[user] = entry;
       }
     }
     return `${JSON.stringify(merged, null, 2)}\n`;
   },
+  // Picker favourites per Discord account: the newer list of each person wins.
+  "server/services/db/bongo-favorites.json": (local, backup) => {
+    const a = JSON.parse(local || "{}");
+    const b = JSON.parse(backup || "{}");
+    const merged = { ...a };
+    for (const [user, entry] of Object.entries(b)) {
+      if (!merged[user] || String(entry.updatedAt ?? "") > String(merged[user].updatedAt ?? "")) merged[user] = entry;
+    }
+    return `${JSON.stringify(merged)}\n`;
+  },
+  // The lobby cat's wardrobe: settings of the newer file, outfit lists of both (by id).
+  // Search words editors added to Bongo Cat items: every word of both.
+  // Who stays hidden / private: deleted accounts from both sides stay deleted; private profiles are this server's.
+  "server/services/db/privacy.json": (local, backup) => {
+    const a = JSON.parse(local || "{}");
+    const b = JSON.parse(backup || "{}");
+    const hidden = { ...(b.hidden ?? {}) };
+    for (const [id, until] of Object.entries(a.hidden ?? {})) if (!hidden[id] || until > hidden[id]) hidden[id] = until;
+    return `${JSON.stringify({
+      private: Array.isArray(a.private) ? a.private : Array.isArray(b.private) ? b.private : [],
+      hidden,
+      forgotten: [...new Set([...(a.forgotten ?? []), ...(b.forgotten ?? [])])],
+    })}\n`;
+  },
+  "server/services/db/bongo-aliases.json": (local, backup) => {
+    const a = JSON.parse(local || "{}");
+    const b = JSON.parse(backup || "{}");
+    const merged = { ...a };
+    for (const [id, words] of Object.entries(b)) {
+      if (!Array.isArray(words)) continue;
+      const mine = Array.isArray(a[id]) ? a[id] : [];
+      // "-word" hides a built-in word; where the two sides disagree about a word, this server's choice stays.
+      const opposite = (word) => (word.startsWith("-") ? word.slice(1) : `-${word}`);
+      merged[id] = [...new Set([...mine, ...words.filter((word) => !mine.includes(opposite(word)))])];
+    }
+    return `${JSON.stringify(merged)}\n`;
+  },
+  "server/services/db/lobby-cat-style.json": (local, backup) => {
+    const a = JSON.parse(local || "{}");
+    const b = JSON.parse(backup || "{}");
+    const newer = String(b.updatedAt ?? "") > String(a.updatedAt ?? "") ? b : a;
+    const older = newer === a ? b : a;
+    const lists = new Map((newer.lists ?? []).map((list) => [list.id, { ...list, outfits: [...list.outfits] }]));
+    for (const list of older.lists ?? []) {
+      const mine = lists.get(list.id);
+      if (!mine) lists.set(list.id, list);
+      else for (const outfit of list.outfits) if (!mine.outfits.some((entry) => entry.id === outfit.id)) mine.outfits.push(outfit);
+    }
+    return `${JSON.stringify({ ...newer, lists: [...lists.values()] }, null, 2)}\n`;
+  },
   // Who was already congratulated: wished on either side counts (never twice).
+  /* Birthday reminders ({ reminders: { subscriber: [targets] }, sent }): every reminder from both sides. */
+  "server/services/db/birthday-reminders.json": (local, backup) => {
+    const a = JSON.parse(local || "{}");
+    const b = JSON.parse(backup || "{}");
+    const reminders = { ...(b.reminders ?? {}) };
+    for (const [subscriber, targets] of Object.entries(a.reminders ?? {})) reminders[subscriber] = [...new Set([...(reminders[subscriber] ?? []), ...(Array.isArray(targets) ? targets : [])])];
+    return `${JSON.stringify({ version: 1, reminders, sent: { ...(b.sent ?? {}), ...(a.sent ?? {}) } }, null, 2)}\n`;
+  },
+
   "server/services/db/birthday-celebration-state.json": (local, backup) => {
     const a = JSON.parse(local || "{}");
     const b = JSON.parse(backup || "{}");
@@ -556,6 +627,8 @@ function unitOf(rel) {
   const poll = rel.match(/^(server\/services\/db\/fdc-polls\/\d{4}-\d{2}-\d{2})\//);
   if (poll) return poll[1];
   if (rel.startsWith("server/services/db/fdc-polls/recycling-bin/")) return "server/services/db/fdc-polls/recycling-bin";
+  // The Bongo Cat assets: textures and catalog only work together.
+  if (rel.startsWith("server/services/db/bongo-cat/")) return "server/services/db/bongo-cat";
   return rel;
 }
 
@@ -841,7 +914,8 @@ function mergeAccounts(localDb, backupPath, selected, report, strategy = "merge"
       if (backupTables.some((table) => table.name === "users") && localTables.has("users")) {
         const localColumns = columnsOf(localDb, "users");
         for (const user of backup.prepare("SELECT * FROM users").all()) {
-          if (!selected.has(user.discord_user_id)) {
+          // Deleted accounts never come back from an older backup (privacy page).
+          if (!selected.has(user.discord_user_id) || privacy.isForgotten(user.discord_user_id)) {
             report.usersSkipped += 1;
             continue;
           }
@@ -877,6 +951,8 @@ function mergeAccounts(localDb, backupPath, selected, report, strategy = "merge"
             if (["id", "discord_user_id", "avatar_path"].includes(column)) continue;
             if (column === "created_at") {
               if (user.created_at && user.created_at < current.created_at) updates.created_at = user.created_at;
+            } else if (column === "taps") {
+              if (Number(user.taps) > Number(current.taps ?? 0)) updates.taps = user.taps;
             } else if (column === "last_login_at") {
               if (String(user.last_login_at) > String(current.last_login_at)) updates.last_login_at = user.last_login_at;
             } else if ((current[column] === null || current[column] === "") && user[column] !== null) {
@@ -918,6 +994,13 @@ function mergeAccounts(localDb, backupPath, selected, report, strategy = "merge"
             row.user_id = mapped;
           }
           const columns = Object.keys(row).filter((column) => localColumns.includes(column));
+
+          // Counters (taps, …): the higher value.
+          if (name === "site_counters") {
+            localDb.prepare("INSERT INTO site_counters (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = MAX(value, excluded.value)").run(row.key, row.value ?? 0);
+            report.rowsMerged += 1;
+            continue;
+          }
 
           if (name === "lobby_cat") {
             const local = localDb.prepare("SELECT * FROM lobby_cat WHERE user_id = ?").get(row.user_id);
@@ -1082,6 +1165,21 @@ async function applyImport({ planId, adminKey, localDb, choices, activity }) {
     } else {
       await fs.copyFile(backupDb, safeJoin(ACCOUNTS_DB));
       report.usersAdded = plan.accounts.users.length;
+    }
+  }
+
+  // 3b. Deleted accounts stay deleted: their IDs leave the files this import wrote.
+  for (const rel of [...written.map((file) => file.path), ...report.filesMerged]) {
+    if (!rel.startsWith("server/services/db/") || /\.sqlite/.test(rel) || rel.endsWith("/privacy.json")) continue;
+    const target = safeJoin(rel);
+    const text = await fs.readFile(target, "utf8").catch(() => null);
+    if (!text) continue;
+    const ids = privacy.forgottenIn(text);
+    if (!ids.length) continue;
+    const next = privacy.scrubText(rel.slice("server/services/db/".length), text, ids);
+    if (next !== null && next !== text) {
+      await fs.writeFile(target, next);
+      report.deletedAccountsRemoved = (report.deletedAccountsRemoved ?? 0) + 1;
     }
   }
 

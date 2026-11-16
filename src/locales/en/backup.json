@@ -109,6 +109,7 @@
         "recycling": "Recycling bin",
         "avatars": "Avatars",
         "logs": "Logs",
+        "bongo": "Bongo Cat assets",
         "data": "Bot data",
         "env": ".env",
         "other": "Other files"
@@ -119,6 +120,8 @@
         "off": "2FA is off"
     },
     "unlock": {
+        "textOwner2fa": "You're signed in with your Discord account. Enter the current code from your authenticator app. The page stays unlocked for 15 minutes of activity.",
+        "textOwner": "You're signed in with your Discord account. Tip: turn on 2FA (pnpm 2fa:setup on the server, ADMIN_2FA=on) for extra safety.",
         "title": "Unlock",
         "text2fa": "Enter the admin key and the current code from your authenticator app. The page stays unlocked for 15 minutes of activity.",
         "text": "Enter the admin key. Tip: turn on 2FA (pnpm 2fa:setup on the server, ADMIN_2FA=on) for extra safety.",

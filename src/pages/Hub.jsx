@@ -1,11 +1,14 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link, useNavigate, useParams } from 'react-router'
 
 import ThemeSwitch from '/src/components/ThemeSwitch.jsx'
 import { cleanCode } from '/src/lib/adminCode'
+import { afterTwoFactor, markFresh, useNeedsCode } from '/src/lib/twoFactorGrace'
+import { ExportCard, ImportCard } from '/src/components/admin/BackupCards'
 import { HubError, hubGet, hubLogin, hubLogout, hubSend, loadHubSession, userPageUrl } from '/src/lib/hub'
 import SettingsWorkspace from '/src/components/admin/SettingsWorkspace'
+import BongoAssetsCard from '/src/components/admin/BongoAssetsCard'
 import { Avatar, Icon, STATUS_LABELS, activityText, useHubData } from '/src/components/hub/common'
 import Overview from '/src/components/hub/Overview'
 import Members from '/src/components/hub/Members'
@@ -14,6 +17,7 @@ import Commands from '/src/components/hub/Commands'
 import Logs from '/src/components/hub/Logs'
 import Database from '/src/components/hub/Database'
 import '/src/styles/backup.css'
+import '/src/styles/admin-settings.css'
 import '/src/styles/hub.css'
 
 // xterm.js is big; only load it when the console is opened.
@@ -47,21 +51,43 @@ function Login({ session, onDone }) {
   const [code, setCode] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    if (session.twoFactorFreshUntil) markFresh(session.twoFactorFreshUntil)
+  }, [session.twoFactorFreshUntil])
+  // A code from a moment ago (e.g. on the admin page) still counts: none asked.
+  const needsCode = useNeedsCode(session.twoFactor)
 
-  async function submit(event) {
-    event.preventDefault()
+  async function login() {
     setBusy(true)
     setError(null)
+    const typed = needsCode ? cleanCode(code) : undefined
     try {
-      await hubLogin(viaDiscord ? undefined : key, session.twoFactor ? cleanCode(code) : undefined)
+      await hubLogin(viaDiscord ? undefined : key, typed)
+      afterTwoFactor(null, typed)
       onDone()
     } catch (loginError) {
+      afterTwoFactor(loginError, typed)
       setError(loginError)
       setCode('')
     } finally {
       setBusy(false)
     }
   }
+
+  function submit(event) {
+    event.preventDefault()
+    login()
+  }
+
+  // Signed in as the owner with nothing left to ask: straight in (once).
+  const tried = useRef(false)
+  useEffect(() => {
+    if (!session.configured || !viaDiscord || needsCode || tried.current) return
+    tried.current = true
+    login()
+    // login() only reads the current form; it runs once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.configured, viaDiscord, needsCode])
 
   return (
     <main className="hub-login">
@@ -95,7 +121,7 @@ function Login({ session, onDone }) {
             />
           </>
         )}
-        {session.twoFactor && (
+        {needsCode && (
           <>
             <label htmlFor="hub-code">Authenticator code</label>
             <input
@@ -213,7 +239,26 @@ function HubSettings({ twoFactor, onLocked }) {
     }),
     [],
   )
-  return <SettingsWorkspace api={api} twoFactor={twoFactor} onLocked={onLocked} />
+  // Everything that was on /admin-settings: backups too (the hub login counts as unlocked).
+  const extraTabs = useMemo(
+    () => [
+      {
+        id: 'backup',
+        icon: 'backup',
+        title: 'Backup & restore',
+        render: () => (
+          <div className="as-backup">
+            <ExportCard adminKey="" twoFactor={twoFactor} onLocked={onLocked} />
+            <ImportCard adminKey="" twoFactor={twoFactor} onLocked={onLocked} />
+          </div>
+        ),
+      },
+      { id: 'bongo', icon: 'pets', title: 'Bongo Cat assets', render: () => <BongoAssetsCard /> },
+    ],
+    [twoFactor, onLocked],
+  )
+  const initialTab = typeof window !== 'undefined' && ['#backup', '#bongo'].includes(window.location.hash) ? window.location.hash.slice(1) : 'overview'
+  return <SettingsWorkspace api={api} twoFactor={twoFactor} onLocked={onLocked} extraTabs={extraTabs} initialTab={initialTab} />
 }
 
 /* ---------- navigation ---------- */
@@ -338,9 +383,9 @@ export default function Hub() {
           <NavLinks tab={tab} />
         </nav>
         <div className="hub-nav__foot">
-          <Link to="/admin-settings" className="hub-nav__item hub-nav__item--small">
-            <Icon name="admin_panel_settings" />
-            <span>Admin settings</span>
+          <Link to="/" className="hub-nav__item hub-nav__item--small">
+            <Icon name="home" />
+            <span>Back to the site</span>
           </Link>
           <div className="hub-nav__theme">
             <ThemeSwitch />
@@ -362,9 +407,9 @@ export default function Hub() {
             <span className="hub-sheet__grip" />
             <nav className="hub-sheet__grid">
               <NavLinks tab={tab} only={(entry) => !entry.mobile} onPick={() => setMoreOpen(false)} />
-              <Link to="/admin-settings" className="hub-nav__item">
-                <Icon name="admin_panel_settings" />
-                <span>Admin</span>
+              <Link to="/" className="hub-nav__item">
+                <Icon name="home" />
+                <span>Site</span>
               </Link>
             </nav>
             <div className="hub-sheet__row">

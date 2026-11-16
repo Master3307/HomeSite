@@ -802,3 +802,66 @@
 .bk-2fa-status .material-symbols-outlined {
   font-size: 1rem;
 }
+
+/* Bongo Cat assets (BongoAssetsCard) */
+.bk-steps {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding-left: 1.3rem;
+  line-height: 1.5;
+}
+.bk-steps code {
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+.bk-progress {
+  display: grid;
+  gap: 0.4rem;
+}
+.bk-progress progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.bk-button--danger {
+  background: #c62828;
+}
+
+/* Export / import progress (BackupCards.jsx). */
+.bk-progress {
+  margin-top: 0.8rem;
+  font-size: 0.88rem;
+}
+.bk-progress__bar {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+.bk-progress__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.bk-progress__bar--busy > span {
+  width: 35%;
+  animation: bk-busy 1.3s ease-in-out infinite;
+}
+@keyframes bk-busy {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(310%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-progress__bar--busy > span {
+    width: 100%;
+    animation: none;
+    opacity: 0.5;
+  }
+}

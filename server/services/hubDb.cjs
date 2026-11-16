@@ -65,13 +65,15 @@ function createHubDb({ getDatabase, log }) {
     const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
     const total = db().prepare(`SELECT COUNT(*) AS total FROM ${quote(name)} ${clause}`).get(...params).total;
     const list = db().prepare(`SELECT rowid AS __rowid, * FROM ${quote(name)} ${clause} ORDER BY ${order} LIMIT ? OFFSET ?`).all(...params, size, start);
-    return { ...info, total, offset: start, limit: size, rows: list };
+    // Credentials never leave the server (password / token / code hashes, 2FA secrets).
+    return { ...info, total, offset: start, limit: size, rows: list.map(redact) };
   }
 
   function cleanValues(info, values) {
     const out = {};
     for (const [key, value] of Object.entries(values ?? {})) {
       if (!info.columns.some((column) => column.name === key)) throw httpError(400, `Unknown column ${key}.`);
+      if (SENSITIVE.test(key)) throw httpError(400, `${key} can't be edited here.`);
       out[key] = value === null ? null : typeof value === "number" ? value : String(value);
     }
     return out;
@@ -88,7 +90,7 @@ function createHubDb({ getDatabase, log }) {
       .prepare(`UPDATE ${quote(name)} SET ${keys.map((key) => `${quote(key)} = @${"v" + keys.indexOf(key)}`).join(", ")} WHERE rowid = @rowid`)
       .run({ rowid, ...Object.fromEntries(keys.map((key, index) => [`v${index}`, clean[key]])) });
     log({ level: "risky", action: "hub-db-update", summary: `edited a row in ${name} (${keys.join(", ")})`, target: { table: name, rowid }, details: { before: pick(before, keys), after: clean } });
-    return db().prepare(`SELECT rowid AS __rowid, * FROM ${quote(name)} WHERE rowid = ?`).get(rowid);
+    return redact(db().prepare(`SELECT rowid AS __rowid, * FROM ${quote(name)} WHERE rowid = ?`).get(rowid));
   }
 
   function insertRow(name, values) {
@@ -328,8 +330,10 @@ function pick(object, keys) {
   return Object.fromEntries(keys.map((key) => [key, object?.[key]]));
 }
 
+const SENSITIVE = /token|secret|hash|twofa|password/i;
+
 function redact(row) {
-  return Object.fromEntries(Object.entries(row ?? {}).map(([key, value]) => [key, /token|secret|hash/i.test(key) ? "[hidden]" : value]));
+  return Object.fromEntries(Object.entries(row ?? {}).map(([key, value]) => [key, SENSITIVE.test(key) && value !== null ? "[hidden]" : value]));
 }
 
 module.exports = { createHubDb };

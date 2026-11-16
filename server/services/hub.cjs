@@ -6,7 +6,7 @@ const express = require("express");
 const rateLimit = require("express-rate-limit");
 
 const { setting, number, origin } = require("../config.cjs");
-const { twoFactorEnabled, checkTwoFactor } = require("./totp.cjs");
+const { twoFactorEnabled, checkTwoFactor, twoFactorFreshUntil, grantTwoFactor } = require("./totp.cjs");
 const { adminKeyMatches } = require("./discordOAuth.cjs");
 const { getInternalKey, getBotInternalUrl } = require("./internalKey.cjs");
 const backup = require("./backup.cjs");
@@ -175,6 +175,12 @@ function authenticate(req) {
   return null;
 }
 
+/* Who a correct 2FA code counts for (totp.cjs grace): this hub session and the website login. */
+function hubHolders(req) {
+  const account = accountOf(req);
+  return [req.hub?.id ? `hub:${req.hub.id}` : null, account?.session_id ? `account:${account.session_id}` : null];
+}
+
 function requireHub(req) {
   if (!hubKey()) throw httpError(503, "The hub is off: set HUB_KEY in the settings (pnpm setup:gui) and restart the account API.", { locked: true });
   const session = authenticate(req);
@@ -334,6 +340,10 @@ function registerHub(app, { getRequestSession, toPublicUser, getDatabase, activi
       // Logged in on the site as the owner: only a 2FA code is missing.
       discordOwner: owner ? { name: owner.display_name || owner.username } : null,
     };
+    const account = accountOf(req);
+    const holders = [session?.id ? `hub:${session.id}` : null, account?.session_id ? `account:${account.session_id}` : null];
+    // Until when a 2FA code from a moment ago still counts (the page skips the code field).
+    base.twoFactorFreshUntil = twoFactorFreshUntil(holders);
     if (!session) return res.status(401).json({ authenticated: false, ...base });
     return res.json({ authenticated: true, ...base, viaDiscord: Boolean(session.viaDiscord), expiresAt: new Date(session.expiresAt).toISOString(), terminal: terminalEnabled() });
   });
@@ -351,13 +361,16 @@ function registerHub(app, { getRequestSession, toPublicUser, getDatabase, activi
           ? "admin key"
           : null;
     if (!method) return res.status(403).json({ error: twoFactorEnabled() ? "Wrong key. Use the hub key or the admin key." : "Wrong hub key." });
-    if (twoFactorEnabled() && !checkTwoFactor(req.body?.code, "hub")) {
-      return res.status(403).json({ error: "Wrong or already used 2FA code.", twoFactor: true });
-    }
     // Named after the Discord account logged in on the site, if any.
     const account = getRequestSession(req);
+    // A code from the last minutes on this website login counts (admin settings, totp.cjs grace).
+    if (twoFactorEnabled() && !checkTwoFactor(req.body?.code, "hub", account?.session_id ? [`account:${account.session_id}`] : [])) {
+      return res.status(403).json({ error: "Wrong or already used 2FA code.", twoFactor: true });
+    }
     const identity = { name: account?.display_name || account?.username || "Owner", discordId: account?.discord_user_id ?? null, method };
     const token = sessions.create({ ...identity, ua: String(req.get("User-Agent") ?? "").slice(0, 160), ip: clientIp(req) });
+    // The new hub session starts within the grace time: the next critical action needs no new code.
+    if (twoFactorEnabled()) grantTwoFactor([`hub:${sessions.get(token)?.id}`, account?.session_id ? `account:${account.session_id}` : null]);
     res.cookie(COOKIE, token, cookieOptions());
     current.run(identity, () =>
       log({
@@ -411,7 +424,7 @@ function registerHub(app, { getRequestSession, toPublicUser, getDatabase, activi
         services,
         accounts,
         recentActivity: recent,
-        hub: { sessions: sessions.list().length, expiresAt: new Date(req.hub.expiresAt).toISOString(), terminal: terminalEnabled(), twoFactor: twoFactorEnabled() },
+        hub: { sessions: sessions.list().length, expiresAt: new Date(req.hub.expiresAt).toISOString(), terminal: terminalEnabled(), twoFactor: twoFactorEnabled(), twoFactorFreshUntil: twoFactorFreshUntil(hubHolders(req)) },
         profileApi: origin("PROFILE_API_ORIGIN") || null,
       };
     }),
@@ -555,7 +568,7 @@ function registerHub(app, { getRequestSession, toPublicUser, getDatabase, activi
 
   /* ----- settings (.env) ----- */
 
-  app.get("/hub/env", route(async () => ({ ...(await backup.envOverview()), canReveal: twoFactorEnabled(), twoFactor: twoFactorEnabled() })));
+  app.get("/hub/env", route(async (req) => ({ ...(await backup.envOverview()), canReveal: twoFactorEnabled(), twoFactor: twoFactorEnabled(), twoFactorFreshUntil: twoFactorFreshUntil(hubHolders(req)) })));
 
   app.post(
     "/hub/env",
@@ -563,7 +576,7 @@ function registerHub(app, { getRequestSession, toPublicUser, getDatabase, activi
     route(async (req) => {
       const values = req.body?.values ?? {};
       backup.validateEnv(values); // before the 2FA code is used up
-      if (twoFactorEnabled() && !checkTwoFactor(req.body?.code, "hub-env")) throw httpError(403, "Wrong or already used 2FA code.", { twoFactor: true });
+      if (twoFactorEnabled() && !checkTwoFactor(req.body?.code, "hub-env", hubHolders(req))) throw httpError(403, "Wrong or already used 2FA code.", { twoFactor: true });
       const names = Array.isArray(req.body?.remove) ? req.body.remove : [];
       const changed = Object.keys(values).length ? await backup.setEnv(values) : [];
       const removed = names.length ? await backup.removeEnv(names) : [];
@@ -584,7 +597,7 @@ function registerHub(app, { getRequestSession, toPublicUser, getDatabase, activi
     json,
     route(async (req) => {
       if (!twoFactorEnabled()) throw httpError(403, "Viewing values needs 2FA: run `pnpm 2fa:setup` on the server and set ADMIN_2FA=on.");
-      if (!checkTwoFactor(req.body?.code, "hub-reveal")) throw httpError(403, "Wrong or already used 2FA code.", { twoFactor: true });
+      if (!checkTwoFactor(req.body?.code, "hub-reveal", hubHolders(req))) throw httpError(403, "Wrong or already used 2FA code.", { twoFactor: true });
       const name = String(req.body?.name ?? "");
       const value = await backup.revealEnv(name);
       log({ level: "risky", action: "env-view", summary: `viewed the .env value ${name} in the hub`, target: { key: name } });
@@ -604,10 +617,15 @@ function registerHub(app, { getRequestSession, toPublicUser, getDatabase, activi
   });
 
   return {
+    /** Logged in to the hub (also the owner's Discord login without 2FA). */
+    isHub: (req) => Boolean(authenticate(req)),
     attach(server) {
       attachTerminalSockets(server, { authenticate, originAllowed: (value) => Boolean(value) && allowedOrigins.has(value) });
     },
   };
 }
 
-module.exports = { registerHub, HUB_COOKIE: COOKIE };
+/** The hub session of a request (hub key or owner login, with 2FA when on), else null. */
+const hubSessionOf = (req) => authenticate(req);
+
+module.exports = { registerHub, hubSessionOf, HUB_COOKIE: COOKIE };

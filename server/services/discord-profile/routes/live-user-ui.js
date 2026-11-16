@@ -1,7 +1,10 @@
+import { createRequire } from "node:module";
 import crypto from "node:crypto";
 import siteConfig from "../../../config.cjs";
 import totp from "../../totp.cjs";
 import { hubAccess, hubKeyConfigured } from "../hub-auth.js";
+
+const privacy = createRequire(import.meta.url)("../../privacy.cjs");
 
 /*
  * GET /<discord user id>-ui: a readable page for one Discord user (profile,
@@ -469,6 +472,7 @@ a:hover { text-decoration: underline; }
 export function registerLiveUserUiRoute(app) {
   app.get(/^\/(\d{17,20})-ui\/?$/, async (req, res) => {
     const id = req.params[0];
+    if (privacy.isHidden(id)) return res.status(404).send("Unknown user");
     const authenticated = Boolean(await hubAccess(req));
     res.setHeader("Cache-Control", "no-store, private");
     res.setHeader("Vary", "Cookie, Authorization");

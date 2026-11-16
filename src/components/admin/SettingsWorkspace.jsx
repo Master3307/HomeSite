@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { afterTwoFactor, useNeedsCode } from '/src/lib/twoFactorGrace'
 
 import { cleanCode } from '/src/lib/adminCode'
 import { CodeField } from '/src/components/admin/BackupCards'
@@ -288,7 +289,9 @@ function Ring({ value, total }) {
 
 /* ---------- workspace ---------- */
 
-export default function SettingsWorkspace({ api, twoFactor, onLocked, extraTabs = [], initialTab = 'overview' }) {
+export default function SettingsWorkspace({ api, twoFactor: twoFactorOn, onLocked, extraTabs = [], initialTab = 'overview' }) {
+  // A code shortly before (this login) is enough for a while: no field then.
+  const twoFactor = useNeedsCode(twoFactorOn)
   const [data, setData] = useState(null)
   const [version, setVersion] = useState(0)
   const [tab, setTab] = useState(initialTab)
@@ -360,9 +363,12 @@ export default function SettingsWorkspace({ api, twoFactor, onLocked, extraTabs 
   async function guarded(run) {
     setBusy(true)
     setError(null)
+    const typed = cleanCode(code)
     try {
       await run()
+      afterTwoFactor(null, typed)
     } catch (actionError) {
+      afterTwoFactor(actionError, typed)
       if (actionError.locked) onLocked?.()
       setError(actionError.message)
     } finally {

@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { afterTwoFactor, useNeedsCode } from '/src/lib/twoFactorGrace'
 
 import { analyzeBackup, applyBackup, exportBackup, loadBackupOverview, unlockAdmin } from '/src/lib/adminBackup'
 import { cleanCode } from '/src/lib/adminCode'
@@ -21,6 +22,40 @@ const CATEGORY_ICONS = {
   data: 'database',
   env: 'key',
   other: 'folder',
+}
+
+/* A step with a bar: done / total (files or bytes), or moving stripes with the seconds while the size isn't known. */
+function BackupProgress({ progress }) {
+  const [seconds, setSeconds] = useState(0)
+  const step = progress?.step
+  useEffect(() => {
+    if (!step) return undefined
+    const started = Date.now()
+    const timer = setInterval(() => setSeconds(Math.round((Date.now() - started) / 1000)), 1000)
+    return () => {
+      clearInterval(timer)
+      setSeconds(0)
+    }
+  }, [step])
+  if (!progress) return null
+  const known = progress.total > 0
+  const percent = known ? Math.min(100, Math.round((100 * progress.done) / progress.total)) : null
+  const amount = !known
+    ? `${seconds} s`
+    : progress.bytes
+      ? `${bytes(progress.done)} / ${bytes(progress.total)}`
+      : `${progress.done.toLocaleString()} / ${progress.total.toLocaleString()} files`
+  return (
+    <div className="bk-progress" role="status" aria-live="polite">
+      <span>
+        <strong>{progress.step}…</strong> {amount}
+        {known && ` · ${percent}%`}
+      </span>
+      <div className={`bk-progress__bar${known ? '' : ' bk-progress__bar--busy'}`}>
+        <span style={known ? { width: `${percent}%` } : undefined} />
+      </div>
+    </div>
+  )
 }
 
 function bytes(value) {
@@ -89,7 +124,9 @@ export function CodeField({ value, onChange, label }) {
 
 /* ---------- export ---------- */
 
-export function ExportCard({ adminKey, twoFactor, onLocked }) {
+export function ExportCard({ adminKey, twoFactor: twoFactorOn, onLocked }) {
+  // No code field while a code from a moment ago still counts (lib/twoFactorGrace.js).
+  const twoFactor = useNeedsCode(twoFactorOn)
   const { t, i18n } = useTranslation('backup')
   const [overview, setOverview] = useState(null)
   const [key, setKey] = useState(adminKey)
@@ -97,6 +134,7 @@ export function ExportCard({ adminKey, twoFactor, onLocked }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [done, setDone] = useState(null)
+  const [progress, setProgress] = useState(null)
 
   useEffect(() => {
     let active = true
@@ -118,13 +156,16 @@ export function ExportCard({ adminKey, twoFactor, onLocked }) {
     setBusy(true)
     setError(null)
     try {
-      setDone(await exportBackup(key, cleanCode(code)))
+      setDone(await exportBackup(key, cleanCode(code), setProgress))
+      afterTwoFactor(null, cleanCode(code))
       setCode('')
     } catch (exportError) {
+      afterTwoFactor(exportError, cleanCode(code))
       if (exportError.locked) onLocked()
       setError(exportError.message)
     } finally {
       setBusy(false)
+      setProgress(null)
     }
   }
 
@@ -196,6 +237,8 @@ export function ExportCard({ adminKey, twoFactor, onLocked }) {
         </button>
       </form>
 
+      <BackupProgress progress={progress} />
+
       {error && <p className="bk-error" role="alert">{error}</p>}
       {done && (
         <p className="bk-success" role="status">
@@ -221,7 +264,9 @@ function unitLabel(unit) {
   return unit.id.replace(/^server\/services\//, '')
 }
 
-export function ImportCard({ adminKey, twoFactor, onLocked }) {
+export function ImportCard({ adminKey, twoFactor: twoFactorOn, onLocked }) {
+  // No code field while a code from a moment ago still counts (lib/twoFactorGrace.js).
+  const twoFactor = useNeedsCode(twoFactorOn)
   const { t, i18n } = useTranslation('backup')
   const [file, setFile] = useState(null)
   const [key, setKey] = useState(adminKey)
@@ -230,6 +275,7 @@ export function ImportCard({ adminKey, twoFactor, onLocked }) {
   const [backupKey, setBackupKey] = useState('')
   const [plan, setPlan] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState(null)
   const [error, setError] = useState(null)
   const [report, setReport] = useState(null)
 
@@ -250,7 +296,7 @@ export function ImportCard({ adminKey, twoFactor, onLocked }) {
     setBusy(true)
     setError(null)
     try {
-      const next = await analyzeBackup(file, key, otherKey ? backupKey : '')
+      const next = await analyzeBackup(file, key, otherKey ? backupKey : '', setProgress)
       setPlan(next)
       setUnits({})
       setEnv({})
@@ -260,6 +306,7 @@ export function ImportCard({ adminKey, twoFactor, onLocked }) {
       setError(checkError.message)
     } finally {
       setBusy(false)
+      setProgress(null)
     }
   }
 
@@ -280,9 +327,11 @@ export function ImportCard({ adminKey, twoFactor, onLocked }) {
         env: Object.fromEntries((plan.env ?? []).map((entry) => [entry.key, envChoice(entry)])),
       }
       setReport(await applyBackup(plan.id, key, cleanCode(code), choices))
+      afterTwoFactor(null, cleanCode(code))
       setPlan(null)
       setCode('')
     } catch (applyError) {
+      afterTwoFactor(applyError, cleanCode(code))
       if (applyError.locked) onLocked()
       setError(applyError.message)
     } finally {
@@ -355,6 +404,8 @@ export function ImportCard({ adminKey, twoFactor, onLocked }) {
           </button>
         </form>
       )}
+
+      <BackupProgress progress={progress} />
 
       {plan && (
         <div className="bk-plan">
@@ -561,7 +612,10 @@ export function ImportCard({ adminKey, twoFactor, onLocked }) {
 }
 
 /* Opening the page: admin key, and the 2FA code when it is turned on. */
-export function UnlockCard({ twoFactor, onUnlocked }) {
+/* `keyless`: the site owner logged in with Discord, no admin key needed (only 2FA when on). */
+export function UnlockCard({ twoFactor: twoFactorOn, onUnlocked, keyless = false }) {
+  // No code field while a code from a moment ago still counts (lib/twoFactorGrace.js).
+  const twoFactor = useNeedsCode(twoFactorOn)
   const { t } = useTranslation('backup')
   const [key, setKey] = useState('')
   const [code, setCode] = useState('')
@@ -574,9 +628,11 @@ export function UnlockCard({ twoFactor, onUnlocked }) {
     setBusy(true)
     setError(null)
     try {
-      await unlockAdmin(key, cleanCode(code))
-      onUnlocked(key)
+      await unlockAdmin(keyless ? undefined : key, cleanCode(code))
+      afterTwoFactor(null, cleanCode(code))
+      onUnlocked(keyless ? '' : key)
     } catch (unlockError) {
+      afterTwoFactor(unlockError, cleanCode(code))
       setError(unlockError.message)
       setCode('')
       setBusy(false)
@@ -590,16 +646,20 @@ export function UnlockCard({ twoFactor, onUnlocked }) {
         <div>
           <h2>{t('unlock.title', { defaultValue: 'Unlock' })}</h2>
           <p>
-            {twoFactor
-              ? t('unlock.text2fa', { defaultValue: 'Enter the admin key and the current code from your authenticator app. The page stays unlocked for 15 minutes of activity.' })
-              : t('unlock.text', { defaultValue: 'Enter the admin key. Tip: turn on 2FA (pnpm 2fa:setup on the server, ADMIN_2FA=on) for extra safety.' })}
+            {keyless
+              ? twoFactor
+                ? t('unlock.textOwner2fa', { defaultValue: "You're signed in with your Discord account. Enter the current code from your authenticator app. The page stays unlocked for 15 minutes of activity." })
+                : t('unlock.textOwner', { defaultValue: "You're signed in with your Discord account. Tip: turn on 2FA (pnpm 2fa:setup on the server, ADMIN_2FA=on) for extra safety." })
+              : twoFactor
+                ? t('unlock.text2fa', { defaultValue: 'Enter the admin key and the current code from your authenticator app. The page stays unlocked for 15 minutes of activity.' })
+                : t('unlock.text', { defaultValue: 'Enter the admin key. Tip: turn on 2FA (pnpm 2fa:setup on the server, ADMIN_2FA=on) for extra safety.' })}
           </p>
         </div>
       </header>
       <form className="bk-actions" onSubmit={submit}>
-        <KeyField value={key} onChange={setKey} label={t('adminKey', { defaultValue: 'Admin key' })} autoFocus />
+        {!keyless && <KeyField value={key} onChange={setKey} label={t('adminKey', { defaultValue: 'Admin key' })} autoFocus />}
         {twoFactor && <CodeField value={code} onChange={setCode} />}
-        <button type="submit" className="bk-button" disabled={!key || busy || (twoFactor && cleanCode(code).length !== 6)}>
+        <button type="submit" className="bk-button" disabled={(!keyless && !key) || busy || (twoFactor && cleanCode(code).length !== 6)}>
           <span className="material-symbols-outlined" aria-hidden="true">lock_open</span>
           {busy ? t('unlock.checking', { defaultValue: 'Checking…' }) : t('unlock.button', { defaultValue: 'Unlock' })}
         </button>

@@ -46,18 +46,47 @@ export async function unlockAdmin(key, code) {
 
 export const isUnlocked = () => Boolean(unlockToken);
 
+/** The unlock header for other admin APIs used from the admin settings (Bongo Cat assets). */
+export const adminUnlockHeaders = () => (unlockToken ? { 'X-Admin-Unlock': unlockToken } : {});
+
 export async function loadBackupOverview() {
   return json(await get("/account/admin/backup/overview"));
 }
 
-/** Downloads the encrypted backup; returns { name, files, timeDifferences }. */
-export async function exportBackup(key, code) {
-  const response = await post("/account/admin/backup/export", { key, code });
-  if (!response.ok) await json(response);
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  const blob = await response.blob();
-  const name =
-    response.headers.get("Content-Disposition")?.match(/filename="([^"]+)"/)?.[1] ?? "homesite-backup.tar.gz.enc";
+/**
+ * Packs the backup on the server (a job, polled for its step), then
+ * downloads it. `onProgress({ step, done, total })` for the progress bar;
+ * total 0 = unknown. Returns { name, bytes, files, timeDifferences }.
+ */
+export async function exportBackup(key, code, onProgress = () => {}) {
+  onProgress({ step: "Starting", done: 0, total: 0 });
+  const { id } = await json(await post("/account/admin/backup/export/start", { key, code }));
+  let job;
+  for (;;) {
+    job = await json(await get(`/account/admin/backup/export/${encodeURIComponent(id)}`));
+    if (job.error) throw new Error(job.error);
+    if (job.ready) break;
+    onProgress({ step: job.step, done: job.done, total: job.total });
+    await wait(500);
+  }
+
+  const response = await get(`/account/admin/backup/export/${encodeURIComponent(id)}/download`);
+  if (!response.ok) await json(response);
+  const size = Number(response.headers.get("Content-Length") || 0);
+  const reader = response.body.getReader();
+  const parts = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    parts.push(value);
+    received += value.length;
+    onProgress({ step: "Downloading", done: received, total: size, bytes: true });
+  }
+  const blob = new Blob(parts, { type: "application/octet-stream" });
+  const name = job.name ?? "homesite-backup.tar.gz.enc";
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -67,25 +96,33 @@ export async function exportBackup(key, code) {
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
 
-  return {
-    name,
-    bytes: blob.size,
-    files: Number(response.headers.get("X-Backup-Files") || 0),
-    timeDifferences: Number(response.headers.get("X-Backup-Time-Differences") || 0),
-  };
+  return { name, bytes: blob.size, files: job.files ?? 0, timeDifferences: job.differences ?? 0 };
 }
 
-/** Uploads a backup and gets the import plan (nothing changes yet). */
-export async function analyzeBackup(file, key, backupKey = "") {
+/**
+ * Uploads a backup in parts (Cloudflare refuses single requests over
+ * 100 MB) and gets the import plan; nothing changes yet.
+ * `onProgress({ step, done, total, bytes })`.
+ */
+export async function analyzeBackup(file, key, backupKey = "", onProgress = () => {}) {
+  const adminHeaders = { "X-Admin-Key": key, ...(backupKey ? { "X-Backup-Key": backupKey } : {}) };
+  const start = await json(await accountFetch("/account/admin/backup/import/upload", { method: "POST", headers: withUnlock(adminHeaders) }));
+  const size = start.chunkSize || 32 * 1024 * 1024;
+  for (let offset = 0; offset < file.size; offset += size) {
+    onProgress({ step: "Uploading", done: offset, total: file.size, bytes: true });
+    await json(
+      await accountFetch(`/account/admin/backup/import/upload/${encodeURIComponent(start.id)}?offset=${offset}`, {
+        method: "PUT",
+        headers: withUnlock({ ...adminHeaders, "Content-Type": "application/octet-stream" }),
+        body: file.slice(offset, offset + size),
+      }),
+    );
+  }
+  onProgress({ step: "Decrypting and checking", done: 0, total: 0 });
   return json(
     await accountFetch("/account/admin/backup/import/analyze", {
       method: "POST",
-      headers: withUnlock({
-        "Content-Type": "application/octet-stream",
-        "X-Admin-Key": key,
-        ...(backupKey ? { "X-Backup-Key": backupKey } : {}),
-      }),
-      body: file,
+      headers: withUnlock({ ...adminHeaders, "X-Upload-Id": start.id }),
     }),
   );
 }
