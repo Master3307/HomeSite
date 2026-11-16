@@ -184,8 +184,8 @@
   color: var(--text-primary);
   background: var(--maps-glass);
   border-bottom: 1px solid var(--maps-line);
-  backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
 }
 
 .maps .leaflet-bar a:hover {
@@ -210,8 +210,8 @@
   color: var(--maps-muted);
   background: var(--maps-glass);
   border-radius: 8px 0 0 8px;
-  backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
 }
 
 .maps .leaflet-control-attribution a {
@@ -367,8 +367,8 @@
   background: var(--maps-glass);
   border-radius: var(--maps-radius);
   box-shadow: var(--maps-shadow);
-  backdrop-filter: blur(13px) saturate(1.2);
   -webkit-backdrop-filter: blur(13px) saturate(1.2);
+  backdrop-filter: blur(13px) saturate(1.2);
 }
 
 /* ---------- Side panel ---------- */
@@ -398,16 +398,16 @@
 .maps-panel:not(.maps-panel--open) {
   background: transparent;
   box-shadow: none;
-  backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   padding: 0;
 }
 
 .maps-panel:not(.maps-panel--open) .maps-search__form {
   background: var(--maps-glass);
   box-shadow: var(--maps-shadow);
-  backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
 }
 
 /* ---------- Search ---------- */
@@ -479,8 +479,8 @@
   background: var(--maps-glass-strong);
   border-radius: var(--maps-radius);
   box-shadow: var(--maps-shadow);
-  backdrop-filter: blur(13px);
   -webkit-backdrop-filter: blur(13px);
+  backdrop-filter: blur(13px);
   animation: maps-fade-in 0.15s ease-out;
 }
 
@@ -1907,15 +1907,15 @@ a.maps-btn--danger {
     padding: 0;
     background: transparent;
     box-shadow: none;
-    backdrop-filter: none;
     -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .maps-panel .maps-search__form {
     background: var(--maps-glass);
     box-shadow: var(--maps-shadow);
-    backdrop-filter: blur(13px);
     -webkit-backdrop-filter: blur(13px);
+    backdrop-filter: blur(13px);
   }
 
   /* The panel body becomes a bottom sheet over the pickers. */
@@ -1933,8 +1933,8 @@ a.maps-btn--danger {
     border-top: none;
     border-radius: 18px 18px 0 0;
     box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
     animation: maps-sheet-in 0.22s ease-out;
   }
 

@@ -1,4 +1,15 @@
 {
     "header": "Willkommen, {{user}}!",
-    "stranger": "Fremder"
+    "stranger": "Fremder",
+    "eyebrow": "Eine Bongo-Cat-Community",
+    "lead": "Ein kleiner Server voller Fans schwarzer Katzen, die vor allem in Bongo Cat abhängen. Hol dir den Lobby-Code, stimm über den Freitags-Dresscode dieser Woche ab und streichel die Katze, wenn du schon mal hier bist.",
+    "catTitle": "hehehehehe",
+    "catAlt": "Eine lustige Katze, die dich begrüßt",
+    "taps": {
+        "label": "Tipper und Streicheleinheiten für die Lobby-Katze",
+        "taps": "Tipper",
+        "pets": "Streicheln",
+        "byYou": "von dir",
+        "split": "{{members}} von Mitgliedern, {{guests}} von Gästen"
+    }
 }

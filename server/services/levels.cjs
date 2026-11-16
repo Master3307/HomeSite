@@ -81,6 +81,18 @@ function getUser(userId, username = "Unknown User") {
   This ensures profile and leaderboard rank display stays consistent with
   the level system even if a role was manually removed.
 */
+/** The stored user without creating one (profile views of people who never chatted). */
+function peekUser(userId) {
+  return users.get(String(userId)) ?? null;
+}
+
+/** A deleted account: its points and level are gone. */
+async function forgetUser(userId) {
+  users.delete(String(userId));
+  messageCooldowns.delete(String(userId));
+  await save();
+}
+
 function getRank(level) {
   const safeLevel = Math.max(
     0,
@@ -540,6 +552,8 @@ module.exports = {
   save,
 
   getUser,
+  peekUser,
+  forgetUser,
   getRank,
   getProgress,
   getLeaderboard,

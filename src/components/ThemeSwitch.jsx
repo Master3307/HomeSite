@@ -17,7 +17,8 @@ function themeProgress(theme) {
 
 export default function ThemeSwitch() {
   const { t } = useTranslation('themeswitch')
-  const { theme, setTheme } = useAccountSettings()
+  // `theme` is what shows; with "system" the device decides and the switch follows by itself.
+  const { theme, themeChoice, setTheme } = useAccountSettings()
 
   const buttonRef = useRef(null)
   const progressRef = useRef(themeProgress(theme))
@@ -37,10 +38,10 @@ export default function ThemeSwitch() {
 
     progressRef.current = progress
 
-    document.documentElement.style.setProperty(
-      '--theme-progress',
-      String(progress),
-    )
+    const root = document.documentElement
+    root.style.setProperty('--theme-progress', String(progress))
+    // 0 at either end, 1 halfway: the thumb squashes and stretches while it travels.
+    root.style.setProperty('--theme-stretch', String(4 * progress * (1 - progress)))
   }, [])
 
   const animateTo = useCallback((target) => {
@@ -49,23 +50,23 @@ export default function ThemeSwitch() {
     const start = progressRef.current
     const distance = Math.abs(target - start)
 
-    const reducedMotion = window.matchMedia(
-      '(prefers-reduced-motion: reduce)',
-    ).matches
-
-    if (reducedMotion || distance < 0.001) {
+    const root = document.documentElement
+    // Animations off (Settings → Look → None): the theme just switches.
+    if (root.classList.contains('motion-none') || distance < 0.001) {
       writeProgress(target)
       return
     }
+    const fewer = root.classList.contains('motion-reduce') || window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     const startedAt = performance.now()
-    const duration = 260
+    // Shorter for small distances (a drag released near the end), never sluggish; quick with fewer animations.
+    const duration = (200 + 140 * distance) * (fewer ? 0.5 : 1)
 
     function frame(now) {
       const elapsed = clamp((now - startedAt) / duration)
 
-      // One easing curve drives the entire page and toggle.
-      const eased = 1 - Math.pow(1 - elapsed, 3)
+      // One easing curve drives the entire page and toggle: moves at once, lands softly.
+      const eased = 1 - Math.pow(1 - elapsed, 4)
 
       writeProgress(start + (target - start) * eased)
 
@@ -224,7 +225,8 @@ export default function ThemeSwitch() {
         aria-label={t('darkMode', {
           defaultValue: 'Dark mode',
         })}
-        title={t(theme === 'dark' ? 'dark' : 'light')}
+        title={themeChoice === 'system' ? `${t(theme === 'dark' ? 'dark' : 'light')} (${t('system', { defaultValue: 'like my device' })})` : t(theme === 'dark' ? 'dark' : 'light')}
+        data-system={themeChoice === 'system' ? 'true' : undefined}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

@@ -8,6 +8,7 @@ import {
   submitLobbyCode,
 } from "/src/lib/lobby";
 import { catNotice } from "/src/lib/lobbyCat";
+import RichTextarea from "/src/components/RichTextarea";
 
 /*
  * "Submit a code" inside the lobby panel.
@@ -249,13 +250,14 @@ export default function LobbySubmit({ open, onClose, onPosted }) {
           <label htmlFor={ids.description}>
             {t("submit.descriptionLabel", { defaultValue: "Description (optional)" })}
           </label>
-          <textarea
+          <RichTextarea
             id={ids.description}
-            className="lobby-submit__input"
+            inputClassName="lobby-submit__input"
             rows={2}
             value={description}
-            onChange={(event) => setDescription(event.target.value)}
+            onChange={setDescription}
             maxLength={LOBBY_LIMITS.description}
+            mentions={kind === "user" || kind === "admin"}
           />
 
           {error && (

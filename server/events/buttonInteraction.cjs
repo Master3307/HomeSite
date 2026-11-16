@@ -508,6 +508,14 @@ module.exports = {
       return;
     }
 
+    // Member reports from the website (services/memberData.cjs).
+    if (interaction.customId.startsWith("report:")) {
+      await require("../services/memberData.cjs")
+        .handleReportButton(interaction)
+        .catch((error) => console.error("[Reports] Button failed:", error));
+      return;
+    }
+
     if (interaction.customId.startsWith("birthday-list:")) {
       try {
         const handled = await birthdayCommand.handleButton(interaction);

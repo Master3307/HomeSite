@@ -1,6 +1,7 @@
 const levels = require("../services/levels.cjs");
 const birthdayCelebrations = require("../services/birthdayCelebrations.cjs");
 const minecraftStatus = require("../services/minecraftStatus.cjs");
+const { startProfileRoles } = require("../services/profileRoles.cjs");
 const fdc = require("../interactions/slash/utility/fdc.cjs");
 const {
   registerEmojiSync,
@@ -26,6 +27,13 @@ module.exports = {
       console.log("[Birthday] Celebration scheduler initialized.");
     } catch (error) {
       console.error("[Birthday] Failed to initialize scheduler:", error);
+    }
+
+    try {
+      startProfileRoles(client);
+      console.log("[Profile roles] Moving onboarding profile roles of website accounts.");
+    } catch (error) {
+      console.error("[Profile roles] Failed to start:", error);
     }
 
     try {

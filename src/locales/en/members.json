@@ -1,0 +1,28 @@
+{
+    "about": {
+        "title": "About me",
+        "hobbiesLabel": "Hobbies",
+        "hobbiesHint": "Pick all that fit. They show on your profile.",
+        "genderLabel": "Gender",
+        "genderHint": "Optional. \"Rather not say\" shows nothing. Missing an option? Ask MrKoby07.",
+        "gender": {
+            "male": "Male",
+            "female": "Female",
+            "unsaid": "Rather not say"
+        },
+        "hobbies": {
+            "arts": "Arts & Crafts",
+            "coding": "Coding",
+            "games": "Games",
+            "music": "Music",
+            "photography": "Photography"
+        },
+        "hobbyText": {
+            "arts": "Drawing, crafting, making things.",
+            "coding": "Solving small problems in a lot of text.",
+            "games": "A real gamer.",
+            "music": "Listening or making it yourself.",
+            "photography": "Taking pictures of things."
+        }
+    }
+}

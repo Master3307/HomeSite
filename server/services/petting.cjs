@@ -1273,7 +1273,28 @@ async function getUserAchievements(userId) {
   });
 }
 
+/** A deleted account: its stats, pairs, combos, achievements and pets are gone. */
+async function forgetUser(userId) {
+  const id = String(userId);
+  const mentions = (value) => JSON.stringify(value).includes(id);
+  return enqueueMutation(async () => {
+    const [stats, pairs, combos, achievements, pets] = await Promise.all([
+      loadStats(),
+      loadJson(PAIRS_FILE),
+      loadJson(COMBOS_FILE),
+      loadJson(ACHIEVEMENTS_FILE),
+      loadJsonArray(PETS_FILE),
+    ]);
+    delete stats[id];
+    delete achievements[id];
+    for (const key of Object.keys(pairs)) if (key.includes(id) || mentions(pairs[key])) delete pairs[key];
+    for (const key of Object.keys(combos)) if (key.includes(id) || mentions(combos[key])) delete combos[key];
+    await saveAll({ stats, pairs, combos, achievements, pets: pets.filter((entry) => !mentions(entry)) });
+  });
+}
+
 module.exports = {
+  forgetUser,
   PET_COOLDOWN_MS,
   COMBO_START_WINDOW_MS,
   COMBO_TIMEOUT_MS,

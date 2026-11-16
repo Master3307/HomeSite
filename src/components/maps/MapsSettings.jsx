@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CssSettings } from '../dash/DashSettings.jsx'
+import { CssSettings } from '../CssSettings.jsx'
 import { BASE_LAYERS } from '../../lib/maps/layers.js'
 import {
   MAP_THEMES,

@@ -1,27 +1,31 @@
 import { Helmet } from 'react-helmet-async'
-import { Trans, useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
 import CultCard from '/src/components/cult/Card'
-import Login from '/src/components/Login'
 import BongoCat from '/src/components/cult/BongoCat'
 import Voting from '/src/components/cult/Voting'
+import { CultFooter, CultHeader } from '/src/components/cult/CultShell'
+import LoginNotice from '/src/components/cult/LoginNotice'
+import { BirthdayBanner } from '/src/components/cult/Birthdays'
 import DiscordWidget from '/src/components/DiscordWidget'
 
 import {
   getDiscordPicSrc,
   getFaviconSrc,
 } from '/src/lib/seasonalAssets'
-import { siteConfig } from '/src/lib/siteConfig'
+import { useSectionHash } from '/src/lib/sectionHash'
 import '/src/styles/cult.css'
+import '/src/styles/members.css'
 
 export default function Home() {
-  const { t } = useTranslation('title')
 
   const title = 'Cult of Black Cats'
   const description = 'Be a part of the Cult of black Cats!'
 
   const discordPicSrc = getDiscordPicSrc()
   const faviconSrc = getFaviconSrc()
+
+  // #welcome (top), #game, #fdc follow the scroll position.
+  useSectionHash(['welcome', 'game', 'fdc'])
 
   useEffect(() => {
     document.body.classList.add('cult-page')
@@ -52,18 +56,13 @@ export default function Home() {
         <meta name="twitter:image" content={discordPicSrc} />
       </Helmet>
 
-      <header className="head">
-        <h1 className="tit">
-          <strong>{t('cult')}</strong>
-        </h1>
-      </header>
+      <CultHeader heading />
 
-      <div className="login-below-head">
-        <Login />
-      </div>
 
       <main className="cult">
-        <section className="cult-hero">
+        <LoginNotice />
+        <BirthdayBanner />
+        <section id="welcome" className="cult-hero">
           <CultCard />
           <DiscordWidget />
         </section>
@@ -72,21 +71,7 @@ export default function Home() {
         <Voting />
       </main>
 
-      {siteConfig.sourceRepoUrl && (
-        <footer className="cult-footer">
-          <p>
-            <span className="material-symbols-outlined" aria-hidden="true">code</span>
-            <Trans
-              ns="cult"
-              i18nKey="footer.source"
-              defaults="View source on <0>GitHub</0>"
-              components={[
-                <a key="github" href={siteConfig.sourceRepoUrl} target="_blank" rel="noopener noreferrer" />,
-              ]}
-            />
-          </p>
-        </footer>
-      )}
+      <CultFooter />
     </>
   )
 }

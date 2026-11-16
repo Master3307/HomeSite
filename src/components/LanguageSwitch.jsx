@@ -35,7 +35,8 @@ function EmojiText({ text }) {
   )
 }
 
-export default function LanguageSwitch() {
+/** `inline`: inside a page (settings), opening downwards; else the corner switch. */
+export default function LanguageSwitch({ inline = false }) {
   const { t } = useTranslation('language')
   const { language, setLanguage } = useAccountSettings()
   const pickerRef = useRef(null)
@@ -86,7 +87,7 @@ export default function LanguageSwitch() {
   }, [])
 
   return (
-    <div className="picker language-picker">
+    <div className={`picker language-picker${inline ? ' picker--inline' : ''}`}>
       <details ref={pickerRef} className="picker-dropdown">
         <summary
           className="picker-trigger"

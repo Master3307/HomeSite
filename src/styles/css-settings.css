@@ -1,0 +1,80 @@
+/* The custom CSS editor (components/CssSettings.jsx), used in /maps settings. */
+.css-settings {
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+.css-settings h3 {
+  margin: 0;
+}
+.css-settings__hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+.css-settings__code {
+  display: block;
+  width: 100%;
+  min-height: 260px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
+  border-radius: 12px;
+  outline: none;
+  background: color-mix(in srgb, var(--bg-secondary) 30%, transparent);
+  color: var(--text-primary);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  resize: vertical;
+  tab-size: 2;
+}
+.css-settings__code:focus {
+  border-color: var(--accent);
+}
+.css-settings__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.css-settings__check input {
+  accent-color: var(--accent);
+}
+.css-settings__warning {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, #e5484d 18%, transparent);
+}
+.css-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.css-settings__actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+.css-settings__actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.css-settings__actions .css-settings__quiet {
+  background: transparent;
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 18%, transparent);
+}
+.css-settings__actions .css-settings__danger {
+  background: transparent;
+  color: #ff8a8d;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #e5484d 50%, transparent);
+}

@@ -1,0 +1,94 @@
+{
+    "title": "Einstellungen",
+    "savedAccount": "In deinem Konto gespeichert, auf jedem Gerät.",
+    "savedBrowser": "In diesem Browser gespeichert. Melde dich an, um sie auf jedem Gerät zu haben.",
+    "look": {
+        "title": "Aussehen",
+        "text": "Wie die Seite für dich aussieht.",
+        "theme": "Design",
+        "light": "Hell",
+        "dark": "Dunkel",
+        "system": "System",
+        "colour": "Deine Farbe",
+        "defaultColour": "Die eigene Farbe der Seite",
+        "anyColour": "Beliebige Farbe",
+        "motion": "Animationen",
+        "motionAll": "Alle",
+        "motionFewer": "Weniger",
+        "motionNone": "Keine",
+        "motionHint": {
+            "full": "Alles bewegt sich wie vorgesehen.",
+            "reduce": "Nur kleine, schnelle Animationen. Nichts wiederholt sich oder hüpft.",
+            "none": "Gar keine Animationen: jede Änderung passiert sofort."
+        }
+    },
+    "time": {
+        "title": "Sprache & Zeit",
+        "language": "Sprache",
+        "clock": "Uhr (gerade {{time}})",
+        "clockAuto": "Automatisch",
+        "clock12": "12 Stunden",
+        "clock24": "24 Stunden",
+        "zone": "Zeitzone"
+    },
+    "analytics": {
+        "title": "Statistiken",
+        "text": "Unser Host Cloudflare fügt der Seite anonyme Seitenstatistiken hinzu (Cloudflare Web Analytics).",
+        "block": "Cloudflare-Statistiken blockieren",
+        "blockText": "Über deine Besuche wird nichts an Cloudflares Statistiken geschickt. Gilt ab dem nächsten Laden der Seite.",
+        "what": "Was gesammelt wird",
+        "reload": "Jetzt neu laden"
+    },
+    "profile": {
+        "title": "Profil & Privatsphäre",
+        "text": "Wer dein Profil sieht.",
+        "mine": "Mein Profil",
+        "avatar": "Bongo-Avatar",
+        "privacy": "Wie wir mit deinen Daten umgehen"
+    },
+    "notify": {
+        "title": "Benachrichtigungen",
+        "text": "Worüber du informiert wirst, auf der Seite (die Glocke) und per E-Mail (braucht eine bestätigte E-Mail).",
+        "site": "Auf der Seite",
+        "email": "Per E-Mail",
+        "moderation": "Über mein Konto",
+        "moderationText": "Verwarnungen und andere Entscheidungen der Moderatoren.",
+        "fdc": "Meine Katzen-Designs",
+        "fdcText": "Wenn ein Editor auf ein Katzen-Design antwortet, das du vorgeschlagen hast.",
+        "birthdays": "Geburtstage",
+        "birthdaysText": "Wenn eine Geburtstagsfeier auf einen anderen Tag rutscht.",
+        "reports": "Neue Meldungen",
+        "reportsText": "Jede neue Meldung über Mitglieder (du bist im Team)."
+    },
+    "login": {
+        "title": "E-Mail & Anmeldung",
+        "text": "Melde dich auch mit E-Mail und Passwort an, geschützt mit einem zweiten Schritt. Discord-Anmeldungen bleiben gleich."
+    },
+    "account": {
+        "title": "Dein Konto",
+        "text": "Profil, Privatsphäre, E-Mail und das Löschen deiner Daten brauchen eine Anmeldung.",
+        "login": "Mit Discord anmelden"
+    },
+    "css": {
+        "title": "Eigenes CSS",
+        "text": "Deine eigenen Styles für die ganze Seite (und die E-Mails, die sie dir schickt). Hänge ?nocss an eine Adresse, um sie für diese Seite auszuschalten.",
+        "use": "Mein CSS verwenden",
+        "apply": "Übernehmen",
+        "count": "{{count}} / {{max}}"
+    },
+    "delete": {
+        "section": "Mein Konto löschen",
+        "sectionText": "Entfernt dein Konto und alle Daten über dich, sofort.",
+        "open": "Mein Konto und meine Daten löschen",
+        "title": "Das löscht dein Konto und alles über dich, jetzt sofort.",
+        "profile": "Dein Profil, Bongo-Avatar, Einstellungen und Vorlagen",
+        "stats": "Deine Level, Punkte, Streicheleinheiten, Tipper, Geburtstag und andere Werte",
+        "mentions": "Die Nachrichten des Bots, die dich erwähnen",
+        "log": "Alles über dich im Aktivitätsprotokoll, außer einer Zeile, dass du dein Konto gelöscht hast",
+        "final": "Das kann nicht rückgängig gemacht werden. Meldungen über dein Konto bleiben (siehe <privacy>Datenschutz</privacy>). Du kannst dich später wieder anmelden, fängst aber bei null an.",
+        "type": "Tippe <word>DELETE</word> zum Bestätigen",
+        "keep": "Konto behalten",
+        "deleting": "Wird gelöscht…",
+        "confirm": "Alles löschen"
+    }
+}

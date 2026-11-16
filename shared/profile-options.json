@@ -1,0 +1,14 @@
+{
+  "gender": [
+    { "id": "male", "emoji": "👦" },
+    { "id": "female", "emoji": "👩" },
+    { "id": "unsaid", "emoji": "🤐" }
+  ],
+  "hobbies": [
+    { "id": "arts", "emoji": "🎨" },
+    { "id": "coding", "emoji": "💻" },
+    { "id": "games", "emoji": "🕹️" },
+    { "id": "music", "emoji": "🎶" },
+    { "id": "photography", "emoji": "📷" }
+  ]
+}

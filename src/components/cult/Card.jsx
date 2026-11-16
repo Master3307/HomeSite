@@ -4,6 +4,25 @@ import { getDiscordPicSrc } from '/src/lib/seasonalAssets'
 import { getCurrentAccount } from '/src/lib/account'
 
 /** Hero intro of /cult: greeting and a short pitch. */
+/* "Welcome, {{user}}!" in any language, with the name in bold. */
+const NAME_MARK = '\u2063NAME\u2063'
+function WelcomeLine({ text, name }) {
+  const at = text.indexOf(NAME_MARK)
+  if (at < 0) return text.replace(NAME_MARK, name)
+  const tail = text.slice(at + NAME_MARK.length)
+  return (
+    <>
+      {text.slice(0, at)}
+      {/* The name and the punctuation right after it ("!") never part. */}
+      <span className="cult-hero__keep">
+        <strong className="cult-hero__name">{name}</strong>
+        {tail.match(/^\S*/)[0]}
+      </span>
+      {tail.replace(/^\S*/, '')}
+    </>
+  )
+}
+
 export default function Cult() {
   const { t } = useTranslation('cult')
 
@@ -31,21 +50,20 @@ export default function Cult() {
       <img
         src={discordPicSrc}
         className="discordpic"
-        title="hehehehehe"
-        alt="Some Funny Cat Greeting You"
+        title={t('catTitle')}
+        alt={t('catAlt')}
         width="128"
         height="128"
       />
 
       <p className="cult-eyebrow">
-        {t('eyebrow', { defaultValue: 'A Discord community' })}
+        {t('eyebrow')}
       </p>
-      <h2 className="cult-hero__title">{t('header', { user })}</h2>
+      <h2 className="cult-hero__title">
+        <WelcomeLine text={t('header', { user: NAME_MARK })} name={user} />
+      </h2>
       <p className="cult-lead">
-        {t('lead', {
-          defaultValue:
-            'A small server of black cat enjoyers who mostly hang out in Bongo Cat. Grab the lobby code, vote on this week’s Friday Dress Code, and pet the cat while you’re here.',
-        })}
+        {t('lead')}
       </p>
     </div>
   )

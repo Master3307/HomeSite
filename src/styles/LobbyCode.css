@@ -451,3 +451,20 @@
     display: none;
   }
 }
+
+a.discord-mention {
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+a.discord-mention:hover,
+a.discord-mention:focus-visible {
+  color: #fff;
+  background: color-mix(in srgb, #5865f2 75%, transparent);
+}
+.discord-emoji-inline {
+  width: 1.375em;
+  height: 1.375em;
+  vertical-align: -0.3em;
+  object-fit: contain;
+}

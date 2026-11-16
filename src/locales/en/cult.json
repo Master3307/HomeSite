@@ -9,5 +9,14 @@
     },
     "footer": {
         "source": "View source on <0>GitHub</0>"
+    },
+    "catTitle": "hehehehehe",
+    "catAlt": "A funny cat greeting you",
+    "taps": {
+        "label": "Taps and pets on the lobby cat",
+        "taps": "taps",
+        "pets": "pets",
+        "byYou": "by you",
+        "split": "{{members}} by members, {{guests}} by guests"
     }
 }

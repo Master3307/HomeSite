@@ -1,0 +1,28 @@
+{
+    "about": {
+        "title": "Über mich",
+        "hobbiesLabel": "Hobbys",
+        "hobbiesHint": "Wähl alle, die passen. Sie stehen auf deinem Profil.",
+        "genderLabel": "Geschlecht",
+        "genderHint": "Freiwillig. „Möchte ich nicht sagen“ zeigt nichts an. Fehlt eine Option? Frag MrKoby07.",
+        "gender": {
+            "male": "Männlich",
+            "female": "Weiblich",
+            "unsaid": "Möchte ich nicht sagen"
+        },
+        "hobbies": {
+            "arts": "Kunst & Basteln",
+            "coding": "Programmieren",
+            "games": "Spiele",
+            "music": "Musik",
+            "photography": "Fotografie"
+        },
+        "hobbyText": {
+            "arts": "Zeichnen, basteln, Dinge machen.",
+            "coding": "Kleine Probleme in viel Text lösen.",
+            "games": "Ein echter Gamer.",
+            "music": "Hören oder selbst machen.",
+            "photography": "Dinge fotografieren."
+        }
+    }
+}

@@ -1,0 +1,94 @@
+{
+    "title": "Settings",
+    "savedAccount": "Saved to your account, on every device.",
+    "savedBrowser": "Saved in this browser. Log in to keep them on every device.",
+    "look": {
+        "title": "Look",
+        "text": "How the site looks for you.",
+        "theme": "Theme",
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System",
+        "colour": "Your colour",
+        "defaultColour": "The site's own colour",
+        "anyColour": "Any colour",
+        "motion": "Animations",
+        "motionAll": "All",
+        "motionFewer": "Fewer",
+        "motionNone": "None",
+        "motionHint": {
+            "full": "Everything moves as intended.",
+            "reduce": "Only small, quick animations. Nothing loops or bounces.",
+            "none": "No animations at all: every change happens at once."
+        }
+    },
+    "time": {
+        "title": "Language & time",
+        "language": "Language",
+        "clock": "Clock (now {{time}})",
+        "clockAuto": "Automatic",
+        "clock12": "12 hours",
+        "clock24": "24 hours",
+        "zone": "Time zone"
+    },
+    "analytics": {
+        "title": "Analytics",
+        "text": "Our host, Cloudflare, adds anonymous page statistics (Cloudflare Web Analytics) to the site.",
+        "block": "Block Cloudflare analytics",
+        "blockText": "Nothing about your visits is sent to Cloudflare's statistics. Works from the next page load.",
+        "what": "What it collects",
+        "reload": "Reload now"
+    },
+    "profile": {
+        "title": "Profile & privacy",
+        "text": "Who sees your profile.",
+        "mine": "My profile",
+        "avatar": "Bongo avatar",
+        "privacy": "How we handle your data"
+    },
+    "notify": {
+        "title": "Notifications",
+        "text": "What you get told about, on the site (the bell) and by email (needs a verified email).",
+        "site": "On the site",
+        "email": "By email",
+        "moderation": "About my account",
+        "moderationText": "Warnings and other decisions of the moderators.",
+        "fdc": "My cat designs",
+        "fdcText": "When an editor answers a cat design you suggested.",
+        "birthdays": "Birthdays",
+        "birthdaysText": "When a birthday celebration moves to another day.",
+        "reports": "New reports",
+        "reportsText": "Every new member report (you are staff)."
+    },
+    "login": {
+        "title": "Email & login",
+        "text": "Log in with your email and a password too, protected with a second step. Discord logins don't change."
+    },
+    "account": {
+        "title": "Your account",
+        "text": "Profile, privacy, email and deleting your data need a login.",
+        "login": "Log in with Discord"
+    },
+    "css": {
+        "title": "Custom CSS",
+        "text": "Your own styles for the whole site (and the emails it sends you). Add ?nocss to any address to turn them off for that page.",
+        "use": "Use my CSS",
+        "apply": "Apply",
+        "count": "{{count}} / {{max}}"
+    },
+    "delete": {
+        "section": "Delete my account",
+        "sectionText": "Removes your account and all data about you, immediately.",
+        "open": "Delete my account and data",
+        "title": "This deletes your account and everything about you, right now.",
+        "profile": "Your profile, bongo avatar, settings and presets",
+        "stats": "Your levels, points, pets, taps, birthday and other stats",
+        "mentions": "The bot's messages that mention you",
+        "log": "Everything about you in the activity log, except one line saying that you deleted your account",
+        "final": "It can't be undone. Reports about your account are kept (see <privacy>Privacy</privacy>). You can log in again later, but you start from zero.",
+        "type": "Type <word>DELETE</word> to confirm",
+        "keep": "Keep my account",
+        "deleting": "Deleting…",
+        "confirm": "Delete everything"
+    }
+}

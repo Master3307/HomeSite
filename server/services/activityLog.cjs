@@ -7,9 +7,12 @@ const crypto = require("node:crypto");
  * website (FDC polls, archive edits, votes from elsewhere, recycling bin,
  * emojis, …), with the exact changes.
  *
- * Append-only: there is no route or function to edit or delete entries.
- * Every entry stores the hash of the one before it, so changing or removing
- * a line in the file by hand breaks the chain, and `verify` reports it.
+ * Append-only: there is no route to edit or delete entries. Every entry
+ * stores the hash of the one before it, so changing or removing a line in
+ * the file by hand breaks the chain, and `verify` reports it. The one
+ * exception is `forget`: when someone deletes their account, everything
+ * about them is removed and the chain is rebuilt (privacy policy), leaving
+ * only the entry that they deleted it.
  *
  * Levels of an entry:
  *   risky   deleting things, creating polls, editing ended polls, …
@@ -143,12 +146,45 @@ function createActivityLog(directory) {
     return { intact: true, entries: seq };
   }
 
+  /**
+   * Erases a deleted account: every entry by them or mentioning their
+   * Discord ID goes, the rest is renumbered and re-chained, then one entry
+   * records that `name` deleted their account (with no ID).
+   */
+  function forget(discordId, name, summary = "deleted their account and all their data") {
+    const id = String(discordId);
+    const run = queue.then(async () => {
+      const kept = (await readAll()).filter((entry) => !entry.broken && entry.actor?.discordId !== id && !JSON.stringify(entry).includes(id));
+      let prev = GENESIS;
+      let seq = 0;
+      const lines = [];
+      for (const original of kept) {
+        seq += 1;
+        const entry = { ...original, seq, prev };
+        delete entry.hash;
+        entry.hash = hashOf(entry);
+        prev = entry.hash;
+        lines.push(JSON.stringify(entry));
+      }
+      await fs.mkdir(directory, { recursive: true });
+      const temporary = `${FILE}.${process.pid}.tmp`;
+      await fs.writeFile(temporary, lines.length ? `${lines.join("\n")}\n` : "", "utf8");
+      await fs.rename(temporary, FILE);
+      tail = { seq, hash: prev };
+      return kept.length;
+    });
+    queue = run.catch((error) => console.error("[Activity] Could not erase an account from the log:", error));
+    return run.then(() =>
+      append({ level: "risky", action: "account-deleted", actor: { discordId: null, name: String(name ?? "Someone") }, summary }),
+    );
+  }
+
   /** Forget the cached last entry (after the file was replaced by an import). */
   function reset() {
     tail = null;
   }
 
-  return { append, list, verify, reset };
+  return { append, list, verify, reset, forget };
 }
 
 module.exports = { createActivityLog };

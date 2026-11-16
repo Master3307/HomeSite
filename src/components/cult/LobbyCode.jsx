@@ -4,11 +4,13 @@ import { ACCOUNT_API_URL } from "/src/lib/account";
 import DiscordText from "/src/components/DiscordText";
 import LobbySubmit, { LobbySubmitToggle } from "./LobbySubmit";
 import { catNotice } from "/src/lib/lobbyCat";
+import { useScrollToParam, useUrlParam } from "/src/lib/urlState";
 import "/src/styles/LobbyCode.css";
 
 // The account API asks the bot for avatars and mention names; the static
 // file written by /lobby-code is the fallback when it is unreachable.
 const LOBBY_SOURCES = [`${ACCOUNT_API_URL}/discord/lobby`, "/lobby-code.json"];
+const REFRESH_INTERVAL = 30_000;
 
 function getUpdatedDate(lobby) {
   if (!lobby) {
@@ -91,7 +93,11 @@ export default function LobbyCode() {
   const [copyStatus, setCopyStatus] = useState("idle");
   // Bumped after a code is posted from the website, to reload right away.
   const [reloadToken, setReloadToken] = useState(0);
-  const [submitOpen, setSubmitOpen] = useState(false);
+  // ?lobby=submit: the "submit a code" form.
+  const [lobbyParam, setLobbyParam] = useUrlParam("lobby");
+  const submitOpen = lobbyParam === "submit";
+  const setSubmitOpen = (open) => setLobbyParam(open ? "submit" : null);
+  useScrollToParam("lobby", ["lobby"]);
 
   const copyTimerRef = useRef(null);
   const mountedRef = useRef(false);
@@ -245,7 +251,7 @@ export default function LobbyCode() {
     typeof lobby?.description === "string" ? lobby.description.trim() : "";
 
   return (
-    <section className="lobby-panel" aria-label={t("currentLobbyLabel")}>
+    <section id="lobby" className="lobby-panel" aria-label={t("currentLobbyLabel")}>
       <div className="lobby-panel__head">
         <label className="lobby-label" htmlFor="lobby-code-field">
           {t("lobbyCodeLabel")}

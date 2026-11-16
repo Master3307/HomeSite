@@ -1,8 +1,47 @@
+/*
+ * The cult's colours, dark (night, dried blood) and light (old paper, wine,
+ * rose dusk). Both are mixed by --theme-progress (theme-transition.css:
+ * 0 light, 1 dark), which the theme switch animates, so changing the theme
+ * fades smoothly like on the main page.
+ */
 body.cult-page {
-  --bg-secondary: #1a0b0b !important;
+  --cult-dark: calc(var(--theme-progress, 1) * 100%);
+
+  --bg-secondary: color-mix(in oklab, #f4ebe6, #1a0b0b var(--cult-dark)) !important;
+  --bg-primary: color-mix(in oklab, #c79c95, #470404 var(--cult-dark)) !important;
+  /* The cult's red is the original one (#b60b0b, hover #610000) in both themes. */
   --accent: #b60b0b !important;
+  /* The cult's own accent, also when a member picked their colour (settings swatch). */
+  --accent-default: #b60b0b;
   --accent-hover: #610000 !important;
-  --bg-primary: #470404 !important;
+  --text-primary: color-mix(in oklab, #2c1618, #eeeeee var(--cult-dark)) !important;
+  --text-secondary: color-mix(in oklab, #73504f, #c0bfe6 var(--cult-dark)) !important;
+}
+
+/* Greens ("Active", online, winners, "Saved"): deep on paper, bright at night. */
+body.cult-page {
+  --cult-green: color-mix(in oklab, #1f7a4d, #6be0a4 var(--cult-dark));
+}
+body.cult-page :is(.lobby-live, .members-ok, .lobby-submit__done > .material-symbols-outlined) {
+  color: var(--cult-green);
+}
+body.cult-page :is(.dw, .discord-widget, .fdc) {
+  --dw-online: var(--cult-green);
+  --fdc-success: var(--cult-green);
+  --fdc-success-soft: color-mix(in srgb, var(--cult-green) 16%, transparent);
+}
+
+/* Inputs and wells: a soft dent in light, a dark well at night. */
+body.cult-page .lobby-panel {
+  --lobby-field: color-mix(in oklab, rgb(122 64 60 / 0.1), rgb(0 0 0 / 0.28) var(--cult-dark));
+}
+
+:root[data-theme="light"] body.cult-page {
+  color-scheme: light;
+}
+
+body.cult-page .cult-eyebrow {
+  color: color-mix(in oklab, var(--accent), color-mix(in srgb, var(--accent) 45%, white) var(--cult-dark));
 }
 
 /* =========================================================
@@ -63,7 +102,7 @@ body.cult-page {
 .cult-hero__title {
   margin: 0;
   font-size: clamp(2rem, 4.5vw, 3rem);
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
@@ -162,29 +201,40 @@ body.cult-page {
   position: relative;
   min-width: 0;
   height: 190px;
-  overflow: hidden;
-  /* Matches the bottom edge of Steam's panel, which shades left to right. */
-  background: linear-gradient(to right, rgb(55 63 76), rgb(43 49 61));
-  border-radius: 13px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+  /* The shadow follows the panel and the install button (no box around them). */
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.24));
 }
 
-/* Shifted up 1px to hide Steam's light top line, which the rounded corners
-   would otherwise cut off at both ends. */
+/*
+ * Steam's panel is 166px tall with the install button hanging below its
+ * bottom-right corner; the rest of the iframe is empty. The mask keeps the
+ * panel with 13px rounded corners plus the button, nothing else. Shifted
+ * up 1px to hide Steam's light top line.
+ */
 .cult-steam-widget iframe {
+  --r: 13px;
+  --h: 166px;
   display: block;
   width: 100%;
   height: 191px;
   margin-top: -1px;
   border: 0;
   -webkit-mask:
-    linear-gradient(#000 0 0) left 0 top 0 / 100% 145px,
-    linear-gradient(#000 0 0) left 0 top 0 / calc(100% - 10px) 166px,
+    linear-gradient(#000 0 0) left var(--r) top 0 / calc(100% - 2 * var(--r)) var(--h),
+    linear-gradient(#000 0 0) left 0 top var(--r) / 100% calc(var(--h) - 2 * var(--r)),
+    radial-gradient(circle at var(--r) var(--r), #000 calc(var(--r) - 0.5px), transparent var(--r)) left 0 top 0 / calc(2 * var(--r)) calc(2 * var(--r)),
+    radial-gradient(circle at var(--r) var(--r), #000 calc(var(--r) - 0.5px), transparent var(--r)) right 0 top 0 / calc(2 * var(--r)) calc(2 * var(--r)),
+    radial-gradient(circle at var(--r) var(--r), #000 calc(var(--r) - 0.5px), transparent var(--r)) left 0 top calc(var(--h) - 2 * var(--r)) / calc(2 * var(--r)) calc(2 * var(--r)),
+    radial-gradient(circle at var(--r) var(--r), #000 calc(var(--r) - 0.5px), transparent var(--r)) right 0 top calc(var(--h) - 2 * var(--r)) / calc(2 * var(--r)) calc(2 * var(--r)),
     linear-gradient(#000 0 0) right 10px top 151px / 107px 36px;
   -webkit-mask-repeat: no-repeat;
   mask:
-    linear-gradient(#000 0 0) left 0 top 0 / 100% 145px,
-    linear-gradient(#000 0 0) left 0 top 0 / calc(100% - 10px) 166px,
+    linear-gradient(#000 0 0) left var(--r) top 0 / calc(100% - 2 * var(--r)) var(--h),
+    linear-gradient(#000 0 0) left 0 top var(--r) / 100% calc(var(--h) - 2 * var(--r)),
+    radial-gradient(circle at var(--r) var(--r), #000 calc(var(--r) - 0.5px), transparent var(--r)) left 0 top 0 / calc(2 * var(--r)) calc(2 * var(--r)),
+    radial-gradient(circle at var(--r) var(--r), #000 calc(var(--r) - 0.5px), transparent var(--r)) right 0 top 0 / calc(2 * var(--r)) calc(2 * var(--r)),
+    radial-gradient(circle at var(--r) var(--r), #000 calc(var(--r) - 0.5px), transparent var(--r)) left 0 top calc(var(--h) - 2 * var(--r)) / calc(2 * var(--r)) calc(2 * var(--r)),
+    radial-gradient(circle at var(--r) var(--r), #000 calc(var(--r) - 0.5px), transparent var(--r)) right 0 top calc(var(--h) - 2 * var(--r)) / calc(2 * var(--r)) calc(2 * var(--r)),
     linear-gradient(#000 0 0) right 10px top 151px / 107px 36px;
   mask-repeat: no-repeat;
 }
@@ -317,6 +367,8 @@ body.cult-page {
 
 .cult-page .cult-footer {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
   justify-content: center;
   padding: 8px 16px 40px;
 }
@@ -345,4 +397,113 @@ body.cult-page {
 
 .cult-page .cult-footer a:hover {
   text-decoration-color: currentColor;
+}
+
+/*
+ * /cult: the widgets and labels around the content aren't text to copy
+ * (the Discord card and its counts, the lobby panel's labels, poll option
+ * names and results, voters, the create form's labels and pickers).
+ * The lobby code field and inputs stay selectable.
+ */
+.cult :is(.dw-head, .dw-title, .dw-stats, .dw-faces, .dw-join, .dw-note, .cult-eyebrow, .lobby-panel__head, .lobby-label, .lobby-live, .lobby-meta, .lobby-updater-name, .fdc-poll__header, .fdc-poll__footer, .fdc-poll__date, .fdc-poll__remaining, .fdc-poll__total, .fdc-option, .fdc-voters, .fdc-create__label, .fdc-optional, .fdc-create__ends, .fdc-segmented, .emoji-picker, .fdc-button, .fdc-link, .fdc-section-header) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* "Run by …" in the footer (CultShell.jsx). */
+.cult-page .cult-footer .cult-owners {
+  flex-basis: 100%;
+  justify-content: center;
+}
+.cult-page .cult-footer .cult-owners__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  vertical-align: middle;
+}
+.cult-page .cult-footer .cult-owners__link img {
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* The title bar links back to /cult (CultShell.jsx). */
+.cult-home-link {
+  color: inherit;
+  text-decoration: none;
+}
+.cult-home-link:hover {
+  opacity: 0.85;
+}
+.cult-home-link:focus-visible {
+  border-radius: 8px;
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+/* Sub pages: the bar is a <p> (the page has its own h1); it looks like the main page's h1. */
+.head p.tit {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 2em;
+  font-weight: 700;
+  line-height: normal;
+}
+
+/* The name in the welcome line stands out. */
+.cult-hero__title .cult-hero__name {
+  font-weight: 800;
+}
+/* With the game's fonts: the line in Noto Sans, the name in Nunito ExtraBold. */
+.bongo-fonts .cult .cult-hero .cult-hero__title {
+  font-family: "Bongo Noto Sans", "Google Sans Flex", sans-serif;
+  font-weight: 400;
+}
+.bongo-fonts .cult .cult-hero .cult-hero__name {
+  font-family: "Bongo Nunito", "Google Sans Flex", sans-serif;
+  font-weight: 800;
+}
+
+/* "Welcome, ~ Name ~!": the name and its "!" wrap as one piece. */
+.cult-hero__keep {
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* Taps and pets: right under the lobby cat, hanging from the line it sits on. */
+.cult-page .cult-section--game > .tap-counter {
+  position: absolute;
+  top: 10px;
+  /* Left of the cat (its drums hang below the line). */
+  right: calc(24px + 130px + 14px);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  margin: 0;
+  font-size: 0.8rem;
+  user-select: none;
+}
+.cult-page .cult-section--game > .tap-counter p {
+  gap: 5px;
+}
+.cult-page .cult-section--game > .tap-counter .material-symbols-outlined {
+  font-size: 16px;
+}
+.cult-page .cult-section--game > .tap-counter .tap-counter__mine {
+  margin-left: 2px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  background: color-mix(in srgb, var(--text-primary) 9%, transparent);
+}
+@media (max-width: 760px) {
+  .cult-page .cult-section--game > .tap-counter {
+    top: 6px;
+    right: calc(16px + 110px + 10px);
+    flex-direction: row;
+    gap: 10px;
+  }
+  .cult-page .cult-section--game > .tap-counter .tap-counter__mine {
+    display: none;
+  }
 }

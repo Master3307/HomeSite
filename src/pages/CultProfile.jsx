@@ -1,68 +1,29 @@
-import { Helmet } from 'react-helmet-async'
-import { useTranslation } from 'react-i18next'
-import { useEffect } from 'react'
-import Login from '/src/components/Login'
-import {
-  getDiscordPicSrc,
-  getFaviconSrc,
-} from '/src/lib/seasonalAssets'
-import '/src/styles/cult.css'
+import { useEffect, useState } from 'react'
+import { Navigate } from 'react-router'
 
-const SITE_URL = 'https://home.master3307.org'
+import CultShell from '/src/components/cult/CultShell'
+import { getCurrentAccount } from '/src/lib/account'
+import { profilePath } from '/src/lib/members'
 
-export default function Home() {
-  const { t } = useTranslation('title')
-
-  const title = 'Cult of Black Cats'
-  const description = 'Be a part of the Cult of black Cats!'
-  const url = `${SITE_URL}/`
-
-  const discordPicSrc = getDiscordPicSrc()
-  const faviconSrc = getFaviconSrc()
-
-  // Open Graph and Twitter require full absolute URLs.
-  const image = `${SITE_URL}${discordPicSrc}`
-
+/** /cult/profile: your own profile (log in first). */
+export default function CultProfile() {
+  const [account, setAccount] = useState(undefined)
   useEffect(() => {
-    document.body.classList.add('cult-page')
-
-    return () => {
-      document.body.classList.remove('cult-page')
-    }
+    getCurrentAccount()
+      .then(setAccount)
+      .catch(() => setAccount(null))
   }, [])
-
+  if (account === undefined) return null
+  if (account && !account.local && !account.isAdminSession) return <Navigate to={profilePath(account)} replace />
   return (
-    <>
-      <Helmet>
-        <title>{title}</title>
-        <meta name="description" content={description} />
-
-        <link rel="icon" type="image/webp" href={faviconSrc} />
-
-        <meta property="og:type" content="website" />
-        <meta property="og:title" content={title} />
-        <meta property="og:description" content={description} />
-        <meta property="og:url" content={url} />
-        <meta property="og:image" content={image} />
-        <meta property="og:image:type" content="image/webp" />
-        <meta property="og:site_name" content="Cult of Black Cats" />
-
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={title} />
-        <meta name="twitter:description" content={description} />
-        <meta name="twitter:image" content={image} />
-      </Helmet>
-
-      <header className="head">
-        <h1 className="tit">
-          <strong>{t('cult')}</strong>
-        </h1>
-      </header>
-
-      <div className="login-below-head">
-        <Login />
+    <CultShell title="Profile">
+      <div className="members-locked">
+        <span className="material-symbols-outlined" aria-hidden="true">
+          login
+        </span>
+        <h1>Log in to see your profile</h1>
+        <p>Use the Log in button at the top.</p>
       </div>
-
-    </>
+    </CultShell>
   )
 }
