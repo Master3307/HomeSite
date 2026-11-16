@@ -69,12 +69,8 @@ have fun and enjoy!
           // Keep the dark default if storage is unavailable.
         }
 
+        // The full state; CSS derives --theme-progress from it (theme-transition.css).
         root.setAttribute("data-theme", theme);
-
-        root.style.setProperty(
-          "--theme-progress",
-          theme === "dark" ? "1" : "0",
-        );
       })();
     </script>
 

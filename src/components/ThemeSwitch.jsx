@@ -33,6 +33,19 @@ export default function ThemeSwitch() {
     }
   }, [])
 
+  /*
+   * The page always shows a full state: data-theme (light | dark) sets
+   * --theme-progress in CSS (theme-transition.css). Only while the toggle
+   * is slid or animates is an in-between value written on the page, and
+   * it is removed again the moment the switch lands.
+   */
+  const settle = useCallback((target) => {
+    progressRef.current = target
+    const root = document.documentElement
+    root.style.removeProperty('--theme-progress')
+    root.style.removeProperty('--theme-stretch')
+  }, [])
+
   const writeProgress = useCallback((value) => {
     const progress = clamp(value)
 
@@ -53,7 +66,7 @@ export default function ThemeSwitch() {
     const root = document.documentElement
     // Animations off (Settings → Look → None): the theme just switches.
     if (root.classList.contains('motion-none') || distance < 0.001) {
-      writeProgress(target)
+      settle(target)
       return
     }
     const fewer = root.classList.contains('motion-reduce') || window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -74,38 +87,37 @@ export default function ThemeSwitch() {
         animationRef.current = requestAnimationFrame(frame)
       } else {
         animationRef.current = null
-        writeProgress(target)
+        settle(target)
       }
     }
 
     animationRef.current = requestAnimationFrame(frame)
-  }, [stopAnimation, writeProgress])
+  }, [stopAnimation, writeProgress, settle])
 
+  // Start (and leave) on the full state; never pick up a half-way value.
   useLayoutEffect(() => {
-    const root = document.documentElement
-
-    const existingProgress = Number.parseFloat(
-      root.style.getPropertyValue('--theme-progress'),
-    )
-
-    writeProgress(
-      Number.isFinite(existingProgress)
-        ? existingProgress
-        : themeProgress(root.getAttribute('data-theme')),
-    )
-
-    return stopAnimation
-  }, [stopAnimation, writeProgress])
-
-  // Also animate changes coming from account settings.
-  useEffect(() => {
-    if (!gestureRef.current) {
-      animateTo(themeProgress(theme))
+    settle(themeProgress(document.documentElement.getAttribute('data-theme')))
+    return () => {
+      stopAnimation()
+      settle(themeProgress(document.documentElement.getAttribute('data-theme')))
     }
-  }, [theme, animateTo])
+  }, [stopAnimation, settle])
+
+  // Changes from elsewhere (settings page, account, another tab, the device) switch at once.
+  const fromToggleRef = useRef(false)
+  useEffect(() => {
+    if (gestureRef.current) return
+    if (fromToggleRef.current) {
+      fromToggleRef.current = false
+      return
+    }
+    stopAnimation()
+    settle(themeProgress(theme))
+  }, [theme, stopAnimation, settle])
 
   function commitTheme(nextTheme) {
     // Animate even when returning to the already-selected theme.
+    if (nextTheme !== theme) fromToggleRef.current = true
     animateTo(themeProgress(nextTheme))
 
     if (nextTheme !== theme) {
