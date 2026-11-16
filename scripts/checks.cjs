@@ -574,6 +574,10 @@ async function main() {
       path.join(distDirectory, "404.html"),
       "dist/404.html is missing.",
     );
+    assertFile(
+      path.join(distDirectory, "serve.json"),
+      "dist/serve.json is missing (scripts/create-404.cjs writes the route rewrites).",
+    );
 
     let fileCount = 0;
 
