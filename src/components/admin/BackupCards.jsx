@@ -2,13 +2,12 @@ import { useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { afterTwoFactor, useNeedsCode } from '/src/lib/twoFactorGrace'
 
-import { analyzeBackup, applyBackup, exportBackup, loadBackupOverview, unlockAdmin } from '/src/lib/adminBackup'
+import { analyzeBackup, applyBackup, exportBackup, loadBackupOverview } from '/src/lib/adminBackup'
 import { cleanCode } from '/src/lib/adminCode'
 import '/src/styles/backup.css'
 
 /*
- * Backup & restore cards and the unlock form of /admin-settings (admin
- * account only): export everything that isn't in git as one encrypted
+ * Backup & restore cards of the hub's settings: export everything that isn't in git as one encrypted
  * archive and import it again (merge from another machine or restore an
  * older state). See server/services/backup.cjs.
  */
@@ -191,7 +190,7 @@ export function ExportCard({ adminKey, twoFactor: twoFactorOn, onLocked }) {
               <span className="material-symbols-outlined" aria-hidden="true">{CATEGORY_ICONS[group] ?? 'folder'}</span>
               <strong>{t(`categories.${group}`, { defaultValue: group })}</strong>
               <small>
-                {t('files', { defaultValue: '{{count}} files', count: info.files })} · {bytes(info.bytes)}
+                {t('files', { defaultValue_one: '{{count}} file', defaultValue: '{{count}} files', count: info.files })} · {bytes(info.bytes)}
               </small>
             </li>
           ))}
@@ -230,11 +229,13 @@ export function ExportCard({ adminKey, twoFactor: twoFactorOn, onLocked }) {
           label={t('adminKey', { defaultValue: 'Admin key' })}
           hint={t('export.keyHint', { defaultValue: 'Needed again for safety. It is also the password of the file (user name "admin").' })}
         />
-        {twoFactor && <CodeField value={code} onChange={setCode} />}
-        <button type="submit" className="bk-button" disabled={!key || busy || (twoFactor && cleanCode(code).length !== 6)}>
-          <span className="material-symbols-outlined" aria-hidden="true">download</span>
-          {busy ? t('export.working', { defaultValue: 'Packing everything…' }) : t('export.button', { defaultValue: 'Download backup' })}
-        </button>
+        <div className="bk-actions__go">
+          {twoFactor && <CodeField value={code} onChange={setCode} />}
+          <button type="submit" className="bk-button" disabled={!key || busy || (twoFactor && cleanCode(code).length !== 6)}>
+            <span className="material-symbols-outlined" aria-hidden="true">download</span>
+            {busy ? t('export.working', { defaultValue: 'Packing everything…' }) : t('export.button', { defaultValue: 'Download backup' })}
+          </button>
+        </div>
       </form>
 
       <BackupProgress progress={progress} />
@@ -415,7 +416,7 @@ export function ImportCard({ adminKey, twoFactor: twoFactorOn, onLocked }) {
               {t('import.from', { defaultValue: 'Backup from {{time}}', time: when(plan.manifest.exportedAt, i18n.language) })}
             </span>
             {plan.manifest.host && <span><span className="material-symbols-outlined" aria-hidden="true">dns</span>{plan.manifest.host}</span>}
-            <span><span className="material-symbols-outlined" aria-hidden="true">inventory_2</span>{t('files', { defaultValue: '{{count}} files', count: plan.manifest.files })}</span>
+            <span><span className="material-symbols-outlined" aria-hidden="true">inventory_2</span>{t('files', { defaultValue_one: '{{count}} file', defaultValue: '{{count}} files', count: plan.manifest.files })}</span>
             <span className="bk-ok"><span className="material-symbols-outlined" aria-hidden="true">verified</span>{t('import.verified', { defaultValue: 'All checksums match' })}</span>
           </div>
 
@@ -611,60 +612,3 @@ export function ImportCard({ adminKey, twoFactor: twoFactorOn, onLocked }) {
   )
 }
 
-/* Opening the page: admin key, and the 2FA code when it is turned on. */
-/* `keyless`: the site owner logged in with Discord, no admin key needed (only 2FA when on). */
-export function UnlockCard({ twoFactor: twoFactorOn, onUnlocked, keyless = false }) {
-  // No code field while a code from a moment ago still counts (lib/twoFactorGrace.js).
-  const twoFactor = useNeedsCode(twoFactorOn)
-  const { t } = useTranslation('backup')
-  const [key, setKey] = useState('')
-  const [code, setCode] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(null)
-
-  async function submit(event) {
-    event.preventDefault()
-    if (busy) return
-    setBusy(true)
-    setError(null)
-    try {
-      await unlockAdmin(keyless ? undefined : key, cleanCode(code))
-      afterTwoFactor(null, cleanCode(code))
-      onUnlocked(keyless ? '' : key)
-    } catch (unlockError) {
-      afterTwoFactor(unlockError, cleanCode(code))
-      setError(unlockError.message)
-      setCode('')
-      setBusy(false)
-    }
-  }
-
-  return (
-    <section className="bk-card bk-card--unlock">
-      <header>
-        <span className="bk-card__icon material-symbols-outlined" aria-hidden="true">lock</span>
-        <div>
-          <h2>{t('unlock.title', { defaultValue: 'Unlock' })}</h2>
-          <p>
-            {keyless
-              ? twoFactor
-                ? t('unlock.textOwner2fa', { defaultValue: "You're signed in with your Discord account. Enter the current code from your authenticator app. The page stays unlocked for 15 minutes of activity." })
-                : t('unlock.textOwner', { defaultValue: "You're signed in with your Discord account. Tip: turn on 2FA (pnpm 2fa:setup on the server, ADMIN_2FA=on) for extra safety." })
-              : twoFactor
-                ? t('unlock.text2fa', { defaultValue: 'Enter the admin key and the current code from your authenticator app. The page stays unlocked for 15 minutes of activity.' })
-                : t('unlock.text', { defaultValue: 'Enter the admin key. Tip: turn on 2FA (pnpm 2fa:setup on the server, ADMIN_2FA=on) for extra safety.' })}
-          </p>
-        </div>
-      </header>
-      <form className="bk-actions" onSubmit={submit}>
-        {!keyless && <KeyField value={key} onChange={setKey} label={t('adminKey', { defaultValue: 'Admin key' })} autoFocus />}
-        {twoFactor && <CodeField value={code} onChange={setCode} />}
-        <button type="submit" className="bk-button" disabled={(!keyless && !key) || busy || (twoFactor && cleanCode(code).length !== 6)}>
-          <span className="material-symbols-outlined" aria-hidden="true">lock_open</span>
-          {busy ? t('unlock.checking', { defaultValue: 'Checking…' }) : t('unlock.button', { defaultValue: 'Unlock' })}
-        </button>
-      </form>
-      {error && <p className="bk-error" role="alert">{error}</p>}
-    </section>
-  )
-}

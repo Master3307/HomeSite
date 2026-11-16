@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Component, Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link, useNavigate, useParams } from 'react-router'
 
@@ -17,7 +17,6 @@ import Commands from '/src/components/hub/Commands'
 import Logs from '/src/components/hub/Logs'
 import Database from '/src/components/hub/Database'
 import '/src/styles/backup.css'
-import '/src/styles/admin-settings.css'
 import '/src/styles/hub.css'
 import SiteLogo from '/src/components/SiteLogo'
 
@@ -97,16 +96,14 @@ function Login({ session, onDone }) {
         <h1>Hub</h1>
         <p>
           {!session.configured
-            ? 'The hub is locked until HUB_KEY is set on the server (pnpm setup:gui → Hub), then restart the account API.'
+            ? 'The hub is locked until HUB_KEY (or at least ADMIN_KEY) is set on the server (pnpm setup:gui), then restart the account API.'
             : viaDiscord
               ? `You're signed in with Discord as ${session.discordOwner.name}. Enter a code from your authenticator app to continue.`
-              : session.twoFactor
-                ? 'Unlock with the hub key or the admin key, plus a code from your authenticator app. Signed in on the site with your Discord, only the code is needed.'
-                : 'Unlock with the hub key, or sign in on the site with your Discord.'}
+              : `Unlock with ${!session.hubKeySet ? 'the admin key' : session.adminKeyAllowed ? 'the hub key or the admin key' : 'the hub key'}${session.twoFactor ? ', plus a code from your authenticator app' : ''}. Signed in on the site with your Discord, ${session.twoFactor ? 'only the code is needed' : 'no key is needed'}.`}
         </p>
         {!viaDiscord && (
           <>
-            <label htmlFor="hub-key">{session.twoFactor ? 'Hub key or admin key' : 'Hub key'}</label>
+            <label htmlFor="hub-key">{!session.hubKeySet ? 'Admin key' : session.adminKeyAllowed ? 'Hub key or admin key' : 'Hub key'}</label>
             <input
               id="hub-key"
               className="hub-input"
@@ -229,7 +226,7 @@ function Welcome({ overview, session, onLogout }) {
 
 /* ---------- settings ---------- */
 
-function HubSettings({ twoFactor, onLocked }) {
+function HubSettings({ twoFactor, onLocked, section, onSection, navTarget }) {
   const api = useMemo(
     () => ({
       load: () => hubGet('/hub/env'),
@@ -238,7 +235,7 @@ function HubSettings({ twoFactor, onLocked }) {
     }),
     [],
   )
-  // Everything that was on /admin-settings: backups too (the hub login counts as unlocked).
+  // Everything that was on the old /admin-settings page: backups too (the hub login counts as unlocked).
   const extraTabs = useMemo(
     () => [
       {
@@ -256,36 +253,81 @@ function HubSettings({ twoFactor, onLocked }) {
     ],
     [twoFactor, onLocked],
   )
-  const initialTab = typeof window !== 'undefined' && ['#backup', '#bongo'].includes(window.location.hash) ? window.location.hash.slice(1) : 'overview'
-  return <SettingsWorkspace api={api} twoFactor={twoFactor} onLocked={onLocked} extraTabs={extraTabs} initialTab={initialTab} />
+  // The open section is in the address (/hub/settings/backup), so links and the login keep it.
+  return <SettingsWorkspace api={api} twoFactor={twoFactor} onLocked={onLocked} extraTabs={extraTabs} tab={section || 'overview'} onTabChange={onSection} navTarget={navTarget} />
+}
+
+/* ---------- a tab that breaks ---------- */
+
+/*
+ * One tab failing (unexpected data from the bot, a bug) shows what went
+ * wrong in its place; the sidebar and every other tab keep working.
+ */
+class TabBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  componentDidCatch(error) {
+    console.error('[Hub] A tab failed:', error)
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <div className="hub-card hub-broken" role="alert">
+        <Icon name="error" />
+        <div>
+          <h2>This part of the hub ran into a problem</h2>
+          <p>{String(this.state.error?.message ?? this.state.error)}</p>
+          <button type="button" className="hub-button" onClick={() => this.setState({ error: null })}>
+            Try again
+          </button>
+        </div>
+      </div>
+    )
+  }
 }
 
 /* ---------- navigation ---------- */
 
-function NavLinks({ tab, onPick, only }) {
+/* `slot`: the settings sections nest under "Settings" in the sidebar (filled by the workspace). */
+function NavLinks({ tab, onPick, only, slot = null }) {
   return TABS.filter((entry) => !only || only(entry)).map((entry) => (
-    <Link
-      key={entry.id}
-      to={tabPath(entry.id)}
-      onClick={onPick}
-      className={`hub-nav__item${tab === entry.id ? ' is-active' : ''}`}
-      aria-current={tab === entry.id ? 'page' : undefined}
-    >
-      <Icon name={entry.icon} />
-      <span>{entry.title}</span>
-    </Link>
+    <Fragment key={entry.id}>
+      <Link
+        to={tabPath(entry.id)}
+        onClick={onPick}
+        className={`hub-nav__item${tab === entry.id ? ' is-active' : ''}`}
+        aria-current={tab === entry.id ? 'page' : undefined}
+      >
+        <Icon name={entry.icon} />
+        <span>{entry.title}</span>
+      </Link>
+      {entry.id === 'settings' && tab === 'settings' && slot}
+    </Fragment>
   ))
 }
 
 /* ---------- page ---------- */
 
 export default function Hub() {
-  const { tab: tabParam } = useParams()
+  const { tab: tabParam, section: sectionParam } = useParams()
   const navigate = useNavigate()
   const tab = TABS.some((entry) => entry.id === tabParam) ? tabParam : 'overview'
+  // /hub/settings/<section>; old links used #backup / #bongo.
+  const legacyHash = typeof window !== 'undefined' ? window.location.hash.slice(1) : ''
+  const settingsSection = tab === 'settings' ? sectionParam || (/^[a-z0-9-]+$/i.test(legacyHash) ? legacyHash : null) : null
   const [session, setSession] = useState(null)
   const [sessionError, setSessionError] = useState(null)
   const [moreOpen, setMoreOpen] = useState(false)
+  // The sidebar spot the settings sections go into (null while Settings isn't open).
+  const [settingsNav, setSettingsNav] = useState(null)
 
   const checkSession = useCallback(async () => {
     try {
@@ -338,7 +380,15 @@ export default function Hub() {
       case 'database':
         return <Database onLocked={onLocked} />
       case 'settings':
-        return <HubSettings twoFactor={session.twoFactor} onLocked={onLocked} />
+        return (
+          <HubSettings
+            twoFactor={session.twoFactor}
+            onLocked={onLocked}
+            section={settingsSection}
+            navTarget={settingsNav}
+            onSection={(id) => navigate(id && id !== 'overview' ? `/hub/settings/${id}` : '/hub/settings')}
+          />
+        )
       default:
         return <Overview data={data} error={overview.error} onOpenTab={(id) => navigate(tabPath(id))} />
     }
@@ -379,7 +429,7 @@ export default function Hub() {
           <span>Hub</span>
         </div>
         <nav className="hub-nav__list" aria-label="Hub">
-          <NavLinks tab={tab} />
+          <NavLinks tab={tab} slot={<div ref={setSettingsNav} className="hub-nav__sub" />} />
         </nav>
         <div className="hub-nav__foot">
           <Link to="/" className="hub-nav__item hub-nav__item--small">
@@ -436,7 +486,7 @@ export default function Hub() {
             <h1>{current.title}</h1>
           </header>
         )}
-        {content()}
+        <TabBoundary key={tab}>{content()}</TabBoundary>
       </main>
     </div>
   )

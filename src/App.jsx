@@ -1,7 +1,15 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Routes, Route } from 'react-router'
+import { Navigate, Routes, Route, useParams } from 'react-router'
 import Home from './pages/Home.jsx'
 import Error from './pages/Error.jsx'
+
+/* /admin-settings[/<section>] and its old #hash links: the same place in the hub's settings. */
+function OldSettings() {
+  const { section } = useParams()
+  const hash = typeof window !== 'undefined' ? window.location.hash.slice(1) : ''
+  const target = section || hash
+  return <Navigate to={`/hub/settings${/^[a-z0-9-]+$/i.test(target) ? `/${target}` : ''}`} replace />
+}
 
 // Pages other than the home and error page load on demand, which keeps the
 // main bundle small (Leaflet + the maps UI in particular are big).
@@ -15,7 +23,6 @@ const Cult = lazy(() => import('./pages/Cult.jsx'))
 const CultProfile = lazy(() => import('./pages/CultProfile.jsx'))
 const Maps = lazy(() => import('./pages/Maps.jsx'))
 const Activity = lazy(() => import('./pages/Activity.jsx'))
-const AdminSettings = lazy(() => import('./pages/AdminSettings.jsx'))
 const Hub = lazy(() => import('./pages/Hub.jsx'))
 const CultUser = lazy(() => import('./pages/CultUser.jsx'))
 const CultSettings = lazy(() => import('./pages/CultSettings.jsx'))
@@ -51,10 +58,13 @@ export default function App() {
         <Route path="/cult/birthdays" element={<CultBirthdays />} />
         <Route path="/maps" element={<Maps />} />
         <Route path="/activity" element={<Activity />} />
-        <Route path="/admin-settings" element={<AdminSettings />} />
         <Route path="/hub" element={<Hub />} />
         <Route path="/hub/:tab" element={<Hub />} />
-        <Route path="/backup" element={<Navigate to="/hub/settings#backup" replace />} />
+        <Route path="/hub/:tab/:section" element={<Hub />} />
+        {/* The old admin page lives in the hub's settings now (sections in the address). */}
+        <Route path="/admin-settings" element={<OldSettings />} />
+        <Route path="/admin-settings/:section" element={<OldSettings />} />
+        <Route path="/backup" element={<Navigate to="/hub/settings/backup" replace />} />
         <Route path="*" element={<Error forcedCode={404} />} />
 
       </Routes>

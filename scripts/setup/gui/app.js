@@ -233,7 +233,7 @@
       <ul class="next-steps">${data.nextSteps
         .map((step) => `<li><code>${esc(step.command)}</code><span class="muted">${esc(step.text)}</span><button class="icon-button" title="Copy" data-copy="${esc(step.command)}" style="margin-left:auto"><span class="icon">content_copy</span></button></li>`)
         .join("")}</ul>
-      <p class="muted">After changing settings, restart the matching service. Website settings need a new build. Once the site runs, the admin account can change everything on <code>/admin-settings</code>.</p>
+      <p class="muted">After changing settings, restart the matching service. Website settings need a new build. Once the site runs, the admin account can change everything in the hub's settings (<code>/hub/settings</code>).</p>
     </section>`;
   }
 

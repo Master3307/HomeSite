@@ -38,7 +38,7 @@ const DEFAULT_LANGUAGE = 'en'
 // ---------------------------------------------------------------------------
 
 /** Routes that never show up in search results. */
-const EXCLUDED_ROUTES = new Set(['*', '/error', '/filter', '/activity', '/backup', '/admin-settings', '/hub', '/hub/:tab'])
+const EXCLUDED_ROUTES = new Set(['*', '/error', '/filter', '/activity', '/backup', '/admin-settings', '/admin-settings/:section', '/hub', '/hub/:tab', '/hub/:tab/:section'])
 
 /** Components that are UI chrome rather than page content. */
 const EXCLUDED_COMPONENTS = new Set([

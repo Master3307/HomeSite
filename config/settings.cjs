@@ -3,7 +3,7 @@
  *
  * This list is the single source of truth for:
  *   - .env.example                (pnpm env:example writes it from here)
- *   - the admin settings page     (/admin-settings, server/services/backup.cjs)
+ *   - the hub's settings         (/hub/settings, server/services/backup.cjs)
  *   - the setup wizard            (pnpm setup:cli / pnpm setup:gui)
  *   - runtime defaults            (server/config.cjs, vite.config.js)
  *
@@ -922,7 +922,7 @@ const SETTINGS = [
     feature: "twofa",
     label: "Two-factor codes",
     description:
-      "When on, the admin login and critical actions (opening admin settings, backups, .env changes) need a 6-digit code from an authenticator app. Run `pnpm 2fa:setup` and `pnpm 2fa:verify` first.",
+      "When on, the admin login and critical actions (unlocking the hub, backups, .env changes) need a 6-digit code from an authenticator app. Run `pnpm 2fa:setup` and `pnpm 2fa:verify` first.",
     type: "toggle",
     importance: "recommended",
     default: "off",
@@ -935,7 +935,7 @@ const SETTINGS = [
     feature: "twofa",
     label: "2FA grace time (minutes)",
     description:
-      "After a correct code, the same login needs no new code for this long (admin settings, the hub, backups). 0 asks every time; at most 120. Another browser always needs a code.",
+      "After a correct code, the same login needs no new code for this long (the hub, backups, .env changes). 0 asks every time; at most 120. Another browser always needs a code.",
     type: "number",
     importance: "optional",
     default: "10",
@@ -971,7 +971,7 @@ const SETTINGS = [
     feature: "hub",
     label: "Hub key",
     description:
-      "Private key for /hub and for looking up Discord users on the profile API (/<user id>, /<user id>-ui, /history). With 2FA on, the hub also asks for a code. Scripts can send it as the X-Hub-Key header. At least 24 characters; empty locks the hub and those lookups completely. Not the admin key.",
+      "Private key for /hub and for looking up Discord users on the profile API (/<user id>, /<user id>-ui, /history). With 2FA on, the hub also asks for a code. Scripts can send it as the X-Hub-Key header. At least 24 characters. Empty: the hub opens only with the admin key (+ 2FA when on), so a fresh server can still be set up there, and the Discord user lookups stay locked. Not the admin key.",
     type: "secret",
     importance: "recommended",
     default: "",

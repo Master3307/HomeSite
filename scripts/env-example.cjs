@@ -36,7 +36,7 @@ function render() {
     "#",
     "# Easiest: run `pnpm setup:gui` (or `pnpm setup:cli` in a terminal). It walks",
     "# you through everything, with guides, and writes .env for you. Once the site",
-    "# runs, the admin account can change all of this on /admin-settings.",
+    "# runs, the admin account can change all of this in the hub (/hub/settings).",
     "#",
     "# By hand: copy this file to .env and fill in what you need. Empty values use",
     "# the default or switch that feature off; nothing has to be changed in code.",

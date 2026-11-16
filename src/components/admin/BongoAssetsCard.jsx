@@ -6,8 +6,8 @@ import '/src/styles/backup.css'
 /*
  * Settings → Bongo Cat assets: how to rip the game with AssetRipper, the
  * folder upload (first import or a game update), the installed version and
- * removing everything. Used by /admin-settings and the hub's settings.
- * `getHeaders()`: extra auth headers (the admin unlock on /admin-settings).
+ * removing everything. Part of the hub's settings.
+ * `getHeaders()`: extra auth headers, optional (the hub login is the cookie).
  */
 
 const ASSETRIPPER = 'https://github.com/AssetRipper/AssetRipper/releases'

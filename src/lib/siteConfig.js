@@ -1,6 +1,6 @@
 /*
  * Public settings from .env, baked in at build time (vite.config.js,
- * `public: true` in config/settings.cjs). Change them on /admin-settings or
+ * `public: true` in config/settings.cjs). Change them in the hub's settings (/hub/settings) or
  * with `pnpm setup:gui`, then rebuild the site.
  */
 const config = import.meta.env.SITE_CONFIG ?? {};

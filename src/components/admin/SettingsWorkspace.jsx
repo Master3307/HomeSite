@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { afterTwoFactor, useNeedsCode } from '/src/lib/twoFactorGrace'
 
 import { cleanCode } from '/src/lib/adminCode'
@@ -8,14 +9,14 @@ import '/src/styles/settings-workspace.css'
 /*
  * Every .env setting as a form (config/settings.cjs describes them), in
  * clickable tabs: an overview, one tab per section, custom values and any
- * extra tabs (backup & restore on /admin-settings).
+ * extra tabs (backup & restore, Bongo Cat assets in /hub).
  *
  * Each kind of setting gets its own look: switches as tiles, IDs and
  * numbers in a compact grid, addresses/text as wide rows, secrets in a
  * "vault" list, long text full width.
  *
- * `api`: { load(), save(code, values, remove), reveal(code, name) } — the
- * admin page (admin key + 2FA) and /hub (hub login + 2FA) bring their own.
+ * `api`: { load(), save(code, values, remove), reveal(code, name) } (the hub's
+ * /hub/env routes: hub login + 2FA).
  */
 
 const STATE_ICONS = {
@@ -289,12 +290,19 @@ function Ring({ value, total }) {
 
 /* ---------- workspace ---------- */
 
-export default function SettingsWorkspace({ api, twoFactor: twoFactorOn, onLocked, extraTabs = [], initialTab = 'overview' }) {
+/**
+ * `tab` / `onTabChange`: keep the open tab outside (the hub puts it in the address), optional.
+ * `navTarget`: an element in the page's own navigation (the hub's sidebar) that gets the
+ * section list, so there's one navigation; narrow screens keep the chips above the page.
+ */
+export default function SettingsWorkspace({ api, twoFactor: twoFactorOn, onLocked, extraTabs = [], initialTab = 'overview', tab: tabProp, onTabChange, navTarget = null }) {
   // A code shortly before (this login) is enough for a while: no field then.
   const twoFactor = useNeedsCode(twoFactorOn)
   const [data, setData] = useState(null)
   const [version, setVersion] = useState(0)
-  const [tab, setTab] = useState(initialTab)
+  const [ownTab, setOwnTab] = useState(initialTab)
+  const wantedTab = tabProp ?? ownTab
+  const setTab = onTabChange ?? setOwnTab
   const [highlight, setHighlight] = useState(null)
   const [drafts, setDrafts] = useState({})
   const [removing, setRemoving] = useState(() => new Set())
@@ -357,7 +365,7 @@ export default function SettingsWorkspace({ api, twoFactor: twoFactorOn, onLocke
       requestAnimationFrame(() => document.getElementById(`setting-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
       setTimeout(() => setHighlight(null), 2200)
     },
-    [keys],
+    [keys, setTab],
   )
 
   async function guarded(run) {
@@ -425,6 +433,8 @@ export default function SettingsWorkspace({ api, twoFactor: twoFactorOn, onLocke
   const sectionCount = (id) => known.filter((entry) => entry.section === id && attention(entry)).length
   const changedIn = (id) => known.filter((entry) => entry.section === id && (drafts[entry.key] !== undefined || removing.has(entry.key))).length
   const setCount = known.filter((entry) => entry.state === 'set').length
+  // A section that doesn't exist (old or mistyped link) shows the overview, never an empty page.
+  const tab = wantedTab === 'overview' || wantedTab === 'custom' || data.sections.some((entry) => entry.id === wantedTab) || extraTabs.some((entry) => entry.id === wantedTab) ? wantedTab : 'overview'
   const section = data.sections.find((entry) => entry.id === tab)
   const extra = extraTabs.find((entry) => entry.id === tab)
   const results = needle ? keys.filter((entry) => `${entry.key} ${entry.label} ${entry.description}`.toLowerCase().includes(needle)) : []
@@ -436,14 +446,14 @@ export default function SettingsWorkspace({ api, twoFactor: twoFactorOn, onLocke
     ...extraTabs.map((entry) => ({ id: entry.id, icon: entry.icon, title: entry.title, badge: 0 })),
   ]
 
-  return (
-    <div className="sw">
-      <nav className="sw-tabs" aria-label="Settings sections">
-        <label className="sw-search">
-          <Icon name="search" />
-          <input type="search" placeholder="Search all settings…" value={query} onChange={(event) => setQuery(event.target.value)} />
-        </label>
-        <div className="sw-tabs__list" role="tablist">
+  const search = (
+    <label className="sw-search">
+      <Icon name="search" />
+      <input type="search" placeholder="Search all settings…" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search all settings" />
+    </label>
+  )
+  const tabList = (inSidebar) => (
+        <div className={`sw-tabs__list${inSidebar ? ' sw-tabs__list--sidebar' : ''}`} role="tablist" aria-label="Settings sections">
           {tabs.map((entry) => (
             <button
               key={entry.id}
@@ -463,7 +473,24 @@ export default function SettingsWorkspace({ api, twoFactor: twoFactorOn, onLocke
             </button>
           ))}
         </div>
-      </nav>
+  )
+
+  return (
+    <div className={`sw${navTarget ? ' sw--docked' : ''}`}>
+      {navTarget && createPortal(tabList(true), navTarget)}
+      {navTarget ? (
+        <div className="sw-top">
+          {search}
+          <nav className="sw-tabs sw-tabs--chips" aria-label="Settings sections">
+            {tabList(false)}
+          </nav>
+        </div>
+      ) : (
+        <nav className="sw-tabs" aria-label="Settings sections">
+          {search}
+          {tabList(false)}
+        </nav>
+      )}
 
       <div className="sw-panel" role="tabpanel">
         {needle ? (

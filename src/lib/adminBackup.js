@@ -1,17 +1,14 @@
 import { accountFetch } from "./account";
 
 /*
- * Admin settings: backup, restore and .env settings (admin account only; see
- * server/services/adminBackup.cjs). Every action sends the admin key again.
+ * Backup & restore in the hub's settings (server/services/adminBackup.cjs).
+ * The unlocked hub session is the login; exporting and importing also send
+ * the admin key (it encrypts the archive) and a 2FA code when needed.
  */
-
-// Token from unlocking the page (admin key + 2FA), sent with every request.
-let unlockToken = null;
 
 async function json(response) {
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    if (data?.locked) unlockToken = null;
     throw Object.assign(new Error(data?.error || `Request failed (${response.status}).`), {
       status: response.status,
       locked: Boolean(data?.locked),
@@ -21,33 +18,14 @@ async function json(response) {
   return data;
 }
 
-const withUnlock = (headers = {}) => (unlockToken ? { ...headers, "X-Admin-Unlock": unlockToken } : headers);
-
-const get = (path) => accountFetch(path, { cache: "no-store", headers: withUnlock() });
+const get = (path) => accountFetch(path, { cache: "no-store" });
 
 const post = (path, body) =>
   accountFetch(path, {
     method: "POST",
-    headers: withUnlock({ "Content-Type": "application/json" }),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-
-/** Whether 2FA is on (before unlocking). */
-export async function loadAdminStatus() {
-  return json(await accountFetch("/account/admin/status", { cache: "no-store" }));
-}
-
-/** Unlocks the page for 15 minutes (admin key, plus the 2FA code when on). */
-export async function unlockAdmin(key, code) {
-  const data = await json(await post("/account/admin/unlock", { key, code }));
-  unlockToken = data.token;
-  return data;
-}
-
-export const isUnlocked = () => Boolean(unlockToken);
-
-/** The unlock header for other admin APIs used from the admin settings (Bongo Cat assets). */
-export const adminUnlockHeaders = () => (unlockToken ? { 'X-Admin-Unlock': unlockToken } : {});
 
 export async function loadBackupOverview() {
   return json(await get("/account/admin/backup/overview"));
@@ -106,14 +84,14 @@ export async function exportBackup(key, code, onProgress = () => {}) {
  */
 export async function analyzeBackup(file, key, backupKey = "", onProgress = () => {}) {
   const adminHeaders = { "X-Admin-Key": key, ...(backupKey ? { "X-Backup-Key": backupKey } : {}) };
-  const start = await json(await accountFetch("/account/admin/backup/import/upload", { method: "POST", headers: withUnlock(adminHeaders) }));
+  const start = await json(await accountFetch("/account/admin/backup/import/upload", { method: "POST", headers: adminHeaders }));
   const size = start.chunkSize || 32 * 1024 * 1024;
   for (let offset = 0; offset < file.size; offset += size) {
     onProgress({ step: "Uploading", done: offset, total: file.size, bytes: true });
     await json(
       await accountFetch(`/account/admin/backup/import/upload/${encodeURIComponent(start.id)}?offset=${offset}`, {
         method: "PUT",
-        headers: withUnlock({ ...adminHeaders, "Content-Type": "application/octet-stream" }),
+        headers: { ...adminHeaders, "Content-Type": "application/octet-stream" },
         body: file.slice(offset, offset + size),
       }),
     );
@@ -122,30 +100,11 @@ export async function analyzeBackup(file, key, backupKey = "", onProgress = () =
   return json(
     await accountFetch("/account/admin/backup/import/analyze", {
       method: "POST",
-      headers: withUnlock({ ...adminHeaders, "X-Upload-Id": start.id }),
+      headers: { ...adminHeaders, "X-Upload-Id": start.id },
     }),
   );
 }
 
 export async function applyBackup(planId, key, code, choices) {
   return json(await post("/account/admin/backup/import/apply", { planId, key, code, choices }));
-}
-
-export async function loadEnvOverview() {
-  return json(await get("/account/admin/env"));
-}
-
-/** Saves new values and removes others in one go; returns { changed, removed, restart }. */
-export async function saveEnvValues(key, code, values, remove = []) {
-  return json(await post("/account/admin/env", { key, code, values, remove }));
-}
-
-/** Known settings fall back to their defaults; custom entries are deleted. */
-export async function removeEnvValues(key, code, names) {
-  return json(await post("/account/admin/env/remove", { key, code, names }));
-}
-
-/** One value (needs 2FA). */
-export async function revealEnvValue(key, code, name) {
-  return json(await post("/account/admin/env/reveal", { key, code, name }));
 }

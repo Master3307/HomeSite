@@ -38,6 +38,15 @@ const AUTH_COOKIE_DOMAIN = setting("AUTH_COOKIE_DOMAIN") || undefined;
 
 const ttlMs = () => Math.max(1, number("HUB_SESSION_TTL_HOURS") || 12) * 60 * 60 * 1000;
 const hubKey = () => String(setting("HUB_KEY") || "");
+/*
+ * The hub is on with HUB_KEY, or on a fresh server with just ADMIN_KEY (it
+ * replaced the old /admin-settings page, which needed only the admin key +
+ * 2FA when on). The admin key opens it together with 2FA, or alone while
+ * there is no HUB_KEY.
+ */
+const hubOn = () => Boolean(hubKey() || setting("ADMIN_KEY"));
+const adminKeyAllowed = () => twoFactorEnabled() || !hubKey();
+const OFF_MESSAGE = "The hub is off: set HUB_KEY (or at least ADMIN_KEY) in the settings (pnpm setup:gui) and restart the account API.";
 const sha256 = (value) => crypto.createHash("sha256").update(String(value)).digest();
 const tokenHash = (token) => sha256(token).toString("hex");
 
@@ -164,7 +173,7 @@ function discordSession(account) {
 }
 
 function authenticate(req) {
-  if (!hubKey()) return null;
+  if (!hubOn()) return null;
   const session = sessions.get(readCookie(req, COOKIE));
   if (session) return session;
   // Without 2FA the owner's Discord login is enough (with 2FA: one code via /hub/login).
@@ -182,7 +191,7 @@ function hubHolders(req) {
 }
 
 function requireHub(req) {
-  if (!hubKey()) throw httpError(503, "The hub is off: set HUB_KEY in the settings (pnpm setup:gui) and restart the account API.", { locked: true });
+  if (!hubOn()) throw httpError(503, OFF_MESSAGE, { locked: true });
   const session = authenticate(req);
   if (!session) throw httpError(401, "Log in to the hub first.", { locked: true });
   return session;
@@ -334,9 +343,10 @@ function registerHub(app, { getRequestSession, toPublicUser, getDatabase, activi
     const session = authenticate(req);
     const owner = ownerAccount(req);
     const base = {
-      configured: Boolean(hubKey()),
+      configured: hubOn(),
       twoFactor: twoFactorEnabled(),
-      adminKeyAllowed: twoFactorEnabled(),
+      adminKeyAllowed: adminKeyAllowed(),
+      hubKeySet: Boolean(hubKey()),
       // Logged in on the site as the owner: only a 2FA code is missing.
       discordOwner: owner ? { name: owner.display_name || owner.username } : null,
     };
@@ -350,17 +360,17 @@ function registerHub(app, { getRequestSession, toPublicUser, getDatabase, activi
 
   app.post("/hub/login", globalLoginLimiter, loginLimiter, json, (req, res) => {
     res.set("Cache-Control", "no-store");
-    if (!hubKey()) return res.status(503).json({ error: "The hub is off: set HUB_KEY (pnpm setup:gui) and restart the account API." });
+    if (!hubOn()) return res.status(503).json({ error: OFF_MESSAGE });
     // The hub key, (only together with 2FA) the admin key, or the owner's Discord login on the site.
     const owner = !req.body?.key ? ownerAccount(req) : null;
     const method = owner
       ? "Discord login"
       : keyMatches(req.body?.key)
         ? "hub key"
-        : twoFactorEnabled() && adminKeyMatches(req.body?.key)
+        : adminKeyAllowed() && adminKeyMatches(req.body?.key)
           ? "admin key"
           : null;
-    if (!method) return res.status(403).json({ error: twoFactorEnabled() ? "Wrong key. Use the hub key or the admin key." : "Wrong hub key." });
+    if (!method) return res.status(403).json({ error: !hubKey() ? "Wrong admin key." : adminKeyAllowed() ? "Wrong key. Use the hub key or the admin key." : "Wrong hub key." });
     // Named after the Discord account logged in on the site, if any.
     const account = getRequestSession(req);
     // A code from the last minutes on this website login counts (admin settings, totp.cjs grace).

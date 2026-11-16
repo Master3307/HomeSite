@@ -8,7 +8,7 @@ const rateLimit = require("express-rate-limit");
 const { pipeline } = require("node:stream/promises");
 
 const { ADMIN_DISCORD_USER_ID, adminKeyMatches } = require("./discordOAuth.cjs");
-const { twoFactorEnabled, checkTwoFactor, twoFactorFreshUntil } = require("./totp.cjs");
+const { twoFactorEnabled, checkTwoFactor } = require("./totp.cjs");
 const { setting } = require("../config.cjs");
 const backup = require("./backup.cjs");
 
@@ -35,8 +35,6 @@ const backup = require("./backup.cjs");
  * a value) need a fresh code from the authenticator app.
  */
 
-const UNLOCK_TTL_MS = 15 * 60 * 1000;
-const unlocks = new Map(); // token -> { sessionId, expires }
 
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024;
 
@@ -67,42 +65,35 @@ function registerAdminBackup(app, { getRequestSession, getDatabase, activity = n
   /** The site owner (DISCORD_USER_ID) logged in with Discord. */
   const isOwner = (session) => Boolean(setting("DISCORD_USER_ID")) && session?.discord_user_id === setting("DISCORD_USER_ID");
 
-  /* A hub login as an admin session ({ session_id: "hub:<id>", discord_user_id, hub: true }). */
+  /*
+   * A hub login as an admin session ({ session_id: "hub:<id>", discord_user_id,
+   * hub: true }); `account` is the website login of the same browser, whose
+   * 2FA grace counts too (the hub login grants both).
+   */
   function hubAdmin(req) {
     const hub = hubSessionOf(req);
-    return hub ? { session_id: `hub:${hub.id}`, discord_user_id: hub.discordId ?? null, display_name: hub.name, hub: true } : null;
+    if (!hub) return null;
+    const account = getRequestSession(req);
+    return { session_id: `hub:${hub.id}`, account_session_id: account?.session_id ?? null, discord_user_id: hub.discordId ?? null, display_name: hub.name, hub: true };
   }
 
-  function requireAdminSession(req) {
-    const session = getRequestSession(req);
-    if (!session || (session.discord_user_id !== ADMIN_DISCORD_USER_ID && !isOwner(session))) {
-      const hub = hubAdmin(req);
-      if (hub) return hub;
-    }
-    if (!session) throw httpError(401, "Log in with the admin code or your Discord account first.");
-    if (session.discord_user_id !== ADMIN_DISCORD_USER_ID && !isOwner(session)) {
-      throw httpError(403, "Only the admin account or the site owner can do this.");
-    }
-    return session;
-  }
-
-  /* The page is unlocked for this session (key + 2FA within the last 15 minutes). */
+  /*
+   * Backups and the Bongo Cat import are part of the hub now (the old
+   * /admin-settings page is gone): an unlocked hub session is required.
+   */
   function requireUnlocked(req) {
-    const session = requireAdminSession(req);
-    // The hub was unlocked with its key (+ 2FA): no second unlock.
-    if (session.hub) return session;
-    const token = req.get("X-Admin-Unlock");
-    const entry = token ? unlocks.get(token) : null;
-    if (!entry || entry.expires < Date.now() || entry.sessionId !== session.session_id) {
-      if (entry) unlocks.delete(token);
-      throw Object.assign(httpError(401, "Unlock the page again."), { locked: true });
-    }
-    entry.expires = Date.now() + UNLOCK_TTL_MS;
-    return session;
+    const hub = hubAdmin(req);
+    if (!hub) throw Object.assign(httpError(401, "Unlock the hub first (/hub/settings/backup)."), { locked: true });
+    return hub;
   }
 
   // A correct 2FA code counts for this login a little while (totp.cjs grace).
-  const holdersOf = (session) => (session?.session_id ? [session.hub ? session.session_id : `account:${session.session_id}`] : []);
+  const holdersOf = (session) =>
+    !session?.session_id
+      ? []
+      : session.hub
+        ? [session.session_id, session.account_session_id ? `account:${session.account_session_id}` : null].filter(Boolean)
+        : [`account:${session.session_id}`];
 
   /*
    * Admin key, and with 2FA a fresh code, for critical actions. The owner's
@@ -110,7 +101,8 @@ function registerAdminBackup(app, { getRequestSession, getDatabase, activity = n
    */
   function requireAdminKey(req, key, code = null, purpose = "action", { needKey = false } = {}) {
     const session = requireUnlocked(req);
-    if ((needKey || !isOwner(session)) && !adminKeyMatches(key)) throw httpError(403, "Wrong admin key.");
+    // The owner's Discord login and an unlocked hub replace the key, except where it encrypts.
+    if ((needKey || !(isOwner(session) || session.hub)) && !adminKeyMatches(key)) throw httpError(403, "Wrong admin key.");
     if (twoFactorEnabled() && !checkTwoFactor(code, purpose, holdersOf(session))) {
       throw Object.assign(httpError(403, "Wrong or already used 2FA code."), { twoFactor: true });
     }
@@ -136,34 +128,6 @@ function registerAdminBackup(app, { getRequestSession, getDatabase, activity = n
       }
     }
   };
-
-  /* Whether 2FA is on (shown before unlocking). */
-  app.get(
-    "/account/admin/status",
-    route(async (req) => {
-      const session = requireAdminSession(req);
-      // The owner unlocks with their Discord login (+ 2FA), no admin key.
-      return { twoFactor: twoFactorEnabled(), owner: isOwner(session), twoFactorFreshUntil: twoFactorFreshUntil(holdersOf(session)) };
-    }),
-  );
-
-  app.post(
-    "/account/admin/unlock",
-    keyLimiter,
-    express.json({ limit: "16kb" }),
-    route(async (req) => {
-      const session = requireAdminSession(req);
-      if (!isOwner(session) && !adminKeyMatches(req.body?.key)) throw httpError(403, "Wrong admin key.");
-      if (twoFactorEnabled() && !checkTwoFactor(req.body?.code, "unlock", holdersOf(session))) {
-        throw Object.assign(httpError(403, "Wrong or already used 2FA code."), { twoFactor: true });
-      }
-      for (const [token, entry] of unlocks) if (entry.expires < Date.now()) unlocks.delete(token);
-      const token = crypto.randomBytes(32).toString("hex");
-      unlocks.set(token, { sessionId: session.session_id, expires: Date.now() + UNLOCK_TTL_MS });
-      log({ level: "normal", action: "backup-unlock", summary: `opened the admin settings${isOwner(session) ? " with their Discord login" : ""}` });
-      return { token, expiresInMs: UNLOCK_TTL_MS, twoFactor: twoFactorEnabled(), twoFactorFreshUntil: twoFactorFreshUntil(holdersOf(session)) };
-    }),
-  );
 
   app.get(
     "/account/admin/backup/overview",
@@ -418,85 +382,8 @@ function registerAdminBackup(app, { getRequestSession, getDatabase, activity = n
     }),
   );
 
-  app.get(
-    "/account/admin/env",
-    route(async (req) => {
-      requireUnlocked(req);
-      return { ...(await backup.envOverview()), canReveal: twoFactorEnabled() };
-    }),
-  );
-
-  app.post(
-    "/account/admin/env",
-    keyLimiter,
-    express.json({ limit: "64kb" }),
-    route(async (req) => {
-      requireUnlocked(req);
-      // Check the values first, so a typo doesn't use up the 2FA code.
-      const values = req.body?.values ?? {};
-      backup.validateEnv(values);
-      requireAdminKey(req, req.body?.key, req.body?.code, "env");
-      // One save: new values and removals together (one 2FA code).
-      const names = Array.isArray(req.body?.remove) ? req.body.remove : [];
-      const changed = Object.keys(values).length ? await backup.setEnv(values) : [];
-      const removed = names.length ? await backup.removeEnv(names) : [];
-      if (changed.length) {
-        log({
-          level: "risky",
-          action: "env-change",
-          summary: `changed ${changed.length} setting(s): ${changed.join(", ")}`,
-          details: { keys: changed },
-        });
-      }
-      if (removed.length) {
-        log({
-          level: "risky",
-          action: "env-remove",
-          summary: `removed ${removed.length} setting(s): ${removed.join(", ")}`,
-          details: { keys: removed },
-        });
-      }
-      return { changed, removed, restart: backup.restartsFor([...changed, ...removed]) };
-    }),
-  );
-
-  app.post(
-    "/account/admin/env/remove",
-    keyLimiter,
-    express.json({ limit: "16kb" }),
-    route(async (req) => {
-      requireAdminKey(req, req.body?.key, req.body?.code, "env");
-      const removed = await backup.removeEnv(req.body?.names);
-      log({
-        level: "risky",
-        action: "env-remove",
-        summary: `removed ${removed.length} .env value(s): ${removed.join(", ")}`,
-        details: { keys: removed },
-      });
-      return { removed, restartNeeded: true };
-    }),
-  );
-
-  /* Viewing a value needs 2FA (ADMIN_2FA=on) and a fresh code every time. */
-  app.post(
-    "/account/admin/env/reveal",
-    keyLimiter,
-    express.json({ limit: "16kb" }),
-    route(async (req) => {
-      if (!twoFactorEnabled()) {
-        requireUnlocked(req);
-        throw httpError(403, "Viewing values needs 2FA: run `pnpm 2fa:setup` on the server and set ADMIN_2FA=on.");
-      }
-      requireAdminKey(req, req.body?.key, req.body?.code, "reveal");
-      const name = String(req.body?.name ?? "");
-      const value = await backup.revealEnv(name);
-      log({ level: "risky", action: "env-view", summary: `viewed the .env value ${name}`, target: { key: name } });
-      return { name, value };
-    }),
-  );
-
   return {
-    /** The admin settings are unlocked in this request (admin account or owner). */
+    /** An unlocked hub in this request (the Bongo Cat import accepts it). */
     isUnlocked(req) {
       try {
         requireUnlocked(req);

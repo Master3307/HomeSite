@@ -82,7 +82,7 @@ const STAGES = [
     icon: "admin_panel_settings",
     title: "Admin access",
     intro:
-      'The admin key is the password for "Use an admin code" in the login. It unlocks FDC tools, backups and /admin-settings, so you can change everything later in the browser.',
+      'The admin key is the password for "Use an admin code" in the login. It unlocks FDC tools, backups and the hub's settings (/hub/settings, also without HUB_KEY), so you can change everything later in the browser.',
     steps: ["Press Generate and store the key in your password manager.", "Optional, but recommended: two-factor codes (next stage)."],
     keys: ["ADMIN_KEY"],
   },
@@ -214,7 +214,7 @@ const STAGES = [
       "Download AssetRipper (GUI release) and start it; it opens in your browser.",
       "File → Open Folder → the game's folder (Steam: right-click Bongo Cat → Manage → Browse local files).",
       "Export → Export All Files into an empty folder (default Unity project format).",
-      "Give the path of that export folder here. Later you can also upload it on /admin-settings or in the hub's settings.",
+      "Give the path of that export folder here. Later you can also upload it in the hub's settings (/hub/settings/bongo).",
     ],
     links: [{ label: "AssetRipper releases", url: "https://github.com/AssetRipper/AssetRipper/releases" }],
     keys: [],

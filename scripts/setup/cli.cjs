@@ -306,7 +306,7 @@ async function main() {
   console.log(`\n${bold(green("  All done!"))}${left.length ? dim(` (${left.length} stage(s) skipped: ${left.map((stage) => stage.title).join(", ")})`) : ""}\n`);
   console.log("  Next:");
   for (const step of NEXT_STEPS) console.log(`    ${cyan(step.command.padEnd(15))} ${dim(step.text)}`);
-  console.log(dim("\n  Change anything later with pnpm setup:gui, or on /admin-settings once the site runs.\n"));
+  console.log(dim("\n  Change anything later with pnpm setup:gui, or in the hub's settings (/hub/settings) once the site runs.\n"));
   rl.close();
 }
 
