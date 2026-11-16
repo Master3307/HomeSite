@@ -23,8 +23,16 @@ function Highlighted({ text, tokens }) {
  * Bare site search bar (input + results panel), with no card around it;
  * use `SearchCard` for the card-wrapped version. Searches the generated page
  * index (`pnpm search:index`) plus a placeholder profile search, ranked by relevance.
+ *
+ * /dash adds to it (same look):
+ *   `web`      `{ label(query) -> string, icon?, run(query) }`: a first option
+ *              that searches the web (Enter picks it unless you arrow away)
+ *   `people`   `async (query, signal) -> [{ id, name, handle, avatarUrl, open() }]`:
+ *              a Discord lookup group (the site owner's)
+ *   `sitePages` false: no page results (web only)
+ *   `placeholder`, `children` (rendered under the bar, e.g. engine chips)
  */
-export default function Search({ className = '', autoFocus = false }) {
+export default function Search({ className = '', autoFocus = false, web = null, people = null, placeholder = null, sitePages = true, children = null }) {
   const { t, i18n } = useTranslation('search')
   const navigate = useNavigate()
   const listId = useId()
@@ -37,6 +45,7 @@ export default function Search({ className = '', autoFocus = false }) {
   const [index, setIndex] = useState(null)
   const [status, setStatus] = useState('idle') // idle | loading | ready | error
   const [profileResult, setProfileResult] = useState({ phrase: '', profiles: [] })
+  const [peopleResult, setPeopleResult] = useState({ phrase: '', people: [], error: null })
 
   const deferredQuery = useDeferredValue(query)
   const parsed = useMemo(() => parseQuery(deferredQuery), [deferredQuery])
@@ -57,8 +66,8 @@ export default function Search({ className = '', autoFocus = false }) {
   }
 
   const pages = useMemo(
-    () => (index ? searchPages(index, parsed, i18n.language) : []),
-    [index, parsed, i18n.language],
+    () => (index && sitePages ? searchPages(index, parsed, i18n.language) : []),
+    [index, sitePages, parsed, i18n.language],
   )
 
   // Profile search is async (a real API later), so guard against stale replies.
@@ -76,13 +85,34 @@ export default function Search({ className = '', autoFocus = false }) {
   }, [parsed, hasQuery])
 
   const profiles = useMemo(
-    () => (hasQuery && profileResult.phrase === parsed.phrase ? profileResult.profiles : []),
-    [hasQuery, profileResult, parsed.phrase],
+    () => (hasQuery && !people && profileResult.phrase === parsed.phrase ? profileResult.profiles : []),
+    [hasQuery, people, profileResult, parsed.phrase],
   )
+
+  // Discord lookup (/dash, the owner): debounced, stale replies dropped.
+  useEffect(() => {
+    if (!people || !hasQuery) return
+    const controller = new AbortController()
+    const timer = setTimeout(() => {
+      people(deferredQuery.trim(), controller.signal)
+        .then((list) => {
+          if (!controller.signal.aborted) setPeopleResult({ phrase: parsed.phrase, people: list.slice(0, 6), error: null })
+        })
+        .catch((error) => {
+          if (!controller.signal.aborted) setPeopleResult({ phrase: parsed.phrase, people: [], error: error.message })
+        })
+    }, 250)
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [people, hasQuery, deferredQuery, parsed.phrase])
+  const found = hasQuery && people && peopleResult.phrase === parsed.phrase ? peopleResult : { people: [], error: null }
 
   // One flat list of everything selectable, for keyboard navigation.
   const options = useMemo(() => {
     const list = []
+    if (web && query.trim()) list.push({ key: '__web', kind: 'web' })
     for (const page of pages) {
       list.push({ key: page.id, kind: 'page', page })
       for (const match of page.matches) {
@@ -90,8 +120,9 @@ export default function Search({ className = '', autoFocus = false }) {
       }
     }
     for (const profile of profiles) list.push({ key: profile.id, kind: 'profile', profile })
+    for (const person of found.people) list.push({ key: `person:${person.id}`, kind: 'person', person })
     return list
-  }, [pages, profiles])
+  }, [web, query, pages, profiles, found.people])
 
   const optionIndex = useMemo(
     () => new Map(options.map((option, position) => [option.key, position])),
@@ -132,6 +163,15 @@ export default function Search({ className = '', autoFocus = false }) {
 
   const openOption = (option) => {
     if (!option) return
+    if (option.kind === 'web') {
+      web.run(query.trim())
+      return
+    }
+    if (option.kind === 'person') {
+      setOpen(false)
+      option.person.open()
+      return
+    }
 
     const path = option.kind === 'profile' ? option.profile.path : option.page.path
     const highlight =
@@ -174,7 +214,7 @@ export default function Search({ className = '', autoFocus = false }) {
     }
   }
 
-  const resultCount = pages.length + profiles.length
+  const resultCount = pages.length + profiles.length + found.people.length
   const isTyping = query !== deferredQuery
 
   return (
@@ -191,7 +231,7 @@ export default function Search({ className = '', autoFocus = false }) {
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={showPanel && options.length ? `${listId}-${clampedActive}` : undefined}
-          placeholder={t('placeholder')}
+          placeholder={placeholder ?? t('placeholder')}
           value={query}
           autoComplete="off"
           spellCheck="false"
@@ -226,16 +266,33 @@ export default function Search({ className = '', autoFocus = false }) {
         )}
       </form>
 
+      {children}
+
       {showPanel && (
         <div className="site-search__panel">
           {status === 'loading' && <p className="site-search__status">{t('loading')}</p>}
           {status === 'error' && <p className="site-search__status site-search__status--error">{t('loadError')}</p>}
 
-          {status === 'ready' && hasQuery && resultCount === 0 && !isTyping && (
+          {status === 'ready' && hasQuery && resultCount === 0 && !isTyping && !web && (
             <p className="site-search__status">{t('noResults', { query: query.trim() })}</p>
           )}
 
           <div id={listId} role="listbox" aria-label={t('label')} className="site-search__results">
+            {web && query.trim() && (
+              <div role="group" aria-label={t('web')} className="site-search__group">
+                <div className="site-search__option site-search__option--web" {...optionProps({ key: '__web', kind: 'web' })}>
+                  <span className="material-symbols-outlined site-search__avatar" aria-hidden="true">
+                    {web.icon ?? 'travel_explore'}
+                  </span>
+                  <div className="site-search__option-main">
+                    <span className="site-search__title">{web.label(query.trim())}</span>
+                  </div>
+                  <kbd className="site-search__kbd" aria-hidden="true">
+                    ↵
+                  </kbd>
+                </div>
+              </div>
+            )}
             {pages.length > 0 && (
               <div role="group" aria-label={t('pages')} className="site-search__group">
                 <p className="site-search__group-title" aria-hidden="true">{t('pages')}</p>
@@ -306,6 +363,27 @@ export default function Search({ className = '', autoFocus = false }) {
                       <p className="site-search__description">{profile.description}</p>
                     </div>
                     <code className="site-search__id">{profile.id}</code>
+                  </div>
+                ))}
+              </div>
+            )}
+            {people && hasQuery && (found.people.length > 0 || found.error) && (
+              <div role="group" aria-label={t('discord')} className="site-search__group">
+                <p className="site-search__group-title" aria-hidden="true">
+                  {t('discord')}
+                  <span className="site-search__badge">{t('onlyYou')}</span>
+                </p>
+                {found.error && <p className="site-search__status">{found.error}</p>}
+                {found.people.map((person) => (
+                  <div key={person.id} className="site-search__option site-search__option--profile" {...optionProps({ key: `person:${person.id}`, kind: 'person', person })}>
+                    {person.avatarUrl ? <img className="site-search__face" src={person.avatarUrl} alt="" width="32" height="32" loading="lazy" /> : <span className="material-symbols-outlined site-search__avatar" aria-hidden="true">person</span>}
+                    <div className="site-search__option-main">
+                      <span className="site-search__title">
+                        <Highlighted text={person.name} tokens={parsed.tokens} />
+                        {person.handle && <span className="site-search__handle">@{person.handle}</span>}
+                      </span>
+                    </div>
+                    <code className="site-search__id">{person.id}</code>
                   </div>
                 ))}
               </div>

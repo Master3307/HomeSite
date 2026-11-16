@@ -2,16 +2,9 @@
     "search": {
         "label": "Suche",
         "placeholder": "Mit {{provider}} suchen…",
-        "submit": "Suchen",
-        "providers": "Suchanbieter",
-        "hint": "/ zum Fokussieren · !Kürzel für einen anderen Anbieter (z. B. !ddg Katzen)",
-        "bangActive": "Diese Suche verwendet {{provider}}"
-    },
-    "widgets": {
-        "label": "Widgets",
-        "empty": "Noch keine Widgets. Füge eine beliebige einbettbare Seite als iframe-Widget hinzu.",
-        "add": "Widget hinzufügen",
-        "openExternal": "In neuem Tab öffnen"
+        "providers": "Suchmaschine",
+        "webOption": "{{provider}} nach „{{query}}“ durchsuchen",
+        "hubLocked": "Entsperr den Hub, um Leute auf Discord zu finden."
     },
     "settings": {
         "title": "Anpassen",
@@ -22,46 +15,93 @@
         "edit": "Bearbeiten",
         "delete": "Löschen",
         "moveUp": "Nach oben",
-        "moveDown": "Nach unten",
         "tabs": {
+            "look": "Aussehen",
             "search": "Suche",
-            "widgets": "Widgets",
-            "css": "Eigenes CSS",
+            "board": "Board",
             "backup": "Sync & Backup"
         },
-        "search": {
-            "providers": "Suchanbieter",
-            "builtin": "Integriert",
-            "makeDefault": "Als Standard festlegen",
-            "addProvider": "Eigenen Anbieter hinzufügen",
-            "editProvider": "Anbieter bearbeiten",
-            "name": "Name",
-            "url": "Such-URL",
-            "urlHelp": "%s steht für die Suchanfrage, z. B. https://example.com/search?q=%s",
-            "keyword": "Kürzel (optional)",
-            "keywordHelp": "!Kürzel vor der Anfrage nutzt diesen Anbieter einmalig.",
-            "preview": "Vorschau:",
-            "newTab": "Suchergebnisse in neuem Tab öffnen"
-        },
-        "widgets": {
-            "list": "Deine Widgets",
-            "add": "iframe-Widget hinzufügen",
-            "edit": "Widget bearbeiten",
-            "title": "Titel",
-            "titlePlaceholder": "Mein Widget",
-            "url": "URL",
-            "urlHelp": "Jede http(s)-Seite, die Einbetten erlaubt.",
-            "size": "Breite",
-            "height": "Höhe (px)",
-            "showTitle": "Titelleiste anzeigen",
-            "sandboxed": "iframe sandboxen (empfohlen)",
-            "embedNote": "Manche Seiten blockieren das Einbetten (X-Frame-Options / CSP) und bleiben leer.",
-            "sizes": {
-                "small": "Klein",
-                "medium": "Mittel",
-                "large": "Groß",
-                "full": "Volle Breite"
+        "look": {
+            "presets": {
+                "minimal": "Minimal",
+                "minimalText": "Nur die Suchleiste.",
+                "standard": "Standard",
+                "standardText": "Zurück zum normalen Aussehen."
+            },
+            "top": "Oben",
+            "showHeader": "Seitentitel",
+            "showGreeting": "Uhrzeit und Begrüßung",
+            "showSearch": "Suchleiste",
+            "layout": "Aufbau",
+            "columns": "Spalten",
+            "width": "Breite",
+            "density": "Abstände",
+            "cards": "Widgets",
+            "style": "Kartenstil",
+            "radius": "Ecken",
+            "background": "Hintergrund",
+            "backgroundKind": "Hinter allem",
+            "color": "Farbe",
+            "imageUrl": "Bildadresse",
+            "dim": "Bild abdunkeln",
+            "choices": {
+                "normal": "Normal",
+                "wide": "Breit",
+                "full": "Voll",
+                "comfortable": "Luftig",
+                "compact": "Kompakt",
+                "glass": "Glas",
+                "solid": "Deckend",
+                "outline": "Umriss",
+                "bare": "Ohne",
+                "site": "Seite",
+                "color": "Farbe",
+                "image": "Bild"
             }
+        },
+        "search": {
+            "providers": "Suchmaschinen",
+            "providersHelp": "Der Punkt wählt die Standardsuche. Versteckte Suchmaschinen gehen weiter mit ihrem !Kürzel.",
+            "builtin": "eingebaut",
+            "makeDefault": "Als Standard",
+            "show": "Zeigen",
+            "hide": "Verstecken",
+            "hidden": "versteckt",
+            "addProvider": "Suchmaschine hinzufügen",
+            "name": "Name",
+            "url": "Suchadresse",
+            "urlHelp": "Setz %s dort ein, wo die Suchwörter hinkommen, z. B. https://example.com/search?q=%s",
+            "keyword": "Kürzel (optional)",
+            "keywordHelp": "Schreib !Kürzel vor die Suche, um einmal diese Suchmaschine zu nehmen.",
+            "preview": "Vorschau:",
+            "behaviour": "Beim Suchen",
+            "newTab": "Ergebnisse in neuem Tab öffnen",
+            "siteResults": "Auch Seiten dieser Website finden",
+            "siteResultsHint": "Erscheinen unter der Suchleiste, während du tippst.",
+            "discordLookup": "Leute auf Discord finden",
+            "discordLookupHint": "Nur für dich: nutzt die Mitgliedersuche des Hubs (der Hub muss entsperrt sein).",
+            "noneVisible": "Zeig mindestens eine Suchmaschine."
+        },
+        "board": {
+            "help": "Das Board ist das Raster aus Widgets unter der Suche. Drück auf der Seite auf Bearbeiten, um Widgets zu verschieben, zu vergrößern, zu ändern und hinzuzufügen.",
+            "editOnPage": "Board bearbeiten",
+            "css": "Eigenes CSS für die ganze Seite findest du in",
+            "cssLink": "deinen Konto-Einstellungen"
+        },
+        "backup": {
+            "sync": "Sync",
+            "syncLocal": "In diesem Browser gespeichert. Melde dich an, um es auf jedem Gerät zu haben.",
+            "syncOn": "Auch in deinem Konto gespeichert, auf jedem Gerät, auf dem du angemeldet bist.",
+            "tooBig": "Dein Dash ist zu groß zum Synchronisieren (Notizen, HTML oder viele Links). In diesem Browser ist es trotzdem gespeichert.",
+            "title": "Backup",
+            "help": "Alles als Datei herunterladen oder eine laden.",
+            "export": "Exportieren",
+            "import": "Importieren",
+            "imported": "Importiert.",
+            "importFailed": "Diese Datei ließ sich nicht importieren.",
+            "reset": "Dash zurücksetzen",
+            "resetYes": "Ja, alles zurücksetzen",
+            "resetDone": "Zurückgesetzt."
         },
         "css": {
             "title": "Eigenes CSS",
@@ -76,27 +116,183 @@
             "unsaved": "Ungespeicherte Änderungen · Strg+Enter zum Anwenden",
             "saved": "Gespeichert.",
             "shortcut": "Strg+Enter zum Anwenden"
-        },
-        "backup": {
-            "sync": "Sync",
-            "syncLocal": "Einstellungen werden in diesem Browser gespeichert. Melde dich an, um sie mit deinem Konto zu synchronisieren (bald verfügbar).",
-            "syncSoon": "Angemeldet als {{name}}. Konto-Sync fürs Dash kommt bald; bis dahin wird in diesem Browser gespeichert.",
-            "syncOn": "Mit deinem Konto synchronisiert ({{name}}).",
-            "title": "Backup",
-            "help": "Exportiere Anbieter, Widgets und eigenes CSS als JSON-Datei oder importiere eine.",
-            "export": "Exportieren",
-            "import": "Importieren",
-            "imported": "Einstellungen importiert.",
-            "importFailed": "Diese Datei konnte nicht importiert werden.",
-            "reset": "Alles zurücksetzen",
-            "resetConfirm": "Alle Dash-Einstellungen (Anbieter, Widgets, eigenes CSS) zurücksetzen?",
-            "resetDone": "Einstellungen zurückgesetzt."
         }
     },
     "errors": {
         "urlRequired": "Bitte gib eine URL ein.",
         "urlInvalid": "Bitte gib eine gültige http(s)-URL ein.",
         "placeholderMissing": "Die URL muss %s für die Suchanfrage enthalten.",
-        "keywordTaken": "Dieses Kürzel nutzt schon ein anderer Anbieter."
+        "keywordTaken": "Dieses Kürzel nutzt schon ein anderer Anbieter.",
+        "tooMany": "Mehr Lesezeichen gehen nicht."
+    },
+    "greeting": {
+        "morning": "Guten Morgen",
+        "afternoon": "Guten Tag",
+        "evening": "Guten Abend",
+        "night": "Gute Nacht",
+        "morningName": "Guten Morgen, {{name}}",
+        "afternoonName": "Guten Tag, {{name}}",
+        "eveningName": "Guten Abend, {{name}}",
+        "nightName": "Gute Nacht, {{name}}"
+    },
+    "quick": {
+        "cult": "Kult",
+        "profile": "Mein Profil",
+        "members": "Mitglieder",
+        "birthdays": "Geburtstage",
+        "notifications": "Benachrichtigungen",
+        "settings": "Einstellungen",
+        "hub": "Hub",
+        "home": "Startseite",
+        "card": "Über mich",
+        "about": "Über die Seite"
+    },
+    "board": {
+        "editBoard": "Bearbeiten",
+        "done": "Fertig",
+        "earlier": "Nach vorne",
+        "later": "Nach hinten",
+        "narrower": "Schmaler",
+        "wider": "Breiter",
+        "shorter": "Niedriger",
+        "taller": "Höher",
+        "edit": "Einstellungen",
+        "remove": "Entfernen",
+        "add": "Widget hinzufügen",
+        "addTitle": "Widget hinzufügen",
+        "empty": "Nichts auf dem Board. Drück Bearbeiten, um Widgets hinzuzufügen."
+    },
+    "widgets": {
+        "loading": "Lädt…",
+        "loadError": "Ließ sich gerade nicht laden.",
+        "clock": {
+            "name": "Uhr",
+            "text": "Die Uhrzeit, überall auf der Welt."
+        },
+        "bookmarks": {
+            "name": "Lesezeichen",
+            "text": "Deine Links, mit ihren Icons.",
+            "empty": "Noch keine Links. Bearbeite das Widget, um welche hinzuzufügen."
+        },
+        "site": {
+            "name": "Diese Seite",
+            "text": "Abkürzungen in die Seite."
+        },
+        "search": {
+            "name": "Suchfeld",
+            "text": "Ein extra Suchfeld für eine Suchmaschine."
+        },
+        "iframe": {
+            "name": "Webseite",
+            "text": "Jede Seite, die sich einbetten lässt, z. B. ein Server-Dashboard.",
+            "empty": "Bearbeite das Widget und gib eine Seitenadresse ein."
+        },
+        "note": {
+            "name": "Notiz",
+            "text": "Ein Notizzettel, wird beim Tippen gespeichert.",
+            "placeholder": "Schreib was…"
+        },
+        "weather": {
+            "name": "Wetter",
+            "text": "Jetzt und die nächsten Tage, von open-meteo.com.",
+            "empty": "Bearbeite das Widget und wähl einen Ort.",
+            "codes": {
+                "clear": "Klar",
+                "partly": "Teils bewölkt",
+                "cloudy": "Bewölkt",
+                "fog": "Nebel",
+                "drizzle": "Niesel",
+                "rain": "Regen",
+                "snow": "Schnee",
+                "showers": "Schauer",
+                "storm": "Gewitter"
+            }
+        },
+        "countdown": {
+            "name": "Countdown",
+            "text": "Tage und Stunden bis (oder seit) einem Datum.",
+            "empty": "Bearbeite das Widget und wähl ein Datum.",
+            "days_one": "Tag",
+            "days_other": "Tage",
+            "hours_one": "Stunde",
+            "hours_other": "Stunden",
+            "since": "Seit {{label}}",
+            "until": "Noch"
+        },
+        "calendar": {
+            "name": "Kalender",
+            "text": "Dieser Monat auf einen Blick."
+        },
+        "image": {
+            "name": "Bild",
+            "text": "Ein Bild oder eine Webcam, auf Wunsch neu geladen.",
+            "empty": "Bearbeite das Widget und gib eine Bildadresse ein."
+        },
+        "status": {
+            "name": "Status",
+            "text": "Laufen deine Seiten und Server? Mit Antwortzeiten.",
+            "empty": "Bearbeite das Widget und füge Adressen zum Prüfen hinzu.",
+            "down": "down"
+        },
+        "api": {
+            "name": "Eigene Integration",
+            "text": "Zeig Werte aus einer beliebigen JSON-API (sie muss Anfragen von dieser Seite erlauben).",
+            "empty": "Bearbeite das Widget und gib eine API-Adresse ein.",
+            "error": "Ließ sich nicht lesen: {{error}}"
+        },
+        "html": {
+            "name": "Eigenes HTML",
+            "text": "Dein eigenes HTML, CSS und JavaScript, abgeschottet.",
+            "empty": "Bearbeite das Widget und füge HTML ein."
+        }
+    },
+    "fields": {
+        "title": "Titel",
+        "titlePlaceholder": "Optional",
+        "seconds": "Sekunden zeigen",
+        "showDate": "Datum zeigen",
+        "timeZone": "Zeitzone (leer: deine)",
+        "label": "Beschriftung",
+        "items": "Links",
+        "layout": "Anordnung",
+        "newTab": "Links in neuem Tab öffnen",
+        "providerId": "Suchmaschine",
+        "url": "Adresse",
+        "zoom": "Zoom (%)",
+        "popups": "Darf neue Tabs öffnen",
+        "place": "Ort",
+        "unit": "Einheit",
+        "fit": "Einpassen",
+        "refresh": "Neu laden alle (Sekunden, 0: nie)",
+        "interval": "Prüfen alle (Sekunden)",
+        "fields": "Werte",
+        "headerName": "Header-Name (optional)",
+        "headerValue": "Header-Wert (optional)",
+        "code": "HTML",
+        "date": "Datum",
+        "linkTitle": "Name",
+        "linkUrl": "Adresse",
+        "apiLabel": "Beschriftung",
+        "apiPath": "Pfad im JSON",
+        "apiPrefix": "Davor",
+        "apiSuffix": "Danach",
+        "apiAdd": "Wert hinzufügen",
+        "fieldsHelp": "Ein Pfad wie data.items.0.name holt einen Wert aus der Antwort. Keine Werte: die ganze Antwort.",
+        "placeSearch": "Stadt oder Ort",
+        "find": "Suchen",
+        "placeChosen": "Zeigt: {{place}}",
+        "placeNote": "Dein Browser fragt open-meteo.com direkt; kein Schlüssel nötig.",
+        "codeHelp": "Läuft in einer eigenen Sandbox: Es sieht weder diese Seite noch deinen Login oder deine Einstellungen.",
+        "secretHelp": "Wird in deinen Dash-Einstellungen gespeichert (und im Konto, wenn synchronisiert). Nimm einen Nur-Lese-Schlüssel.",
+        "urlHelp_page": "Die Seite muss erlauben, in anderen Seiten angezeigt zu werden; viele tun das nicht.",
+        "urlHelp_any": "",
+        "choices": {
+            "grid": "Raster",
+            "list": "Liste",
+            "c": "°C",
+            "f": "°F",
+            "cover": "Füllen",
+            "contain": "Einpassen"
+        }
     }
 }

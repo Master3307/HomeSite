@@ -1,588 +1,348 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
+
+import { WIDGETS } from './widgets.jsx'
 import {
-  BUILTIN_PROVIDERS,
-  WIDGET_SIZES,
+  LOOK_DEFAULTS,
   buildSearchUrl,
   createId,
-  getAllProviders,
   isDashAccountSyncAvailable,
-  isHttpUrl,
-  normalizeDashSettings,
   normalizeKeyword,
   replaceDashSettings,
   resetDashSettings,
   updateDashSettings,
+  updateLook,
   useDashSettings,
   validateSearchTemplate,
+  visibleProviders,
 } from '../../lib/dashSettings.js'
 
+/*
+ * /dash settings: a side sheet with four tabs.
+ *   Look     presets (minimal / standard), columns, density, card style,
+ *            corners, width, background, what the top shows
+ *   Search   every engine (the site's too): show / hide, order, default,
+ *            edit name / URL / !keyword, add your own; site results and the
+ *            Discord lookup (owner)
+ *   Board    the widgets in order (edit mode on the page does the rest)
+ *   Backup   sync status, export / import / reset
+ * Custom CSS is in the account settings (one place for the whole site).
+ */
+
 const TABS = [
+  { id: 'look', icon: 'palette' },
   { id: 'search', icon: 'travel_explore' },
-  { id: 'widgets', icon: 'widgets' },
-  { id: 'css', icon: 'format_paint' },
+  { id: 'board', icon: 'dashboard_customize' },
   { id: 'backup', icon: 'save' },
 ]
 
-function move(list, index, offset) {
-  const target = index + offset
-  if (target < 0 || target >= list.length) return list
-
-  const next = [...list]
-  ;[next[index], next[target]] = [next[target], next[index]]
-  return next
+const PRESETS = {
+  minimal: { look: { showHeader: false, showGreeting: false, showSearch: true, style: 'bare', width: 'normal' }, widgets: [] },
+  standard: { look: { ...LOOK_DEFAULTS }, widgets: null },
 }
 
-function IconButton({ icon, label, onClick, danger = false, disabled = false }) {
+function Segment({ label, value, options, onChange }) {
+  const { t } = useTranslation('dash')
   return (
-    <button
-      type="button"
-      className={`dash-icon-btn${danger ? ' dash-icon-btn--danger' : ''}`}
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      disabled={disabled}
-    >
-      <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>
-    </button>
+    <div className="dash-field">
+      <span className="dash-field__label">{label}</span>
+      <div className="dash-segment" role="radiogroup" aria-label={label}>
+        {options.map((option) => (
+          <button key={option} type="button" role="radio" aria-checked={value === option} className={value === option ? 'is-active' : ''} onClick={() => onChange(option)}>
+            {t(`settings.look.choices.${option}`)}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
-/* ---------- Search providers ---------- */
+function Toggle({ label, checked, onChange, hint = null }) {
+  return (
+    <label className="dash-check">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <span>
+        {label}
+        {hint && <small>{hint}</small>}
+      </span>
+    </label>
+  )
+}
+
+function Range({ label, value, min, max, step = 1, unit = '', onChange }) {
+  return (
+    <label className="dash-field dash-range">
+      <span className="dash-field__label">
+        {label}
+        <output>
+          {value}
+          {unit}
+        </output>
+      </span>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
+    </label>
+  )
+}
+
+/* ---------- Look ---------- */
+
+function LookSettings() {
+  const { t } = useTranslation('dash')
+  const { look } = useDashSettings()
+  return (
+    <div className="dash-panel">
+      <div className="dash-presets">
+        {Object.keys(PRESETS).map((id) => (
+          <button
+            key={id}
+            type="button"
+            className="dash-preset"
+            onClick={() => {
+              const preset = PRESETS[id]
+              updateDashSettings((current) => ({ look: { ...current.look, ...preset.look }, ...(preset.widgets ? { widgets: preset.widgets } : {}) }))
+            }}
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">
+              {id === 'minimal' ? 'crop_square' : 'grid_view'}
+            </span>
+            <strong>{t(`settings.look.presets.${id}`)}</strong>
+            <small>{t(`settings.look.presets.${id}Text`)}</small>
+          </button>
+        ))}
+      </div>
+
+      <h3>{t('settings.look.top')}</h3>
+      <Toggle label={t('settings.look.showHeader')} checked={look.showHeader} onChange={(showHeader) => updateLook({ showHeader })} />
+      <Toggle label={t('settings.look.showGreeting')} checked={look.showGreeting} onChange={(showGreeting) => updateLook({ showGreeting })} />
+      <Toggle label={t('settings.look.showSearch')} checked={look.showSearch} onChange={(showSearch) => updateLook({ showSearch })} />
+
+      <h3>{t('settings.look.layout')}</h3>
+      <Range label={t('settings.look.columns')} value={look.columns} min={2} max={6} onChange={(columns) => updateLook({ columns })} />
+      <Segment label={t('settings.look.width')} value={look.width} options={['normal', 'wide', 'full']} onChange={(width) => updateLook({ width })} />
+      <Segment label={t('settings.look.density')} value={look.density} options={['comfortable', 'compact']} onChange={(density) => updateLook({ density })} />
+
+      <h3>{t('settings.look.cards')}</h3>
+      <Segment label={t('settings.look.style')} value={look.style} options={['glass', 'solid', 'outline', 'bare']} onChange={(style) => updateLook({ style })} />
+      <Range label={t('settings.look.radius')} value={look.radius} min={0} max={32} unit="px" onChange={(radius) => updateLook({ radius })} />
+
+      <h3>{t('settings.look.background')}</h3>
+      <Segment label={t('settings.look.backgroundKind')} value={look.background} options={['site', 'color', 'image']} onChange={(background) => updateLook({ background })} />
+      {look.background === 'color' && (
+        <label className="dash-field dash-field--inline">
+          <span className="dash-field__label">{t('settings.look.color')}</span>
+          <input type="color" value={/^#[0-9a-f]{6}$/i.test(look.backgroundValue) ? look.backgroundValue : '#1a1030'} onChange={(event) => updateLook({ backgroundValue: event.target.value })} />
+        </label>
+      )}
+      {look.background === 'image' && (
+        <>
+          <label className="dash-field">
+            <span className="dash-field__label">{t('settings.look.imageUrl')}</span>
+            <input type="url" value={look.backgroundValue} placeholder="https://…" onChange={(event) => updateLook({ backgroundValue: event.target.value })} />
+          </label>
+          <Range label={t('settings.look.dim')} value={look.dim} min={0} max={80} unit="%" onChange={(dim) => updateLook({ dim })} />
+        </>
+      )}
+    </div>
+  )
+}
+
+/* ---------- Search ---------- */
 
 const EMPTY_PROVIDER = { id: null, name: '', url: '', keyword: '' }
 
-function SearchSettings() {
+function ProviderForm({ initial, onSave, onCancel, providers }) {
+  const { t } = useTranslation('dash')
+  const [draft, setDraft] = useState(initial)
+  const [error, setError] = useState(null)
+  function save(event) {
+    event.preventDefault()
+    const problem = validateSearchTemplate(draft.url)
+    if (problem) return setError(t(problem))
+    const keyword = normalizeKeyword(draft.keyword)
+    if (keyword && providers.some((provider) => provider.keyword === keyword && provider.id !== draft.id)) return setError(t('errors.keywordTaken'))
+    onSave({ ...draft, keyword, name: draft.name.trim() })
+  }
+  return (
+    <form className="dash-provider-form" onSubmit={save}>
+      <label className="dash-field">
+        <span className="dash-field__label">{t('settings.search.name')}</span>
+        <input value={draft.name} maxLength={64} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+      </label>
+      <label className="dash-field">
+        <span className="dash-field__label">{t('settings.search.url')}</span>
+        <input value={draft.url} onChange={(event) => setDraft({ ...draft, url: event.target.value })} placeholder="https://example.com/search?q=%s" />
+        <span className="dash-hint">{t('settings.search.urlHelp')}</span>
+      </label>
+      <label className="dash-field">
+        <span className="dash-field__label">{t('settings.search.keyword')}</span>
+        <input value={draft.keyword} maxLength={24} onChange={(event) => setDraft({ ...draft, keyword: event.target.value })} placeholder="ddg" />
+        <span className="dash-hint">{t('settings.search.keywordHelp')}</span>
+      </label>
+      {!validateSearchTemplate(draft.url) && (
+        <p className="dash-hint">
+          {t('settings.search.preview')} <code>{buildSearchUrl(draft.url, 'cats')}</code>
+        </p>
+      )}
+      {error && <p className="dash-error">{error}</p>}
+      <div className="dash-row">
+        <button type="button" className="dash-button dash-button--quiet" onClick={onCancel}>
+          {t('settings.cancel')}
+        </button>
+        <button type="submit" className="dash-button">
+          {t('settings.save')}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function SearchSettings({ owner }) {
   const { t } = useTranslation('dash')
   const settings = useDashSettings()
-  const [draft, setDraft] = useState(EMPTY_PROVIDER)
-  const [error, setError] = useState(null)
+  const [editing, setEditing] = useState(null) // provider being edited, or EMPTY_PROVIDER
+  const list = settings.providers
 
-  const isEditing = Boolean(draft.id)
-
-  function handleSubmit(event) {
-    event.preventDefault()
-
-    const url = draft.url.trim()
-    const keyword = normalizeKeyword(draft.keyword)
-    const templateError = validateSearchTemplate(url)
-
-    if (templateError) {
-      setError(templateError)
-      return
-    }
-
-    const keywordTaken = keyword && getAllProviders(settings).some(
-      (provider) => provider.keyword === keyword && provider.id !== draft.id,
-    )
-
-    if (keywordTaken) {
-      setError('errors.keywordTaken')
-      return
-    }
-
-    const provider = {
-      id: draft.id || createId('provider'),
-      name: draft.name.trim(),
-      url,
-      keyword,
-    }
-
-    updateDashSettings((current) => ({
-      customProviders: isEditing
-        ? current.customProviders.map((entry) => (entry.id === provider.id ? provider : entry))
-        : [...current.customProviders, provider],
-    }))
-
-    setDraft(EMPTY_PROVIDER)
-    setError(null)
+  const setList = (providers) => updateDashSettings({ providers })
+  const move = (index, offset) => {
+    const target = index + offset
+    if (target < 0 || target >= list.length) return
+    const next = [...list]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    setList(next)
   }
-
-  function removeProvider(id) {
-    updateDashSettings((current) => ({
-      customProviders: current.customProviders.filter((entry) => entry.id !== id),
-    }))
-
-    if (draft.id === id) setDraft(EMPTY_PROVIDER)
-  }
-
-  const previewError = draft.url ? validateSearchTemplate(draft.url.trim()) : null
 
   return (
     <div className="dash-panel">
       <h3>{t('settings.search.providers')}</h3>
-
-      <ul className="dash-list">
-        {BUILTIN_PROVIDERS.map((provider) => (
-          <li key={provider.id} className="dash-list__item">
-            <div className="dash-list__main">
-              <strong>{provider.name}</strong>
-              <code>{provider.url}</code>
-            </div>
-            <span className="dash-badge">!{provider.keyword}</span>
-            <span className="dash-badge dash-badge--muted">{t('settings.search.builtin')}</span>
-            <IconButton
-              icon={settings.activeProviderId === provider.id ? 'star' : 'star_outline'}
-              label={t('settings.search.makeDefault')}
-              onClick={() => updateDashSettings({ activeProviderId: provider.id })}
-            />
-          </li>
-        ))}
-
-        {settings.customProviders.map((provider, index) => (
-          <li key={provider.id} className="dash-list__item">
-            <div className="dash-list__main">
-              <strong>{provider.name}</strong>
-              <code>{provider.url}</code>
-            </div>
-            {provider.keyword && <span className="dash-badge">!{provider.keyword}</span>}
-            <IconButton
-              icon={settings.activeProviderId === provider.id ? 'star' : 'star_outline'}
-              label={t('settings.search.makeDefault')}
-              onClick={() => updateDashSettings({ activeProviderId: provider.id })}
-            />
-            <IconButton
-              icon="arrow_upward"
-              label={t('settings.moveUp')}
-              disabled={index === 0}
-              onClick={() => updateDashSettings((current) => ({
-                customProviders: move(current.customProviders, index, -1),
-              }))}
-            />
-            <IconButton
-              icon="arrow_downward"
-              label={t('settings.moveDown')}
-              disabled={index === settings.customProviders.length - 1}
-              onClick={() => updateDashSettings((current) => ({
-                customProviders: move(current.customProviders, index, 1),
-              }))}
-            />
-            <IconButton
-              icon="edit"
-              label={t('settings.edit')}
-              onClick={() => {
-                setDraft(provider)
-                setError(null)
-              }}
-            />
-            <IconButton
-              icon="delete"
-              label={t('settings.delete')}
-              danger
-              onClick={() => removeProvider(provider.id)}
-            />
-          </li>
-        ))}
+      <p className="dash-hint">{t('settings.search.providersHelp')}</p>
+      <ul className="dash-providers-list">
+        {list.map((provider, index) => {
+          const active = provider.id === settings.activeProviderId
+          return (
+            <li key={provider.id} className={provider.hidden ? 'is-hidden' : ''}>
+              <button
+                type="button"
+                className={`dash-radio${active ? ' is-active' : ''}`}
+                onClick={() => updateDashSettings({ activeProviderId: provider.id, providers: list.map((item) => (item.id === provider.id ? { ...item, hidden: false } : item)) })}
+                title={t('settings.search.makeDefault')}
+                aria-label={t('settings.search.makeDefault')}
+                aria-pressed={active}
+              />
+              <span className="dash-providers-list__name">
+                <strong>{provider.name}</strong>
+                <small>
+                  {provider.keyword && <code>!{provider.keyword}</code>} {provider.builtin ? t('settings.search.builtin') : ''}
+                </small>
+              </span>
+              <button type="button" className="dash-tool" onClick={() => move(index, -1)} disabled={index === 0} aria-label={t('settings.moveUp')} title={t('settings.moveUp')}>
+                <span className="material-symbols-outlined">arrow_upward</span>
+              </button>
+              <button
+                type="button"
+                className="dash-tool"
+                disabled={active}
+                onClick={() => setList(list.map((item) => (item.id === provider.id ? { ...item, hidden: !item.hidden } : item)))}
+                aria-label={provider.hidden ? t('settings.search.show') : t('settings.search.hide')}
+                title={provider.hidden ? t('settings.search.show') : t('settings.search.hide')}
+              >
+                <span className="material-symbols-outlined">{provider.hidden ? 'visibility_off' : 'visibility'}</span>
+              </button>
+              <button type="button" className="dash-tool" onClick={() => setEditing(provider)} aria-label={t('settings.edit')} title={t('settings.edit')}>
+                <span className="material-symbols-outlined">edit</span>
+              </button>
+              {!provider.builtin && (
+                <button type="button" className="dash-tool dash-tool--danger" disabled={active} onClick={() => setList(list.filter((item) => item.id !== provider.id))} aria-label={t('settings.delete')} title={t('settings.delete')}>
+                  <span className="material-symbols-outlined">delete</span>
+                </button>
+              )}
+            </li>
+          )
+        })}
       </ul>
-
-      <form className="dash-form" onSubmit={handleSubmit}>
-        <h3>{isEditing ? t('settings.search.editProvider') : t('settings.search.addProvider')}</h3>
-
-        <label className="dash-field">
-          <span>{t('settings.search.name')}</span>
-          <input
-            value={draft.name}
-            onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-            placeholder="Startpage"
-            maxLength={64}
-          />
-        </label>
-
-        <label className="dash-field dash-field--wide">
-          <span>{t('settings.search.url')}</span>
-          <input
-            value={draft.url}
-            onChange={(event) => {
-              setDraft({ ...draft, url: event.target.value })
-              setError(null)
-            }}
-            placeholder="https://www.startpage.com/do/search?q=%s"
-            inputMode="url"
-            spellCheck={false}
-            required
-          />
-          <small>{t('settings.search.urlHelp')}</small>
-        </label>
-
-        <label className="dash-field">
-          <span>{t('settings.search.keyword')}</span>
-          <input
-            value={draft.keyword}
-            onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
-            placeholder="sp"
-            spellCheck={false}
-            maxLength={24}
-          />
-          <small>{t('settings.search.keywordHelp')}</small>
-        </label>
-
-        {draft.url && !previewError && (
-          <p className="dash-preview">
-            {t('settings.search.preview')}{' '}
-            <code>{buildSearchUrl(draft.url.trim(), 'black cats')}</code>
-          </p>
-        )}
-
-        {error && <p className="dash-error" role="alert">{t(error)}</p>}
-
-        <div className="dash-actions">
-          <button type="submit">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              {isEditing ? 'check' : 'add'}
-            </span>
-            {isEditing ? t('settings.save') : t('settings.add')}
-          </button>
-          {isEditing && (
-            <button
-              type="button"
-              className="dash-btn-secondary"
-              onClick={() => {
-                setDraft(EMPTY_PROVIDER)
-                setError(null)
-              }}
-            >
-              {t('settings.cancel')}
-            </button>
-          )}
-        </div>
-      </form>
-
-      <label className="dash-check">
-        <input
-          type="checkbox"
-          checked={settings.openInNewTab}
-          onChange={(event) => updateDashSettings({ openInNewTab: event.target.checked })}
+      {editing ? (
+        <ProviderForm
+          key={editing.id ?? 'new'}
+          initial={{ ...EMPTY_PROVIDER, ...editing }}
+          providers={list}
+          onCancel={() => setEditing(null)}
+          onSave={(provider) => {
+            if (provider.id) setList(list.map((item) => (item.id === provider.id ? { ...item, ...provider } : item)))
+            else setList([...list, { ...provider, id: createId('provider') }])
+            setEditing(null)
+          }}
         />
-        <span>{t('settings.search.newTab')}</span>
-      </label>
+      ) : (
+        <button type="button" className="dash-button dash-button--quiet" onClick={() => setEditing(EMPTY_PROVIDER)}>
+          <span className="material-symbols-outlined" aria-hidden="true">
+            add
+          </span>
+          {t('settings.search.addProvider')}
+        </button>
+      )}
+
+      <h3>{t('settings.search.behaviour')}</h3>
+      <Toggle label={t('settings.search.newTab')} checked={settings.openInNewTab} onChange={(openInNewTab) => updateDashSettings({ openInNewTab })} />
+      <Toggle label={t('settings.search.siteResults')} hint={t('settings.search.siteResultsHint')} checked={settings.siteResults} onChange={(siteResults) => updateDashSettings({ siteResults })} />
+      {owner && <Toggle label={t('settings.search.discordLookup')} hint={t('settings.search.discordLookupHint')} checked={settings.discordLookup} onChange={(discordLookup) => updateDashSettings({ discordLookup })} />}
+      {!visibleProviders(settings).length && <p className="dash-error">{t('settings.search.noneVisible')}</p>}
     </div>
   )
 }
 
-/* ---------- Widgets ---------- */
+/* ---------- Board ---------- */
 
-const EMPTY_WIDGET = {
-  id: null,
-  title: '',
-  url: '',
-  size: 'medium',
-  height: 320,
-  sandboxed: true,
-  showTitle: true,
-}
-
-function WidgetSettings() {
+function BoardSettings({ onEditBoard }) {
   const { t } = useTranslation('dash')
   const { widgets } = useDashSettings()
-  const [draft, setDraft] = useState(EMPTY_WIDGET)
-  const [error, setError] = useState(null)
-
-  const isEditing = Boolean(draft.id)
-
-  function handleSubmit(event) {
-    event.preventDefault()
-
-    const url = draft.url.trim()
-
-    if (!isHttpUrl(url)) {
-      setError('errors.urlInvalid')
-      return
-    }
-
-    const widget = { ...draft, id: draft.id || createId('widget'), url }
-
-    updateDashSettings((current) => ({
-      widgets: isEditing
-        ? current.widgets.map((entry) => (entry.id === widget.id ? widget : entry))
-        : [...current.widgets, widget],
-    }))
-
-    setDraft(EMPTY_WIDGET)
-    setError(null)
-  }
-
-  function removeWidget(id) {
-    updateDashSettings((current) => ({
-      widgets: current.widgets.filter((entry) => entry.id !== id),
-    }))
-
-    if (draft.id === id) setDraft(EMPTY_WIDGET)
-  }
-
   return (
     <div className="dash-panel">
-      <h3>{t('settings.widgets.list')}</h3>
-
-      {widgets.length === 0 ? (
-        <p className="dash-hint">{t('widgets.empty')}</p>
-      ) : (
-        <ul className="dash-list">
+      <p className="dash-hint">{t('settings.board.help')}</p>
+      <button type="button" className="dash-button" onClick={onEditBoard}>
+        <span className="material-symbols-outlined" aria-hidden="true">
+          edit
+        </span>
+        {t('settings.board.editOnPage')}
+      </button>
+      {widgets.length ? (
+        <ol className="dash-board-list">
           {widgets.map((widget, index) => (
-            <li key={widget.id} className="dash-list__item">
-              <div className="dash-list__main">
-                <strong>{widget.title || new URL(widget.url).hostname}</strong>
-                <code>{widget.url}</code>
-              </div>
-              <span className="dash-badge">{t(`settings.widgets.sizes.${widget.size}`)}</span>
-              <IconButton
-                icon="arrow_upward"
-                label={t('settings.moveUp')}
+            <li key={widget.id}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {WIDGETS[widget.type].icon}
+              </span>
+              <span>
+                <strong>{widget.title || t(`widgets.${widget.type}.name`)}</strong>
+                <small>
+                  {t(`widgets.${widget.type}.name`)} · {widget.w}×{widget.h}
+                </small>
+              </span>
+              <button
+                type="button"
+                className="dash-tool"
                 disabled={index === 0}
-                onClick={() => updateDashSettings((current) => ({
-                  widgets: move(current.widgets, index, -1),
-                }))}
-              />
-              <IconButton
-                icon="arrow_downward"
-                label={t('settings.moveDown')}
-                disabled={index === widgets.length - 1}
-                onClick={() => updateDashSettings((current) => ({
-                  widgets: move(current.widgets, index, 1),
-                }))}
-              />
-              <IconButton
-                icon="edit"
-                label={t('settings.edit')}
-                onClick={() => {
-                  setDraft(widget)
-                  setError(null)
-                }}
-              />
-              <IconButton
-                icon="delete"
-                label={t('settings.delete')}
-                danger
-                onClick={() => removeWidget(widget.id)}
-              />
+                aria-label={t('settings.moveUp')}
+                onClick={() =>
+                  updateDashSettings((current) => {
+                    const list = [...current.widgets]
+                    ;[list[index - 1], list[index]] = [list[index], list[index - 1]]
+                    return { widgets: list }
+                  })
+                }
+              >
+                <span className="material-symbols-outlined">arrow_upward</span>
+              </button>
+              <button type="button" className="dash-tool dash-tool--danger" aria-label={t('board.remove')} onClick={() => updateDashSettings((current) => ({ widgets: current.widgets.filter((item) => item.id !== widget.id) }))}>
+                <span className="material-symbols-outlined">delete</span>
+              </button>
             </li>
           ))}
-        </ul>
+        </ol>
+      ) : (
+        <p className="dash-hint">{t('board.empty')}</p>
       )}
-
-      <form className="dash-form" onSubmit={handleSubmit}>
-        <h3>{isEditing ? t('settings.widgets.edit') : t('settings.widgets.add')}</h3>
-
-        <label className="dash-field">
-          <span>{t('settings.widgets.title')}</span>
-          <input
-            value={draft.title}
-            onChange={(event) => setDraft({ ...draft, title: event.target.value })}
-            placeholder={t('settings.widgets.titlePlaceholder')}
-            maxLength={80}
-          />
-        </label>
-
-        <label className="dash-field dash-field--wide">
-          <span>{t('settings.widgets.url')}</span>
-          <input
-            value={draft.url}
-            onChange={(event) => {
-              setDraft({ ...draft, url: event.target.value })
-              setError(null)
-            }}
-            placeholder="https://example.com/embed"
-            inputMode="url"
-            spellCheck={false}
-            required
-          />
-          <small>{t('settings.widgets.urlHelp')}</small>
-        </label>
-
-        <label className="dash-field">
-          <span>{t('settings.widgets.size')}</span>
-          <select
-            value={draft.size}
-            onChange={(event) => setDraft({ ...draft, size: event.target.value })}
-          >
-            {WIDGET_SIZES.map((size) => (
-              <option key={size} value={size}>{t(`settings.widgets.sizes.${size}`)}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="dash-field">
-          <span>{t('settings.widgets.height')}</span>
-          <input
-            type="number"
-            min={80}
-            max={2000}
-            step={10}
-            value={draft.height}
-            onChange={(event) => setDraft({ ...draft, height: event.target.value })}
-          />
-        </label>
-
-        <label className="dash-check">
-          <input
-            type="checkbox"
-            checked={draft.showTitle}
-            onChange={(event) => setDraft({ ...draft, showTitle: event.target.checked })}
-          />
-          <span>{t('settings.widgets.showTitle')}</span>
-        </label>
-
-        <label className="dash-check">
-          <input
-            type="checkbox"
-            checked={draft.sandboxed}
-            onChange={(event) => setDraft({ ...draft, sandboxed: event.target.checked })}
-          />
-          <span>{t('settings.widgets.sandboxed')}</span>
-        </label>
-
-        <p className="dash-hint">{t('settings.widgets.embedNote')}</p>
-
-        {error && <p className="dash-error" role="alert">{t(error)}</p>}
-
-        <div className="dash-actions">
-          <button type="submit">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              {isEditing ? 'check' : 'add'}
-            </span>
-            {isEditing ? t('settings.save') : t('settings.add')}
-          </button>
-          {isEditing && (
-            <button
-              type="button"
-              className="dash-btn-secondary"
-              onClick={() => {
-                setDraft(EMPTY_WIDGET)
-                setError(null)
-              }}
-            >
-              {t('settings.cancel')}
-            </button>
-          )}
-        </div>
-      </form>
-    </div>
-  )
-}
-
-/* ---------- Custom CSS ---------- */
-
-const CSS_STARTER = `/* Custom CSS: applies to every page of the site.
-   Add ?nocss to any URL to temporarily disable it. */
-
-:root,
-:root[data-theme="dark"],
-:root[data-theme="light"] {
-  --bg-primary: #150a24;
-  --bg-secondary: #63369e;
-  --accent: #3d29d4;
-  --accent-hover: #594bd667;
-  --link: #00d5ff;
-}
-`
-
-/** Custom CSS editor. Also reused by the /maps settings modal. */
-export function CssSettings() {
-  const { t } = useTranslation('dash')
-  const settings = useDashSettings()
-  const [draft, setDraft] = useState(settings.customCss)
-  const [savedAt, setSavedAt] = useState(null)
-
-  const isDirty = draft !== settings.customCss
-
-  function apply() {
-    updateDashSettings({ customCss: draft })
-    setSavedAt(Date.now())
-  }
-
-  function handleKeyDown(event) {
-    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-      event.preventDefault()
-      apply()
-      return
-    }
-
-    if (event.key === 'Tab' && !event.shiftKey) {
-      event.preventDefault()
-      const { selectionStart, selectionEnd, value } = event.currentTarget
-      const next = `${value.slice(0, selectionStart)}  ${value.slice(selectionEnd)}`
-      const target = event.currentTarget
-
-      setDraft(next)
-      requestAnimationFrame(() => {
-        target.selectionStart = selectionStart + 2
-        target.selectionEnd = selectionStart + 2
-      })
-    }
-  }
-
-  return (
-    <div className="dash-panel">
-      <h3>{t('settings.css.title')}</h3>
-      <p className="dash-hint">{t('settings.css.help')}</p>
-
-      <textarea
-        className="dash-css"
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onKeyDown={handleKeyDown}
-        spellCheck={false}
-        autoCapitalize="off"
-        autoCorrect="off"
-        placeholder={'body {\n  background: black;\n}'}
-        aria-label={t('settings.css.title')}
-      />
-
-      <label className="dash-check">
-        <input
-          type="checkbox"
-          checked={settings.customCssEnabled}
-          onChange={(event) => updateDashSettings({ customCssEnabled: event.target.checked })}
-        />
-        <span>{t('settings.css.enabled')}</span>
-      </label>
-
-      <label className="dash-check">
-        <input
-          type="checkbox"
-          checked={settings.replaceSiteCss}
-          onChange={(event) => updateDashSettings({ replaceSiteCss: event.target.checked })}
-        />
-        <span>{t('settings.css.replace')}</span>
-      </label>
-      {settings.replaceSiteCss && (
-        <p className="dash-warning">{t('settings.css.replaceWarning')}</p>
-      )}
-
-      <div className="dash-actions">
-        <button type="button" onClick={apply} disabled={!isDirty}>
-          <span className="material-symbols-outlined" aria-hidden="true">check</span>
-          {t('settings.css.apply')}
-        </button>
-        <button
-          type="button"
-          className="dash-btn-secondary"
-          onClick={() => setDraft(draft ? `${draft.trimEnd()}\n\n${CSS_STARTER}` : CSS_STARTER)}
-        >
-          {t('settings.css.starter')}
-        </button>
-        <button
-          type="button"
-          className="dash-btn-secondary"
-          disabled={!isDirty}
-          onClick={() => setDraft(settings.customCss)}
-        >
-          {t('settings.css.revert')}
-        </button>
-        <button
-          type="button"
-          className="dash-btn-danger"
-          disabled={!draft && !settings.customCss}
-          onClick={() => {
-            setDraft('')
-            updateDashSettings({ customCss: '' })
-          }}
-        >
-          {t('settings.css.clear')}
-        </button>
-      </div>
-
       <p className="dash-hint">
-        {isDirty ? t('settings.css.unsaved') : savedAt ? t('settings.css.saved') : t('settings.css.shortcut')}
+        {t('settings.board.css')} <Link to="/cult/settings#css">{t('settings.board.cssLink')}</Link>
       </p>
     </div>
   )
@@ -595,12 +355,14 @@ function BackupSettings({ account }) {
   const settings = useDashSettings()
   const fileRef = useRef(null)
   const [message, setMessage] = useState(null)
+  const [confirmReset, setConfirmReset] = useState(false)
+  const synced = isDashAccountSyncAvailable()
+  const size = JSON.stringify(settings).length
 
   function exportSettings() {
     const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-
     link.href = url
     link.download = `dash-settings-${new Date().toISOString().slice(0, 10)}.json`
     link.click()
@@ -611,64 +373,69 @@ function BackupSettings({ account }) {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
-
     try {
-      const parsed = JSON.parse(await file.text())
-      replaceDashSettings(normalizeDashSettings(parsed))
+      replaceDashSettings(JSON.parse(await file.text()))
       setMessage({ type: 'ok', key: 'settings.backup.imported' })
-    } catch (error) {
-      console.error('Could not import dash settings:', error)
+    } catch {
       setMessage({ type: 'error', key: 'settings.backup.importFailed' })
     }
   }
 
-  function reset() {
-    if (!window.confirm(t('settings.backup.resetConfirm'))) return
-    resetDashSettings()
-    setMessage({ type: 'ok', key: 'settings.backup.resetDone' })
-  }
-
-  const syncKey = isDashAccountSyncAvailable()
-    ? 'settings.backup.syncOn'
-    : account
-      ? 'settings.backup.syncSoon'
-      : 'settings.backup.syncLocal'
-
   return (
     <div className="dash-panel">
       <h3>{t('settings.backup.sync')}</h3>
-      <p className="dash-hint">
+      <p className="dash-sync">
         <span className="material-symbols-outlined" aria-hidden="true">
-          {account ? 'cloud_off' : 'computer'}
-        </span>{' '}
-        {t(syncKey, { name: account?.displayName || account?.username || '' })}
+          {synced ? 'cloud_done' : 'computer'}
+        </span>
+        {t(synced ? 'settings.backup.syncOn' : 'settings.backup.syncLocal', { name: account?.displayName || account?.username || '' })}
       </p>
+      {synced && size > 78_000 && <p className="dash-error">{t('settings.backup.tooBig')}</p>}
 
       <h3>{t('settings.backup.title')}</h3>
       <p className="dash-hint">{t('settings.backup.help')}</p>
-
-      <div className="dash-actions">
-        <button type="button" onClick={exportSettings}>
-          <span className="material-symbols-outlined" aria-hidden="true">download</span>
+      <div className="dash-row">
+        <button type="button" className="dash-button" onClick={exportSettings}>
+          <span className="material-symbols-outlined" aria-hidden="true">
+            download
+          </span>
           {t('settings.backup.export')}
         </button>
-        <button type="button" className="dash-btn-secondary" onClick={() => fileRef.current?.click()}>
-          <span className="material-symbols-outlined" aria-hidden="true">upload</span>
+        <button type="button" className="dash-button dash-button--quiet" onClick={() => fileRef.current?.click()}>
+          <span className="material-symbols-outlined" aria-hidden="true">
+            upload
+          </span>
           {t('settings.backup.import')}
         </button>
-        <button type="button" className="dash-btn-danger" onClick={reset}>
-          <span className="material-symbols-outlined" aria-hidden="true">restart_alt</span>
-          {t('settings.backup.reset')}
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          hidden
-          onChange={importSettings}
-        />
+        <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={importSettings} />
       </div>
-
+      <div className="dash-row">
+        {confirmReset ? (
+          <>
+            <button
+              type="button"
+              className="dash-button dash-button--danger"
+              onClick={() => {
+                resetDashSettings()
+                setConfirmReset(false)
+                setMessage({ type: 'ok', key: 'settings.backup.resetDone' })
+              }}
+            >
+              {t('settings.backup.resetYes')}
+            </button>
+            <button type="button" className="dash-button dash-button--quiet" onClick={() => setConfirmReset(false)}>
+              {t('settings.cancel')}
+            </button>
+          </>
+        ) : (
+          <button type="button" className="dash-button dash-button--quiet" onClick={() => setConfirmReset(true)}>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              restart_alt
+            </span>
+            {t('settings.backup.reset')}
+          </button>
+        )}
+      </div>
       {message && (
         <p className={message.type === 'error' ? 'dash-error' : 'dash-hint'} role="status">
           {t(message.key)}
@@ -678,41 +445,50 @@ function BackupSettings({ account }) {
   )
 }
 
-/* ---------- Panel ---------- */
+/* ---------- the sheet ---------- */
 
-export default function DashSettings({ account, initialTab = 'search', onClose }) {
+export default function DashSettings({ account, owner, initialTab = 'look', onClose, onEditBoard }) {
   const { t } = useTranslation('dash')
-  const [tab, setTab] = useState(initialTab)
+  const [tab, setTab] = useState(TABS.some((entry) => entry.id === initialTab) ? initialTab : 'look')
+  const ref = useRef(null)
+  useEffect(() => {
+    ref.current?.showModal()
+  }, [])
 
   return (
-    <section className="card dash-settings" aria-label={t('settings.title')}>
-      <div className="dash-settings__head">
-        <h2>{t('settings.title')}</h2>
-        <IconButton icon="close" label={t('settings.close')} onClick={onClose} />
-      </div>
-
+    <dialog ref={ref} className="dash-dialog dash-sheet" onClose={onClose} aria-labelledby="dash-settings-title">
+      <header className="dash-dialog__head">
+        <span className="material-symbols-outlined" aria-hidden="true">
+          tune
+        </span>
+        <h2 id="dash-settings-title">{t('settings.title')}</h2>
+        <button type="button" className="dash-tool" onClick={() => ref.current?.close()} aria-label={t('settings.close')}>
+          <span className="material-symbols-outlined">close</span>
+        </button>
+      </header>
       <div className="dash-tabs" role="tablist">
         {TABS.map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === entry.id}
-            className={`dash-tab${tab === entry.id ? ' dash-tab--active' : ''}`}
-            onClick={() => setTab(entry.id)}
-          >
-            <span className="material-symbols-outlined" aria-hidden="true">{entry.icon}</span>
-            <span>{t(`settings.tabs.${entry.id}`)}</span>
+          <button key={entry.id} type="button" role="tab" aria-selected={tab === entry.id} className={tab === entry.id ? 'is-active' : ''} onClick={() => setTab(entry.id)}>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              {entry.icon}
+            </span>
+            {t(`settings.tabs.${entry.id}`)}
           </button>
         ))}
       </div>
-
-      <div role="tabpanel">
-        {tab === 'search' && <SearchSettings />}
-        {tab === 'widgets' && <WidgetSettings />}
-        {tab === 'css' && <CssSettings />}
+      <div className="dash-dialog__body" role="tabpanel">
+        {tab === 'look' && <LookSettings />}
+        {tab === 'search' && <SearchSettings owner={owner} />}
+        {tab === 'board' && (
+          <BoardSettings
+            onEditBoard={() => {
+              ref.current?.close()
+              onEditBoard()
+            }}
+          />
+        )}
         {tab === 'backup' && <BackupSettings account={account} />}
       </div>
-    </section>
+    </dialog>
   )
 }

@@ -1,128 +1,67 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  buildSearchUrl,
-  getAllProviders,
-  resolveSearch,
-  updateDashSettings,
-  useDashSettings,
-} from '../../lib/dashSettings.js'
 
-function isEditable(target) {
-  if (!target) return false
-  const tag = target.tagName
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
-}
+import Search from '../Search.jsx'
+import { hubGet, userPageUrl } from '../../lib/hub.js'
+import { buildSearchUrl, resolveSearch, updateDashSettings, useDashSettings, visibleProviders } from '../../lib/dashSettings.js'
+import { Favicon } from './widgets.jsx'
 
-export default function DashSearch() {
+/*
+ * The /dash search: the site's own search bar (same look as on the home
+ * page). Enter searches the web with the chosen engine (or !keyword), the
+ * list under it also finds pages of this site, and for the site owner
+ * people on Discord (the hub's member search, needs the hub unlocked).
+ */
+
+export default function DashSearch({ owner }) {
   const { t } = useTranslation('dash')
   const settings = useDashSettings()
-  const [query, setQuery] = useState('')
-  const inputRef = useRef(null)
+  const providers = visibleProviders(settings)
+  const active = settings.providers.find((provider) => provider.id === settings.activeProviderId)
 
-  const providers = getAllProviders(settings)
-  const resolved = resolveSearch(settings, query)
-  const isBangOverride = resolved.provider.id !== settings.activeProviderId
+  const web = useMemo(
+    () => ({
+      label: (query) => {
+        const resolved = resolveSearch(settings, query)
+        return t('search.webOption', { query: resolved.query || query, provider: resolved.provider?.name ?? '' })
+      },
+      run: (query) => {
+        const resolved = resolveSearch(settings, query)
+        if (!resolved.provider || !resolved.query) return
+        const url = buildSearchUrl(resolved.provider.url, resolved.query)
+        if (settings.openInNewTab) window.open(url, '_blank', 'noopener,noreferrer')
+        else window.location.assign(url)
+      },
+    }),
+    [settings, t],
+  )
 
-  // Focus the search bar as soon as the page loads (autoFocus alone can be
-  // lost to other mount-time work like twemoji parsing).
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      inputRef.current?.focus({ preventScroll: true })
+  const people = useCallback(async (query, signal) => {
+    if (signal.aborted) return []
+    const data = await hubGet('/hub/members', { q: query.replace(/^@/, ''), limit: 6 }).catch((error) => {
+      throw new Error(error.status === 401 || error.locked ? t('search.hubLocked') : error.message)
     })
-
-    return () => cancelAnimationFrame(frame)
-  }, [])
-
-  useEffect(() => {
-    function handleKeyDown(event) {
-      if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return
-      if (isEditable(event.target)) return
-
-      event.preventDefault()
-      inputRef.current?.focus()
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
-  function handleSubmit(event) {
-    event.preventDefault()
-
-    if (!resolved.query) {
-      inputRef.current?.focus()
-      return
-    }
-
-    const url = buildSearchUrl(resolved.provider.url, resolved.query)
-
-    if (settings.openInNewTab) {
-      window.open(url, '_blank', 'noopener,noreferrer')
-      setQuery('')
-    } else {
-      window.location.assign(url)
-    }
-  }
+    return (data.members ?? []).map((member) => ({
+      id: member.id,
+      name: member.displayName || member.globalName || member.username,
+      handle: member.username,
+      avatarUrl: member.avatar ?? null,
+      open: () => window.open(userPageUrl(member.id), '_blank', 'noopener'),
+    }))
+  }, [t])
 
   return (
-    <section className="card dash-search" aria-label={t('search.label')}>
-      <form className="dash-search__form" role="search" onSubmit={handleSubmit}>
-        <span className="material-symbols-outlined dash-search__icon" aria-hidden="true">
-          search
-        </span>
-        <input
-          ref={inputRef}
-          className="dash-search__input"
-          type="search"
-          name="q"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t('search.placeholder', { provider: resolved.provider.name })}
-          aria-label={t('search.label')}
-          autoComplete="off"
-          autoFocus
-          enterKeyHint="search"
-        />
-        <button className="dash-search__submit" type="submit" aria-label={t('search.submit')}>
-          <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
-        </button>
-      </form>
-
-      <div className="dash-providers" role="radiogroup" aria-label={t('search.providers')}>
-        {providers.map((provider) => {
-          const isActive = provider.id === settings.activeProviderId
-          const isTarget = provider.id === resolved.provider.id
-
-          return (
-            <button
-              key={provider.id}
-              type="button"
-              role="radio"
-              aria-checked={isActive}
-              className={[
-                'dash-chip',
-                isActive && 'dash-chip--active',
-                isBangOverride && isTarget && 'dash-chip--target',
-              ].filter(Boolean).join(' ')}
-              onClick={() => {
-                updateDashSettings({ activeProviderId: provider.id })
-                inputRef.current?.focus()
-              }}
-              title={provider.keyword ? `!${provider.keyword}` : undefined}
-            >
+    <Search className="dash-search" autoFocus sitePages={settings.siteResults} web={web} people={owner && settings.discordLookup ? people : null} placeholder={t('search.placeholder', { provider: active?.name ?? '' })}>
+      {providers.length > 1 && (
+        <div className="dash-engines" role="radiogroup" aria-label={t('search.providers')}>
+          {providers.map((provider) => (
+            <button key={provider.id} type="button" role="radio" aria-checked={provider.id === settings.activeProviderId} className={provider.id === settings.activeProviderId ? 'is-active' : ''} onClick={() => updateDashSettings({ activeProviderId: provider.id })} title={provider.keyword ? `!${provider.keyword}` : undefined}>
+              <Favicon url={provider.url.replaceAll('%s', '')} size={16} />
               {provider.name}
-              {provider.keyword && <span className="dash-chip__kw">!{provider.keyword}</span>}
             </button>
-          )
-        })}
-      </div>
-
-      <p className="dash-hint">
-        {isBangOverride
-          ? t('search.bangActive', { provider: resolved.provider.name })
-          : t('search.hint')}
-      </p>
-    </section>
+          ))}
+        </div>
+      )}
+    </Search>
   )
 }

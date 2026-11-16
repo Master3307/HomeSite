@@ -12,5 +12,8 @@
     "alsoAt": "auch unter {{paths}}",
     "results_one": "{{count}} Ergebnis",
     "results_other": "{{count}} Ergebnisse",
-    "hint": "↑ ↓ zum Navigieren · Enter zum Öffnen · Esc zum Schließen"
+    "hint": "↑ ↓ zum Navigieren · Enter zum Öffnen · Esc zum Schließen",
+    "web": "Web",
+    "discord": "Discord",
+    "onlyYou": "nur du"
 }

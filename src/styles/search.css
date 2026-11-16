@@ -354,3 +354,15 @@
     animation: none;
   }
 }
+
+/* /dash: the web search option and Discord faces. */
+.site-search__face {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.site-search__option--web .site-search__title {
+  font-weight: 600;
+}

@@ -2,16 +2,9 @@
     "search": {
         "label": "Search",
         "placeholder": "Search with {{provider}}…",
-        "submit": "Search",
-        "providers": "Search provider",
-        "hint": "Press / to focus · Type !keyword to use another provider (e.g. !ddg cats)",
-        "bangActive": "This search will use {{provider}}"
-    },
-    "widgets": {
-        "label": "Widgets",
-        "empty": "No widgets yet. Add any embeddable page as an iframe widget.",
-        "add": "Add widget",
-        "openExternal": "Open in new tab"
+        "providers": "Search engine",
+        "webOption": "Search {{provider}} for “{{query}}”",
+        "hubLocked": "Unlock the hub to look up people on Discord."
     },
     "settings": {
         "title": "Customize",
@@ -22,46 +15,93 @@
         "edit": "Edit",
         "delete": "Delete",
         "moveUp": "Move up",
-        "moveDown": "Move down",
         "tabs": {
+            "look": "Look",
             "search": "Search",
-            "widgets": "Widgets",
-            "css": "Custom CSS",
-            "backup": "Sync & Backup"
+            "board": "Board",
+            "backup": "Sync & backup"
+        },
+        "look": {
+            "presets": {
+                "minimal": "Minimal",
+                "minimalText": "Just the search bar.",
+                "standard": "Standard",
+                "standardText": "Back to the default look."
+            },
+            "top": "At the top",
+            "showHeader": "Page title",
+            "showGreeting": "Time and greeting",
+            "showSearch": "Search bar",
+            "layout": "Layout",
+            "columns": "Columns",
+            "width": "Width",
+            "density": "Spacing",
+            "cards": "Widgets",
+            "style": "Card style",
+            "radius": "Corners",
+            "background": "Background",
+            "backgroundKind": "Behind everything",
+            "color": "Colour",
+            "imageUrl": "Picture address",
+            "dim": "Darken the picture",
+            "choices": {
+                "normal": "Normal",
+                "wide": "Wide",
+                "full": "Full",
+                "comfortable": "Roomy",
+                "compact": "Compact",
+                "glass": "Glass",
+                "solid": "Solid",
+                "outline": "Outline",
+                "bare": "Bare",
+                "site": "Site",
+                "color": "Colour",
+                "image": "Picture"
+            }
         },
         "search": {
-            "providers": "Search providers",
-            "builtin": "Built-in",
+            "providers": "Search engines",
+            "providersHelp": "The dot picks the default. Hidden engines still work with their !keyword.",
+            "builtin": "built in",
             "makeDefault": "Make default",
-            "addProvider": "Add custom provider",
-            "editProvider": "Edit provider",
+            "show": "Show",
+            "hide": "Hide",
+            "hidden": "hidden",
+            "addProvider": "Add an engine",
             "name": "Name",
-            "url": "Search URL",
-            "urlHelp": "Use %s where the search query goes, e.g. https://example.com/search?q=%s",
+            "url": "Search address",
+            "urlHelp": "Put %s where the search words go, e.g. https://example.com/search?q=%s",
             "keyword": "Keyword (optional)",
-            "keywordHelp": "Type !keyword before a query to use this provider once.",
+            "keywordHelp": "Type !keyword before your search to use this engine once.",
             "preview": "Preview:",
-            "newTab": "Open search results in a new tab"
+            "behaviour": "While searching",
+            "newTab": "Open results in a new tab",
+            "siteResults": "Also find pages of this site",
+            "siteResultsHint": "Listed under the search bar while you type.",
+            "discordLookup": "Look up people on Discord",
+            "discordLookupHint": "Only for you: uses the hub's member search (the hub has to be unlocked).",
+            "noneVisible": "Show at least one engine."
         },
-        "widgets": {
-            "list": "Your widgets",
-            "add": "Add iframe widget",
-            "edit": "Edit widget",
-            "title": "Title",
-            "titlePlaceholder": "My widget",
-            "url": "URL",
-            "urlHelp": "Any http(s) page that allows being embedded.",
-            "size": "Width",
-            "height": "Height (px)",
-            "showTitle": "Show title bar",
-            "sandboxed": "Sandbox iframe (recommended)",
-            "embedNote": "Some sites block embedding (X-Frame-Options / CSP). Those will show up blank.",
-            "sizes": {
-                "small": "Small",
-                "medium": "Medium",
-                "large": "Large",
-                "full": "Full width"
-            }
+        "board": {
+            "help": "The board is the grid of widgets under the search. Press Edit on the page to move, resize, change and add widgets.",
+            "editOnPage": "Edit the board",
+            "css": "Custom CSS for the whole site is in",
+            "cssLink": "your account settings"
+        },
+        "backup": {
+            "sync": "Sync",
+            "syncLocal": "Saved in this browser. Log in to have it on every device.",
+            "syncOn": "Saved on your account too, on every device where you're logged in.",
+            "tooBig": "Your dash is too big to sync (notes, HTML or many links). It's still saved in this browser.",
+            "title": "Backup",
+            "help": "Download everything as a file, or load one.",
+            "export": "Export",
+            "import": "Import",
+            "imported": "Imported.",
+            "importFailed": "That file could not be imported.",
+            "reset": "Reset the dash",
+            "resetYes": "Yes, reset everything",
+            "resetDone": "Reset."
         },
         "css": {
             "title": "Custom CSS",
@@ -76,27 +116,183 @@
             "unsaved": "Unsaved changes · Ctrl+Enter to apply",
             "saved": "Saved.",
             "shortcut": "Ctrl+Enter to apply"
-        },
-        "backup": {
-            "sync": "Sync",
-            "syncLocal": "Settings are saved in this browser. Log in to sync them with your account (coming soon).",
-            "syncSoon": "Logged in as {{name}}. Account sync for the dash is coming soon; settings are saved in this browser for now.",
-            "syncOn": "Synced with your account ({{name}}).",
-            "title": "Backup",
-            "help": "Export your providers, widgets and custom CSS as a JSON file, or import one.",
-            "export": "Export",
-            "import": "Import",
-            "imported": "Settings imported.",
-            "importFailed": "That file could not be imported.",
-            "reset": "Reset everything",
-            "resetConfirm": "Reset all dash settings (providers, widgets, custom CSS)?",
-            "resetDone": "Settings reset."
         }
     },
     "errors": {
         "urlRequired": "Please enter a URL.",
         "urlInvalid": "Please enter a valid http(s) URL.",
         "placeholderMissing": "The URL must contain %s for the search query.",
-        "keywordTaken": "That keyword is already used by another provider."
+        "keywordTaken": "That keyword is already used by another provider.",
+        "tooMany": "That's the most bookmarks there can be."
+    },
+    "greeting": {
+        "morning": "Good morning",
+        "afternoon": "Good afternoon",
+        "evening": "Good evening",
+        "night": "Good night",
+        "morningName": "Good morning, {{name}}",
+        "afternoonName": "Good afternoon, {{name}}",
+        "eveningName": "Good evening, {{name}}",
+        "nightName": "Good night, {{name}}"
+    },
+    "quick": {
+        "cult": "Cult",
+        "profile": "My profile",
+        "members": "Members",
+        "birthdays": "Birthdays",
+        "notifications": "Notifications",
+        "settings": "Settings",
+        "hub": "Hub",
+        "home": "Home",
+        "card": "About me",
+        "about": "About the site"
+    },
+    "board": {
+        "editBoard": "Edit",
+        "done": "Done",
+        "earlier": "Move earlier",
+        "later": "Move later",
+        "narrower": "Narrower",
+        "wider": "Wider",
+        "shorter": "Shorter",
+        "taller": "Taller",
+        "edit": "Settings",
+        "remove": "Remove",
+        "add": "Add a widget",
+        "addTitle": "Add a widget",
+        "empty": "Nothing on the board. Press Edit to add widgets."
+    },
+    "widgets": {
+        "loading": "Loading…",
+        "loadError": "Couldn't load this right now.",
+        "clock": {
+            "name": "Clock",
+            "text": "The time, anywhere in the world."
+        },
+        "bookmarks": {
+            "name": "Bookmarks",
+            "text": "Your links, with their icons.",
+            "empty": "No links yet. Edit the widget to add some."
+        },
+        "site": {
+            "name": "This site",
+            "text": "Shortcuts into the site."
+        },
+        "search": {
+            "name": "Search box",
+            "text": "An extra search box for one engine."
+        },
+        "iframe": {
+            "name": "Web page",
+            "text": "Any page that allows being embedded, like a server dashboard.",
+            "empty": "Edit the widget and add a page address."
+        },
+        "note": {
+            "name": "Note",
+            "text": "A sticky note, saved as you type.",
+            "placeholder": "Write something…"
+        },
+        "weather": {
+            "name": "Weather",
+            "text": "Now and the next days, from open-meteo.com.",
+            "empty": "Edit the widget and pick a place.",
+            "codes": {
+                "clear": "Clear",
+                "partly": "Partly cloudy",
+                "cloudy": "Cloudy",
+                "fog": "Fog",
+                "drizzle": "Drizzle",
+                "rain": "Rain",
+                "snow": "Snow",
+                "showers": "Showers",
+                "storm": "Thunderstorm"
+            }
+        },
+        "countdown": {
+            "name": "Countdown",
+            "text": "Days and hours until (or since) a date.",
+            "empty": "Edit the widget and pick a date.",
+            "days_one": "day",
+            "days_other": "days",
+            "hours_one": "hour",
+            "hours_other": "hours",
+            "since": "Since {{label}}",
+            "until": "Left"
+        },
+        "calendar": {
+            "name": "Calendar",
+            "text": "This month at a glance."
+        },
+        "image": {
+            "name": "Picture",
+            "text": "A picture or webcam, refreshed if you like.",
+            "empty": "Edit the widget and add a picture address."
+        },
+        "status": {
+            "name": "Status",
+            "text": "Are your sites and servers up? With response times.",
+            "empty": "Edit the widget and add addresses to check.",
+            "down": "down"
+        },
+        "api": {
+            "name": "Custom integration",
+            "text": "Show values from any JSON API (it has to allow requests from this site).",
+            "empty": "Edit the widget and add an API address.",
+            "error": "Couldn't read it: {{error}}"
+        },
+        "html": {
+            "name": "Your HTML",
+            "text": "Your own HTML, CSS and JavaScript, sandboxed.",
+            "empty": "Edit the widget and add some HTML."
+        }
+    },
+    "fields": {
+        "title": "Title",
+        "titlePlaceholder": "Optional",
+        "seconds": "Show seconds",
+        "showDate": "Show the date",
+        "timeZone": "Time zone (empty: yours)",
+        "label": "Label",
+        "items": "Links",
+        "layout": "Layout",
+        "newTab": "Open links in a new tab",
+        "providerId": "Engine",
+        "url": "Address",
+        "zoom": "Zoom (%)",
+        "popups": "Let it open new tabs",
+        "place": "Place",
+        "unit": "Unit",
+        "fit": "Fit",
+        "refresh": "Refresh every (seconds, 0: never)",
+        "interval": "Check every (seconds)",
+        "fields": "Values",
+        "headerName": "Header name (optional)",
+        "headerValue": "Header value (optional)",
+        "code": "HTML",
+        "date": "Date",
+        "linkTitle": "Name",
+        "linkUrl": "Address",
+        "apiLabel": "Label",
+        "apiPath": "Path in the JSON",
+        "apiPrefix": "Before",
+        "apiSuffix": "After",
+        "apiAdd": "Add a value",
+        "fieldsHelp": "A path like data.items.0.name picks a value out of the answer. No values: the whole answer.",
+        "placeSearch": "City or town",
+        "find": "Find",
+        "placeChosen": "Showing: {{place}}",
+        "placeNote": "Your browser asks open-meteo.com directly; no key needed.",
+        "codeHelp": "Runs in a sandbox of its own: it can't see this site, your login or your settings.",
+        "secretHelp": "Saved in your dash settings (and on your account when synced). Use a read-only key.",
+        "urlHelp_page": "The page has to allow being shown inside other sites; many don't.",
+        "urlHelp_any": "",
+        "choices": {
+            "grid": "Grid",
+            "list": "List",
+            "c": "°C",
+            "f": "°F",
+            "cover": "Fill",
+            "contain": "Fit"
+        }
     }
 }
