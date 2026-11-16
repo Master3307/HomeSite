@@ -15,12 +15,15 @@ export default function Home() {
         </h1>
       </header>
 
-      <Search />
-      <Greeting />
-      <About />
-
-
-
+      {/* A full-height column: the about line sits 32px above the bottom
+          when the page is short and simply follows the content when it isn't. */}
+      <div className="home-page">
+        <div className="home-page__main">
+          <Search />
+          <Greeting />
+        </div>
+        <About />
+      </div>
     </>
   )
 }

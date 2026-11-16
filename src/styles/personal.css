@@ -173,10 +173,23 @@
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
+/* Home is a column as tall as the screen; the about line takes the rest of it. */
+.home-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.home-page__main {
+  /* Keeps the old margin behaviour of search + greeting inside the column. */
+  display: flow-root;
+}
 .home-about {
+  box-sizing: border-box;
   width: 95%;
   max-width: 777px;
-  margin: 26px auto 60px;
+  margin: auto auto 32px;
+  padding-top: 26px;
   color: color-mix(in srgb, var(--text-primary) 62%, transparent);
   font-size: 0.95rem;
   text-align: left;
@@ -726,6 +739,7 @@
     padding: 26px 18px 30px;
   }
   .home-about {
+    /* 32px above the theme / login / language row fixed at the bottom. */
     margin-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   }
   .me-block {
