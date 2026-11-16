@@ -82,29 +82,49 @@ const mix = (a, b, weight) => {
   return `#${x.map((value, index) => Math.round(value * weight + y[index] * (1 - weight)).toString(16).padStart(2, "0")).join("")}`;
 };
 
+/*
+ * The page is the same dusk as /cult (src/styles/cult.css: --bg-secondary at
+ * the top to --bg-primary at the bottom); `page` is the solid colour for
+ * mail apps that drop gradients. Button and the strip on top of the card
+ * run from the accent to a deeper shade of it.
+ */
 function palette(theme, accent) {
+  const red = accent || "#b60b0b";
   const dark = {
-    page: "#120607",
-    card: "#1f0c0d",
-    raised: "#2b1214",
-    line: "#3b1c1f",
-    text: "#eeeeee",
-    muted: "#b9a7a7",
-    accent: accent ? mix(accent, "#120a10", 0.85) : "#b60b0b",
+    page: "#240b0b",
+    pageTop: "#1a0b0b",
+    pageBottom: "#470404",
+    card: "#1d0c0d",
+    raised: "#2a1213",
+    line: "#43201f",
+    text: "#f1eaea",
+    muted: "#c2aeae",
+    accent: accent ? mix(accent, "#120a10", 0.85) : "#c8161a",
+    accentDeep: mix(red, "#000000", 0.62),
     accentText: "#ffffff",
+    code: accent ? mix(accent, "#ffffff", 0.45) : "#ff8a80",
+    shadow: "0 18px 48px rgba(0,0,0,0.45)",
   };
   const light = {
-    page: "#efe2dc",
-    card: "#fbf6f3",
-    raised: "#f1e6e1",
-    line: "#e2cfc8",
-    text: "#2c1618",
-    muted: "#6e5557",
+    page: "#ecd9d3",
+    pageTop: "#f7efeb",
+    pageBottom: "#d9b3ac",
+    card: "#fffcfa",
+    raised: "#f8eeea",
+    line: "#ead6cf",
+    text: "#2a1214",
+    muted: "#6b4a4b",
     accent: accent ? mix(accent, "#2c1618", 0.85) : "#b60b0b",
+    accentDeep: mix(red, "#2a0303", 0.55),
     accentText: "#ffffff",
+    code: accent ? mix(accent, "#2a1214", 0.7) : "#8f0a0a",
+    shadow: "0 14px 40px rgba(110,40,36,0.16)",
   };
   return theme === "dark" ? { main: dark, other: light } : { main: light, other: dark };
 }
+
+/** A gradient background with a solid fallback (Outlook and some webmails only show the colour). */
+const gradient = (from, to, solid, angle = "180deg") => `background-color:${solid};background-image:linear-gradient(${angle},${from},${to})`;
 
 /* ---------- links ---------- */
 
@@ -176,15 +196,15 @@ function render({ user = null, language: forcedLanguage, theme: forcedTheme, sub
       }
       if (block.quote) {
         textParts.push(`> ${block.quote}`, "");
-        return `<p class="email-quote" style="margin:0 0 16px;padding:10px 14px;border-left:3px solid ${main.accent};background:${main.raised};border-radius:8px;font-size:15px;line-height:1.5;color:${main.text}">${escape(block.quote).replace(/\n/g, "<br>")}</p>`;
+        return `<p class="email-quote" style="margin:0 0 16px;padding:10px 14px;border-left:3px solid ${main.accent};background:${main.raised};border-radius:10px;font-size:15px;line-height:1.5;color:${main.text}">${escape(block.quote).replace(/\n/g, "<br>")}</p>`;
       }
       if (block.code) {
         textParts.push(`    ${block.code}`, "");
-        return `<table role="presentation" class="email-code" cellpadding="0" cellspacing="0" style="margin:6px 0 20px"><tr><td style="padding:14px 22px;border-radius:13px;background:${main.raised};border:1px solid ${main.line};font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:32px;font-weight:700;letter-spacing:8px;color:${main.text}" aria-label="${escape(t("code.copy"))}">${escape(block.code)}</td></tr></table>`;
+        return `<table role="presentation" class="email-code" cellpadding="0" cellspacing="0" style="margin:6px 0 20px"><tr><td style="padding:14px 24px;border-radius:14px;background:${main.raised};border:1px solid ${main.line};font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:32px;font-weight:700;letter-spacing:8px;color:${main.code}" aria-label="${escape(t("code.copy"))}">${escape(block.code)}</td></tr></table>`;
       }
       if (block.button) {
         textParts.push(`${block.button.label}: ${block.button.url}`, "");
-        return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 20px"><tr><td class="email-button" style="border-radius:13px;background:${main.accent}"><a href="${escape(block.button.url)}" style="display:inline-block;padding:12px 22px;border-radius:13px;font-size:15px;font-weight:700;color:${main.accentText};text-decoration:none">${escape(block.button.label)}</a></td></tr></table>`;
+        return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 20px"><tr><td class="email-button" style="border-radius:13px;${gradient(main.accent, main.accentDeep, main.accent, "135deg")}"><a href="${escape(block.button.url)}" style="display:inline-block;padding:13px 24px;border-radius:13px;font-size:15px;font-weight:700;color:${main.accentText};text-decoration:none">${escape(block.button.label)}</a></td></tr></table>`;
       }
       if (block.note) {
         textParts.push(block.note, "");
@@ -213,12 +233,14 @@ function render({ user = null, language: forcedLanguage, theme: forcedTheme, sub
   const appMode = followsApp
     ? `
 @media (prefers-color-scheme: dark) {
-  .email-page, body { background: ${other.page} !important; }
-  .email-card { background: ${other.card} !important; border-color: ${other.line} !important; }
-  .email-text, .email-title, .email-brand, .email-code td, .email-quote { color: ${other.text} !important; }
+  .email-page { background-color: ${other.page} !important; background-image: linear-gradient(180deg, ${other.pageTop}, ${other.pageBottom}) !important; }
+  body { background-color: ${other.pageBottom} !important; background-image: linear-gradient(180deg, ${other.pageTop}, ${other.pageBottom}) !important; }
+  .email-card { background: ${other.card} !important; border-color: ${other.line} !important; box-shadow: ${other.shadow} !important; }
+  .email-text, .email-title, .email-brand, .email-quote { color: ${other.text} !important; }
+  .email-code td { color: ${other.code} !important; }
   .email-note, .email-footer, .email-footer a { color: ${other.muted} !important; }
   .email-code td, .email-quote { background: ${other.raised} !important; border-color: ${other.line} !important; }
-  .email-button { background: ${other.accent} !important; }
+  .email-button { background-color: ${other.accent} !important; background-image: linear-gradient(135deg, ${other.accent}, ${other.accentDeep}) !important; }
 }
 [data-ogsc] .email-page { background: ${other.page} !important; }
 [data-ogsc] .email-card { background: ${other.card} !important; }
@@ -241,10 +263,10 @@ a { color: ${main.accent}; }
 </style>
 ${prefs.customCss ? `<style data-custom-css>\n${safeCss(prefs.customCss)}\n</style>` : ""}
 </head>
-<body class="cult-page email" style="margin:0;padding:0;background:${main.page}">
+<body class="cult-page email" style="margin:0;padding:0;background-color:${main.pageBottom};background-image:linear-gradient(180deg,${main.pageTop},${main.pageBottom});background-repeat:no-repeat">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${escape(title)}</div>
-<table role="presentation" class="email-page" width="100%" cellpadding="0" cellspacing="0" style="background:${main.page};font-family:Nunito,'Google Sans','Segoe UI',system-ui,-apple-system,sans-serif">
-<tr><td align="center" style="padding:28px 12px">
+<table role="presentation" class="email-page" width="100%" cellpadding="0" cellspacing="0" bgcolor="${main.page}" style="${gradient(main.pageTop, main.pageBottom, main.page)};font-family:Nunito,'Google Sans','Segoe UI',system-ui,-apple-system,sans-serif">
+<tr><td align="center" style="padding:32px 12px 40px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
     <tr><td style="padding:0 6px 16px">
       <table role="presentation" cellpadding="0" cellspacing="0"><tr>
@@ -252,8 +274,9 @@ ${prefs.customCss ? `<style data-custom-css>\n${safeCss(prefs.customCss)}\n</sty
         <td class="email-brand" style="font-size:20px;font-weight:800;letter-spacing:-0.01em;color:${main.text}">${escape(brand)}</td>
       </tr></table>
     </td></tr>
-    <tr><td class="email-card" style="background:${main.card};border:1px solid ${main.line};border-radius:18px">
-      <div class="email-inner" style="padding:30px 30px 14px">
+    <tr><td class="email-card" bgcolor="${main.card}" style="background:${main.card};border:1px solid ${main.line};border-radius:20px;box-shadow:${main.shadow};overflow:hidden">
+      <div class="email-strip" style="height:5px;line-height:5px;font-size:0;${gradient(main.accent, main.accentDeep, main.accent, "90deg")}">&nbsp;</div>
+      <div class="email-inner" style="padding:28px 30px 14px">
         <h1 class="email-title" style="margin:0 0 18px;font-size:24px;line-height:1.25;font-weight:800;color:${main.text}">${escape(title)}</h1>
         <p class="email-text" style="margin:0 0 16px;font-size:16px;line-height:1.55;color:${main.text}">${escape(greeting)}</p>
         ${htmlBlocks}
