@@ -28,7 +28,7 @@ const MAX_MESSAGE_POINTS = 26;
 const LEVEL_LABELS = [
   "Meowcomer",
   "Black Cat",
-  "Talcative",
+  "Talkative",
   "Seeker of News",
   "Gossip Spreader",
   "Purrfect Listener",
@@ -37,7 +37,7 @@ const LEVEL_LABELS = [
   "True Cult Member",
   "Taught Leader",
   "Wisdom Keeper",
-  "Catful Diety",
+  "Catful Deity",
   "Bastet",
 ];
 const LEVEL_ROLE_IDS = ids("LEVEL_ROLE_IDS");
@@ -342,8 +342,11 @@ async function announceLevelUp(member, oldLevel, newLevel, points) {
     ? grantedRoles.map((role) => role.toString()).join(", ")
     : rank.label;
 
+  const jumped = newLevel - oldLevel;
+  const toNext = newLevel < MAX_LEVEL ? totalPointsForLevel(newLevel + 1) - points : 0;
+
   const embed = new EmbedBuilder()
-    .setColor("#8B5CF6")
+    .setColor("#b60b0b")
     .setAuthor({
       name: "Level up!",
     })
@@ -355,7 +358,9 @@ async function announceLevelUp(member, oldLevel, newLevel, points) {
       }),
     )
     .setDescription(
-      `Congratulations ${member}, you reached **Level ${newLevel}**!`,
+      jumped > 1
+        ? `Congratulations ${member}, you jumped ${jumped} levels to **Level ${newLevel}**!`
+        : `Congratulations ${member}, you reached **Level ${newLevel}**!`,
     )
     .addFields(
       {
@@ -378,7 +383,7 @@ async function announceLevelUp(member, oldLevel, newLevel, points) {
       text:
         newLevel >= MAX_LEVEL
           ? "Maximum level reached — you can still earn points."
-          : "Keep being active to earn more points.",
+          : `${toNext.toLocaleString()} more points to Level ${newLevel + 1}.`,
     })
     .setTimestamp();
 
