@@ -203,14 +203,14 @@
       stroke-dasharray: 1;
       stroke-dashoffset: 1;
       animation:
-        draw-background 1s cubic-bezier(.45, 0, .2, 1) forwards,
-        hide-outline .25s ease 1s forwards;
+        draw-background .9s cubic-bezier(.45, 0, .2, 1) forwards,
+        hide-outline .25s ease .9s forwards;
     }
 
     .background-fill {
       opacity: 0;
       animation:
-        fill-background 1.2s cubic-bezier(.4, 0, .2, 1) .15s both;
+        fill-background 1s cubic-bezier(.4, 0, .2, 1) .12s both;
     }
 
     .home-letter,
@@ -238,18 +238,18 @@
     .shine {
       fill: url(#shine-gradient);
       opacity: 0;
-      animation: slow-shine 12s linear 5.3s infinite both;
+      animation: slow-shine 10s linear 4.3s infinite both;
     }
 
     .star-appearance {
       opacity: 0;
-      animation: star-appear 1.2s linear 3.55s both;
+      animation: star-appear 1.2s linear 2.85s both;
     }
 
     .star-burst {
       transform-box: view-box;
       transform-origin: 0 0;
-      animation: star-twinkle 1.2s linear 3.55s both;
+      animation: star-twinkle 1.2s linear 2.85s both;
     }
 
     @keyframes draw-background {
@@ -273,14 +273,14 @@
     @keyframes flip-home {
       0% {
         opacity: 0;
-        transform: translateY(8px) scaleY(.12) skewX(-8deg);
+        transform: translateY(6px) scaleY(.15) skewX(-5deg);
       }
       45% {
         opacity: 1;
       }
       72% {
         opacity: 1;
-        transform: translateY(-1px) scaleY(1.045) skewX(1.5deg);
+        transform: translateY(-1px) scaleY(1.035) skewX(1deg);
       }
       100% {
         opacity: 1;
@@ -291,7 +291,7 @@
     @keyframes rise-site {
       0% {
         opacity: 0;
-        transform: translateY(18px) scale(.96);
+        transform: translateY(14px) scale(.96);
       }
       65% {
         opacity: 1;
@@ -381,29 +381,29 @@
       </g>
     </g>
 
-    <g class="home-letter" style="--delay: 1.05s">
+    <g class="home-letter" style="--delay: .9s">
       <use href="#letter-h"/>
     </g>
-    <g class="home-letter" style="--delay: 1.28s">
+    <g class="home-letter" style="--delay: 1.08s">
       <use href="#letter-o"/>
     </g>
-    <g class="home-letter" style="--delay: 1.51s">
+    <g class="home-letter" style="--delay: 1.26s">
       <use href="#letter-m"/>
     </g>
-    <g class="home-letter" style="--delay: 1.74s">
+    <g class="home-letter" style="--delay: 1.44s">
       <use href="#letter-e"/>
     </g>
 
-    <g class="site-letter" style="--delay: 2.35s">
+    <g class="site-letter" style="--delay: 1.9s">
       <use href="#letter-s"/>
     </g>
-    <g class="site-letter" style="--delay: 2.47s">
+    <g class="site-letter" style="--delay: 2.01s">
       <use href="#letter-i"/>
     </g>
-    <g class="site-letter" style="--delay: 2.59s">
+    <g class="site-letter" style="--delay: 2.12s">
       <use href="#letter-t"/>
     </g>
-    <g class="site-letter" style="--delay: 2.71s">
+    <g class="site-letter" style="--delay: 2.23s">
       <use href="#letter-e" transform="translate(242 0)"/>
     </g>
 
@@ -426,7 +426,7 @@
     <g class="star-effect" clip-path="url(#background-clip)">
       <g>
         <animateMotion
-          begin="3.55s"
+          begin="2.85s"
           dur="1.2s"
           calcMode="spline"
           keyTimes="0;.65;1"
@@ -451,7 +451,7 @@
     <g class="star-effect">
       <g>
         <animateMotion
-          begin="3.55s"
+          begin="2.85s"
           dur="1.2s"
           calcMode="spline"
           keyTimes="0;.65;1"
