@@ -1,0 +1,2216 @@
+/*
+ * Bongo Cat: lobby cat layers, the item picker (.bp), the cat designer
+ * (.bd), the lobby wardrobe and FDC option designs.
+ *
+ * Buttons: the site's global `button` rule (padding, accent hover) is
+ * reset inside these roots; components set --b-bg / --b-bg-hover / --b-pad
+ * / --b-radius / --b-border / --b-fg instead of overriding properties, so
+ * hover and padding never fight over specificity (and circles stay circles).
+ * The FDC date picker placed inside (.dt-picker) keeps its own rules.
+ *
+ * `.bongo-themed` (a game UI theme the viewer picked) keeps this layout and
+ * only swaps the colour tokens for the theme's palette (taken from its
+ * textures on import, src/lib/bongoTheme.js).
+ */
+
+.bongo-ui,
+.bp,
+.bp-menu,
+.bongo-modal {
+  --b-line: color-mix(in srgb, var(--text-primary) 13%, transparent);
+  --b-raised: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  --b-raised-2: color-mix(in srgb, var(--text-primary) 11%, transparent);
+  --b-muted: var(--text-secondary);
+  --b-accent: var(--accent);
+  --b-accent-ink: #fff;
+  --b-ink: var(--text-primary);
+  --b-surface: var(--bg-secondary);
+  --b-scroll: color-mix(in srgb, var(--b-ink) 26%, transparent);
+}
+
+/*
+ * The game's own fonts once imported (html.bongo-fonts, src/lib/bongo.js):
+ * Nunito for titles, names and buttons here; on the cult page Noto Sans for
+ * text and Nunito for headings, like in the game.
+ */
+.bongo-fonts :is(.bongo-dialog__head h2, .bp-bar__title, .bp-tooltip, .bp-menu__name, .bongo-button, .bd-cat, .bd-slot__head, .bpr-card__name, .bpr-list__toggle, .bongo-option-mode .bongo-segment > button, .bw-tabs > button, .bongo-option-design__empty, .bongo-mode strong, .bw-winner strong) {
+  font-family: "Bongo Nunito", "Google Sans Flex", sans-serif;
+  font-weight: 800;
+}
+.bongo-fonts .cult *:not(.material-symbols-outlined, code, kbd, pre, samp) {
+  font-family: "Bongo Noto Sans", "Google Sans Flex", sans-serif;
+  /* The game ships Noto Sans in Regular only: no faked bold (it looks smeared and stretched). */
+  font-synthesis-weight: none;
+}
+/* The lobby cat talks like the game: Nunito Bold. */
+.bongo-fonts .cult :is(.cat-speech, .cat-speech *):not(.material-symbols-outlined) {
+  font-family: "Bongo Nunito", "Google Sans Flex", sans-serif;
+  font-weight: 700;
+}
+.bongo-fonts .cult :is(h1, h2, h3, h4, h5, h6, strong, b, th, legend, button, label, .fdc-create__label):not(.material-symbols-outlined) {
+  font-family: "Bongo Nunito", "Google Sans Flex", sans-serif;
+}
+
+/* Thin scrollbars in the ink colour, on every scrolling part (site look and themes). */
+:is(.bongo-ui, .bp, .bp-menu, .bongo-modal),
+:is(.bongo-ui, .bp, .bp-menu, .bongo-modal) * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--b-scroll) transparent;
+}
+
+:is(.bongo-ui, .bp, .bp-menu, .bongo-modal) button:where(:not(.dt-picker *)) {
+  gap: 6px;
+  min-width: 0;
+  padding: var(--b-pad, 0);
+  border: var(--b-border, 0);
+  border-radius: var(--b-radius, 8px);
+  background: var(--b-bg, transparent);
+  color: var(--b-fg, inherit);
+  font: inherit;
+  font-size: var(--b-fs, inherit);
+  line-height: 1.2;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+:is(.bongo-ui, .bp, .bp-menu, .bongo-modal) button:where(:not(.dt-picker *)):hover:not(:disabled) {
+  background: var(--b-bg-hover, var(--b-bg, transparent));
+}
+:is(.bongo-ui, .bp, .bp-menu, .bongo-modal) button:where(:not(.dt-picker *)):disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+:is(.bongo-ui, .bp, .bp-menu, .bongo-modal) button:where(:not(.dt-picker *)):focus-visible {
+  outline: 2px solid var(--b-accent);
+  outline-offset: 2px;
+}
+:is(.bongo-ui, .bp, .bp-menu, .bongo-modal) .material-symbols-outlined:where(:not(.dt-picker *)) {
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* ---------- layers, icons, loading ---------- */
+
+.bongo-cat {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  pointer-events: none;
+}
+.bongo-cat > img {
+  position: absolute;
+  max-width: none;
+  user-select: none;
+}
+.bongo-cat > .bongo-spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+.bongo-game-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  background: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.bongo-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+}
+.bongo-icon > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  object-fit: contain;
+  user-select: none;
+}
+
+.bongo-spinner {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 2px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  color: var(--b-muted);
+  animation: bongo-spin 0.7s linear infinite;
+}
+.bongo-spinner--center {
+  position: absolute;
+  inset: 0;
+  width: 28px;
+  height: 28px;
+  margin: auto;
+  color: #fff;
+}
+@keyframes bongo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- lobby cat ---------- */
+
+.lobby-cat-dress {
+  position: absolute;
+  padding: 0;
+  border: 1px solid var(--b-line);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--b-surface) 88%, transparent);
+  top: -4px;
+  right: -10px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--b-ink);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.lobby-cat-dress:hover {
+  background: var(--b-surface);
+}
+.lobby-cat-dress .material-symbols-outlined {
+  font-size: 18px;
+}
+.lobby-cat-wrap:hover .lobby-cat-dress,
+.lobby-cat-dress:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .lobby-cat-dress {
+    opacity: 0.9;
+  }
+}
+
+/* ---------- shared controls ---------- */
+
+.bongo-button {
+  --b-pad: 8px 16px;
+  --b-radius: 10px;
+  --b-bg: var(--b-accent);
+  --b-bg-hover: color-mix(in srgb, var(--b-accent) 85%, var(--b-accent-ink));
+  --b-fg: var(--b-accent-ink);
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+}
+.bongo-button--quiet {
+  --b-bg: var(--b-raised-2);
+  --b-bg-hover: color-mix(in srgb, var(--b-ink) 16%, transparent);
+  --b-fg: var(--b-ink);
+}
+.bongo-icon-button {
+  --b-radius: 50%;
+  --b-bg-hover: var(--b-raised-2);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+}
+.bongo-chip {
+  --b-pad: 5px 11px;
+  --b-radius: 999px;
+  --b-bg: var(--b-raised);
+  --b-bg-hover: var(--b-raised-2);
+  --b-border: 1px solid var(--b-line);
+  font-size: 0.85rem;
+}
+.bongo-chip.is-active {
+  --b-bg: color-mix(in srgb, var(--b-accent) 25%, transparent);
+  --b-border: 1px solid var(--b-accent);
+}
+.bongo-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bongo-link {
+  --b-fg: var(--link, var(--b-accent));
+  text-decoration: underline;
+  font-size: 0.85rem;
+}
+.bongo-input {
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--b-line);
+  border-radius: 8px;
+  background: var(--b-raised);
+  color: var(--b-ink);
+  font: inherit;
+  font-size: 0.9rem;
+}
+.bongo-input.is-invalid {
+  border-color: #e5484d;
+}
+.bongo-label {
+  color: var(--b-muted);
+  font-size: 0.85rem;
+}
+.bongo-error {
+  color: #ff6b6b;
+}
+
+.bongo-segment {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--b-raised);
+}
+.bongo-segment > button {
+  --b-pad: 6px 10px;
+  --b-radius: 7px;
+  --b-fg: var(--b-muted);
+  --b-bg-hover: var(--b-raised);
+  flex: 1;
+  justify-content: center;
+  font-size: 0.88rem;
+}
+.bongo-segment > button.is-active {
+  --b-bg: var(--b-surface);
+  --b-bg-hover: var(--b-surface);
+  --b-fg: var(--b-ink);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  font-weight: 600;
+}
+
+.bongo-switch-row,
+.bongo-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.bongo-switch-row input,
+.bongo-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--b-accent);
+}
+.bongo-switch {
+  display: none;
+}
+.bongo-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+/* ---------- modal ---------- */
+
+.bongo-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.55);
+}
+.bongo-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(940px, 100%);
+  max-height: min(820px, calc(100dvh - 32px));
+  border: 1px solid var(--b-line);
+  border-radius: 16px;
+  background: var(--b-surface);
+  color: var(--b-ink);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.45);
+  overflow: hidden;
+}
+.bongo-dialog__head,
+.bongo-dialog__foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 10px 18px;
+}
+.bongo-dialog__head {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--b-line);
+}
+.bongo-dialog :is(h2, h3, h4) {
+  color: var(--b-ink);
+}
+.bongo-dialog__head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.bongo-dialog__foot {
+  justify-content: flex-end;
+  border-top: 1px solid var(--b-line);
+}
+.bongo-dialog__status {
+  padding: 24px;
+  color: var(--b-muted);
+}
+
+/* ---------- picker (.bp): rail + compact panel, like the game ---------- */
+
+.bp {
+  --bp-tile: 56px;
+  --bp-gap: 6px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px auto;
+  align-items: start;
+  width: max-content;
+  max-width: 100%;
+  color: var(--b-ink);
+}
+.bp-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+}
+.bp-rail__tab {
+  --b-radius: 10px 0 0 10px;
+  --b-bg: var(--b-raised);
+  --b-bg-hover: var(--b-raised-2);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 40px;
+  flex: none;
+  color: var(--b-muted);
+}
+.bp-rail__tab img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  opacity: 0.75;
+}
+.bp-rail__tab.is-active {
+  --b-bg: var(--bp-panel-bg, var(--b-raised-2));
+  --b-bg-hover: var(--bp-panel-bg, var(--b-raised-2));
+  color: var(--b-ink);
+}
+.bp-rail__tab.is-active img {
+  opacity: 1;
+}
+.bp-rail__badge {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--b-accent);
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.bp-panel {
+  --bp-panel-bg: var(--b-raised-2);
+  display: flex;
+  flex-direction: column;
+  /* 5 tiles + the scroll area's padding (20px) and a thin scrollbar. */
+  width: calc(5 * var(--bp-tile) + 4 * var(--bp-gap) + 34px);
+  max-width: 100%;
+  height: 372px;
+  border-radius: 12px;
+  background: var(--bp-panel-bg);
+  overflow: hidden;
+}
+.bp-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 6px 6px 12px;
+}
+.bp-bar__title {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+.bp-bar__title small {
+  color: var(--b-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.bp-bar__tools {
+  display: flex;
+  gap: 2px;
+}
+.bp-tool {
+  --b-radius: 8px;
+  --b-bg-hover: var(--b-raised-2);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 8px;
+  color: var(--b-muted);
+  cursor: pointer;
+}
+.bp-tool:hover {
+  color: var(--b-ink);
+}
+label.bp-tool:hover {
+  background: var(--b-raised-2);
+}
+.bp-tool img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+.bp-sort select {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.bp-search {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+}
+.bp-search > :first-child {
+  position: absolute;
+  left: 9px;
+  color: var(--b-muted);
+  pointer-events: none;
+}
+.bp-search input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px 0 34px;
+  border: 1px solid var(--b-line);
+  border-radius: 8px;
+  background: var(--b-raised);
+  color: var(--b-ink);
+  font: inherit;
+  font-size: 0.9rem;
+}
+.bp-search input:focus {
+  outline: 2px solid var(--b-accent);
+  outline-offset: -1px;
+}
+
+.bp-scroll {
+  scrollbar-gutter: stable;
+  flex: 1;
+  min-height: 0;
+  padding: 6px 10px 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.bp-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bp-list--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, var(--bp-tile));
+  gap: var(--bp-gap);
+}
+.bp-list--list {
+  display: grid;
+  gap: 4px;
+}
+.bp-divider {
+  height: 2px;
+  margin: 10px 0;
+  border: 0;
+  border-radius: 1px;
+  background: var(--b-line);
+}
+.bp-empty {
+  margin: 14px 4px;
+  color: var(--b-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.bp-item {
+  --b-pad: 0;
+  --b-radius: 9px;
+  --b-bg: color-mix(in srgb, var(--rarity) 9%, var(--b-raised));
+  --b-bg-hover: color-mix(in srgb, var(--rarity) 20%, var(--b-raised));
+  --b-border: 2px solid color-mix(in srgb, var(--rarity) 75%, transparent);
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+}
+.bp-item--grid {
+  justify-content: center;
+  width: var(--bp-tile);
+  height: var(--bp-tile);
+}
+.bp-item--list {
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 46px;
+  padding: 3px 34px 3px 4px;
+}
+.bp-item.is-selected {
+  --b-border: 2px solid var(--rarity);
+  --b-bg: color-mix(in srgb, var(--rarity) 28%, var(--b-raised));
+  --b-bg-hover: color-mix(in srgb, var(--rarity) 34%, var(--b-raised));
+}
+.bp-item__art {
+  display: grid;
+  flex: none;
+  place-items: center;
+}
+.bp-item--list .bp-item__art {
+  width: 38px;
+  height: 38px;
+}
+.bp-item__none {
+  color: var(--b-muted);
+  font-size: 26px !important;
+}
+.bp-item__text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.bp-item__name {
+  font-size: 0.86rem;
+  font-weight: 550;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.bp-item__meta {
+  display: flex;
+  gap: 8px;
+  color: var(--b-muted);
+  font-size: 0.72rem;
+  text-transform: capitalize;
+}
+.bp-item__star {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  color: #ffc21a;
+  font-size: 17px !important;
+  font-variation-settings: "FILL" 1;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+}
+.bp-item--list .bp-item__star {
+  top: 50%;
+  right: 34px;
+  transform: translateY(-50%);
+  text-shadow: none;
+}
+.bp-item__slot {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--b-muted);
+}
+.bp-item__slot .bongo-game-icon,
+.bp-item__slot .material-symbols-outlined {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+}
+
+/* The game's checkmark, bottom right, in a gray circle. */
+.bp-check {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #a3a3a3;
+  border-radius: 50%;
+  background: #5b5b5b;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.45);
+}
+.bp-check img {
+  width: 12px;
+  height: 12px;
+  object-fit: contain;
+}
+.bp-check .material-symbols-outlined {
+  color: #fff;
+  font-size: 13px !important;
+}
+.bp-item--list .bp-check {
+  top: 50%;
+  right: 8px;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+.bp-foot {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 4px 6px;
+  border-top: 1px solid var(--b-line);
+}
+.bp-foot__hint {
+  flex: 1;
+  overflow: hidden;
+  color: var(--b-muted);
+  font-size: 0.72rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bp-tooltip {
+  position: fixed;
+  z-index: 1200;
+  max-width: 220px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: #111214;
+  color: color-mix(in srgb, var(--rarity) 55%, #fff);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.4);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 6px));
+}
+
+.bp-theme {
+  position: relative;
+}
+.bp-theme__list {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  width: 210px;
+  max-height: 300px;
+  margin: 0;
+  padding: 5px;
+  border: 1px solid var(--b-line);
+  border-radius: 12px;
+  background: var(--b-surface);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.4);
+  color: var(--b-ink);
+  list-style: none;
+  overflow-y: auto;
+}
+.bp-theme__list button {
+  justify-content: flex-start;
+  --b-pad: 5px 8px;
+  --b-bg-hover: var(--b-raised);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  font-size: 0.86rem;
+  text-align: left;
+}
+.bp-theme__list button.is-active {
+  --b-bg: var(--b-raised-2);
+}
+.bp-theme__list button > span:not([class]) {
+  flex: 1;
+  min-width: 0;
+}
+.bp-theme__swatch {
+  display: flex;
+  flex: none;
+}
+.bp-theme__swatch i {
+  width: 12px;
+  height: 12px;
+  margin-left: -3px;
+  border: 1.5px solid var(--b-surface);
+  border-radius: 50%;
+}
+.bp-theme__list img,
+.bp-theme__list .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  object-fit: contain;
+}
+
+/* ---------- right-click menu ---------- */
+
+.bp-menu {
+  position: fixed;
+  z-index: 1100;
+  width: 250px;
+  padding: 6px;
+  border: 1px solid var(--b-line);
+  border-radius: 12px;
+  background: var(--b-surface);
+  color: var(--b-ink);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
+}
+.bp-menu__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px 8px;
+}
+.bp-menu__name {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+.bp-menu__meta {
+  margin: 2px 0 0;
+  color: var(--b-muted);
+  font-size: 0.75rem;
+  text-transform: capitalize;
+}
+.bp-menu > button {
+  justify-content: flex-start;
+  --b-pad: 7px 8px;
+  --b-bg-hover: var(--b-raised-2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  font-size: 0.86rem;
+  text-align: left;
+}
+.bp-menu__words {
+  margin-top: 4px;
+  padding: 8px 6px 4px;
+  border-top: 1px solid var(--b-line);
+}
+.bp-menu__words > p {
+  margin: 0 0 6px;
+  color: var(--b-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.bp-menu__words ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 110px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+}
+.bp-menu__words li {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--b-raised-2);
+  font-size: 0.75rem;
+}
+.bp-menu__words li:has(button) {
+  padding-right: 3px;
+}
+.bp-menu__words li.is-custom {
+  background: color-mix(in srgb, var(--b-accent) 30%, transparent);
+}
+.bp-menu__words li button {
+  --b-radius: 50%;
+  --b-bg-hover: rgb(0 0 0 / 0.25);
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+}
+.bp-menu__words li .material-symbols-outlined {
+  font-size: 13px;
+}
+.bp-menu__words form {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+.bp-menu__words input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--b-line);
+  border-radius: 7px;
+  background: var(--b-raised);
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+}
+.bp-menu__words form button {
+  --b-pad: 0 10px;
+  --b-radius: 7px;
+  --b-bg: var(--b-raised-2);
+  --b-bg-hover: color-mix(in srgb, var(--b-ink) 18%, transparent);
+  height: 28px;
+  font-size: 0.8rem;
+}
+.bp-menu__error {
+  margin: 6px 0 0;
+  color: #ff6b6b;
+  font-size: 0.75rem;
+}
+
+/* ---------- design preview ---------- */
+
+.bongo-design {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  overflow: hidden;
+  touch-action: none;
+}
+.bongo-design.is-movable {
+  cursor: grab;
+}
+.bongo-design.is-movable:active {
+  cursor: grabbing;
+}
+.bongo-design__stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+.bongo-design__frame {
+  position: absolute;
+  inset: 0;
+}
+.bongo-design__frame > img {
+  position: absolute;
+  max-width: none;
+  user-select: none;
+}
+.bongo-design__outline {
+  position: absolute;
+  border: 3px dashed rgb(255 255 255 / 0.5);
+  border-radius: 18px;
+  pointer-events: none;
+}
+.bongo-design__count {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+  font-size: 0.72rem;
+}
+
+/* ---------- designer (.bd) ---------- */
+
+.bd {
+  width: min(1000px, 100%);
+}
+.bd-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 20px;
+  min-height: 0;
+  padding: 16px 18px;
+  overflow-y: auto;
+}
+.bd-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.bd-hint {
+  margin: 0;
+  color: var(--b-muted);
+  font-size: 0.8rem;
+}
+.bd-frames {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bd-frames input {
+  flex: 1;
+  accent-color: var(--b-accent);
+}
+.bd-frames__count {
+  min-width: 3.5em;
+  color: var(--b-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.bd-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.bd-label {
+  color: var(--b-muted);
+  font-size: 0.85rem;
+}
+.bd-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.bd-swatch {
+  --b-radius: 50%;
+  --b-bg: var(--swatch);
+  --b-bg-hover: var(--swatch);
+  --b-border: 2px solid color-mix(in srgb, var(--b-ink) 25%, transparent);
+  position: relative;
+  display: block;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border: 2px solid color-mix(in srgb, var(--b-ink) 25%, transparent);
+  border-radius: 50%;
+  background: var(--swatch);
+  cursor: pointer;
+}
+.bd-swatch.is-active {
+  box-shadow: 0 0 0 2px var(--b-surface), 0 0 0 4px var(--b-accent);
+}
+.bd-swatch--any {
+  background: conic-gradient(#f44, #fd3, #4e4, #3ce, #44f, #e3e, #f44);
+  overflow: hidden;
+}
+.bd-swatch--any input {
+  position: absolute;
+  inset: -4px;
+  opacity: 0;
+  cursor: pointer;
+}
+.bd-hex {
+  width: 84px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--b-line);
+  border-radius: 7px;
+  background: var(--b-raised);
+  color: var(--b-ink);
+  font-family: ui-monospace, monospace;
+  font-size: 0.82rem;
+}
+.bd-hex.is-invalid {
+  border-color: #e5484d;
+}
+
+.bd-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+/* Everything in the column is as wide as the picker (rail + 5 tiles). */
+.bd-edit > * {
+  width: 100%;
+  max-width: calc(44px + 5 * 56px + 4 * 6px + 34px);
+}
+.bd-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bd-cat {
+  --b-pad: 4px 10px 4px 6px;
+  --b-radius: 10px;
+  --b-bg: var(--b-raised);
+  --b-bg-hover: var(--b-raised-2);
+  --b-border: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.bd-cat.is-active {
+  --b-border: 2px solid var(--b-accent);
+  --b-bg: color-mix(in srgb, var(--b-accent) 16%, transparent);
+  --b-bg-hover: color-mix(in srgb, var(--b-accent) 22%, transparent);
+}
+.bd-cat--add {
+  --b-border: 2px dashed var(--b-line);
+  --b-bg: transparent;
+  color: var(--b-muted);
+}
+.bd-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bd-tool {
+  --b-pad: 0 10px;
+  --b-radius: 8px;
+  --b-bg: var(--b-raised);
+  --b-bg-hover: var(--b-raised-2);
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  font-size: 0.82rem;
+}
+.bd-tool.is-active {
+  --b-bg: color-mix(in srgb, var(--b-accent) 25%, transparent);
+}
+.bd-facing {
+  flex: none;
+  padding: 2px;
+}
+.bd-facing > button {
+  --b-pad: 0 8px;
+  height: 28px;
+  font-size: 0.8rem;
+}
+.bd-facing .material-symbols-outlined {
+  font-size: 16px;
+}
+.bd-tool--danger {
+  --b-pad: 0;
+  --b-bg-hover: color-mix(in srgb, #e5484d 30%, transparent);
+  justify-content: center;
+  width: 32px;
+}
+.bd-size {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 90px;
+  color: var(--b-muted);
+}
+.bd-size input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--b-accent);
+}
+
+.bd-slots {
+  display: grid;
+  gap: 4px;
+}
+.bd-slot {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  padding: 3px;
+  border-radius: 9px;
+}
+.bd-slot.is-active {
+  background: var(--b-raised);
+}
+.bd-slot__head {
+  --b-pad: 4px 6px;
+  --b-bg-hover: var(--b-raised-2);
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: left;
+}
+.bd-slot__head small {
+  display: none;
+}
+.bd-slot__picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bd-slot__empty {
+  color: var(--b-muted);
+  font-size: 0.8rem;
+}
+.bd-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 150px;
+  padding: 1px 2px 1px 3px;
+  border-radius: 8px;
+  background: var(--b-raised-2);
+  font-size: 0.76rem;
+}
+.bd-pick__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bd-pick__none {
+  width: 30px;
+  color: var(--b-muted);
+  font-size: 18px !important;
+  text-align: center;
+}
+.bd-pick button {
+  --b-radius: 50%;
+  --b-bg-hover: rgb(0 0 0 / 0.25);
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.bd-pick button .material-symbols-outlined {
+  font-size: 14px;
+}
+.bd-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  color: var(--b-muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- wardrobe (lobby cat) ---------- */
+
+.bongo-dialog--wardrobe {
+  width: min(880px, 100%);
+}
+.bongo-dialog--wardrobe .bongo-dialog__head h2 {
+  margin-right: auto;
+}
+.bw-tabs {
+  flex: none;
+}
+.bw-tabs > button {
+  flex: none;
+  white-space: nowrap;
+}
+.bw > .bp {
+  grid-template-columns: 44px minmax(0, 1fr);
+  width: 100%;
+}
+.bw > .bp .bp-panel {
+  width: auto;
+  height: 430px;
+}
+.bw-tabs > button {
+  --b-pad: 5px 12px;
+}
+.bw-now {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--b-line);
+  background: var(--b-raised);
+  color: var(--b-muted);
+  font-size: 0.84rem;
+}
+.bw-now strong {
+  color: var(--b-ink);
+  font-weight: 600;
+}
+.bw-now .material-symbols-outlined {
+  font-size: 18px;
+}
+.bw-now > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.bw {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 18px;
+  min-height: 0;
+  padding: 16px 18px 18px;
+  overflow-y: auto;
+}
+.bw-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.bw-stage {
+  --b-radius: 14px;
+  --b-bg: var(--b-raised);
+  --b-bg-hover: var(--b-raised-2);
+  display: grid;
+  place-items: end center;
+  width: 100%;
+  height: 170px;
+  padding-bottom: 14px;
+}
+.bw-desc {
+  margin: 0 2px 4px;
+  color: var(--b-muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  text-align: center;
+}
+.bw-wear {
+  justify-content: center;
+  width: 100%;
+}
+.bw-side .bongo-switch-row {
+  font-size: 0.84rem;
+}
+/* The FDC date picker (fdc.css) in the theme's colours, a row under both columns. */
+.bw-time {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--b-line);
+  --fdc-surface: var(--b-raised);
+  --fdc-raised: var(--b-raised);
+  --fdc-hover: var(--b-raised-2);
+  --fdc-border: var(--b-line);
+  --fdc-muted: var(--b-muted);
+  --fdc-accent: var(--b-accent);
+  --fdc-accent-soft: color-mix(in srgb, var(--b-accent) 28%, transparent);
+  /* The few site colours the picker uses directly. */
+  --text-primary: var(--b-ink);
+  --bg-primary: color-mix(in srgb, var(--b-ink) 40%, var(--b-surface));
+  color: var(--b-ink);
+}
+.bw-save {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--b-line);
+  border-radius: 12px;
+}
+.bw-save__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.bw-save__actions .bongo-button {
+  --b-pad: 6px 12px;
+}
+.bw-auto {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 560px;
+  min-height: 0;
+  padding: 18px;
+  overflow-y: auto;
+}
+.bw-auto > .bongo-label {
+  margin: 0 0 -8px;
+}
+.bw-field {
+  display: grid;
+  gap: 8px;
+}
+.bw-winner {
+  align-items: flex-start;
+  padding-top: 14px;
+  border-top: 1px solid var(--b-line);
+}
+.bw-winner input {
+  margin-top: 3px;
+}
+.bw-winner > span,
+.bongo-mode > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+.bw-winner small,
+.bongo-mode small {
+  color: var(--b-muted);
+  font-size: 0.78rem;
+}
+.bw-error {
+  margin: 0;
+  padding: 8px 18px 12px;
+}
+.bongo-modes {
+  display: grid;
+  gap: 6px;
+}
+.bongo-mode {
+  justify-content: flex-start;
+  --b-pad: 10px 12px;
+  --b-radius: 12px;
+  --b-border: 1px solid var(--b-line);
+  --b-bg-hover: var(--b-raised);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+}
+.bongo-mode.is-active {
+  --b-border: 1px solid var(--b-accent);
+  --b-bg: color-mix(in srgb, var(--b-accent) 14%, transparent);
+  --b-bg-hover: color-mix(in srgb, var(--b-accent) 18%, transparent);
+}
+.bongo-custom-interval {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+.bongo-custom-interval .bongo-input {
+  width: 72px;
+  padding: 5px 8px;
+}
+
+/* Presets (the picker's Presets tab; src/components/bongo/Presets.jsx). */
+.bpr {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bpr-hint {
+  margin: 0;
+  color: var(--b-muted);
+  font-size: 0.78rem;
+}
+.bpr-list__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.bpr-list__toggle {
+  justify-content: flex-start;
+  --b-pad: 4px 6px;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 0.86rem;
+}
+.bpr-list__toggle strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bpr-list__toggle small {
+  color: var(--b-muted);
+}
+.bpr-tools,
+.bpr-card__tools {
+  display: flex;
+  gap: 2px;
+}
+.bpr-tool {
+  --b-radius: 50%;
+  --b-bg-hover: var(--b-raised-2);
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  color: var(--b-muted);
+}
+.bpr-tool:hover {
+  color: var(--b-ink);
+}
+.bpr-tool .material-symbols-outlined {
+  font-size: 17px;
+}
+.bpr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bpr-card {
+  position: relative;
+  min-width: 0;
+}
+.bpr-card__pick {
+  --b-pad: 6px 6px 7px;
+  --b-radius: 10px;
+  --b-bg: var(--b-raised);
+  --b-bg-hover: var(--b-raised-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+.bpr-card__art {
+  display: grid;
+  place-items: end center;
+  width: 100%;
+  height: 64px;
+}
+.bpr-card__name {
+  width: 100%;
+  overflow: hidden;
+  font-size: 0.75rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bpr-card__tools {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  padding: 1px;
+  border-radius: 999px;
+  background: var(--b-surface);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.bpr-card:hover .bpr-card__tools,
+.bpr-card:focus-within .bpr-card__tools {
+  opacity: 1;
+}
+@media (hover: none) {
+  .bpr-card__tools {
+    opacity: 1;
+  }
+}
+.bpr-card__tools .bpr-tool {
+  width: 22px;
+  height: 22px;
+}
+.bpr-card__tools .material-symbols-outlined {
+  font-size: 15px;
+}
+.bpr-rename {
+  width: 100%;
+  margin-top: 4px;
+  padding: 4px 6px;
+  font-size: 0.8rem;
+}
+.bpr-empty {
+  grid-column: 1 / -1;
+  color: var(--b-muted);
+  font-size: 0.8rem;
+}
+.bpr-new {
+  display: flex;
+  gap: 6px;
+}
+.bpr-new .bongo-input {
+  flex: 1;
+}
+.bpr-new .bongo-button {
+  --b-pad: 6px 12px;
+}
+
+/* ---------- FDC options (create / manage) ---------- */
+
+.bongo-option-mode {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.bongo-option-mode .bongo-segment > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  --b-pad: 7px 10px;
+}
+.bongo-option-mode .bongo-segment .material-symbols-outlined {
+  font-size: 18px;
+}
+.bongo-option-mode .bongo-segment > button.is-active .material-symbols-outlined {
+  color: var(--b-accent);
+}
+.bongo-option-mode__hint {
+  margin: 0;
+  color: var(--b-muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.bongo-option-design {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.bongo-option-design__preview,
+.bongo-option-design__empty {
+  --b-radius: 12px;
+  width: 100%;
+  cursor: pointer;
+}
+.bongo-option-design__empty {
+  --b-border: 2px dashed color-mix(in srgb, var(--b-ink) 25%, transparent);
+  --b-bg: color-mix(in srgb, var(--b-ink) 4%, transparent);
+  --b-bg-hover: color-mix(in srgb, var(--b-ink) 8%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  aspect-ratio: 16 / 10;
+  font-weight: 600;
+}
+/* Next to an image (image + cat): a one-line button instead of a second big box. */
+.fdc-create__option:has(.fdc-create__media) .bongo-option-design__empty {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  aspect-ratio: auto;
+  min-height: 0;
+  padding: 12px;
+}
+.fdc-create__option:has(.fdc-create__media) .bongo-option-design__empty .material-symbols-outlined {
+  font-size: 22px;
+}
+.bongo-option-design__empty .material-symbols-outlined {
+  font-size: 32px;
+}
+.bongo-option-design__empty small {
+  color: var(--b-muted);
+  font-weight: 400;
+}
+.bongo-option-design__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.bongo-option-display {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 8px 0;
+  font-size: 0.88rem;
+}
+.bongo-option-display .bongo-segment {
+  flex: 1;
+  min-width: 170px;
+}
+
+/* ---------- game UI themes ---------- */
+
+/* The tokens come from the theme's palette (inline style); these follow from them. */
+.bongo-themed {
+  --b-line: color-mix(in srgb, var(--b-ink) 16%, transparent);
+  --b-raised: color-mix(in srgb, var(--b-ink) 7%, transparent);
+  --b-raised-2: color-mix(in srgb, var(--b-ink) 12%, transparent);
+  --b-scroll: color-mix(in srgb, var(--b-ink) 30%, transparent);
+  --bp-panel-bg: var(--b-panel);
+  color: var(--b-ink);
+}
+.bongo-dialog.bongo-themed,
+.bp.bongo-themed {
+  background: var(--b-surface);
+}
+
+/* ---------- small screens ---------- */
+
+@media (max-width: 900px) {
+  .bd-body,
+  .bw {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bw-side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+  .bw-stage {
+    grid-row: span 3;
+    height: 140px;
+  }
+  .bw-desc {
+    display: none;
+  }
+  .bd-slots {
+    max-width: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .bongo-modal {
+    padding: 0;
+    place-items: end stretch;
+  }
+  .bongo-dialog {
+    width: 100%;
+    max-height: 100dvh;
+    border-radius: 16px 16px 0 0;
+  }
+  .bd-body,
+  .bw,
+  .bw-auto {
+    padding: 12px;
+  }
+  .bongo-dialog--wardrobe .bongo-dialog__head {
+    flex-wrap: wrap;
+  }
+  .bw-tabs {
+    order: 3;
+    width: 100%;
+  }
+  .bw-tabs > button {
+    flex: 1;
+  }
+  .bp {
+    --bp-tile: 52px;
+    grid-template-columns: 40px minmax(0, 1fr);
+    width: 100%;
+  }
+  .bp-rail__tab {
+    width: 40px;
+  }
+  .bp-panel {
+    width: auto;
+    height: 340px;
+  }
+  .bd-slot {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .bongo-dialog__foot {
+    flex-wrap: wrap;
+  }
+  .bd-result {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bongo-spinner {
+    animation-duration: 2s;
+  }
+  :is(.bongo-ui, .bp, .bp-menu, .bongo-modal) button,
+  .lobby-cat-dress {
+    transition: none;
+  }
+}
+
+/* Pickers, previews, tabs and the cat itself are widgets, not text to copy. */
+:is(.bp, .bp-menu__head, .bd-stage, .bd-cats, .bd-tools, .bd-slots, .bw-side, .bw-tabs, .bpr, .bongo-cat, .bongo-segment, .bongo-option-mode, .bongo-option-design, .lobby-cat-wrap) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ---------- bongo avatar designer (.av, AvatarEditor.jsx) ---------- */
+
+.bongo-dialog.av {
+  width: min(960px, 100%);
+}
+.av-body {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 20px;
+  min-height: 0;
+  padding: 16px 18px;
+  overflow-y: auto;
+}
+.av-stage-column {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  width: min-content;
+}
+.av-upload {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+.av-upload small {
+  color: var(--b-muted);
+  font-size: 0.76rem;
+}
+.av-stage {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  touch-action: none;
+  box-shadow: inset 0 0 0 1px var(--b-line);
+}
+.av-preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.av-preview > .bongo-spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+.av-preview--clear {
+  background-image: conic-gradient(var(--b-raised-2) 25%, transparent 0 50%, var(--b-raised-2) 0 75%, transparent 0);
+  background-size: 24px 24px;
+}
+.av-layer {
+  position: absolute;
+  transform-origin: 50% 50%;
+}
+.av-layer > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+/* The stage picks layers by their visible pixels (AvatarEditor.jsx), not their boxes. */
+.av-stage .av-layer {
+  pointer-events: none;
+}
+.av-stage {
+  cursor: grab;
+}
+.av-stage:active {
+  cursor: grabbing;
+}
+.av-stage .av-layer.is-selected {
+  outline: 1.5px dashed color-mix(in srgb, var(--b-accent) 60%, transparent);
+  outline-offset: -8px;
+  border-radius: 10px;
+}
+.av-edit {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}
+.av-edit > * {
+  max-width: calc(44px + 5 * 56px + 4 * 6px + 34px);
+}
+.av-layers ul {
+  display: grid;
+  gap: 3px;
+  max-height: 168px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+}
+.av-layers li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 2px;
+  border-radius: 10px;
+}
+.av-layers li.is-active {
+  background: color-mix(in srgb, var(--b-accent) 16%, transparent);
+}
+.av-layers__pick {
+  justify-content: flex-start;
+  --b-pad: 3px 6px;
+  --b-bg-hover: var(--b-raised);
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 0.85rem;
+  text-align: left;
+}
+.av-layers__pick > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.av-layers__lock {
+  font-size: 16px !important;
+  color: var(--b-muted);
+}
+.av-layers__tools {
+  display: flex;
+  gap: 1px;
+}
+.av-add {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.av-tools {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--b-line);
+  border-radius: 12px;
+}
+.av-slider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+}
+.av-slider > span {
+  width: 36px;
+  color: var(--b-muted);
+}
+.av-slider input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--b-accent);
+}
+.av-number {
+  width: 64px;
+  padding: 4px 6px;
+}
+.av-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.av-error {
+  margin-right: auto;
+  font-size: 0.85rem;
+}
+.bd-swatch--clear {
+  background-image: conic-gradient(#999 25%, #fff 0 50%, #999 0 75%, #fff 0) !important;
+  background-size: 10px 10px !important;
+}
+.av-presets {
+  display: grid;
+  gap: 10px;
+}
+.av-presets__save {
+  display: flex;
+  gap: 6px;
+}
+.av-presets__save .bongo-input {
+  flex: 1;
+}
+.av-presets__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.av-presets__list li {
+  position: relative;
+}
+.av-presets__pick {
+  --b-pad: 5px;
+  --b-radius: 10px;
+  --b-bg: var(--b-raised);
+  --b-bg-hover: var(--b-raised-2);
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 100%;
+  font-size: 0.75rem;
+}
+.av-presets__pick .av-preview {
+  border-radius: 8px;
+}
+.av-presets__pick > span {
+  width: 100%;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.av-presets__delete {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--b-surface) !important;
+  opacity: 0;
+}
+.av-presets__list li:hover .av-presets__delete,
+.av-presets__delete:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .av-presets__delete {
+    opacity: 1;
+  }
+}
+@media (max-width: 900px) {
+  .av-body {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+  .av-edit {
+    width: 100%;
+  }
+}
+
+/*
+ * The game's tab icons are white glyphs: on light backgrounds (a light game
+ * theme, or the site's light theme without one) they are drawn dark.
+ */
+.bongo-themed--light .bp-rail__tab img,
+:root[data-theme="light"] .bp:not(.bongo-themed) .bp-rail__tab img,
+:root[data-theme="light"] .lobby-cat-dress .bongo-game-icon {
+  filter: brightness(0) saturate(100%);
+  opacity: 0.72;
+}
+.bongo-themed--light .bp-rail__tab.is-active img,
+:root[data-theme="light"] .bp:not(.bongo-themed) .bp-rail__tab.is-active img {
+  opacity: 0.9;
+}
+
+/* ---------- designer: motion (variations order, speed, drumming) ---------- */
+.bd-motion {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--b-line);
+}
+.bd-motion .bd-label {
+  min-width: 78px;
+}
+.bd-slider input[type="range"] {
+  flex: 1;
+  min-width: 120px;
+  accent-color: var(--b-accent);
+}
+.bd-slider output {
+  min-width: 82px;
+  color: var(--b-muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.bd .bd-switch {
+  --b-pad: 4px 10px 4px 4px;
+  --b-radius: 999px;
+  --b-border: 1px solid var(--b-line);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--b-ink);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.bd-switch__knob {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--b-ink) 18%, transparent);
+  transition: background-color 0.15s ease;
+}
+.bd-switch__knob::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--b-ink);
+  transition: transform 0.15s ease;
+}
+.bd-switch.is-on .bd-switch__knob {
+  background: var(--b-accent);
+}
+.bd-switch.is-on .bd-switch__knob::after {
+  transform: translateX(14px);
+  background: var(--b-accent-ink, #fff);
+}
+
+/* ---------- designer: an old picture to design after (migration) ---------- */
+.bd-reference {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #202228;
+  border: 1px dashed var(--b-line);
+}
+.bd-reference img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: contain;
+}
+.bd-reference figcaption,
+.bd-reference__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: var(--b-muted);
+  font-size: 0.8rem;
+}
+.bd-reference figcaption {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+}
+.bd-reference figcaption .material-symbols-outlined {
+  font-size: 16px;
+}
+.bd.bd--compare {
+  width: min(1320px, 100%);
+}
+.bd--compare .bd-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-content: start;
+  gap: 10px;
+}
+.bd--compare .bd-stage > :not(.bd-reference, .bongo-design) {
+  grid-column: 1 / -1;
+}
+@media (max-width: 760px) {
+  .bd--compare .bd-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.bd .fdc-migrate__note {
+  grid-column: 1 / -1;
+  color: var(--b-muted);
+}
+.bd .fdc-migrate__note input {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  color: var(--b-ink);
+  font: inherit;
+  border: 1px solid var(--b-line);
+  border-radius: 8px;
+  background: var(--b-surface);
+}
+
+/* An old option that is still only a picture (FdcManage): a small red "!". */
+.bongo-option-design__empty.is-migrate {
+  position: relative;
+  --b-border: 2px dashed color-mix(in srgb, #e5484d 55%, transparent);
+}
+.bongo-option-design__todo {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e5484d;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1;
+}
+.bongo-option-design__empty.is-migrate {
+  overflow: hidden;
+  isolation: isolate;
+}
+.bongo-option-design__old {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.22;
+  filter: grayscale(0.6);
+}
+
+/* Designer: mixed picks vs fixed looks, and the fixed looks of a cat. */
+.bd-mode {
+  align-self: start;
+}
+.bd-looks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bd-looks li {
+  position: relative;
+}
+.bd-looks__pick,
+.bd-looks__add {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  padding: 0;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--b-ink, currentColor) 6%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b-ink, currentColor) 14%, transparent);
+  cursor: pointer;
+}
+.bd-looks li.is-active .bd-looks__pick {
+  box-shadow: inset 0 0 0 2px var(--b-accent, var(--accent));
+}
+.bd-looks__add {
+  align-content: center;
+  gap: 2px;
+  font-size: 0.75rem;
+}
+.bd-looks__remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  background: #e5484d;
+  color: #fff;
+  cursor: pointer;
+}
+.bd-looks__remove .material-symbols-outlined {
+  font-size: 14px;
+}
+.bd-tool.is-on {
+  box-shadow: inset 0 0 0 2px var(--b-accent, var(--accent));
+}
