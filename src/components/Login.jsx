@@ -234,7 +234,13 @@ export default function Login() {
 
   if (!user) {
     return (
-      <div className="login-wrap">
+      <div className="login-wrap login-wrap--guest">
+        {/* Settings work without an account too (kept in this browser). */}
+        <Link className="loginButton loginSettings" to="/cult/settings" aria-label={t('settings', { defaultValue: 'Settings' })} title={t('settings', { defaultValue: 'Settings' })}>
+          <span className="material-symbols-outlined" aria-hidden="true">
+            settings
+          </span>
+        </Link>
         <button
           type="button"
           className="loginButton"

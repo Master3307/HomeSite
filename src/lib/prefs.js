@@ -47,8 +47,6 @@ export function timeOptions(prefs = readPrefs()) {
   return options
 }
 
-const ACCENT_STYLE = 'user-accent'
-
 /** Applies the accent tint and the motion choice to the page. */
 export function applyPrefs(prefs) {
   if (typeof document === 'undefined') return
@@ -58,26 +56,10 @@ export function applyPrefs(prefs) {
   root.classList.toggle('motion-none', prefs.motion === 'none')
   root.classList.remove('motion-full')
 
-  let style = document.getElementById(ACCENT_STYLE)
-  if (!/^#[0-9a-f]{6}$/i.test(String(prefs.accent ?? ''))) {
-    style?.remove()
-    return
-  }
-  if (!style) {
-    style = document.createElement('style')
-    style.id = ACCENT_STYLE
-    document.head.append(style)
-  }
-  // Mixed into the dark page colours, so any colour still feels moody.
-  const color = prefs.accent
-  style.textContent = `
-:root, :root[data-theme], body.cult-page {
-  --accent: color-mix(in srgb, ${color} 78%, #120a10) !important;
-  --accent-hover: color-mix(in srgb, ${color} 45%, #0b0508) !important;
-  --user-tint: ${color};
-}
-body.cult-page {
-  --bg-primary: color-mix(in oklab, color-mix(in srgb, ${color} 30%, #d8bcb6), color-mix(in srgb, ${color} 22%, #120607) var(--cult-dark)) !important;
-  --bg-secondary: color-mix(in oklab, color-mix(in srgb, ${color} 8%, #f4ebe6), color-mix(in srgb, ${color} 8%, #0e0809) var(--cult-dark)) !important;
-}`
+  // The colours themselves are in main.css (:root.has-accent), so index.html can set them before the first paint too.
+  const accent = /^#[0-9a-f]{6}$/i.test(String(prefs.accent ?? '')) ? prefs.accent : null
+  root.classList.toggle('has-accent', Boolean(accent))
+  if (accent) root.style.setProperty('--user-tint', accent)
+  else root.style.removeProperty('--user-tint')
+  document.getElementById('user-accent')?.remove()
 }

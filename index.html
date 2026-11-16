@@ -56,10 +56,15 @@ have fun and enjoy!
           } else if (savedTheme === "system") {
             theme = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
           }
+          const prefs = JSON.parse(localStorage.getItem("homesite:prefs") || "{}");
           // Animations: "none" switches them off before anything moves.
-          const motion = JSON.parse(localStorage.getItem("homesite:prefs") || "{}").motion;
-          if (motion === "reduce" || motion === "none") root.classList.add("motion-reduce");
-          if (motion === "none") root.classList.add("motion-none");
+          if (prefs.motion === "reduce" || prefs.motion === "none") root.classList.add("motion-reduce");
+          if (prefs.motion === "none") root.classList.add("motion-none");
+          // The member's own colour (main.css :root.has-accent), so it doesn't flash in late.
+          if (/^#[0-9a-f]{6}$/i.test(prefs.accent || "")) {
+            root.classList.add("has-accent");
+            root.style.setProperty("--user-tint", prefs.accent);
+          }
         } catch {
           // Keep the dark default if storage is unavailable.
         }

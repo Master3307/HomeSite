@@ -827,6 +827,34 @@ button.loginButton {
 .login-wrap {
   position: relative;
 }
+/* Logged out: the settings gear next to Login (both 40px, like the theme and language switches). */
+.login-wrap--guest {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.login-below-head .loginSettings {
+  width: 40px;
+  padding: 0;
+}
+.loginSettings .material-symbols-outlined {
+  font-size: 1.3rem;
+  transition: transform 0.35s ease;
+}
+@media (hover: hover) {
+  .loginSettings:hover .material-symbols-outlined {
+    transform: rotate(45deg);
+  }
+}
+/* Phones: the bottom row is full (theme · login · language), so the gear joins the theme switch on the left. */
+@media (max-width: 750px) {
+  .login-below-head .loginSettings {
+    position: fixed;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    left: calc(16px + 80px + 6px + env(safe-area-inset-left, 0px));
+    height: 40px;
+  }
+}
 
 .login-panel {
   position: absolute;
@@ -2071,4 +2099,22 @@ legend,
     margin-top: -0.55em;
     margin-bottom: -0.02em;
   }
+}
+
+/*
+ * The member's own colour (Settings → Look, src/lib/prefs.js; index.html sets
+ * it before the first paint): --user-tint, mixed into the page so any colour
+ * still feels moody. Strong selectors, so it wins over page styles that set
+ * their own accent (cult.css) no matter which stylesheet loads last.
+ */
+:root.has-accent:root,
+:root.has-accent[data-theme] {
+  --accent: color-mix(in srgb, var(--user-tint) 78%, #120a10) !important;
+  --accent-hover: color-mix(in srgb, var(--user-tint) 45%, #0b0508) !important;
+}
+html.has-accent body.cult-page {
+  --accent: color-mix(in srgb, var(--user-tint) 78%, #120a10) !important;
+  --accent-hover: color-mix(in srgb, var(--user-tint) 45%, #0b0508) !important;
+  --bg-primary: color-mix(in oklab, color-mix(in srgb, var(--user-tint) 30%, #d8bcb6), color-mix(in srgb, var(--user-tint) 22%, #120607) var(--cult-dark)) !important;
+  --bg-secondary: color-mix(in oklab, color-mix(in srgb, var(--user-tint) 8%, #f4ebe6), color-mix(in srgb, var(--user-tint) 8%, #0e0809) var(--cult-dark)) !important;
 }
