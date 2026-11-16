@@ -451,6 +451,49 @@ async function sendBirthdayMessages(client) {
   return true;
 }
 
+/*
+ * Reminders (website: /cult/birthdays → bell): a DM the day before and one
+ * on the day. Each is sent once (birthdayReminders.cjs remembers). People
+ * whose DMs are closed are skipped.
+ */
+async function sendBirthdayReminders(client, now = new Date()) {
+  const birthdayService = require("./birthday.cjs");
+  const reminders = require("./birthdayReminders.cjs");
+  const { reminders: list } = reminders.read();
+  if (!Object.keys(list).length) return 0;
+  const site = (setting("FRONTEND_ORIGIN") || "").replace(/\/+$/, "");
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  let sent = 0;
+  for (const [subscriberId, targets] of Object.entries(list)) {
+    for (const targetId of targets) {
+      const birthday = birthdayService.getBirthday(targetId);
+      if (!birthday) continue;
+      const kind = isBirthdayToday(birthday, now) ? "day" : isBirthdayToday(birthday, tomorrow) ? "before" : null;
+      if (!kind || !reminders.markSent(`${getDateKey(now)}:${subscriberId}:${targetId}:${kind}`)) continue;
+      const subscriber = await client.users.fetch(subscriberId).catch(() => null);
+      const target = await client.users.fetch(targetId).catch(() => null);
+      if (!subscriber || !target) continue;
+      const name = target.globalName ?? target.username;
+      const text =
+        kind === "day"
+          ? `🎂 Today is **${name}**'s birthday! Don't forget to wish them a happy birthday.`
+          : `🎁 Tomorrow is **${name}**'s birthday.`;
+      await subscriber
+        .send({ content: `${text}${site ? `\n-# You asked for this reminder on ${site}/cult/birthdays` : ""}`, allowedMentions: { parse: [] } })
+        .then(() => (sent += 1))
+        .catch(() => {});
+    }
+  }
+  if (sent) console.log(`[birthday-celebrations] Sent ${sent} birthday reminder(s).`);
+  return sent;
+}
+
+async function dailyBirthdayRun(client) {
+  await sendBirthdayMessages(client);
+  await sendBirthdayReminders(client).catch((error) => console.error("[birthday-celebrations] Reminders failed:", error));
+}
+
 function isAtOrAfterScheduledTime(now = new Date()) {
   const scheduledTime = new Date(now);
 
@@ -483,7 +526,7 @@ function scheduleNextBirthdayCheck(client) {
     startupTimeoutId = null;
 
     try {
-      await sendBirthdayMessages(client);
+      await dailyBirthdayRun(client);
     } catch (error) {
       console.error(
         "[birthday-celebrations] Scheduled birthday check failed:",
@@ -511,7 +554,7 @@ function startBirthdayCelebrations(client) {
   const now = new Date();
 
   if (isAtOrAfterScheduledTime(now)) {
-    sendBirthdayMessages(client).catch((error) => {
+    dailyBirthdayRun(client).catch((error) => {
       console.error(
         "[birthday-celebrations] Delayed startup birthday check failed:",
         error,

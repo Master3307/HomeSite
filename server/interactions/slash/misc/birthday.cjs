@@ -9,6 +9,7 @@ const {
 } = require("discord.js");
 
 const birthdayService = require("../../../services/birthday.cjs");
+const { setting } = require("../../../config.cjs");
 const birthdayCelebrations = require("../../../services/birthdayCelebrations.cjs");
 
 const ITEMS_PER_PAGE = 10;
@@ -502,10 +503,26 @@ module.exports = {
         return;
       }
 
-      const savedBirthday = birthdayService.setBirthday(
-        interaction.user.id,
-        parsed.birthday,
-      );
+      let savedBirthday;
+      try {
+        savedBirthday = birthdayService.setBirthday(
+          interaction.user.id,
+          parsed.birthday,
+        );
+      } catch (error) {
+        if (error.code !== "locked") throw error;
+        // Once every 6 months (the same rule as on the website).
+        const owner = setting("DISCORD_USER_ID");
+        await interaction.reply({
+          content: [
+            `❌ Your birthday can only be changed once every 6 months. Next possible: <t:${Math.floor(error.until / 1000)}:D>.`,
+            `Made a mistake? Ask ${owner ? `<@${owner}>` : "the server owner"} to fix it.`,
+          ].join("\n"),
+          ephemeral: true,
+          allowedMentions: { parse: [] },
+        });
+        return;
+      }
 
       const details = getBirthdayDetails(savedBirthday);
       const hasYear =
