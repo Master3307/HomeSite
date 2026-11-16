@@ -2032,10 +2032,11 @@ legend,
   -webkit-user-drag: none;
 }
 .site-logo--title img {
-  height: 1.75em;
-  /* Centred on the badge, not the picture (the roof sticks out above it). */
-  margin-top: -0.5em;
-  margin-bottom: -0.1em;
+  /* Its letters are exactly as tall as the title's (measured: the logo's H is 39% of the picture). */
+  height: 1.92em;
+  /* Its baseline on the title's baseline (the roof sticks out above). */
+  margin-top: -0.64em;
+  margin-bottom: -0.07em;
   /* Lifts the purple badge off the purple header bar. */
   filter: drop-shadow(0 3px 8px rgb(20 5 38 / 0.35));
 }
@@ -2067,7 +2068,7 @@ legend,
     margin-block: 0.55em 0.45em;
   }
   .site-logo--title img {
-    margin-top: -0.3em;
-    margin-bottom: -0.05em;
+    margin-top: -0.55em;
+    margin-bottom: -0.02em;
   }
 }
