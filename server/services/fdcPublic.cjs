@@ -220,6 +220,13 @@ function toSummaryEntry(publicPoll) {
     // Options that are still only a picture (editors see a "!", FDC migration).
     pictureOnly: publicPoll.options.filter((option) => option.imageFile && !option.designFile).length,
     dataFile: `${publicPoll.date}/data.json`,
+    // For the archive search (everyone): what each option was, and who won.
+    options: publicPoll.options.map((option) => ({
+      number: option.number,
+      description: option.description,
+      emoji: { display: option.emoji?.display ?? "", id: option.emoji?.id ?? null, animated: Boolean(option.emoji?.animated) },
+    })),
+    winners: publicPoll.statistics?.winningOptionNumbers ?? [],
   };
 }
 

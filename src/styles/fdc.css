@@ -638,13 +638,94 @@
   margin-bottom: 1rem;
 }
 
+/* The archive search: one quiet field, the count at its end. */
+.fdc .fdc-archive__search {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  padding: 0 0.9rem;
+  border-radius: var(--fdc-radius);
+  background: var(--fdc-raised);
+  box-shadow: inset 0 0 0 1px var(--fdc-border);
+  transition: box-shadow 0.15s ease;
+}
+.fdc .fdc-archive__search:focus-within {
+  box-shadow: inset 0 0 0 2px var(--fdc-accent);
+}
+.fdc .fdc-archive__search > .material-symbols-outlined {
+  color: var(--fdc-muted);
+  font-size: 1.25rem;
+}
+.fdc .fdc-archive__search input {
+  flex: 1;
+  min-width: 0;
+  height: 2.9rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.95rem;
+  outline: none;
+}
+.fdc .fdc-archive__search input::placeholder {
+  color: var(--fdc-muted);
+}
+.fdc .fdc-archive__count {
+  flex: none;
+  color: var(--fdc-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+.fdc .fdc-archive__none {
+  margin-top: 1rem;
+  color: var(--fdc-muted);
+}
+/* What matched: the options, the winner marked. */
+.fdc .fdc-archive__hits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.45rem;
+}
+.fdc .fdc-archive__hit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  max-width: 100%;
+  padding: 0.15rem 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--fdc-accent-soft);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fdc .fdc-archive__hit.is-winner {
+  box-shadow: inset 0 0 0 1px var(--fdc-success);
+}
+.fdc .fdc-archive__emoji {
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-right: 0.15rem;
+  object-fit: contain;
+}
+.fdc .fdc-archive__hit .material-symbols-outlined {
+  color: var(--fdc-success);
+  font-size: 0.9rem;
+}
+
 .fdc .fdc-archive__list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
   margin-top: 1rem;
 }
 
 .fdc .fdc-archive__entry {
+  min-width: 0;
   justify-content: flex-start;
   gap: 0.85rem;
   width: 100%;

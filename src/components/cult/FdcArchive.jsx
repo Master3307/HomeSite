@@ -1,7 +1,9 @@
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import FdcPoll from './FdcPoll'
 import { useUrlParam } from '/src/lib/urlState'
+import { customEmojiUrl } from '/src/lib/emoji'
 
 import {
   formatPollDate,
@@ -9,6 +11,32 @@ import {
   useFdcClock,
   useFdcPoll,
 } from '../../lib/fdc'
+
+/* Lower case without accents, so "cafe" finds "Café". */
+const fold = (text) =>
+  String(text ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+/*
+ * The archive search (everyone): every word has to appear in the FDC's
+ * number (#12), its date or one of its options (description, emoji).
+ * Returns the matching options so the list can show what was found.
+ */
+function searchPolls(polls, query, total, language) {
+  const words = fold(query).split(/\s+/).filter(Boolean)
+  if (!words.length) return null
+  return polls.flatMap((entry, index) => {
+    const number = `#${total - index}`
+    const head = fold(`${number} ${formatPollDate(entry.endsAt, language)}`)
+    const options = (entry.options ?? []).map((option) => ({ option, text: fold(`${option.description} ${option.emoji?.display ?? ''}`) }))
+    const all = `${head} ${options.map((item) => item.text).join(' ')}`
+    if (!words.every((word) => all.includes(word))) return []
+    const hits = options.filter((item) => words.some((word) => item.text.includes(word))).map((item) => item.option)
+    return [{ entry, index, hits }]
+  })
+}
 
 export default function FdcArchive({
   summary,
@@ -27,6 +55,19 @@ export default function FdcArchive({
   const selected = summary.polls.find(
     (poll) => poll.id === selectedId,
   )
+
+  // ?q=…: the archive search (kept in the address, so Back returns to the results).
+  const [query = '', setQueryParam] = useUrlParam('q')
+  const [draft, setDraft] = useState(query ?? '')
+  const total = summary.totalFdcCount ?? summary.polls.length
+  const results = useMemo(
+    () => searchPolls(summary.polls, draft, total, i18n.language),
+    [summary.polls, draft, total, i18n.language],
+  )
+  const setQuery = (value) => {
+    setDraft(value)
+    setQueryParam(value.trim() ? value : null)
+  }
 
   const {
     data: poll,
@@ -125,15 +166,45 @@ export default function FdcArchive({
         })}
       </p>
 
+      {summary.polls.length > 0 && (
+        <label className="fdc-archive__search">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            search
+          </span>
+          <input
+            type="search"
+            value={draft}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t('fdc.searchPlaceholder', {
+              defaultValue: 'Search past FDCs: themes, emoji, dates, #number',
+            })}
+            aria-label={t('fdc.searchLabel', { defaultValue: 'Search the FDC archive' })}
+            enterKeyHint="search"
+          />
+          {results && (
+            <span className="fdc-archive__count" role="status">
+              {t('fdc.searchCount', { defaultValue: '{{count}} found', count: results.length })}
+            </span>
+          )}
+        </label>
+      )}
+
       {summary.polls.length === 0 ? (
         <p>
           {t('fdc.archiveEmpty', {
             defaultValue: 'No archived polls yet.',
           })}
         </p>
+      ) : results && results.length === 0 ? (
+        <p className="fdc-archive__none">
+          {t('fdc.searchEmpty', {
+            defaultValue: 'No FDC matches "{{query}}".',
+            query: draft.trim(),
+          })}
+        </p>
       ) : (
         <div className="fdc-archive__list">
-          {summary.polls.map((entry, index) => {
+          {(results ?? summary.polls.map((entry, index) => ({ entry, index, hits: [] }))).map(({ entry, index, hits }) => {
             const running = isRunningPoll(entry, now)
 
             return (
@@ -144,7 +215,7 @@ export default function FdcArchive({
                 onClick={() => setSelectedId(entry.id)}
               >
                 <span className="fdc-archive__index" aria-hidden="true">
-                  #{(summary.totalFdcCount ?? summary.polls.length) - index}
+                  #{total - index}
                 </span>
 
                 <span className="fdc-archive__text">
@@ -177,6 +248,26 @@ export default function FdcArchive({
                       count: entry.totalVoters ?? 0,
                     })}
                   </span>
+
+                  {hits.length > 0 && (
+                    <span className="fdc-archive__hits">
+                      {hits.map((option) => (
+                        <span key={option.number} className={`fdc-archive__hit${entry.winners?.includes(option.number) ? ' is-winner' : ''}`}>
+                          {entry.winners?.includes(option.number) && (
+                            <span className="material-symbols-outlined" aria-label={t('fdc.winner', { defaultValue: 'Winner' })}>
+                              trophy
+                            </span>
+                          )}
+                          {option.emoji?.id ? (
+                            <img className="fdc-archive__emoji" src={customEmojiUrl(option.emoji, 32)} alt={option.emoji.display} loading="lazy" />
+                          ) : option.emoji?.display ? (
+                            `${option.emoji.display} `
+                          ) : null}
+                          {option.description || t('fdc.optionNumber', { defaultValue: 'Option {{number}}', number: option.number })}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </span>
 
                 {editor && entry.pictureOnly > 0 && (
