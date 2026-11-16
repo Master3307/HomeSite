@@ -32,27 +32,113 @@
   pointer-events: none;
 }
 
-.errorButtons {
+/* The error, laid out like the home greeting. */
+.error-hero {
   display: flex;
-  justify-content: center;
-  gap: 69px;
+  align-items: center;
+  gap: 28px;
+  width: 95%;
+  max-width: 777px;
+  margin: 96px auto 0;
+  text-align: left;
+}
+.error-hero__face {
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  transition: transform 0.25s ease;
+}
+.error-hero__face img {
+  display: block;
+  width: 132px;
+  height: auto;
+  filter: drop-shadow(0 12px 24px rgb(0 0 0 / 0.35));
+}
+@media (hover: hover) {
+  .error-hero__face:hover {
+    transform: rotate(-8deg) scale(1.04);
+  }
+}
+.error-hero__face:active {
+  transform: scale(0.94);
+}
+.error-hero__face:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 6px;
+}
+.error-hero__text {
+  min-width: 0;
+}
+.error-hero h2 {
+  margin: 0;
+  font-size: clamp(2.2rem, 7vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+.error-hero p {
+  max-width: 46ch;
+  margin: 12px 0 0;
+  color: color-mix(in srgb, var(--text-primary) 80%, transparent);
+  font-size: 1.12rem;
+  line-height: 1.5;
+}
+.error-hero__actions {
+  display: flex;
   flex-wrap: wrap;
-
+  gap: 8px;
+  margin-top: 24px;
+}
+.error-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.error-action .material-symbols-outlined {
+  font-size: 1.2rem;
+}
+.error-action--main {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+@media (hover: hover) {
+  .error-action:hover {
+    background: color-mix(in srgb, var(--text-primary) 18%, transparent);
+  }
+  .error-action--main:hover {
+    background: color-mix(in srgb, var(--text-primary) 86%, transparent);
+  }
+}
+.error-action:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+.errorPage .home-about a {
+  color: var(--text-primary);
 }
 
-.errorButton {
-  background-color: color-mix(in srgb, var(--bg-accent) 70%, transparent);
-  -webkit-backdrop-filter: blur(13px); /* Safari */
-  backdrop-filter: blur(13px);
-  padding: 10px 12px;
-  border-radius: 13px;
-  box-shadow:
-  0 10px 30px rgba(0, 0, 0, 0.14),
-  inset 0 1px 0 rgba(255, 255, 255, 0.047);
-
-}
-
-.about-card {
-  margin-top: auto !important;
-  margin-bottom: 32px !important;
+@media (max-width: 600px) {
+  .error-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+    margin-top: 84px;
+  }
+  .error-hero__face img {
+    width: 96px;
+  }
 }

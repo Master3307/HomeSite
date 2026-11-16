@@ -763,6 +763,15 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
   }
+  /* The stack keeps its icon next to the text. */
+  .about-list--stack li {
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .about-list--stack .brand-icon {
+    align-self: start;
+    margin-top: 2px;
+  }
   .me-specs > div {
     grid-template-columns: 110px minmax(0, 1fr);
   }

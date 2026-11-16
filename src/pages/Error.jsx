@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
-import { useLocation, Link } from 'react-router'
+import { useLocation } from 'react-router'
 
+import About from '../components/AboutCard.jsx'
 import ErrorCard from '../components/ErrorCard.jsx'
 
 import { getErrorMessage } from '../lib/error.js'
@@ -15,7 +16,7 @@ export default function Error({ forcedCode }) {
   const code = String(forcedCode ?? params.get('code') ?? 'template').trim()
   const errorInfo = getErrorMessage(code)
 
-  const { t } = useTranslation(['about', 'error', 'title'])
+  const { t } = useTranslation(['error', 'title'])
 
   useEffect(() => {
     document.title = `${t(errorInfo.titleKey)} – MrKoby07`
@@ -29,15 +30,13 @@ export default function Error({ forcedCode }) {
         </h1>
       </header>
 
-      <ErrorCard errorInfo={errorInfo} />
-
-      <div className="card about-card">
-      <h2>{t('about.header', { ns: 'about'})}</h2>
-      <p>
-        {t('about.card.line1', { ns: 'about'})} <br />
-        <Link to='/about'>{t('about.card.line3', { ns: 'about'})}</Link>
-      </p>
-    </div>
+      {/* Like home: the error up top, the about line at the bottom of the screen. */}
+      <div className="home-page">
+        <div className="home-page__main">
+          <ErrorCard errorInfo={errorInfo} />
+        </div>
+        <About />
+      </div>
     </div>
   )
 }
