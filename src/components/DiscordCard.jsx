@@ -388,7 +388,7 @@ function getBestActivityImage(activity) {
   )
 }
 
-function StatusDot({ status }) {
+export function StatusDot({ status }) {
   return (
     <span
       className={`discord-card__status discord-card__status--${status ?? 'offline'}`}
@@ -472,6 +472,9 @@ function ArtistLinks({ artistLine, t }) {
   )
 }
 
+/* The artwork as a CSS variable: the card shows it blurred behind its content. */
+const artStyle = (src) => (src ? { '--presence-art': `url("${String(src).replace(/["\\]/g, '')}")` } : undefined)
+
 function PresenceCard({ activity, t }) {
   const resolvedImage = getBestActivityImage(activity)
   const isSpotify = isSpotifyActivity(activity)
@@ -520,7 +523,7 @@ function PresenceCard({ activity, t }) {
     const albumUrl = getLastFmAlbumUrl(activity)
 
     return (
-      <div className="discord-presence-card discord-presence-card--music">
+      <div className="discord-presence-card discord-presence-card--music" style={artStyle(displayedArt)}>
         <AlbumArt
           src={displayedArt}
           alt={albumLabel || songTitle || 'Album art'}
@@ -529,6 +532,7 @@ function PresenceCard({ activity, t }) {
 
         <div className="discord-presence__content">
           <span className="discord-presence__eyebrow">
+            <span className="material-symbols-outlined" aria-hidden="true">music_note</span>
             {t('discord.listening', 'Listening to Spotify')}
           </span>
 
@@ -617,7 +621,7 @@ function PresenceCard({ activity, t }) {
     const gameSubtitleText = gameDetails || 'In game'
 
     return (
-      <div className="discord-presence-card discord-presence-card--game">
+      <div className="discord-presence-card discord-presence-card--game" style={artStyle(displayedArt)}>
         <AlbumArt
           src={displayedArt}
           alt={`${gameTitle} cover`}
@@ -626,6 +630,7 @@ function PresenceCard({ activity, t }) {
 
         <div className="discord-presence__content">
           <span className="discord-presence__eyebrow">
+            <span className="material-symbols-outlined" aria-hidden="true">sports_esports</span>
             {t('discord.playing', 'Playing')}
           </span>
 
@@ -648,6 +653,7 @@ function PresenceCard({ activity, t }) {
           {elapsedGameTime !== null ? (
             <div className="discord-presence__meta-row">
               <span className="discord-presence__meta-pill">
+                <span className="material-symbols-outlined" aria-hidden="true">schedule</span>
                 {t('discord.playingFor', 'Playing for')}{' '}
                 {formatDuration(elapsedGameTime)}
               </span>
@@ -663,7 +669,7 @@ function PresenceCard({ activity, t }) {
   const genericState = activity?.state || ''
 
   return (
-    <div className="discord-presence-card discord-presence-card--generic">
+    <div className="discord-presence-card discord-presence-card--generic" style={artStyle(displayedArt)}>
       <AlbumArt
         src={displayedArt}
         alt={activity?.name || 'Activity image'}
@@ -672,6 +678,7 @@ function PresenceCard({ activity, t }) {
 
       <div className="discord-presence__content">
         <span className="discord-presence__eyebrow">
+          <span className="material-symbols-outlined" aria-hidden="true">bolt</span>
           {activity?.type_label || 'Activity'}
         </span>
 
@@ -707,7 +714,7 @@ function PresenceCard({ activity, t }) {
   )
 }
 
-function Activity({ activities, t }) {
+export function Activity({ activities, t }) {
   if (!activities?.length) return null
 
   const spotify = activities.find(isSpotifyActivity)

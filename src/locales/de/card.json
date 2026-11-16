@@ -1,7 +1,90 @@
 {
     "header": "Persönliche Benutzerkarte",
-    "greeting": "Heyy! :D",
-    "line1": "Mein Name ist Korbi, und ich bin Entwickler. Ich probiere gerne unterschiedliche Computersachen aus.",
-    "line2": "Ich liebe es neue Sachen zu lernen und mag es Probleme zu finden und zu lösen.",
-    "buttons": "Knöpfe"
+    "bio": "Ich bin Korbinian aus Bayern. Ich baue Sachen, mach sie kaputt und nehm sie auseinander, bis ich versteh, wie sie funktionieren. Diese ganze Seite ist eins davon.",
+    "facts": {
+        "title": "Kurz und knapp",
+        "name": "Name",
+        "nameValue": "Korbinian",
+        "birthday": "Geburtstag",
+        "birthdayValue": "9. September",
+        "from": "Aus",
+        "fromValue": "Bayern, Deutschland",
+        "languages": "Sprachen",
+        "languagesValue": "Deutsch, Englisch, ein bisschen Ukrainisch"
+    },
+    "skills": {
+        "title": "Damit baue ich",
+        "also": "Außerdem zu Hause bei PC-Hardware, Self-Hosting, Spiele-Mods und KI-Tools."
+    },
+    "links": {
+        "title": "Hier findest du mich",
+        "github": "Code und Projekte",
+        "youtube": "Videos",
+        "discord": "Mein Discord-Server",
+        "steam": "Meine Spielebibliothek",
+        "modrinth": "Minecraft-Mods",
+        "nexusmods": "Spiele-Mods",
+        "spotify": "Was ich höre",
+        "twitch": "Streams, manchmal",
+        "wakatime": "Coding-Statistiken"
+    },
+    "setup": {
+        "title": "Mein Setup",
+        "cpu": "Prozessor",
+        "gpu": "Grafik",
+        "ram": "Arbeitsspeicher",
+        "board": "Mainboard",
+        "displays": "Bildschirme",
+        "software": "Software",
+        "softwareName": "CachyOS mit KDE Plasma",
+        "canvasLabel": "{{name}} in 3D",
+        "loading": "Das Licht wird eingerichtet…",
+        "drag": "Zum Drehen ziehen, Strg + Scrollen zum Zoomen",
+        "facts": {
+            "cores": "6 Kerne, 12 Threads",
+            "clock": "3,7 GHz, bis 4,6 GHz",
+            "socket": "Zen 3 auf AM4, 65 W",
+            "vram": "8 GB GDDR6",
+            "cooling": "Drei WINDFORCE-Lüfter",
+            "outputs": "2× HDMI, 2× DisplayPort",
+            "capacity": "32 GB",
+            "type": "DDR4",
+            "format": "Micro-ATX",
+            "chipset": "AMD B550 für AM4",
+            "slots": "4 RAM-Steckplätze, PCIe 4.0",
+            "resolution": "Je 1920 × 1080",
+            "screens": "22″ und 21,5″, nebeneinander"
+        },
+        "about": {
+            "title": "Über dieses System — Infozentrum",
+            "software": "Software",
+            "hardware": "Hardware",
+            "platform": "Grafik-Plattform",
+            "processors": "Prozessoren",
+            "memory": "Speicher",
+            "graphics": "Grafikprozessor",
+            "product": "Produktname",
+            "plasma": "KDE-Plasma-Version",
+            "frameworks": "KDE-Frameworks-Version",
+            "qt": "Qt-Version",
+            "kernel": "Kernel-Version",
+            "kernelValue": "{{kernel}} (64-bit)",
+            "memoryValue": "{{total}} GiB RAM ({{usable}} GiB nutzbar)",
+            "manufacturer": "Hersteller",
+            "side": {
+                "about": "Über dieses System",
+                "energy": "Energie",
+                "devices": "Geräte",
+                "graphics": "Grafik",
+                "network": "Netzwerk"
+            }
+        },
+        "dragTouch": "Zum Drehen ziehen, mit zwei Fingern zoomen",
+        "reset": "Zurück zur Startansicht",
+        "zoomIn": "Vergrößern",
+        "zoomOut": "Verkleinern"
+    },
+    "buttons": "Knöpfe",
+    "aboutMe": "Über mich",
+    "into": "Ich mag Gaming, Modding, Linux, meinen Heimserver, Psychologie und archiviere viel zu viel, nur für den Fall."
 }

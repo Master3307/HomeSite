@@ -1,7 +1,90 @@
 {
     "header": "Personal User Card",
-    "greeting": "Hi there! :D",
-    "line1": "My name is Korbi, and I'm a developer. I like to try different computer related activities.",
-    "line2": "I love to learn new stuff and find joy in finding and fixing problems.",
-    "buttons": "Buttons"
+    "bio": "I'm Korbinian from Bavaria. I build things, break them, and take them apart until I understand how they work. This whole site is one of those things.",
+    "facts": {
+        "title": "Quick facts",
+        "name": "Name",
+        "nameValue": "Korbinian",
+        "birthday": "Birthday",
+        "birthdayValue": "9 September",
+        "from": "From",
+        "fromValue": "Bavaria, Germany",
+        "languages": "Languages",
+        "languagesValue": "German, English, a bit of Ukrainian"
+    },
+    "skills": {
+        "title": "What I build with",
+        "also": "Also at home with PC hardware, self-hosting, game mods and AI tools."
+    },
+    "links": {
+        "title": "Find me",
+        "github": "Code and projects",
+        "youtube": "Videos",
+        "discord": "My Discord server",
+        "steam": "My game library",
+        "modrinth": "Minecraft mods",
+        "nexusmods": "Game mods",
+        "spotify": "What I listen to",
+        "twitch": "Streams, sometimes",
+        "wakatime": "Coding stats"
+    },
+    "setup": {
+        "title": "My setup",
+        "cpu": "Processor",
+        "gpu": "Graphics",
+        "ram": "Memory",
+        "board": "Mainboard",
+        "displays": "Displays",
+        "software": "Software",
+        "softwareName": "CachyOS with KDE Plasma",
+        "canvasLabel": "{{name}} in 3D",
+        "loading": "Setting up the light…",
+        "drag": "Drag to turn, Ctrl + scroll to zoom",
+        "facts": {
+            "cores": "6 cores, 12 threads",
+            "clock": "3.7 GHz, up to 4.6 GHz",
+            "socket": "Zen 3 on AM4, 65 W",
+            "vram": "8 GB GDDR6",
+            "cooling": "Three WINDFORCE fans",
+            "outputs": "2× HDMI, 2× DisplayPort",
+            "capacity": "32 GB",
+            "type": "DDR4",
+            "format": "Micro-ATX",
+            "chipset": "AMD B550 for AM4",
+            "slots": "4 RAM slots, PCIe 4.0",
+            "resolution": "1920 × 1080 each",
+            "screens": "22″ and 21.5″, side by side"
+        },
+        "about": {
+            "title": "About this System — Info Center",
+            "software": "Software",
+            "hardware": "Hardware",
+            "platform": "Graphics Platform",
+            "processors": "Processors",
+            "memory": "Memory",
+            "graphics": "Graphics Processor",
+            "product": "Product Name",
+            "plasma": "KDE Plasma Version",
+            "frameworks": "KDE Frameworks Version",
+            "qt": "Qt Version",
+            "kernel": "Kernel Version",
+            "kernelValue": "{{kernel}} (64-bit)",
+            "memoryValue": "{{total}} GiB of RAM ({{usable}} GiB usable)",
+            "manufacturer": "Manufacturer",
+            "side": {
+                "about": "About this System",
+                "energy": "Energy",
+                "devices": "Devices",
+                "graphics": "Graphics",
+                "network": "Network"
+            }
+        },
+        "dragTouch": "Drag to turn, pinch to zoom",
+        "reset": "Back to the start view",
+        "zoomIn": "Zoom in",
+        "zoomOut": "Zoom out"
+    },
+    "buttons": "Buttons",
+    "aboutMe": "About me",
+    "into": "Into gaming, modding, Linux, my home server, psychology, and archiving way too much, just in case."
 }

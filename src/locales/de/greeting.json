@@ -1,6 +1,19 @@
 {
-    "header": "Guten Tag!",
-    "viewCard": "Benutzerkarte ansehen",
-    "welcome": "Willkommen zu meiner Webseite! Hoffe es gefällt dir hier :P",
-    "viewCardPretext": "Meine Persönliche Benutzerkarte :"
+    "header": "Ja Servus, ich bin Koby.",
+    "welcome": "Das hier ist meine kleine Ecke im Internet. Lern mich kennen, schau bei unserer Discord-Community vorbei oder nimm die Startseite, die ich selbst jeden Tag benutze.",
+    "placesLabel": "Seiten",
+    "places": {
+        "card": {
+            "title": "Über mich",
+            "text": "Wer ich bin, was ich baue und wo du mich findest."
+        },
+        "cult": {
+            "title": "Kult der schwarzen Katzen",
+            "text": "Unser Bongo-Cat-Discord: Lobby-Codes, der Freitags-Dresscode, Mitglieder."
+        },
+        "dash": {
+            "title": "Dash",
+            "text": "Eine schnelle Startseite mit Suche, Lesezeichen und Widgets."
+        }
+    }
 }

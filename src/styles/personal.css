@@ -1,0 +1,773 @@
+/*
+ * The personal pages: home (.home-*), /card (.me-*), /about and /license
+ * (.site-about, .about-*). Built on the site's glass .card and its theme
+ * tokens. Few boxes: rows, space and type do the structure; colour comes
+ * from the brands (tools, links) and the site's accent.
+ */
+
+.me-card,
+.site-about {
+  --line: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --muted: color-mix(in srgb, var(--text-primary) 66%, transparent);
+  --well: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  text-align: left;
+  padding: 34px clamp(20px, 5vw, 44px) 38px;
+}
+.me-card p,
+.site-about p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- buttons (home, about, license) ---------- */
+.me-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18);
+  transition:
+    transform 0.15s ease,
+    filter 0.15s ease,
+    background-color 0.15s ease;
+}
+.me-button:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+.me-button:active {
+  transform: translateY(0) scale(0.98);
+}
+.me-button:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+.me-button--quiet {
+  background: transparent;
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 18%, transparent);
+}
+.me-button--quiet:hover {
+  filter: none;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+.me-button .material-symbols-outlined {
+  font-size: 1.15rem;
+}
+
+/* ---------- home ---------- */
+.home-hello {
+  width: 95%;
+  max-width: 777px;
+  margin: 56px auto 0;
+  text-align: left;
+}
+.home-hello h2 {
+  margin: 0;
+  font-size: clamp(2.2rem, 7vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+.home-hello__lead {
+  max-width: 52ch;
+  margin: 12px 0 0;
+  color: color-mix(in srgb, var(--text-primary) 78%, transparent);
+  font-size: 1.12rem;
+  line-height: 1.55;
+}
+.home-places {
+  display: grid;
+  margin-top: 30px;
+  border-top: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+.home-place {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+.home-place__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  font-size: 1.4rem !important;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+.home-place__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.home-place__text strong {
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+.home-place__text span {
+  color: color-mix(in srgb, var(--text-primary) 66%, transparent);
+  font-size: 0.95rem;
+}
+.home-place__go {
+  opacity: 0.4;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+.home-place:focus-visible,
+.home-place:active {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 80%);
+}
+.home-place:focus-visible .home-place__icon,
+.home-place:active .home-place__icon {
+  background: var(--accent);
+  color: #fff;
+}
+.home-place:focus-visible .home-place__go {
+  opacity: 1;
+  transform: translateX(4px);
+}
+/* Hover effects only where there is a real hover (phones would keep them stuck after a tap). */
+@media (hover: hover) {
+  .home-place:hover {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 80%);
+  }
+  .home-place:hover .home-place__icon {
+    background: var(--accent);
+    color: #fff;
+  }
+  .home-place:hover .home-place__go {
+    opacity: 1;
+    transform: translateX(4px);
+  }
+}
+.home-place:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.home-about {
+  width: 95%;
+  max-width: 777px;
+  margin: 26px auto 60px;
+  color: color-mix(in srgb, var(--text-primary) 62%, transparent);
+  font-size: 0.95rem;
+  text-align: left;
+}
+.home-about a {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+.home-about a .material-symbols-outlined {
+  font-size: 1rem;
+  transition: transform 0.2s ease;
+}
+@media (hover: hover) {
+  .home-about a:hover .material-symbols-outlined {
+    transform: translateX(3px);
+  }
+}
+.site-search + .home-hello {
+  margin-top: 44px;
+}
+
+/* ---------- /card ---------- */
+
+/* The Discord card as the hero: avatar left, a big name, what I'm doing now. */
+.me-hero {
+  padding-right: 44px; /* the close button */
+}
+.me-hero .discord-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 26px;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+.me-hero .discord-card > br {
+  display: none;
+}
+.me-hero .discord-card__media {
+  position: relative;
+}
+.me-hero .pfp-wrap {
+  margin: 13px;
+}
+.me-hero .discord-card__body {
+  min-width: 0;
+}
+.me-hero .discord-card__name-row {
+  justify-content: flex-start;
+}
+.me-hero .discord-card__name {
+  font-size: clamp(2rem, 6.5vw, 3.1rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+.me-hero .discord-card__username {
+  margin: 4px 0 0;
+  font-size: 1rem;
+}
+.me-hero .discord-card__username i {
+  font-style: normal;
+}
+.me-hero .discord-card__username a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.me-hero .discord-card__username a:hover {
+  color: var(--text-primary);
+}
+/* What I'm doing right now: under the hero, full width. */
+.me-hero .discord-card__body > :is(.discord-presence-card, .discord-presence, .discord-card__activity) {
+  margin-top: 14px;
+}
+
+.me-intro {
+  margin-top: 26px;
+}
+.me-intro__bio {
+  max-width: 60ch;
+  font-size: 1.12rem;
+}
+.me-intro__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.me-intro__facts li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.me-intro__facts .material-symbols-outlined {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+.me-intro__into {
+  margin-top: 10px !important;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.me-block {
+  margin-top: 34px;
+}
+.me-block > h3,
+.me-block > summary > h3 {
+  margin: 0 0 14px;
+  font-size: 1.15rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+.me-block__note {
+  margin-top: 12px !important;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+/* The toolbelt: logos in the text colour that light up in their brand colour. */
+.me-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.me-tool {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  background: var(--well);
+  color: color-mix(in srgb, var(--text-primary) 82%, transparent);
+  outline: none;
+  cursor: default;
+  transition:
+    transform 0.25s cubic-bezier(0.3, 1.4, 0.5, 1),
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+.me-tools li:nth-child(odd) .me-tool:focus-visible {
+  transform: translateY(-4px) rotate(-6deg);
+}
+.me-tools li:nth-child(even) .me-tool:focus-visible {
+  transform: translateY(-4px) rotate(6deg);
+}
+@media (hover: hover) {
+  .me-tools li:nth-child(odd) .me-tool:hover {
+    transform: translateY(-4px) rotate(-6deg);
+  }
+  .me-tools li:nth-child(even) .me-tool:hover {
+    transform: translateY(-4px) rotate(6deg);
+  }
+}
+.me-tool:is(:hover, :focus-visible) {
+  background: color-mix(in srgb, var(--brand) 22%, transparent);
+  color: var(--brand);
+}
+.me-tool:focus-visible {
+  box-shadow: 0 0 0 2px var(--brand);
+}
+.me-tool__name {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 2;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: var(--text-primary);
+  color: var(--bg-secondary);
+  font-size: 0.78rem;
+  font-weight: 650;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+.me-tool:is(:hover, :focus-visible) .me-tool__name {
+  opacity: 1;
+  transform: translate(-50%, 0) rotate(var(--tilt, 0deg));
+}
+.me-tools li:nth-child(odd) .me-tool__name {
+  --tilt: 6deg;
+}
+.me-tools li:nth-child(even) .me-tool__name {
+  --tilt: -6deg;
+}
+
+/* Links: one row of round brand buttons; the name slides out on hover. */
+.me-socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.me-social {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  height: 48px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: var(--well);
+  color: var(--brand);
+  text-decoration: none;
+  transition:
+    background-color 0.2s ease,
+    gap 0.25s ease,
+    padding 0.25s ease;
+}
+.me-social .brand-icon {
+  flex: none;
+}
+.me-social__label {
+  display: grid;
+  max-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  transition:
+    max-width 0.3s ease,
+    opacity 0.2s ease;
+}
+.me-social__label strong {
+  font-size: 0.92rem;
+}
+.me-social:is(:hover, :focus-visible) {
+  gap: 10px;
+  padding-right: 18px;
+  background: color-mix(in srgb, var(--brand) 18%, transparent);
+}
+.me-social:is(:hover, :focus-visible) .me-social__label {
+  max-width: 180px;
+  opacity: 1;
+}
+.me-social:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Setup: folded away, a quiet spec sheet when open. */
+.me-setup summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.me-setup summary::-webkit-details-marker {
+  display: none;
+}
+.me-setup summary > h3 {
+  margin: 0;
+}
+.me-setup__chevron {
+  color: var(--muted, var(--text-secondary));
+  transition: transform 0.2s ease;
+}
+.me-setup[open] .me-setup__chevron {
+  transform: rotate(180deg);
+}
+.me-specs {
+  display: grid;
+  margin: 12px 0 0;
+}
+.me-specs > div {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.me-specs dt {
+  color: var(--muted);
+}
+.me-specs dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* ---------- /about, /license ---------- */
+.site-about__head {
+  margin-top: 46px; /* the back arrow */
+}
+.site-about__head h2 {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.site-about__lead {
+  max-width: 58ch;
+  margin-top: 10px !important;
+  color: color-mix(in srgb, var(--text-primary) 80%, transparent);
+  font-size: 1.1rem;
+}
+
+/* One row per topic: the title on the left, the words on the right. */
+.about-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 8px 24px;
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.about-row h3 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+.about-row__body {
+  display: grid;
+  gap: 10px;
+  max-width: 60ch;
+}
+.about-row a,
+.about-credits a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 80%, transparent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.about-row a:hover {
+  text-decoration-color: var(--text-primary);
+}
+.about-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.about-list li {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 12px;
+}
+.about-list li > span {
+  color: var(--muted);
+}
+.about-list--stack li {
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: baseline;
+}
+.about-list--stack .brand-icon {
+  align-self: center;
+  color: var(--muted);
+}
+.about-list--stack strong {
+  color: var(--text-primary);
+}
+.about-row__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-weight: 600;
+}
+.about-credits {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+}
+.site-about__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 32px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+/* /license: the summary tiles and the texts. */
+.me-section {
+  margin-top: 28px;
+}
+.me-section > h3 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  font-weight: 750;
+}
+.site-about__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.site-about__grid li {
+  display: flex;
+}
+.site-about__tile {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 26px 1fr;
+  align-content: start;
+  gap: 2px 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--well);
+}
+.site-about__tile > .material-symbols-outlined {
+  grid-row: span 2;
+  color: var(--muted);
+}
+.site-about__tile > span:not(.material-symbols-outlined) {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.license-page .me-setup summary {
+  font-weight: 700;
+}
+.license-page__text {
+  max-height: 60vh;
+  margin: 10px 0 0;
+  padding: 14px 16px;
+  overflow: auto;
+  border-radius: 13px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  background: color-mix(in srgb, var(--bg-primary) 55%, transparent);
+}
+.license-page__credit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px !important;
+  font-weight: 600;
+}
+.license-page__note {
+  margin-top: 16px !important;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/*
+ * Touch screens: nothing can be hovered, so the names are always there.
+ * The toolbelt becomes small chips (logo + name), the links a two-column
+ * list (logo, name, what it is) with big tap targets.
+ */
+@media (hover: none), (max-width: 600px) {
+  .me-tools {
+    gap: 6px;
+  }
+  .me-tool {
+    display: inline-flex;
+    gap: 8px;
+    width: auto;
+    height: 38px;
+    padding: 0 12px 0 10px;
+    border-radius: 12px;
+    color: var(--brand);
+  }
+  .me-tool .brand-icon {
+    width: 19px;
+    height: 19px;
+  }
+  .me-tool__name,
+  .me-tool:is(:hover, :focus-visible) .me-tool__name {
+    position: static;
+    padding: 0;
+    background: none;
+    color: var(--text-primary);
+    font-size: 0.86rem;
+    font-weight: 600;
+    opacity: 1;
+    transform: none;
+  }
+  .me-tools li .me-tool:is(:hover, :focus-visible) {
+    transform: none;
+  }
+  .me-socials {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+  }
+  .me-socials li {
+    display: flex;
+    min-width: 0;
+  }
+  .me-social {
+    flex: 1;
+    gap: 11px;
+    min-width: 0;
+    height: auto;
+    min-height: 54px;
+    padding: 8px 12px;
+    border-radius: 15px;
+  }
+  .me-social__label {
+    min-width: 0;
+    max-width: none;
+    color: color-mix(in srgb, var(--text-primary) 66%, transparent);
+    opacity: 1;
+  }
+  .me-social__label strong {
+    overflow: hidden;
+    color: var(--text-primary);
+    text-overflow: ellipsis;
+  }
+  .me-social:is(:hover, :focus-visible) {
+    gap: 11px;
+    padding-right: 12px;
+  }
+  .me-social:is(:hover, :focus-visible) .me-social__label {
+    max-width: none;
+  }
+  .me-social:active {
+    background: color-mix(in srgb, var(--brand) 18%, transparent);
+  }
+}
+
+/* ---------- phones ---------- */
+@media (max-width: 600px) {
+  /* Room for the theme / login / language row fixed at the bottom. */
+  .me-card {
+    margin-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    padding: 26px 18px 30px;
+  }
+  .home-about {
+    margin-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  }
+  .me-block {
+    margin-top: 30px;
+  }
+  .me-intro__bio {
+    font-size: 1.05rem;
+  }
+  .me-hero {
+    padding-right: 0;
+  }
+  .me-hero .discord-card {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
+  .me-hero .discord-card__media {
+    margin-top: 24px;
+  }
+  .about-row,
+  .about-list li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .me-specs > div {
+    grid-template-columns: 110px minmax(0, 1fr);
+  }
+  .home-place {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    padding: 14px 4px;
+  }
+}
+
+/* ---------- motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .me-tool,
+  .me-social,
+  .me-social__label,
+  .home-place__go,
+  .me-button {
+    transition: none;
+  }
+}
+:root:is(.motion-reduce, .motion-none) :is(.me-tool, .me-social, .me-social__label, .home-place__go, .me-button) {
+  transition: none;
+}

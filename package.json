@@ -29,7 +29,9 @@
     "2fa:key": "node scripts/twofa.cjs key",
     "setup:gui": "node scripts/setup/gui.cjs",
     "setup:cli": "node scripts/setup/cli.cjs",
-    "env:example": "node scripts/env-example.cjs"
+    "env:example": "node scripts/env-example.cjs",
+    "bongo:import": "node scripts/bongo-import.cjs",
+    "mail:test": "node scripts/mail-test.cjs"
   },
   "packageManager": "pnpm@12.18.0",
   "engines": {
@@ -39,12 +41,14 @@
     "@cwasm/webp": "^0.1.5",
     "@discordjs/rest": "^2.6.3",
     "@mongez/sitemap": "^1.0.2",
+    "@simplewebauthn/browser": "14.0.0",
+    "@simplewebauthn/server": "14.1.0",
     "@twemoji/api": "^17.0.3",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-unicode11": "^0.9.0",
     "@xterm/addon-web-links": "^0.12.0",
     "@xterm/xterm": "^6.0.0",
-    "better-sqlite3": "^13.1.1",
+    "better-sqlite3": "^13.2.0",
     "canvas": "^3.2.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -60,6 +64,7 @@
     "gifenc": "^1.0.3",
     "i18next": "^26.7.2",
     "leaflet": "1.9.4",
+    "nodemailer": "10.5.0",
     "qrcode": "1.5.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -68,6 +73,7 @@
     "react-powerglitch": "^1.1.0",
     "react-router": "^8.5.1",
     "sharp": "^0.35.5",
+    "three": "0.170.0",
     "use-scramble": "^2.2.15",
     "uuid": "^14.0.3",
     "ws": "^8.23.0"
@@ -79,9 +85,10 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
     "oxlint": "^1.93.0",
-    "serve": "^14.2.7",
+    "serve": "^14.2.8",
     "undici": "^8.11.2",
     "unicode-emoji-json": "0.8.0",
     "vite": "^8.3.8"
-  }
+  },
+  "license": "Apache-2.0"
 }

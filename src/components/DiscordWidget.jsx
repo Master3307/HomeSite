@@ -4,6 +4,7 @@ import { ACCOUNT_API_URL } from '../lib/account'
 import { getFaviconSrc } from '../lib/seasonalAssets'
 import { discordInviteUrl, siteConfig } from '../lib/siteConfig'
 
+import RollingNumber from './cult/RollingNumber'
 import '../styles/discord-widget.css'
 
 const INVITE_CODE = siteConfig.inviteCode
@@ -113,10 +114,9 @@ function useWidget() {
   return state
 }
 
-function formatCount(value, language) {
-  return value === null || value === undefined
-    ? '–'
-    : Number(value).toLocaleString(language)
+/* A count that rolls to its new value (– while unknown). */
+function Count({ value, language }) {
+  return value === null || value === undefined ? '–' : <RollingNumber value={value} locale={language} />
 }
 
 /** Live card for the Cult Discord server, fed by the bot via the account API. */
@@ -155,12 +155,16 @@ export default function DiscordWidget() {
             <span className="dw-dot" aria-hidden="true" />
             {t('widget.onlineNow', { defaultValue: 'Online now' })}
           </dt>
-          <dd>{formatCount(data?.onlineCount, i18n.language)}</dd>
+          <dd>
+            <Count value={data?.onlineCount} language={i18n.language} />
+          </dd>
         </div>
 
         <div className="dw-stat">
           <dt>{t('widget.totalMembers', { defaultValue: 'Members' })}</dt>
-          <dd>{formatCount(data?.memberCount, i18n.language)}</dd>
+          <dd>
+            <Count value={data?.memberCount} language={i18n.language} />
+          </dd>
         </div>
       </dl>
 
@@ -179,7 +183,7 @@ export default function DiscordWidget() {
           ))}
           {hidden > 0 && (
             <li className="dw-faces__more">
-              {t('widget.more', { defaultValue: '+{{count}} more', count: hidden })}
+              +<RollingNumber value={hidden} locale={i18n.language} /> {t('widget.moreLabel', { defaultValue: 'more' })}
             </li>
           )}
         </ul>

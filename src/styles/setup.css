@@ -1,0 +1,473 @@
+/*
+ * "My setup" on /card (components/setup/SetupShowcase.jsx): a studio stage
+ * like a product shot with the 3D part, its name and facts, and the parts as
+ * tabs under it. Wide screens: the caption sits in the stage's corner.
+ * Phones: a square stage, the caption under it, the tabs as a 3 × 2 grid.
+ */
+
+.setup__view {
+  position: relative;
+}
+
+.setup__stage {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse 75% 60% at 50% 62%, rgb(255 255 255 / 0.1), transparent 70%),
+    linear-gradient(180deg, #1c1a24 0%, #0d0c12 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 18px 40px rgb(0 0 0 / 0.25);
+  isolation: isolate;
+}
+:root[data-theme="light"] .setup__stage {
+  /* A white sweep, like the makers' own renders. */
+  background:
+    radial-gradient(ellipse 80% 65% at 50% 60%, #ffffff, transparent 75%),
+    linear-gradient(180deg, #f1f0f5 0%, #dcdae4 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 18px 40px rgb(30 20 60 / 0.16);
+}
+
+.setup__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  /* Vertical swipes scroll the page; sideways turns the part; two fingers zoom. */
+  touch-action: pan-y;
+}
+.setup__canvas:active {
+  cursor: grabbing;
+}
+.setup__canvas.is-ready {
+  opacity: 1;
+}
+.is-software .setup__canvas {
+  display: none;
+}
+
+.setup__status,
+.setup__hint {
+  position: absolute;
+  margin: 0;
+  color: rgb(255 255 255 / 0.55);
+  font-size: 0.82rem;
+}
+.setup__status {
+  inset: 50% 0 auto;
+  text-align: center;
+  transform: translateY(-50%);
+}
+.setup__hint {
+  top: 14px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.setup__hint .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+.setup__hint-touch {
+  display: none;
+}
+@media (pointer: coarse) {
+  .setup__hint-mouse {
+    display: none;
+  }
+  .setup__hint-touch {
+    display: inline;
+  }
+}
+:root[data-theme="light"] :is(.setup__status, .setup__hint) {
+  color: rgb(30 24 48 / 0.55);
+}
+
+/* Zoom out, zoom in, and back to the start view once moved. */
+.setup__zoom {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.08);
+  backdrop-filter: blur(8px);
+}
+.setup__zoom button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: rgb(255 255 255 / 0.85);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 0.15s ease;
+}
+.setup__zoom button:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.12);
+}
+.setup__zoom button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.setup__zoom button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.setup__zoom .material-symbols-outlined {
+  font-size: 1.25rem;
+}
+:root[data-theme="light"] .setup__zoom {
+  background: rgb(30 24 48 / 0.07);
+}
+:root[data-theme="light"] .setup__zoom button {
+  color: rgb(30 24 48 / 0.8);
+}
+:root[data-theme="light"] .setup__zoom button:hover:not(:disabled) {
+  background: rgb(30 24 48 / 0.08);
+}
+
+/* Name and facts: bottom left, over the stage (wide screens). */
+.setup__caption {
+  position: absolute;
+  left: 20px;
+  bottom: 18px;
+  right: 150px;
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  color: #fff;
+  pointer-events: none;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 0.5);
+}
+.setup__kind {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.6);
+}
+.setup__caption strong {
+  font-size: clamp(1.05rem, 2.6vw, 1.35rem);
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+.setup__caption ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  color: rgb(255 255 255 / 0.78);
+  font-size: 0.86rem;
+}
+:root[data-theme="light"] .setup__caption {
+  color: #1d1830;
+  text-shadow: none;
+}
+:root[data-theme="light"] .setup__kind,
+:root[data-theme="light"] .setup__caption ul {
+  color: rgb(29 24 48 / 0.65);
+}
+.is-software .setup__caption {
+  display: none;
+}
+
+/* The parts. */
+.setup__parts {
+  display: flex;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 4px;
+  overflow-x: auto;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  scrollbar-width: none;
+}
+.setup__parts button {
+  display: inline-flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: color-mix(in srgb, var(--text-primary) 70%, transparent);
+  font: inherit;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+@media (hover: hover) {
+  .setup__parts button:hover {
+    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+    color: var(--text-primary);
+  }
+}
+.setup__parts button.is-active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 650;
+}
+.setup__parts button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.setup__parts .material-symbols-outlined {
+  font-size: 1.15rem;
+}
+
+/* ---------- the software tab: Plasma's Info Center, Darkly with the black MateriaDark colours ---------- */
+.setup-about {
+  position: absolute;
+  inset: 4.5% 5%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #000;
+  color: #dfdfdf;
+  font-family: "Google Sans Flex", system-ui, sans-serif;
+  font-weight: 500;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.1),
+    0 24px 60px rgb(0 0 0 / 0.6);
+  animation: setup-window-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes setup-window-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+.setup-about__bar {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.8rem;
+}
+.setup-about__app {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #3daee9, #1d6fa5);
+}
+.setup-about__title {
+  flex: 1;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.setup-about__buttons {
+  display: flex;
+  gap: 9px;
+}
+.setup-about__buttons i {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #3c3c3c;
+}
+.setup-about__buttons i.is-close {
+  background: #ff5f57;
+}
+.setup-about__window {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+}
+.setup-about__side {
+  flex: none;
+  width: 30%;
+  max-width: 190px;
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+  border-right: 1px solid rgb(255 255 255 / 0.08);
+  background: #181818;
+  font-size: 0.78rem;
+}
+.setup-about__side li {
+  padding: 7px 10px;
+  border-radius: 6px;
+  color: rgb(223 223 223 / 0.85);
+}
+.setup-about__side li.is-active {
+  background: #5420c6;
+  color: #fff;
+}
+.setup-about__body {
+  display: grid;
+  flex: 1;
+  align-content: safe center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px 18px 12px;
+  overflow: auto;
+}
+.setup-about__head {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+.setup-about__head img {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 2px;
+}
+.setup-about__head p {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.setup-about__head span {
+  color: #9b7bff;
+  font-size: 0.78rem;
+}
+.setup-about__group {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  font-size: 0.77rem;
+}
+.setup-about__group > div {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 10px;
+}
+.setup-about__group dt {
+  color: rgb(223 223 223 / 0.6);
+  text-align: right;
+}
+.setup-about__group dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.setup-about__heading {
+  margin-bottom: 2px;
+  color: #dfdfdf !important;
+  font-weight: 700;
+  text-align: center !important;
+}
+
+/* ---------- phones ---------- */
+@media (max-width: 640px) {
+  .setup__stage {
+    aspect-ratio: 1 / 1;
+    border-radius: 18px;
+  }
+  .setup__hint {
+    top: 12px;
+    right: 14px;
+    font-size: 0.78rem;
+  }
+  .setup__zoom {
+    right: 10px;
+    bottom: 10px;
+  }
+  .setup__zoom button {
+    width: 40px;
+    height: 40px;
+  }
+  /* The caption under the stage, so it never covers the part. */
+  .setup__caption,
+  .is-software .setup__caption {
+    position: static;
+    display: grid;
+    margin-top: 12px;
+    padding: 0 4px;
+    color: var(--text-primary);
+    text-shadow: none;
+  }
+  .setup__kind,
+  .setup__caption ul,
+  :root[data-theme="light"] .setup__kind,
+  :root[data-theme="light"] .setup__caption ul {
+    color: color-mix(in srgb, var(--text-primary) 62%, transparent);
+  }
+  .setup__caption strong {
+    font-size: 1.15rem;
+  }
+  .setup__parts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .setup__parts button {
+    flex-direction: column;
+    gap: 2px;
+    min-height: 56px;
+    padding: 8px 4px;
+    font-size: 0.8rem;
+    white-space: normal;
+    text-align: center;
+  }
+  .setup__parts .material-symbols-outlined {
+    font-size: 1.3rem;
+  }
+  /* The About window: the whole stage, no sidebar. */
+  .is-software .setup__stage {
+    aspect-ratio: auto;
+    min-height: 0;
+  }
+  .setup-about {
+    position: relative;
+    inset: auto;
+    margin: 10px;
+    animation: none;
+  }
+  .setup-about__side {
+    display: none;
+  }
+  .setup-about__body {
+    padding: 14px 12px 14px;
+  }
+  .setup-about__group {
+    font-size: 0.78rem;
+  }
+  .setup-about__group > div {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.2fr);
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setup-about {
+    animation: none;
+  }
+  .setup__canvas {
+    transition: none;
+  }
+}
+:root:is(.motion-reduce, .motion-none) .setup-about {
+  animation: none;
+}
+:root.motion-none .setup__canvas {
+  transition: none;
+}

@@ -2,10 +2,43 @@
     "about": {
         "header": "Über diese Website",
         "card": {
-            "line1": "Dies ist eine Baustelle.",
-            "line2": "Lerne mehr über mich hier!",
-            "github": "Schau dir den Quellcode auf <strong><a href=\"https://github.com/Master3307/HomeSite\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a></strong> an",
-            "line3": "Mehr ansehen…"
-        }
+            "line1": "Eine persönliche Seite, eine Discord-Community und eine Startseite, gebaut und gehostet von mir.",
+            "line3": "Mehr über die Seite"
+        },
+        "lead": "Meine persönliche Website, und der Ort, an dem ich Webentwicklung lerne, indem ich echte Sachen damit baue.",
+        "whatTitle": "Was es hier gibt",
+        "card_title": "Über mich",
+        "card_text": "Wer ich bin, was ich baue, wo du mich findest.",
+        "cult_title": "Der Kult",
+        "cult_text": "Unsere Bongo-Cat-Discord-Community: Lobby-Codes, der Freitags-Dresscode, Profile und Geburtstage.",
+        "dash_title": "Dash",
+        "dash_text": "Eine Startseite mit Suche, Lesezeichen und Widgets.",
+        "builtTitle": "Unter der Haube",
+        "source": "Quellcode",
+        "translate": "Seite übersetzen",
+        "privacy": "Datenschutz",
+        "license": "Lizenz",
+        "storyTitle": "Die Geschichte",
+        "story": "Die erste Version war eine statische Seite, größtenteils von KI geschrieben und so aufgebläht, dass sie kaum benutzbar war (<old>sie ist noch online</old>). Diese hier ist ein Neubau mit Vite und React, den ich selbst schreibe, mit echten Servern dahinter, damit sie Dinge kann, die eine statische Seite nie konnte.",
+        "stack": {
+            "site_title": "Die Seite",
+            "site_text": "Vite und React, übersetzt von der Community auf Weblate.",
+            "api_title": "Die Backends",
+            "api_text": "Node.js mit Express und SQLite: Discord-Login, Profile, Umfragen.",
+            "bot_title": "Der Cultbot",
+            "bot_text": "Unser Discord-Bot (discord.js) wohnt im selben Repository.",
+            "host_title": "Der Server",
+            "host_text": "Alles läuft auf meinem eigenen Linux-Server zu Hause."
+        },
+        "installBot": "Cultbot hinzufügen",
+        "joinServer": "Dem Discord beitreten",
+        "helpTitle": "Mithelfen",
+        "help": "Übersetzungen sind immer willkommen, genauso Ideen und Fixes. Commits bitte konventionell und alles freundlich.",
+        "contribute": "So hilfst du mit",
+        "creditsTitle": "Danke an",
+        "creditBot": "<a>NamVr</a> für die Discord-Bot-Vorlage",
+        "creditTilt": "<a>Stormxxboy</a> für den Karten-Neigeeffekt",
+        "creditIcons": "<a>Simple Icons</a> für die Marken-Icons",
+        "creditCachy": "Das <a>CachyOS</a>-Logo auf /card gehört dem CachyOS-Projekt"
     }
 }
