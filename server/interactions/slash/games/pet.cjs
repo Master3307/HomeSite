@@ -4,6 +4,7 @@ const {
   AttachmentBuilder,
   InteractionContextType,
   ApplicationIntegrationType,
+  MessageFlags,
 } = require("discord.js");
 
 const fs = require("node:fs/promises");
@@ -403,7 +404,7 @@ module.exports = {
     if (target.id === interaction.user.id) {
       await interaction.reply({
         content: "You cannot pet yourself.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
 
       return;
@@ -412,7 +413,7 @@ module.exports = {
     if (target.bot || target.system) {
       await interaction.reply({
         content: "You can only pet real people.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
 
       return;

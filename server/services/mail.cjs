@@ -14,8 +14,11 @@ let transportKey = "";
 const available = () => Boolean(setting("SMTP_HOST") && setting("SMTP_FROM"));
 
 function getTransport() {
-  const key = ["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_SECURE"].map(setting).join("|");
+  // The password too (hashed, memory only): a new one from the hub's settings
+  // works without a restart.
+  const key = [...["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_SECURE"].map(setting), require("node:crypto").createHash("sha256").update(String(setting("SMTP_PASSWORD") ?? "")).digest("hex")].join("|");
   if (!transport || key !== transportKey) {
+    transport?.close?.();
     transportKey = key;
     transport = nodemailer.createTransport({
       host: setting("SMTP_HOST"),

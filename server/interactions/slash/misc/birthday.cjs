@@ -6,6 +6,7 @@ const {
   ButtonStyle,
   InteractionContextType,
   ApplicationIntegrationType,
+  MessageFlags,
 } = require("discord.js");
 
 const birthdayService = require("../../../services/birthday.cjs");
@@ -498,7 +499,7 @@ module.exports = {
       if (parsed.error) {
         await interaction.reply({
           content: `❌ ${parsed.error}`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -518,7 +519,7 @@ module.exports = {
             `❌ Your birthday can only be changed once every 6 months. Next possible: <t:${Math.floor(error.until / 1000)}:D>.`,
             `Made a mistake? Ask ${owner ? `<@${owner}>` : "the server owner"} to fix it.`,
           ].join("\n"),
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           allowedMentions: { parse: [] },
         });
         return;
@@ -552,7 +553,7 @@ module.exports = {
               ].join("\n"),
             ),
         ],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
 
       return;
@@ -569,7 +570,7 @@ module.exports = {
           content: ownBirthday
             ? "You have not set a birthday yet. Use `/birthday set` first."
             : `${target} has not set a birthday yet.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
 
         return;
@@ -588,7 +589,7 @@ module.exports = {
       if (entries.length === 0) {
         await interaction.reply({
           content: "No birthdays have been saved yet.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
 
         return;
@@ -622,7 +623,7 @@ module.exports = {
       await interaction.reply({
         content:
           "Only the person who opened this birthday list can use these buttons.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
 
       return true;
@@ -647,7 +648,7 @@ module.exports = {
       await interaction.reply({
         content:
           "This birthday list has changed. Please run `/birthday list` again.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
 
       return true;

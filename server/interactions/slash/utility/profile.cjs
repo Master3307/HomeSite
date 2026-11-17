@@ -174,19 +174,24 @@ module.exports = {
   async execute(interaction) {
     const target = interaction.options.getUser("user") ?? interaction.user;
 
+    // Member, petting stats and the custom avatar can take longer than
+    // Discord's 3 seconds to answer.
+    await interaction.deferReply();
+
     try {
       const response = await createProfileResponse(interaction, target);
 
-      await interaction.reply(response);
+      await interaction.editReply(response);
     } catch (error) {
       console.error(
         `[profile] Failed to load profile for ${target.id}:`,
         error,
       );
 
-      await interaction.reply({
+      await interaction.editReply({
         content: "I could not load this profile. Please try again later.",
-        ephemeral: true,
+        embeds: [],
+        files: [],
       });
     }
   },

@@ -5,6 +5,8 @@
  * @version 3.3.0
  */
 
+const { MessageFlags } = require("discord.js");
+
 const { InteractionType } = require("discord-api-types/v10");
 
 module.exports = {
@@ -30,7 +32,7 @@ module.exports = {
 		// You can modify the error message at ./messages/defaultModalError.js file!
 
 		if (!command) {
-			await require("../messages/defaultModalError").execute(interaction);
+			await require("../messages/defaultModalError.cjs").execute(interaction);
 			return;
 		}
 
@@ -41,10 +43,10 @@ module.exports = {
 			return;
 		} catch (err) {
 			console.error(err);
-			await interaction.reply({
+			await interaction[interaction.replied || interaction.deferred ? "followUp" : "reply"]({
 				content: "There was an issue while understanding this modal!",
-				ephemeral: true,
-			});
+				flags: MessageFlags.Ephemeral,
+			}).catch(() => null);
 			return;
 		}
 	},

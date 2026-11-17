@@ -6,10 +6,11 @@ module.exports = {
     .setDescription("Checks the bot's latency and uptime."),
 
   async execute(interaction) {
-    const sent = await interaction.reply({
+    const response = await interaction.reply({
       content: "Pinging...",
-      fetchReply: true,
+      withResponse: true,
     });
+    const sent = response.resource?.message ?? (await interaction.fetchReply());
     const latency = sent.createdTimestamp - interaction.createdTimestamp;
     const uptimeSeconds = Math.floor(interaction.client.uptime / 1000);
     const uptimeString = `<t:${Math.floor(Date.now() / 1000 - uptimeSeconds)}:R>`;

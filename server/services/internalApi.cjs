@@ -19,6 +19,7 @@ const {
   resolveEmoji,
 } = require("./fdcSetup.cjs");
 const { isValidInternalKey, getBotInternalUrl } = require("./internalKey.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * Internal HTTP API of the bot, bound to 127.0.0.1 only.
@@ -34,10 +35,6 @@ const WIDGET_MEMBER_LIMIT = 40;
 const STATUS_ORDER = { online: 0, idle: 1, dnd: 2 };
 const LOBBY_FILE = path.join(__dirname, "db", "lobby-code.json");
 const MENTION_PATTERN = /<(@!?|@&|#)(\d{17,20})>/g;
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
 
 function isSnowflake(value) {
   return typeof value === "string" && /^\d{17,20}$/.test(value);
@@ -382,9 +379,12 @@ function activityLabel(presence) {
 async function buildWidget(client) {
   const guild = await getGuild(client);
 
-  // Private profiles and deleted accounts are never shown as online (they still count as members).
+  // Private profiles and deleted accounts are never shown as online or in a
+  // voice channel (they still count as members).
+  const hiddenIds = ids("WIDGET_HIDDEN_IDS");
+  const shown = (userId) => !privacy.isPrivate(userId) && !hiddenIds.includes(userId);
   const presences = [...guild.presences.cache.values()].filter(
-    (presence) => presence.status && presence.status !== "offline" && !privacy.isPrivate(presence.userId) && !ids("WIDGET_HIDDEN_IDS").includes(presence.userId),
+    (presence) => presence.status && presence.status !== "offline" && shown(presence.userId),
   );
 
   const online = presences
@@ -412,7 +412,7 @@ async function buildWidget(client) {
       id: channel.id,
       name: channel.name,
       members: [...channel.members.values()]
-        .filter((member) => !member.user.bot)
+        .filter((member) => !member.user.bot && shown(member.id))
         .map(memberSummary),
     }))
     .filter((channel) => channel.members.length);
@@ -455,7 +455,8 @@ function startInternalApi(client) {
       res.json(await handler(req));
     } catch (error) {
       const status = error.status ?? 400;
-      if (status >= 500) console.error("[Internal API]", error);
+      // Errors without a status are unexpected (a bug, Discord failing): log them too.
+      if (status >= 500 || !error.status) console.error("[Internal API]", error);
       res.status(status).json({ error: error.message });
     }
   };

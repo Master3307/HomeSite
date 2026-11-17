@@ -175,6 +175,12 @@ app.use((error, _req, res, _next) => {
   });
 });
 
+// A stray rejection in a background job is logged; the API (and the hub
+// terminals it serves) stays up.
+process.on("unhandledRejection", (error) => {
+  console.error("[Account API] Unhandled promise rejection:", error);
+});
+
 const server = app.listen(PORT, "127.0.0.1", () => {
   console.log(`[Account API] Listening on http://127.0.0.1:${PORT}`);
   console.log(`[Account API] Allowed frontend origin: ${FRONTEND_ORIGIN}`);

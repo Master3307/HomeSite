@@ -180,13 +180,17 @@ function isAternosOfflineResponse(result) {
   return motd.includes("this server is offline") || version.includes("offline");
 }
 
+/* Every 2 minutes: only a change of state goes into the log. */
+let lastState = null;
+function logState(state) {
+  if (state === lastState) return;
+  lastState = state;
+  console.log(`[Minecraft Status] Server is ${state}.`);
+}
+
 async function fetchMinecraftStatus() {
   try {
     const resolvedServer = await resolveMinecraftServerAddress();
-
-    console.log(
-      `[Minecraft Status] Checking ${resolvedServer.host}:${resolvedServer.port}`,
-    );
 
     const minecraftPing = new JavaPingClient();
     const startedAt = performance.now();
@@ -213,7 +217,7 @@ async function fetchMinecraftStatus() {
       so a successful craftping request alone must not mean "server online".
     */
     if (isAternosOfflineResponse(result)) {
-      console.log("[Minecraft Status] returned an offline status response.");
+      logState("offline (Aternos answers for the stopped server)");
 
       return {
         online: false,
@@ -222,6 +226,8 @@ async function fetchMinecraftStatus() {
         error: "The Server is offline.",
       };
     }
+
+    logState("online");
 
     return {
       online: true,
@@ -238,7 +244,7 @@ async function fetchMinecraftStatus() {
       error: null,
     };
   } catch (error) {
-    console.error("[Minecraft Status] Direct ping failed:", error);
+    logState(`unreachable (${error.message || error})`);
 
     return {
       online: false,

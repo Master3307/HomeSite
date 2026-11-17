@@ -4,6 +4,8 @@
  * @since 3.2.0
  */
 
+const { MessageFlags } = require("discord.js");
+
 module.exports = {
 	/**
 	 * @description Executes when the modal interaction could not be fetched.
@@ -14,7 +16,7 @@ module.exports = {
 	async execute(interaction) {
 		await interaction.reply({
 			content: "There was an issue while fetching this modal!",
-			ephemeral: true,
+			flags: MessageFlags.Ephemeral,
 		});
 		return;
 	},

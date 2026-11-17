@@ -6,6 +6,7 @@ const {
   ButtonStyle,
   InteractionContextType,
   ApplicationIntegrationType,
+  MessageFlags,
 } = require("discord.js");
 
 const levels = require("../../../services/levels.cjs");
@@ -301,7 +302,7 @@ module.exports = {
     ) {
       await interaction.reply({
         content: "This leaderboard button is invalid.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
 
       return true;
@@ -311,7 +312,7 @@ module.exports = {
       await interaction.reply({
         content:
           "Only the person who opened this leaderboard can use these buttons.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
 
       return true;
@@ -359,7 +360,7 @@ module.exports = {
 
       await interaction.reply({
         content: "I could not load that leaderboard page. Please try again.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 

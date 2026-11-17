@@ -175,7 +175,9 @@ module.exports = {
           command.value.includes(focusedValue) ||
           command.name.toLowerCase().includes(focusedValue),
       )
-      .slice(0, 25);
+      .slice(0, 25)
+      // Discord rejects the whole answer if a name is over 100 characters.
+      .map((choice) => ({ ...choice, name: choice.name.length > 100 ? `${choice.name.slice(0, 99)}…` : choice.name }));
 
     await interaction.respond(choices);
   },

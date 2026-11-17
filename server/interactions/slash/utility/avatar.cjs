@@ -3,6 +3,7 @@ const {
   AttachmentBuilder,
   InteractionContextType,
   ApplicationIntegrationType,
+  MessageFlags,
 } = require("discord.js");
 
 const fs = require("node:fs/promises");
@@ -114,7 +115,7 @@ async function showOwnCustomAvatar(interaction) {
   if (!avatarPath) {
     await interaction.reply({
       content: "You do not have a custom avatar set.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -126,7 +127,7 @@ async function showOwnCustomAvatar(interaction) {
   await interaction.reply({
     content: "Your custom avatar:",
     files: [avatar],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
 
@@ -172,7 +173,7 @@ module.exports = {
     if (subcommand === "set") {
       const attachment = interaction.options.getAttachment("image", true);
 
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       try {
         await saveAvatar(interaction.user.id, attachment);
@@ -197,7 +198,7 @@ module.exports = {
           content: removed
             ? "Your custom avatar has been removed."
             : "You do not currently have a custom avatar.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       } catch (error) {
         console.error(
@@ -208,7 +209,7 @@ module.exports = {
         await interaction.reply({
           content:
             "I could not remove your custom avatar. Please try again later.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     }

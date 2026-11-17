@@ -24,14 +24,24 @@ function queueStickyOperation(channelId, operation) {
 
   stickyQueues.set(channelId, nextOperation);
 
-  nextOperation.finally(() => {
-    if (stickyQueues.get(channelId) === nextOperation) {
-      stickyQueues.delete(channelId);
-    }
-  });
+  nextOperation
+    .finally(() => {
+      if (stickyQueues.get(channelId) === nextOperation) {
+        stickyQueues.delete(channelId);
+      }
+    })
+    // The caller handles the error; this side chain must not be unhandled.
+    .catch(() => null);
 
   return nextOperation;
 }
+
+/*
+  A burst of messages needs only one more repost: while one is waiting in the
+  queue (not started yet), later messages share it. It starts after them, so
+  the sticky still ends up last.
+*/
+const waitingReposts = new Map();
 
 async function deletePreviousStickyMessage(channel, client) {
   const sticky = getSticky(channel.id);
@@ -106,7 +116,11 @@ async function resolveTextChannel(client, channelOrId) {
 async function sendStickyMessageToChannel(client, channelOrId) {
   const channel = await resolveTextChannel(client, channelOrId);
 
-  return queueStickyOperation(channel.id, async () => {
+  const waiting = waitingReposts.get(channel.id);
+  if (waiting) return waiting;
+
+  const repost = queueStickyOperation(channel.id, async () => {
+    waitingReposts.delete(channel.id);
     await deletePreviousStickyMessage(channel, client);
 
     const sentMessage = await channel.send(STICKY_TEXT);
@@ -133,6 +147,8 @@ async function sendStickyMessageToChannel(client, channelOrId) {
 
     return sentMessage;
   });
+  waitingReposts.set(channel.id, repost);
+  return repost;
 }
 
 async function sendStickyToStickyChannel(client) {

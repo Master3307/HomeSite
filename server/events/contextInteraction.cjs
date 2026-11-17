@@ -5,6 +5,8 @@
  * @version 3.3.0
  */
 
+const { MessageFlags } = require("discord.js");
+
 module.exports = {
 	name: "interactionCreate",
 
@@ -30,6 +32,7 @@ module.exports = {
 			const command = client.contextCommands.get(
 				"USER " + interaction.commandName
 			);
+			if (!command) return;
 
 			// A try to execute the interaction.
 
@@ -38,10 +41,10 @@ module.exports = {
 				return;
 			} catch (err) {
 				console.error(err);
-				await interaction.reply({
+				await interaction[interaction.replied || interaction.deferred ? "followUp" : "reply"]({
 					content: "There was an issue while executing that context command!",
-					ephemeral: true,
-				});
+					flags: MessageFlags.Ephemeral,
+				}).catch(() => null);
 				return;
 			}
 		}
@@ -50,6 +53,7 @@ module.exports = {
 			const command = client.contextCommands.get(
 				"MESSAGE " + interaction.commandName
 			);
+			if (!command) return;
 
 			// A try to execute the interaction.
 
@@ -58,10 +62,10 @@ module.exports = {
 				return;
 			} catch (err) {
 				console.error(err);
-				await interaction.reply({
+				await interaction[interaction.replied || interaction.deferred ? "followUp" : "reply"]({
 					content: "There was an issue while executing that context command!",
-					ephemeral: true,
-				});
+					flags: MessageFlags.Ephemeral,
+				}).catch(() => null);
 				return;
 			}
 		}

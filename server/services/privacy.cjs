@@ -24,19 +24,27 @@ function empty() {
   return { private: [], hidden: {}, forgotten: [] };
 }
 
+// Checked against the file at most once a second (the widget and the live
+// feed ask for every member); this process's own writes apply at once.
+const RECHECK_MS = 1000;
+
 function read() {
+  if (cache && Date.now() - cache.checkedAt < RECHECK_MS) return cache.data;
   try {
     const stat = fs.statSync(FILE);
+    if (cache?.mtimeMs === stat.mtimeMs) cache.checkedAt = Date.now();
     if (cache?.mtimeMs !== stat.mtimeMs) {
       const data = JSON.parse(fs.readFileSync(FILE, "utf8"));
       cache = {
         mtimeMs: stat.mtimeMs,
+        checkedAt: Date.now(),
         data: {
           private: Array.isArray(data.private) ? data.private.map(String) : [],
           hidden: data.hidden && typeof data.hidden === "object" ? data.hidden : {},
           forgotten: Array.isArray(data.forgotten) ? data.forgotten.map(String) : [],
         },
       };
+      cache.privateSet = new Set(cache.data.private);
     }
     return cache.data;
   } catch {
@@ -60,7 +68,8 @@ function isHidden(discordId) {
 
 /** Private profile, or hidden: must never appear as online / in lists. */
 function isPrivate(discordId) {
-  return read().private.includes(String(discordId)) || isHidden(discordId);
+  read();
+  return Boolean(cache?.privateSet?.has(String(discordId))) || isHidden(discordId);
 }
 
 /* The salt is per server (never in git), so the hashes can't be matched elsewhere. */

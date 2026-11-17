@@ -14,6 +14,7 @@ const {
 
 const lobbySubmissions = require("../services/lobbySubmissions.cjs");
 const birthdayCommand = require("../interactions/slash/misc/birthday.cjs");
+const leaderboardCommand = require("../interactions/slash/utility/leaderboard.cjs");
 const petting = require("../services/petting.cjs");
 
 const PAGE = {
@@ -513,6 +514,13 @@ module.exports = {
       await require("../services/memberData.cjs")
         .handleReportButton(interaction)
         .catch((error) => console.error("[Reports] Button failed:", error));
+      return;
+    }
+
+    if (await leaderboardCommand.handleButton(interaction).catch((error) => {
+      console.error("[Leaderboard] Button failed:", error);
+      return true;
+    })) {
       return;
     }
 

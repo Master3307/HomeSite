@@ -1,13 +1,14 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, InteractionContextType } = require("discord.js");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("serverinfo")
-    .setDescription("Shows info about this server."),
+    .setDescription("Shows info about this server.")
+    .setContexts(InteractionContextType.Guild),
 
   async execute(interaction) {
+    // memberCount comes with the guild; fetching every member isn't needed.
     const guild = interaction.guild;
-    await guild.members.fetch();
 
     const embed = new EmbedBuilder()
       .setColor(0x5865f2)

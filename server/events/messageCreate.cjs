@@ -22,6 +22,17 @@ const escapeRegex = (string) => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
 
+let cachedPrefix = null;
+function prefixRegex(botId) {
+  if (cachedPrefix?.botId !== botId) {
+    cachedPrefix = {
+      botId,
+      regex: new RegExp(`^(<@!?${botId}>|${escapeRegex(prefix)})\\s*`, "i"),
+    };
+  }
+  return cachedPrefix.regex;
+}
+
 module.exports = {
   name: "messageCreate",
 
@@ -34,11 +45,11 @@ module.exports = {
       levels.cjs ignores this bot's own level-up messages in the announcement
       channel to prevent an XP loop.
     */
-    try {
-      await levels.trackMessage(message);
-    } catch (error) {
+    // Not awaited: stickies, lobby codes and commands don't wait for the
+    // CSV write or a level-up message.
+    levels.trackMessage(message).catch((error) => {
       console.error("[Levels] Failed to track message activity:", error);
-    }
+    });
 
     /*
       Bots gain XP above, but never run normal message behavior below:
@@ -135,25 +146,15 @@ module.exports = {
       return;
     }
 
-    const checkPrefix = prefix.toLowerCase();
-
-    const prefixRegex = new RegExp(
-      `^(<@!?${client.user.id}>|${escapeRegex(checkPrefix)})\\s*`,
-    );
-
-    if (!prefixRegex.test(content.toLowerCase())) {
+    // Case-insensitive, so a prefix like "Cat!" also matches "cat!".
+    const match = content.match(prefixRegex(client.user.id));
+    if (!match) {
       return;
     }
 
-    const [matchedPrefix] = content.toLowerCase().match(prefixRegex);
-
-    const args = content.slice(matchedPrefix.length).trim().split(/ +/);
+    const args = content.slice(match[0].length).trim().split(/ +/);
 
     const commandName = args.shift()?.toLowerCase();
-
-    if (!message.content.startsWith(matchedPrefix)) {
-      return;
-    }
 
     const command =
       client.commands.get(commandName) ||
@@ -232,13 +233,13 @@ module.exports = {
     }, cooldownAmount);
 
     try {
-      command.execute(message, args);
+      await command.execute(message, args);
     } catch (error) {
-      console.error(error);
+      console.error(`[Commands] ${prefix}${command.name} failed:`, error);
 
-      message.reply({
-        content: "There was an error trying to execute that command!",
-      });
+      await message
+        .reply({ content: "There was an error trying to execute that command!" })
+        .catch(() => null);
     }
   },
 };

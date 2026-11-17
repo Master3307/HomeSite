@@ -7,6 +7,7 @@ const privacy = require("./privacy.cjs");
 const levels = require("./levels.cjs");
 const petting = require("./petting.cjs");
 const birthday = require("./birthday.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * Member data for the website (bot side, behind the internal API):
@@ -28,7 +29,6 @@ const SITE_ORIGIN = () => setting("FRONTEND_ORIGIN") || "";
 const SKIP = [/^accounts\.sqlite/, /^activity-log\.jsonl$/, /^privacy\.json$/, /^backups\//, /^bongo-cat\//, /^Texture2D\//, /^hub-sessions\.json$/, /\.tmp$/, /^bongo-aliases\.json$/];
 const MESSAGES_PER_CHANNEL = 2000;
 
-const httpError = (status, message) => Object.assign(new Error(message), { status });
 const isSnowflake = (value) => /^\d{17,20}$/.test(String(value ?? ""));
 
 async function getGuild(client) {
@@ -152,7 +152,13 @@ async function staff(client, id) {
 async function isMember(client, id) {
   if (!isSnowflake(id)) return { member: false };
   const guild = await getGuild(client);
-  const member = await guild.members.fetch(id).catch(() => null);
+  // Only Discord's "Unknown Member" / "Unknown User" means they left. Any other
+  // failure (outage, rate limit, network) is an error, so the daily cleanup
+  // (members.cjs) stops instead of deleting accounts of people still there.
+  const member = await guild.members.fetch(id).catch((error) => {
+    if (error?.code === 10007 || error?.code === 10013) return null;
+    throw httpError(503, "Could not check the membership right now.");
+  });
   return { member: Boolean(member) };
 }
 

@@ -5,6 +5,8 @@
  * @version 3.3.0
  */
 
+const { MessageFlags } = require("discord.js");
+
 module.exports = {
 	name: "interactionCreate",
 
@@ -20,7 +22,7 @@ module.exports = {
 
 		// Checks if the interaction is a select menu interaction (to prevent weird bugs)
 
-		if (!interaction.isSelectMenu()) return;
+		if (!interaction.isAnySelectMenu()) return;
 
 		const command = client.selectCommands.get(interaction.customId);
 
@@ -39,10 +41,10 @@ module.exports = {
 			return;
 		} catch (err) {
 			console.error(err);
-			await interaction.reply({
+			await interaction[interaction.replied || interaction.deferred ? "followUp" : "reply"]({
 				content: "There was an issue while executing that select menu option!",
-				ephemeral: true,
-			});
+				flags: MessageFlags.Ephemeral,
+			}).catch(() => null);
 			return;
 		}
 	},

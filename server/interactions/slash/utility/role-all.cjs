@@ -2,6 +2,7 @@ const {
   SlashCommandBuilder,
   PermissionFlagsBits,
   EmbedBuilder,
+  MessageFlags,
 } = require("discord.js");
 
 const BATCH_SIZE = 5;
@@ -108,7 +109,7 @@ module.exports = {
     if (!interaction.inGuild()) {
       return interaction.reply({
         content: "This command can only be used inside a server.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -121,21 +122,21 @@ module.exports = {
       return interaction.reply({
         content:
           "You need the **Administrator** permission to use this command.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
     if (!botMember.permissions.has(PermissionFlagsBits.ManageRoles)) {
       return interaction.reply({
         content: "I need the **Manage Roles** permission to do that.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
     if (role.id === guild.id) {
       return interaction.reply({
         content: "You cannot apply or remove the `@everyone` role.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -143,7 +144,7 @@ module.exports = {
       return interaction.reply({
         content:
           "That role is managed by an integration or bot and cannot be assigned manually.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -151,11 +152,11 @@ module.exports = {
       return interaction.reply({
         content:
           "I cannot manage that role because it is equal to or higher than my highest role. Move my bot role above it in **Server Settings → Roles**.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     let members;
 

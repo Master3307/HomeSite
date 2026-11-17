@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 
 const otherImageWeight = 13 / 6;
 
@@ -114,7 +114,7 @@ module.exports = {
     if (!selectedImage) {
       await interaction.reply({
         content: "That code is invalid.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
 
       return;

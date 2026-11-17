@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require("discord.js");
 
 const archive = require("../../../services/fdcArchive.cjs");
 const {
@@ -69,7 +69,7 @@ module.exports = {
     if (!interaction.inGuild()) {
       return interaction.reply({
         content: "This command can only be used in a server.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -81,14 +81,14 @@ module.exports = {
     ) {
       return interaction.reply({
         content: "You don't have permission to use this command.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
     /*
      * Acknowledge before network requests, downloads, and conversion.
      */
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
       const endInput = interaction.options.getString("ends_at");

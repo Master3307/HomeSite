@@ -3,6 +3,7 @@ const {
   SlashCommandBuilder,
   PermissionFlagsBits,
   EmbedBuilder,
+  MessageFlags,
 } = require("discord.js");
 
 module.exports = {
@@ -37,7 +38,7 @@ module.exports = {
     const reason = interaction.options.getString("reason");
     const isPrivate = interaction.options.getBoolean("private") ?? false;
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const MOD_ROLE_ID = setting("MOD_ROLE_ID");
 
@@ -62,7 +63,11 @@ module.exports = {
       }
 
       if (!member) {
-        await interaction.guild.members.fetch();
+        // Discord searches names and nicknames by prefix: no need to load
+        // every member of the server.
+        await interaction.guild.members
+          .fetch({ query: rawInput.replace(/^@/, ""), limit: 25 })
+          .catch(() => null);
         member = interaction.guild.members.cache.find(
           (m) =>
             m.user.username.toLowerCase() === rawInput.toLowerCase() ||

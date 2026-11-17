@@ -100,6 +100,7 @@ function peekUser(userId) {
 
 /** A deleted account: its points and level are gone. */
 async function forgetUser(userId) {
+  await load();
   users.delete(String(userId));
   messageCooldowns.delete(String(userId));
   await save();
@@ -205,17 +206,48 @@ async function write() {
   await fs.rename(temporaryFile, DATA_FILE);
 }
 
-function save() {
-  writeQueue = writeQueue
+let loading = null;
+let loaded = false;
+
+/*
+  Nothing is written before db/levels.csv was read: a message in the first
+  moments after login would otherwise save an almost empty file over
+  everyone's points. Every change awaits load() first (it only reads once).
+*/
+let pendingWrite = null;
+
+function save({ force = false } = {}) {
+  if (!loaded && !force) return Promise.resolve();
+  // Saves asked for while one waits share it: the file is written once with
+  // everything changed until it starts.
+  if (pendingWrite) return pendingWrite;
+  pendingWrite = writeQueue
     .catch((error) => {
       console.error("[Levels] Previous CSV save failed:", error);
     })
-    .then(write);
+    .then(() => {
+      pendingWrite = null;
+      return write();
+    });
+  writeQueue = pendingWrite;
 
   return writeQueue;
 }
 
-async function load() {
+function load() {
+  loading ??= readFromDisk().then(
+    () => {
+      loaded = true;
+    },
+    (error) => {
+      loading = null;
+      throw error;
+    },
+  );
+  return loading;
+}
+
+async function readFromDisk() {
   await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
 
   try {
@@ -255,7 +287,7 @@ async function load() {
 
       userId,username,points,level
     */
-    await save();
+    await save({ force: true });
 
     console.log(`[Levels] Loaded ${users.size} record(s).`);
   } catch (error) {
@@ -263,7 +295,7 @@ async function load() {
       throw error;
     }
 
-    await save();
+    await save({ force: true });
 
     console.log("[Levels] Created db/levels.csv.");
   }
@@ -397,6 +429,7 @@ async function announceLevelUp(member, oldLevel, newLevel, points) {
 }
 
 async function applyPoints(member, pointsDelta) {
+  await load();
   if (!member?.id || !member?.user) {
     throw new Error("[Levels] applyPoints requires a GuildMember object.");
   }
@@ -418,6 +451,7 @@ async function applyPoints(member, pointsDelta) {
 }
 
 async function addPoints(userId, pointsDelta, reason = "Unknown source") {
+  await load();
   const normalizedUserId = String(userId);
   const safePointsDelta = Math.floor(Number(pointsDelta) || 0);
 
@@ -457,6 +491,7 @@ async function addPoints(userId, pointsDelta, reason = "Unknown source") {
 }
 
 async function setPoints(member, points) {
+  await load();
   if (!member?.id || !member?.user) {
     throw new Error("[Levels] setPoints requires a GuildMember object.");
   }
@@ -478,6 +513,7 @@ async function setPoints(member, points) {
 }
 
 async function setLevel(member, level) {
+  await load();
   if (!member?.id || !member?.user) {
     throw new Error("[Levels] setLevel requires a GuildMember object.");
   }
@@ -521,6 +557,8 @@ async function trackMessage(message) {
   if (!message.member) {
     return null;
   }
+
+  await load();
 
   if (message.content.trim().length < MIN_MESSAGE_LENGTH) {
     return null;

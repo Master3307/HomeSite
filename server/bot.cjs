@@ -48,6 +48,9 @@ const client = new Client({
     GatewayIntentBits.GuildPresences,
     GatewayIntentBits.GuildVoiceStates,
   ],
+  // Default for every message: users and roles may be pinged, never
+  // @everyone / @here (a message can still allow more itself).
+  allowedMentions: { parse: ["users", "roles"], repliedUser: true },
   partials: [
     Partials.Channel,
     Partials.Message,
@@ -97,16 +100,25 @@ const eventFiles = readJsFiles(EVENTS_DIR);
 
 for (const file of eventFiles) {
   const event = require(path.join(EVENTS_DIR, file));
+  // A failing handler must never take the whole bot down (an unhandled
+  // rejection ends the process on Node 15+).
+  const run = async (...args) => {
+    try {
+      await event.execute(...args, client);
+    } catch (error) {
+      console.error(`[Events] ${event.name} (${file}) failed:`, error);
+    }
+  };
 
-  if (event.once) {
-    client.once(event.name, (...args) => event.execute(...args, client));
-  } else {
-    client.on(
-      event.name,
-      async (...args) => await event.execute(...args, client),
-    );
-  }
+  if (event.once) client.once(event.name, run);
+  else client.on(event.name, run);
 }
+
+process.on("unhandledRejection", (error) => {
+  console.error("[Bot] Unhandled promise rejection:", error);
+});
+client.on("error", (error) => console.error("[Discord] Client error:", error));
+client.on("shardError", (error) => console.error("[Discord] Gateway error:", error));
 
 /**********************************************************************/
 // Registration of Message-Based Legacy Commands.

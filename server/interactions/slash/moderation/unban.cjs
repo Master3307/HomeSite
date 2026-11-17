@@ -3,6 +3,7 @@ const {
   SlashCommandBuilder,
   PermissionFlagsBits,
   EmbedBuilder,
+  MessageFlags,
 } = require("discord.js");
 
 module.exports = {
@@ -38,7 +39,7 @@ module.exports = {
       interaction.options.getString("reason") || "No reason provided.";
     const isPrivate = interaction.options.getBoolean("private") ?? false;
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const MOD_ROLE_ID = setting("MOD_ROLE_ID");
 

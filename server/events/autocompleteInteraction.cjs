@@ -5,8 +5,6 @@
  * @version 3.3.0
  */
 
-const { InteractionType } = require("discord-api-types/v9");
-
 module.exports = {
 	name: "interactionCreate",
 
@@ -17,32 +15,26 @@ module.exports = {
 	 */
 
 	async execute(interaction) {
-		// Deconstructed client from interaction object.
+		if (!interaction.isAutocomplete()) return;
+
 		const { client } = interaction;
 
-		// Checks if the interaction is a request (to prevent weird bugs)
-
-		if (interaction.type === InteractionType.ApplicationCommandAutocomplete)
-			return;
-
-		// Checks if the request is available in our code.
-
-		const request = client.autocompleteInteractions.get(
-			interaction.commandName
-		);
-
-		// If the interaction is not a request in cache.
-
-		if (!request) return;
-
-		// A try to executes the interaction.
+		// A handler in interactions/autocomplete/, else the slash command's
+		// own autocomplete() (e.g. /help).
+		const own = client.autocompleteInteractions.get(interaction.commandName);
+		const command = client.slashCommands.get(interaction.commandName);
+		const run = own
+			? () => own.execute(interaction)
+			: command?.autocomplete
+				? () => command.autocomplete(interaction)
+				: null;
+		if (!run) return;
 
 		try {
-			await request.execute(interaction);
+			await run();
 		} catch (err) {
-			console.error(err);
+			console.error(`[Autocomplete] /${interaction.commandName} failed:`, err);
+			if (!interaction.responded) await interaction.respond([]).catch(() => null);
 		}
-
-		return;
 	},
 };

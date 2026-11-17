@@ -5,6 +5,8 @@
  * @version 3.3.0
  */
 
+const { MessageFlags } = require("discord.js");
+
 const UNKNOWN_INTERACTION_CODE = 10062;
 
 module.exports = {
@@ -63,7 +65,7 @@ module.exports = {
 
         await interaction.reply({
           content: "There was an issue while executing that command!",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       } catch (responseError) {
         if (responseError?.code !== UNKNOWN_INTERACTION_CODE) {
