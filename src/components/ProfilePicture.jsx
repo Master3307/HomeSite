@@ -45,7 +45,7 @@ export default function ProfilePicture({
   presence,
   alt = 'Profile picture',
   fallbackStaticSrc = '/img/pfp/MrKoby4purple-md.webp',
-  fallbackAnimatedSrc = '/img/pfp/MrKoby07animated.gif',
+  fallbackAnimatedSrc = '/img/pfp/MrKoby07animated.webp',
   audioSrc = '/audio/clown.mp3',
   enableAudio = true,
   randomDecoration = false,
@@ -78,8 +78,9 @@ export default function ProfilePicture({
     setGifReady(false)
   }
 
+  // The animated fallback (3.5 MB) only shows without an avatar (on hover) or when it fails: fetch it only then.
   useEffect(() => {
-    if (!fallbackAnimatedSrc) return
+    if (!fallbackAnimatedSrc || avatarSrc) return
     if (profile === 'save-data' || profile === 'slow') return
 
     const gif = new Image()
@@ -99,7 +100,7 @@ export default function ProfilePicture({
     } else {
       gif.onload = ready
     }
-  }, [fallbackAnimatedSrc, profile])
+  }, [fallbackAnimatedSrc, avatarSrc, profile])
 
   const fallbackThumb =
     thumbFormat === 'webp'
