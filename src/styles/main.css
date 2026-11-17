@@ -6,12 +6,42 @@
   font-display: block;
 }
 
+/*
+ * The system font shown until Google Sans Flex has loaded, scaled to its size
+ * and line height (measured: same text 6.2 % narrower than Arial, 5 % than
+ * Roboto), so the text doesn't reflow when the real font swaps in.
+ */
+@font-face {
+  font-family: "Google Sans Flex Fallback";
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans"), local("Helvetica");
+  size-adjust: 93.77%;
+  ascent-override: 103.44%;
+  descent-override: 30.93%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Google Sans Flex Fallback Android";
+  src: local("Roboto"), local("Roboto-Regular");
+  size-adjust: 95%;
+  ascent-override: 102.11%;
+  descent-override: 30.53%;
+  line-gap-override: 0%;
+}
+
 .material-symbols-outlined {
   font-family: "Material Symbols Outlined";
   font-weight: normal;
   font-style: normal;
   font-size: 24px;
   line-height: 1;
+  /*
+   * Exactly one glyph wide, also while the font is still loading (the icon's
+   * name, e.g. "arrow_forward", would otherwise take that room for a moment and
+   * push the text next to it around).
+   */
+  width: 1em;
+  overflow: hidden;
+  flex-shrink: 0;
   letter-spacing: normal;
   text-transform: none;
   display: inline-block;
@@ -87,7 +117,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: "Google Sans Flex", sans-serif;
+  font-family: "Google Sans Flex", "Google Sans Flex Fallback", "Google Sans Flex Fallback Android", sans-serif;
 }
 
 html,
@@ -96,13 +126,30 @@ body,
   min-height: 100vh;
 }
 
+/*
+ * Inside the app (src/lib/native.js sets .is-app): no grey flash on taps
+ * (buttons have their own pressed look) and no browser long-press menu on
+ * links and pictures, which an app doesn't have.
+ */
+.is-app {
+  -webkit-tap-highlight-color: transparent;
+}
+.is-app :is(a, img) {
+  -webkit-touch-callout: none;
+}
+
 body {
   position: relative;
   z-index: 0;
   margin: 0;
   min-height: 100vh;
   color: var(--text-primary);
-  background-color: var(--bg-secondary);
+  /*
+   * The gradient's bottom colour: whatever shows past the fixed gradient
+   * (the strip a phone's address bar uncovers while scrolling, overscroll)
+   * matches the bottom of the page instead of a lighter band.
+   */
+  background-color: var(--bg-primary);
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
     Cantarell, sans-serif;
@@ -113,6 +160,17 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
+  /*
+   * As tall as the screen with the address bar hidden (lvh), so it already
+   * covers what the bar uncovers when it slides away while scrolling (it
+   * used to catch up a moment later). Its own GPU layer: scrolling never
+   * repaints it.
+   */
+  bottom: auto;
+  height: 100vh;
+  height: 100lvh;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   z-index: -1;
   background-image: linear-gradient(
     to bottom,
@@ -217,25 +275,6 @@ button:hover {
   transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
   transition: transform 0.5s ease-out;
   -webkit-backdrop-filter: blur(13px);
-  backdrop-filter: blur(13px);
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.047);
-}
-
-/* Home greeting sits a bit lower below the fixed header */
-.card.greeting-card {
-  margin-top: 96px;
-}
-
-.viewCard {
-  padding: 10px 12px;
-  color: var(--text-primary);
-  background: var(--bg-secondary);
-  border: 0px solid var(--accent);
-  border-radius: 13px;
-  background-color: color-mix(in srgb, var(--bg-secondary) 40%, transparent);
-  -webkit-backdrop-filter: blur(13px); /* Safari */
   backdrop-filter: blur(13px);
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.14),
@@ -1245,18 +1284,6 @@ button.loginButton {
   border-radius: 0 0 9px 9px !important;
 }
 
-.accountLogoutButton {
-  min-height: 32px;
-  padding: 6px 10px;
-  border-radius: 10px;
-  font-size: 0.78rem;
-}
-
-.accountLogoutButton:disabled {
-  cursor: wait;
-  opacity: 0.65;
-}
-
 @media (max-width: 750px) {
   :root {
     /* Adjust this if your mobile header has a different height. */
@@ -1284,37 +1311,6 @@ button.loginButton {
     max-width: 100px;
     font-size: 0.8rem;
   }
-
-  .accountLogoutButton {
-    padding: 6px 8px;
-    font-size: 0.72rem;
-  }
-}
-
-/* Yellow/black construction-style text */
-.constructionText {
-  display: inline-block;
-
-  /* Wide traditional black/yellow construction stripes */
-  background: repeating-linear-gradient(
-    135deg,
-    #ffd500 0,
-    #ffd500 18px,
-    #111 18px,
-    #111 36px,
-    #111 13px
-  );
-  margin-top: 50px;
-
-  /* Text on top */
-  color: white;
-  -webkit-text-stroke: 1px #111;
-  paint-order: stroke fill;
-
-  text-align: center;
-  font-size: 1.3rem;
-  font-weight: 900;
-  padding: 0.25em 0.8em;
 }
 
 /* Twemoji */
@@ -1329,33 +1325,6 @@ img.discord-emoji {
 
 .language-picker {
   position: relative;
-}
-
-.language-select-trigger {
-  width: 100%;
-  appearance: none;
-  cursor: pointer;
-  text-align: left;
-}
-
-.language-select-menu {
-  position: absolute;
-  z-index: 1000;
-  top: calc(100% + 0.4rem);
-  right: 0;
-  min-width: 100%;
-  overflow: hidden;
-}
-
-.language-select-option {
-  width: 100%;
-  display: block;
-  text-align: left;
-  cursor: pointer;
-}
-
-.language-select-option[aria-selected="true"] {
-  font-weight: 700;
 }
 
 .discord-presence__music-link {
@@ -1472,6 +1441,165 @@ legend,
 .login-wrap :is(.accountName, .accountMenu, .loginButton) {
   -webkit-user-select: none;
   user-select: none;
+}
+
+/*
+ * Loading (components/PageLoading.jsx and .is-loading parts): a soft ring that
+ * fades in only after a moment, so fast loads never flash anything. With
+ * fewer / no animations it pulses slowly or just stands still.
+ */
+.page-loading {
+  display: grid;
+  place-items: center;
+  min-height: min(60vh, 520px);
+  flex: 1 0 auto;
+}
+.page-loading--screen {
+  min-height: 100vh;
+  min-height: 100svh;
+}
+.page-loading__spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--text-primary) 14%, transparent);
+  border-top-color: color-mix(in srgb, var(--text-primary) 70%, transparent);
+  opacity: 0;
+  animation:
+    page-loading-in 0.3s ease 0.25s forwards,
+    page-loading-spin 0.8s linear infinite;
+}
+@keyframes page-loading-in {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes page-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-loading__spinner {
+    animation: page-loading-in 0.3s ease 0.25s forwards;
+  }
+}
+:root.motion-reduce .page-loading__spinner,
+:root.motion-none .page-loading__spinner {
+  animation: none;
+  opacity: 1;
+}
+
+/*
+ * Placeholders while something loads (e.g. the Discord card): the shape of
+ * what comes, softly shimmering; still with fewer / no animations.
+ */
+.skeleton {
+  display: inline-block;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  background-image: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--text-primary) 8%, transparent) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  vertical-align: middle;
+}
+.skeleton--round {
+  border-radius: 50%;
+}
+/* A line of text: one letter tall, the line height comes from where it sits. */
+.skeleton--text {
+  height: 0.8em;
+  max-width: 100%;
+}
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+:root.motion-reduce .skeleton,
+:root.motion-none .skeleton {
+  animation: none;
+}
+
+/*
+ * Live content that arrives after the page (the Discord card after its
+ * placeholder, a new activity) fades in instead of popping. The placeholder
+ * keeps the card's shape, so only the look changes, nothing moves.
+ */
+.discord-card:not(.discord-card--loading),
+.discord-presence-card {
+  animation: content-in 0.32s ease both;
+}
+@keyframes content-in {
+  from {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .discord-card,
+  .discord-presence-card {
+    animation: none;
+  }
+}
+:root:is(.motion-reduce, .motion-none) :is(.discord-card, .discord-presence-card) {
+  animation: none;
+}
+
+/* The login buttons before the account is known (Login.jsx): they hold the space, unseen. */
+.login-wrap--pending {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/*
+ * Page changes (App.jsx, React's <ViewTransition>): the old page fades out,
+ * the new one fades in while rising a few pixels. Everything else (the fixed
+ * bars, the background) stays still. Short, so it never feels slow; none with
+ * fewer / no animations.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-old(.page-out) {
+  animation: page-out 140ms ease-in both;
+}
+::view-transition-new(.page-in) {
+  animation: page-in 240ms cubic-bezier(0.2, 0.7, 0.2, 1) 40ms both;
+}
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+:root.motion-reduce::view-transition-group(*),
+:root.motion-reduce::view-transition-old(*),
+:root.motion-reduce::view-transition-new(*),
+:root.motion-none::view-transition-group(*),
+:root.motion-none::view-transition-old(*),
+:root.motion-none::view-transition-new(*) {
+  animation: none !important;
 }
 
 /* Settings → Animations (lib/prefs.js): fewer, or all of them even when the device asks for less. */
@@ -1602,6 +1730,8 @@ legend,
 }
 .discord-presence-card .discord-presence__content {
   display: grid;
+  /* One column as wide as the card: a long title pans inside it instead of widening it. */
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   justify-content: stretch;
   justify-items: start;
@@ -1758,12 +1888,6 @@ legend,
     right: 12px;
     height: var(--bar-control);
     align-items: center;
-  }
-
-
-
-  .settings-below-head {
-    top: calc(var(--bar-height) + 6px) !important;
   }
 }
 
@@ -2117,4 +2241,14 @@ html.has-accent body.cult-page {
   --accent-hover: color-mix(in srgb, var(--user-tint) 45%, #0b0508) !important;
   --bg-primary: color-mix(in oklab, color-mix(in srgb, var(--user-tint) 30%, #d8bcb6), color-mix(in srgb, var(--user-tint) 22%, #120607) var(--cult-dark)) !important;
   --bg-secondary: color-mix(in oklab, color-mix(in srgb, var(--user-tint) 8%, #f4ebe6), color-mix(in srgb, var(--user-tint) 8%, #0e0809) var(--cult-dark)) !important;
+}
+
+/* Icons, pictures and buttons are never text to select (texts and inputs stay selectable). */
+:is(button, [role="button"], [role="tab"], img, svg, canvas, .emoji, img.emoji) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+img,
+svg {
+  -webkit-user-drag: none;
 }

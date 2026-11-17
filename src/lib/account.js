@@ -58,7 +58,30 @@ export async function accountFetch(path, options = {}) {
  * The logged-in user. Falls back to a local admin session (see
  * lib/localAdmin.js) when the server has no session or is unreachable.
  */
-export async function getCurrentAccount() {
+// Several parts of a page ask at once (login button, lobby cat, FDC, settings): one request for all of them.
+let accountRequest = null;
+export function getCurrentAccount() {
+  if (!accountRequest) {
+    accountRequest = loadCurrentAccount();
+    accountRequest.then(
+      () => setTimeout(() => (accountRequest = null), 2000),
+      () => (accountRequest = null),
+    );
+  }
+  return accountRequest;
+}
+
+/**
+ * Runs `load` only for a logged-in visitor; otherwise rejects like the API would (status 401)
+ * without asking it, so logged-out visits don't fill the console with failed requests.
+ */
+export async function whenLoggedIn(load) {
+  const account = await getCurrentAccount().catch(() => null);
+  if (!account) throw Object.assign(new Error("Log in first."), { status: 401 });
+  return load(account);
+}
+
+async function loadCurrentAccount() {
   let response;
 
   try {
@@ -141,6 +164,7 @@ export async function patchAccountSettings(settings) {
 }
 
 export async function logoutAccount() {
+  accountRequest = null;
   const local = getLocalAdminSession();
   clearLocalAdminSession();
   // Push on this device belongs to the account: off before the session ends (lib/push.js).
@@ -187,6 +211,7 @@ async function loginLocally(key) {
  * the login needs `code` (from the authenticator app) as well.
  */
 export async function loginWithAdminCode(key, code = "") {
+  accountRequest = null;
   let response;
 
   try {

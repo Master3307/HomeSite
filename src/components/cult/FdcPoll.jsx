@@ -120,6 +120,26 @@ function VoterList({ voters, options }) {
   )
 }
 
+/* The statistics after moving one vote from `from` to `to` (either may be null), worked out like the server does. */
+function withVote(statistics, from, to) {
+  const options = (statistics.options ?? []).map((entry) => ({
+    ...entry,
+    votes: Math.max(0, (entry.votes ?? 0) - (entry.optionNumber === from ? 1 : 0) + (entry.optionNumber === to ? 1 : 0)),
+  }))
+  const total = Math.max(0, (statistics.totalVoters ?? 0) + (from === null ? 1 : 0) - (to === null ? 1 : 0))
+  const highest = Math.max(0, ...options.map((entry) => entry.votes))
+  return {
+    optionNumber: to,
+    statistics: {
+      ...statistics,
+      totalVoters: total,
+      options: options.map((entry) => ({ ...entry, percentage: total ? Number(((entry.votes / total) * 100).toFixed(2)) : 0 })),
+      winningOptionNumbers: total ? options.filter((entry) => entry.votes === highest).map((entry) => entry.optionNumber) : [],
+      isTie: total > 0 && options.filter((entry) => entry.votes === highest).length > 1,
+    },
+  }
+}
+
 export default function FdcPoll({
   poll,
   account,
@@ -177,21 +197,23 @@ export default function FdcPoll({
     }
   }
 
+  // The vote shows at once (counts, bars, winner); the server's answer then replaces it, or it is undone on an error.
   async function vote(optionNumber) {
     if (pending !== null) return
 
+    const choice = myVote === optionNumber ? null : optionNumber
+    const before = result
     setPending(optionNumber)
     setError(null)
+    setResult(withVote(statistics, myVote, choice))
 
     try {
-      const next = await voteFdc(
-        poll.id,
-        myVote === optionNumber ? null : optionNumber,
-      )
+      const next = await voteFdc(poll.id, choice)
       setResult(next)
-      catNotice('fdc-voted', { removed: myVote === optionNumber })
+      catNotice('fdc-voted', { removed: choice === null })
       onVoted?.()
     } catch (voteError) {
+      setResult(before)
       setError(voteError.message)
     } finally {
       setPending(null)

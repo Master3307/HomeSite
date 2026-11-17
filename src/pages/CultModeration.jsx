@@ -112,12 +112,17 @@ function Accounts({ owner }) {
   const [users, setUsers] = useState(null)
 
   useEffect(() => {
+    // A slower answer for an older query must not replace the newer one.
+    let current = true
     const timer = setTimeout(() => {
       searchUsers(query ?? '')
-        .then((data) => setUsers(data.users))
-        .catch(() => setUsers([]))
+        .then((data) => current && setUsers(data.users))
+        .catch(() => current && setUsers([]))
     }, 250)
-    return () => clearTimeout(timer)
+    return () => {
+      current = false
+      clearTimeout(timer)
+    }
   }, [query])
 
   return (

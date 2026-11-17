@@ -3,34 +3,45 @@ import { initReactI18next } from 'react-i18next'
 
 const LANGUAGE_KEY = 'preferredLanguage'
 
-const localeModules = import.meta.glob('../locales/*/*.json', {
-  eager: true,
-  import: 'default',
-})
+/*
+ * English is bundled (it is the fallback for every missing text); every
+ * other language is its own small chunk, loaded when it is picked. The
+ * visitor's language is loaded before the first render (`i18nReady`, awaited
+ * in main.jsx), so nothing flashes in English first.
+ */
+const englishModules = import.meta.glob('../locales/en/*.json', { eager: true, import: 'default' })
+const localeLoaders = import.meta.glob(['../locales/*/*.json', '!../locales/en/*.json'], { import: 'default' })
 
-const resources = Object.entries(localeModules).reduce((acc, [path, messages]) => {
-  const match = path.match(/\/([a-zA-Z-]+)\/([a-zA-Z0-9-_]+)\.json$/)
-  if (!match) return acc
+const partOf = (path) => path.match(/\/([a-zA-Z-]+)\/([a-zA-Z0-9-_]+)\.json$/)?.slice(1) ?? []
 
-  const [, language, namespace] = match
+const resources = { en: {} }
+for (const [path, messages] of Object.entries(englishModules)) {
+  const [, namespace] = partOf(path)
+  if (namespace) resources.en[namespace] = messages
+}
 
-  if (!acc[language]) {
-    acc[language] = {}
-  }
+// Language -> { namespace: loader } for the languages that load on demand.
+const loaders = {}
+for (const [path, load] of Object.entries(localeLoaders)) {
+  const [language, namespace] = partOf(path)
+  if (!language) continue
+  ;(loaders[language] ??= {})[namespace] = load
+}
 
-  acc[language][namespace] = messages
-  return acc
-}, {})
+const supportedLngs = ['en', ...Object.keys(loaders).sort()]
 
-const supportedLngs = Object.keys(resources)
+const namespaces = Array.from(new Set([...Object.keys(resources.en), ...Object.values(loaders).flatMap((byNamespace) => Object.keys(byNamespace))]))
 
-const namespaces = Array.from(
-  new Set(
-    Object.values(resources).flatMap((languageResources) =>
-      Object.keys(languageResources)
-    )
-  )
-)
+/* i18next backend: the chunks above (i18next calls it for languages it doesn't have yet). */
+const chunkBackend = {
+  type: 'backend',
+  // read() returns a promise (i18next's newer convention).
+  callbackApi: false,
+  init() {},
+  read(language, namespace) {
+    return loaders[language]?.[namespace]?.() ?? {}
+  },
+}
 
 function normalizeLanguage(code) {
   if (!code) return null
@@ -48,7 +59,12 @@ function normalizeLanguage(code) {
 }
 
 function getInitialLanguage() {
-  const savedLanguage = localStorage.getItem(LANGUAGE_KEY)
+  let savedLanguage = null
+  try {
+    savedLanguage = localStorage.getItem(LANGUAGE_KEY)
+  } catch {
+    // Storage blocked: go by the browser's languages.
+  }
   const normalizedSaved = normalizeLanguage(savedLanguage)
   if (normalizedSaved) {
     return normalizedSaved
@@ -70,7 +86,8 @@ function getInitialLanguage() {
 
 const initialLanguage = getInitialLanguage()
 
-i18n
+export const i18nReady = i18n
+  .use(chunkBackend)
   .use(initReactI18next)
   .init({
     // Verbose i18next logging only while developing.
@@ -82,6 +99,9 @@ i18n
     defaultNS: 'common',
     fallbackNS: 'common',
     resources,
+    // English is in `resources`, the others come from chunkBackend.
+    partialBundledLanguages: true,
+    react: { useSuspense: false },
     interpolation: {
       escapeValue: false,
     },
@@ -91,7 +111,11 @@ document.documentElement.setAttribute('lang', i18n.language)
 
 i18n.on('languageChanged', (lng) => {
   document.documentElement.setAttribute('lang', lng)
-  localStorage.setItem(LANGUAGE_KEY, lng)
+  try {
+    localStorage.setItem(LANGUAGE_KEY, lng)
+  } catch {
+    // Storage blocked: this visit only.
+  }
 })
 
 export { LANGUAGE_KEY, supportedLngs, namespaces }

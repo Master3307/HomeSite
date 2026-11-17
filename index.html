@@ -111,6 +111,19 @@ have fun and enjoy!
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <style>
+      .boot-loading { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; }
+      .boot-loading span {
+        width: 34px; height: 34px; border-radius: 50%; opacity: 0;
+        border: 3px solid rgb(238 238 238 / 0.14); border-top-color: rgb(238 238 238 / 0.7);
+        animation: boot-in 0.3s ease 0.6s forwards, boot-spin 0.8s linear infinite;
+      }
+      :root[data-theme="light"] .boot-loading span { border-color: rgb(30 20 50 / 0.14); border-top-color: rgb(30 20 50 / 0.7); }
+      @keyframes boot-in { to { opacity: 1; } }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .boot-loading span { animation: boot-in 0.3s ease 0.6s forwards; } }
+    </style>
+
     <!-- Favicons / PWA: the house icon (public/img/HomeSiteIcon.svg) for browser tabs, the square app icon for home screens and tiles. -->
     <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -118,6 +131,9 @@ have fun and enjoy!
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
+    <!-- The icon font and the Latin text font are needed on every page: fetch them with the page, not after the CSS. -->
+    <link rel="preload" href="/fonts/MaterialSymbolsOutlined.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/google-sans-flex/GoogleSansFlex-09.woff2" as="font" type="font/woff2" crossorigin />
     <meta name="msapplication-TileColor" content="#5416a4" />
     <meta name="msapplication-config" content="/browserconfig.xml" />
     <meta
@@ -134,7 +150,11 @@ have fun and enjoy!
   </head>
 
   <body>
-    <div id="root"></div>
+    <!--
+      Until the app draws (React replaces it): a soft ring that only appears if
+      loading takes a moment, the same as components/PageLoading.jsx.
+    -->
+    <div id="root"><div class="boot-loading" aria-hidden="true"><span></span></div></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

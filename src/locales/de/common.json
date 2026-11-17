@@ -16,5 +16,6 @@
         "autoShort": "Automatisch, wie mein Gerät",
         "search": "Stadt, Region oder UTC+1",
         "none": "Keine Zeitzone gefunden."
-    }
+    },
+    "loading": "Wird geladen …"
 }

@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import twemoji from '@twemoji/api'
 import './styles/picker.css'
 import './styles/theme-transition.css'
-import App from './App.jsx'
+import App, { preloadPage } from './App.jsx'
+import ScrollManager from './components/ScrollManager.jsx'
 import ThemeSwitch from './components/ThemeSwitch.jsx'
 import Login from './components/Login'
 import LanguageSwitch from './components/LanguageSwitch.jsx'
@@ -63,6 +64,44 @@ export default function Root() {
   // Scrolling over any slider moves it step by step.
   useEffect(() => installRangeWheel(), [])
 
+  // Once a page has settled: quietly fetch the code of the pages it links to (small chunks), so taps
+  // on phones (no hover first) open them at once too. Not with "data saver" or on slow connections.
+  useEffect(() => {
+    const connection = navigator.connection
+    if (connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? '')) return undefined
+    const idle = window.requestIdleCallback ?? ((callback) => setTimeout(callback, 1200))
+    const cancelIdle = window.cancelIdleCallback ?? clearTimeout
+    const handle = idle(
+      () => {
+        const paths = new Set()
+        for (const link of document.querySelectorAll('a[href^="/"]')) {
+          const url = new URL(link.href, window.location.href)
+          // The big ones (the map, the hub) only on intent, below.
+          if (url.pathname !== window.location.pathname && !/^\/(maps|hub)(\/|$)/.test(url.pathname)) paths.add(url.pathname)
+          if (paths.size >= 8) break
+        }
+        paths.forEach(preloadPage)
+      },
+      { timeout: 4000 },
+    )
+    return () => cancelIdle(handle)
+  }, [pathname])
+
+  // A link to another page is about to be used (pointer over it, focused, touched): fetch that page's code now.
+  useEffect(() => {
+    const onIntent = (event) => {
+      const link = event.target?.closest?.('a[href]')
+      if (!link || link.target === '_blank') return
+      const url = new URL(link.href, window.location.href)
+      if (url.origin === window.location.origin) preloadPage(url.pathname)
+    }
+    const options = { passive: true, capture: true }
+    for (const type of ['pointerover', 'focusin', 'touchstart']) document.addEventListener(type, onIntent, options)
+    return () => {
+      for (const type of ['pointerover', 'focusin', 'touchstart']) document.removeEventListener(type, onIntent, options)
+    }
+  }, [])
+
   useEffect(() => {
     if (!rootRef.current) return
 
@@ -73,6 +112,7 @@ export default function Root() {
     <div ref={rootRef}>
       <CustomCss />
       <SearchHighlight />
+      <ScrollManager />
       <App />
       {/* The login / account menu on every page (the hub has its own). */}
       {!matchesPath(pathname, '/hub*') && (

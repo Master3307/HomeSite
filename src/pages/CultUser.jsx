@@ -1,8 +1,9 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 
 import CultShell from '/src/components/cult/CultShell'
+import PageLoading from '/src/components/PageLoading'
 import MemberBadges from '/src/components/cult/MemberBadges'
 import VisibilityChoice from '/src/components/cult/VisibilityChoice'
 import BrandIcon from '/src/components/BrandIcon'
@@ -104,7 +105,7 @@ function NicknameForm({ current, fallback, onSaved }) {
         Name on the server
       </label>
       <div className="settings-inline">
-        <input id="member-nickname" className="members-input" value={value} maxLength={32} placeholder={fallback} onChange={(event) => (setValue(event.target.value), setState({}))} />
+        <input id="member-nickname" name="nickname" autoComplete="nickname" className="members-input" value={value} maxLength={32} placeholder={fallback} onChange={(event) => (setValue(event.target.value), setState({}))} />
         <button type="submit" className="members-button" disabled={state.busy || value.trim() === (current ?? '')}>
           Save
         </button>
@@ -156,17 +157,22 @@ export default function CultUser() {
   }, [])
   const [copied, setCopied] = useState(false)
 
-  const load = useCallback(
-    () =>
-      loadProfile(key)
-        .then((profile) => {
-          setState({ profile })
-          // Any working address shows the @name one (shareable, the default).
-          if (profile.key && window.location.pathname !== keyPath(profile.key)) navigate(`${keyPath(profile.key)}${window.location.search}${window.location.hash}`, { replace: true })
-        })
-        .catch((error) => setState({ error })),
-    [key, navigate],
-  )
+  // Only the newest lookup counts: switching profiles quickly must not let an
+  // older, slower answer replace the page (or its address).
+  const latest = useRef(0)
+  const load = useCallback(() => {
+    const request = ++latest.current
+    return loadProfile(key)
+      .then((profile) => {
+        if (request !== latest.current) return
+        setState({ profile })
+        // Any working address shows the @name one (shareable, the default).
+        if (profile.key && window.location.pathname !== keyPath(profile.key)) navigate(`${keyPath(profile.key)}${window.location.search}${window.location.hash}`, { replace: true })
+      })
+      .catch((error) => {
+        if (request === latest.current) setState({ error })
+      })
+  }, [key, navigate])
 
   useEffect(() => {
     load()
@@ -193,9 +199,7 @@ export default function CultUser() {
   if (state.loading) {
     return (
       <CultShell title="Profile">
-        <p className="members-status" role="status">
-          Loading the profile…
-        </p>
+        <PageLoading label="Loading the profile…" screen />
       </CultShell>
     )
   }

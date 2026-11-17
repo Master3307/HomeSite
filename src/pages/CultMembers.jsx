@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 
 import CultShell from '/src/components/cult/CultShell'
-import { DISCORD_LOGIN_URL } from '/src/lib/account'
+import PageLoading from '/src/components/PageLoading'
 import { apiUrl, keyPath, loadMembers } from '/src/lib/members'
+import { DISCORD_LOGIN_URL, whenLoggedIn } from '/src/lib/account'
 import { useUrlParam } from '/src/lib/urlState'
 import MemberBadges from '/src/components/cult/MemberBadges'
 
@@ -21,7 +22,7 @@ export default function CultMembers() {
   const filter = ['online', 'staff'].includes(filterParam) ? filterParam : 'all'
 
   useEffect(() => {
-    loadMembers()
+    whenLoggedIn(() => loadMembers())
       .then((data) => setState({ members: data.members }))
       .catch((error) => setState({ error }))
   }, [])
@@ -50,9 +51,7 @@ export default function CultMembers() {
       </header>
 
       {state.loading && (
-        <p className="members-status" role="status">
-          Loading members…
-        </p>
+        <PageLoading label="Loading members…" screen />
       )}
 
       {state.error &&

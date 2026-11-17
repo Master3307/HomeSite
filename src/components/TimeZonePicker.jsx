@@ -21,13 +21,21 @@ const REGION_EMOJI = {
   Etc: '🕐',
 }
 
+// Making a formatter is the slow part (~0.1 ms each, two per zone, 400+ zones): each is made once.
+const formatters = new Map()
+function formatter(key, make) {
+  let entry = formatters.get(key)
+  if (!entry) formatters.set(key, (entry = make()))
+  return entry
+}
+
 function describe(zone, now, language) {
   const [region, ...rest] = zone.split('/')
   let offset = ''
   let time = ''
   try {
-    offset = new Intl.DateTimeFormat('en', { timeZone: zone, timeZoneName: 'shortOffset' }).formatToParts(now).find((part) => part.type === 'timeZoneName')?.value ?? ''
-    time = new Intl.DateTimeFormat(language, { timeZone: zone, hour: 'numeric', minute: '2-digit' }).format(now)
+    offset = formatter(`o:${zone}`, () => new Intl.DateTimeFormat('en', { timeZone: zone, timeZoneName: 'shortOffset' })).formatToParts(now).find((part) => part.type === 'timeZoneName')?.value ?? ''
+    time = formatter(`t:${language}:${zone}`, () => new Intl.DateTimeFormat(language, { timeZone: zone, hour: 'numeric', minute: '2-digit' })).format(now)
   } catch {
     // unknown zone in this browser
   }
@@ -44,15 +52,19 @@ export default function TimeZonePicker({ value, onChange }) {
   const search = useRef(null)
   const [query, setQuery] = useState('')
   const [now, setNow] = useState(() => new Date())
+  // The full list (400+ zones) is only worked out while the picker is open; closed, only the chosen zone is.
+  const [open, setOpen] = useState(false)
   const device = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   // The times in the list stay current while it is open.
   useEffect(() => {
+    if (!open) return undefined
     const timer = setInterval(() => setNow(new Date()), 30_000)
     return () => clearInterval(timer)
-  }, [])
+  }, [open])
 
   const zones = useMemo(() => {
+    if (!open) return []
     let list = []
     try {
       list = Intl.supportedValuesOf('timeZone')
@@ -60,7 +72,7 @@ export default function TimeZonePicker({ value, onChange }) {
       list = [device]
     }
     return list.map((zone) => describe(zone, now, i18n.language)).sort((a, b) => a.minutes - b.minutes || a.city.localeCompare(b.city))
-  }, [now, i18n.language, device])
+  }, [open, now, i18n.language, device])
 
   useEffect(() => {
     function onPointer(event) {
@@ -96,7 +108,12 @@ export default function TimeZonePicker({ value, onChange }) {
         ref={ref}
         className="picker-dropdown"
         onToggle={(event) => {
-          if (event.currentTarget.open) requestAnimationFrame(() => search.current?.focus())
+          const isOpen = event.currentTarget.open
+          setOpen(isOpen)
+          if (isOpen) {
+            setNow(new Date())
+            requestAnimationFrame(() => search.current?.focus())
+          }
         }}
       >
         <summary className="picker-trigger" aria-label={t('zone.label', { defaultValue: 'Time zone' })}>

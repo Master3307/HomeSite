@@ -64,6 +64,8 @@ export default defineConfig(({ mode }) => {
             groups: [
               { name: "three", test: /node_modules[\\/](?:\.pnpm[\\/])?three[@\\/]/ },
               { name: "xterm", test: /node_modules[\\/](?:\.pnpm[\\/])?@xterm[+\\/]/ },
+              // Every language except English (bundled, lib/i18n.js) in one file per language.
+              { debugName: "locales", name: (id) => `locale-${/locales[\\/]([^\\/]+)[\\/]/.exec(id)?.[1] ?? "x"}`, test: /src[\\/]locales[\\/](?!en[\\/])/ },
             ],
           },
         },

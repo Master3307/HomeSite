@@ -38,7 +38,7 @@ const DEFAULT_LANGUAGE = 'en'
 // ---------------------------------------------------------------------------
 
 /** Routes that never show up in search results. */
-const EXCLUDED_ROUTES = new Set(['*', '/error', '/filter', '/activity', '/backup', '/admin-settings', '/admin-settings/:section', '/hub', '/hub/:tab', '/hub/:tab/:section'])
+const EXCLUDED_ROUTES = new Set(['*', '/error', '/filter', '/activity', '/backup', '/admin-settings', '/admin-settings/:section', '/hub', '/hub/:tab', '/hub/:tab/:section', '/cult/stats'])
 
 /** Components that are UI chrome rather than page content. */
 const EXCLUDED_COMPONENTS = new Set([
@@ -182,8 +182,9 @@ function parseImports(file, source) {
     if (resolved && /\.(jsx?|mjs)$/.test(resolved)) imports.set(match[1], resolved)
   }
 
-  // Lazy routes: const X = lazy(() => import('./pages/X.jsx'))
-  for (const match of source.matchAll(/(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*lazy\(\s*\(\)\s*=>\s*import\(\s*['"]([^'"]+)['"]\s*\)\s*\)/g)) {
+  // Lazy routes: const X = lazy(() => import('./pages/X.jsx')), or through a
+  // helper like App.jsx's page(pattern, () => import('./pages/X.jsx')).
+  for (const match of source.matchAll(/(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*[A-Za-z_$][\w$]*\([^\n]*?\(\)\s*=>\s*import\(\s*['"]([^'"]+)['"]\s*\)/g)) {
     const resolved = resolveImport(file, match[2])
     if (resolved && /\.(jsx?|mjs)$/.test(resolved)) imports.set(match[1], resolved)
   }
@@ -293,7 +294,9 @@ function parseRoutes() {
     const [, routePath, component] = match
     const file = imports.get(component)
     if (!file) {
-      console.warn(`⚠ Could not resolve component <${component}> for route ${routePath}`)
+      // Redirects: a component defined in App.jsx itself or React Router's <Navigate>.
+      const local = new RegExp(`function\\s+${component}\\b`).test(source)
+      if (!local && component !== 'Navigate') console.warn(`⚠ Could not resolve component <${component}> for route ${routePath}`)
       continue
     }
     routes.push({ path: routePath, component, file })

@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 
 import { loadActivity } from '/src/lib/fdc'
+import { whenLoggedIn } from '/src/lib/account'
 import '/src/styles/activity.css'
 
 /*
@@ -97,7 +98,7 @@ export default function Activity() {
 
   useEffect(() => {
     let active = true
-    loadActivity({ view, q: search })
+    whenLoggedIn(() => loadActivity({ view, q: search }))
       .then((data) => active && setState({ entries: data.entries, next: data.next, loading: false, error: null, integrity: data.integrity }))
       .catch((error) => active && setState({ entries: [], next: null, loading: false, error, integrity: null }))
     return () => {

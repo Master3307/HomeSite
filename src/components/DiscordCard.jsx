@@ -388,7 +388,7 @@ function getBestActivityImage(activity) {
   )
 }
 
-export function StatusDot({ status }) {
+function StatusDot({ status }) {
   return (
     <span
       className={`discord-card__status discord-card__status--${status ?? 'offline'}`}
@@ -724,7 +724,9 @@ export function Activity({ activities, t }) {
     activities[0]
 
   return (
+    // A new activity starts fresh (no cover of the song before it).
     <PresenceCard
+      key={`${selected?.type}:${selected?.name}:${selected?.application_id ?? ''}`}
       activity={selected}
       t={t}
     />
@@ -816,13 +818,32 @@ export default function DiscordProfileCard() {
     }
   }, [DISCORD_API_URL, t])
 
+  // Loading: the card's own shape (picture, name, @name) as soft placeholders, so nothing jumps when it fills in.
   if (loading && !profile && !avatarSrc) {
     return (
-      <div className="discord-card discord-card--loading">
-        …
+      <article className="discord-card discord-card--loading" aria-busy="true">
+        {/* Same children in the same order as the loaded card (React keeps the elements, nothing is replaced). */}
+        <div className="discord-card__media" aria-hidden="true">
+          <div className="pfp-wrap">
+            <span className="pfp skeleton skeleton--round" />
+          </div>
+        </div>
+        <div className="discord-card__body" aria-hidden="true">
+          <div className="discord-card__topline">
+            <div className="discord-card__name-row">
+              {/* Inside the real heading and line: same line heights as the loaded card. */}
+              <h3 className="discord-card__name">
+                <span className="skeleton skeleton--text" style={{ width: '7em' }} />
+              </h3>
+            </div>
+          </div>
+          <p className="discord-card__username">
+            <span className="skeleton skeleton--text" style={{ width: '7em' }} />
+          </p>
+          <span className="sr-only">{t('common:loading', { defaultValue: 'Loading…' })}</span>
+        </div>
         <br />
-        <br />
-      </div>
+      </article>
     )
   }
 

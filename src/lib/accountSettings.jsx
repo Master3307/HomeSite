@@ -39,6 +39,14 @@ import {
     }
   }
 
+  function readStorage(key) {
+    try {
+      return localStorage.getItem(key)
+    } catch {
+      return null
+    }
+  }
+
   function localSettingsAt() {
     try {
       return Number(localStorage.getItem(SETTINGS_AT_KEY)) || 0
@@ -82,12 +90,12 @@ import {
   }
 
   function getLocalTheme() {
-    return normalizeTheme(localStorage.getItem(THEME_KEY))
+    return normalizeTheme(readStorage(THEME_KEY))
   }
 
   function getLocalLanguage() {
     return (
-      normalizeLanguage(localStorage.getItem(LANGUAGE_KEY)) ||
+      normalizeLanguage(readStorage(LANGUAGE_KEY)) ||
       normalizeLanguage(i18n.resolvedLanguage) ||
       normalizeLanguage(i18n.language) ||
       DEFAULT_LANGUAGE
@@ -111,7 +119,11 @@ import {
   }
 
   async function applyLanguage(language) {
-    localStorage.setItem(LANGUAGE_KEY, language)
+    try {
+      localStorage.setItem(LANGUAGE_KEY, language)
+    } catch {
+      // storage blocked: this visit only
+    }
 
     if (i18n.resolvedLanguage !== language) {
       await i18n.changeLanguage(language)

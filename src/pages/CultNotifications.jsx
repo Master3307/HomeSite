@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 
 import CultShell from '/src/components/cult/CultShell'
 import { loadNotifications, markRead, NOTIFICATIONS_EVENT } from '/src/lib/moderation'
+import { whenLoggedIn } from '/src/lib/account'
 
 /* /cult/notifications: everything the site told you (newest first). Opening the page marks them as read. */
 
@@ -14,7 +15,7 @@ export default function CultNotifications() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    loadNotifications()
+    whenLoggedIn(loadNotifications)
       .then(async (result) => {
         setData(result)
         if (result.unread) {

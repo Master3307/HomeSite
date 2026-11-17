@@ -16,17 +16,20 @@ function calm() {
   return document.documentElement.classList.contains('motion-reduce') || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 }
 
+// The pictures' own sizes: the browser keeps their room free before they have loaded.
+const SIZES = { logo: { width: 672, height: 224 }, icon: { width: 512, height: 512 } }
+
 export default function SiteLogo({ variant = 'auto', className = '', label = 'HomeSite – back to the start page' }) {
   const pick = (kind) => FILES[kind][calm() ? 0 : 1]
   return (
     <Link to="/" className={`site-logo site-logo--${variant} ${className}`.trim()} aria-label={label} title="HomeSite">
       {variant === 'auto' ? (
         <picture>
-          <source media="(max-width: 750px)" srcSet={pick('icon')} />
-          <img src={pick('logo')} alt="" draggable={false} />
+          <source media="(max-width: 750px)" srcSet={pick('icon')} {...SIZES.icon} />
+          <img src={pick('logo')} alt="" draggable={false} {...SIZES.logo} />
         </picture>
       ) : (
-        <img src={pick(variant)} alt="" draggable={false} />
+        <img src={pick(variant)} alt="" draggable={false} {...SIZES[variant]} />
       )}
     </Link>
   )
