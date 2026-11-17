@@ -1,6 +1,7 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { httpError } = require("./http.cjs");
 
 /*
  * Moving FDC options from pictures to designed cats.
@@ -21,6 +22,12 @@ const crypto = require("node:crypto");
  * suggest a design that an editor approves, adjusts or rejects.
  *
  *   <archive>/recycling-bin/suggestions.json  { version: 1, suggestions: [...] }
+ *   <archive>/recycling-bin/migration-log.jsonl  one event per line (see `record`)
+ *
+ * The log is exact from the moment it exists; before that, the designs
+ * already made are written into it once (`backfilled: true`) from what the
+ * archive and the bin remember (who designed last, when). Editors read it
+ * as statistics (`stats`, services/statsWeb.cjs).
  */
 
 const ID_PATTERN = /^(?:b\.[A-Za-z0-9_-]{8,40}|p\.\d{4}-\d{2}-\d{2}\.[1-6])$/;
@@ -28,10 +35,7 @@ const SUGGESTION_PATTERN = /^[A-Za-z0-9_-]{8,40}$/;
 const MAX_PENDING_TOTAL = 300;
 const MAX_PENDING_PER_USER = 20;
 const MAX_NOTE = 300;
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
+const MAX_LOG_READ = 50_000; // events read for the statistics
 
 function cleanNote(note) {
   return String(note ?? "")
@@ -60,7 +64,9 @@ async function forgetEverywhere(discordId) {
 function createMigration(archiveRoot, { recycleBin, renderDesign, polls, designPoll, nameOf = () => null }) {
   const BIN = path.join(archiveRoot, "recycling-bin");
   const FILE = path.join(BIN, "suggestions.json");
+  const LOG = path.join(BIN, "migration-log.jsonl");
   let queue = Promise.resolve();
+  let logQueue = Promise.resolve();
 
   async function load() {
     try {
@@ -142,6 +148,7 @@ function createMigration(archiveRoot, { recycleBin, renderDesign, polls, designP
           startDesign: !designed && copy?.design?.spec ? copy.design.spec : null,
           migratedAt: designer?.at ?? rawOption.design?.savedAt?.iso ?? null,
           migratedBy: designer?.id ? (nameOf(designer.id) ?? null) : null,
+          migratedById: designer?.id ?? null,
         });
       }
     }
@@ -163,9 +170,83 @@ function createMigration(archiveRoot, { recycleBin, renderDesign, polls, designP
         startDesign: null,
         migratedAt: item.design?.at ?? null,
         migratedBy: item.design?.by?.name ?? null,
+        migratedById: item.design?.by?.discordId ?? null,
       });
     }
     return { entries, binByKey };
+  }
+
+  /* ---------- the log ---------- */
+
+  const cat = (entry) => ({ itemId: entry.id, description: entry.description ?? null, date: entry.date ?? null, optionNumber: entry.optionNumber ?? null, source: entry.source ?? null });
+
+  async function readLog() {
+    let text = "";
+    try {
+      text = await fs.readFile(LOG, "utf8");
+    } catch {
+      return null;
+    }
+    const events = [];
+    for (const line of text.split("\n")) {
+      if (!line.trim()) continue;
+      try {
+        const event = JSON.parse(line);
+        if (event && typeof event === "object" && typeof event.action === "string") events.push(event);
+      } catch {
+        // A torn line (crash while writing): skip it.
+      }
+    }
+    return events.slice(-MAX_LOG_READ);
+  }
+
+  /* The first time: the designs made before the log existed, from what the archive remembers. */
+  async function backfill() {
+    const { entries } = await collect();
+    return entries
+      .filter((entry) => entry.design)
+      .map((entry) => ({
+        id: crypto.randomBytes(6).toString("base64url"),
+        at: entry.migratedAt ?? null,
+        action: "migrate",
+        via: "unknown",
+        by: entry.migratedById || entry.migratedBy ? { discordId: entry.migratedById ?? null, name: entry.migratedBy ?? null } : null,
+        ...cat(entry),
+        backfilled: true,
+      }))
+      .sort((a, b) => String(a.at ?? "").localeCompare(String(b.at ?? "")));
+  }
+
+  /*
+   * Appends events (one JSON line each). Actions:
+   *   migrate   a cat got its first design: `by` made it (an editor, or the
+   *             member whose suggestion was approved), `via` direct |
+   *             suggestion | manage, `reviewedBy` / `adjusted` for suggestions
+   *   redesign  a designed cat was designed again
+   *   suggest   a member suggested a design
+   *   approve / reject   an editor answered a suggestion (`suggestedBy`, `waitedMs`)
+   */
+  function record(...events) {
+    const run = logQueue.then(async () => {
+      await fs.mkdir(BIN, { recursive: true });
+      let exists = true;
+      try {
+        await fs.access(LOG);
+      } catch {
+        exists = false;
+      }
+      const lines = [];
+      if (!exists) {
+        // A cat designed right now is logged as itself, not as an old design.
+        const fresh = new Set(events.filter((event) => event.action === "migrate" || event.action === "redesign").map((event) => event.itemId));
+        lines.push(...(await backfill().catch(() => [])).filter((event) => !fresh.has(event.itemId)));
+      }
+      const now = new Date().toISOString();
+      for (const event of events) lines.push({ id: crypto.randomBytes(6).toString("base64url"), at: now, ...event });
+      if (lines.length) await fs.appendFile(LOG, lines.map((line) => `${JSON.stringify(line)}\n`).join(""), "utf8");
+    });
+    logQueue = run.catch((error) => console.warn("[FDC migration] Log:", error.message));
+    return logQueue;
   }
 
   async function find(id) {
@@ -191,7 +272,7 @@ function createMigration(archiveRoot, { recycleBin, renderDesign, polls, designP
       const rendered = await renderDesign(spec);
       await recycleBin.setDesign(entry.binId, rendered, actor, extra);
     }
-    return { id: entry.id, description: entry.description, date: entry.date, optionNumber: entry.optionNumber, source: entry.source, design: spec };
+    return { id: entry.id, description: entry.description, date: entry.date, optionNumber: entry.optionNumber, source: entry.source, design: spec, first: !entry.design };
   }
 
   const instance = {
@@ -237,6 +318,7 @@ function createMigration(archiveRoot, { recycleBin, renderDesign, polls, designP
     /** An editor designs a cat directly. */
     async design(id, spec, actor) {
       const result = await apply(id, spec, actor);
+      await record({ action: result.first ? "migrate" : "redesign", via: "direct", by: person(actor), ...cat(result) });
       // Suggestions for it are answered by this.
       await change(async (state) => {
         for (const entry of state.suggestions) {
@@ -278,6 +360,7 @@ function createMigration(archiveRoot, { recycleBin, renderDesign, polls, designP
           status: "pending",
         };
         current.suggestions.push(suggestion);
+        record({ action: "suggest", by: person(actor), suggestionId: suggestion.id, ...cat(entry) });
         // Keep the file small: decided suggestions older than 90 days go.
         const cutoff = Date.now() - 90 * 86_400_000;
         current.suggestions = current.suggestions.filter((item) => item.status === "pending" || Date.parse(item.decidedAt ?? item.at) > cutoff);
@@ -293,6 +376,12 @@ function createMigration(archiveRoot, { recycleBin, renderDesign, polls, designP
       if (!found || found.status !== "pending") throw httpError(404, "That suggestion was already answered.");
       let result = null;
       if (approve) result = await apply(found.itemId, spec ?? found.design, actor, { suggestedBy: found.by });
+      const item = result ? cat(result) : { itemId: found.itemId };
+      const waitedMs = Math.max(0, Date.now() - Date.parse(found.at ?? "")) || null;
+      await record(
+        { action: approve ? "approve" : "reject", by: person(actor), suggestedBy: found.by ?? null, suggestionId: found.id, adjusted: Boolean(approve && spec), waitedMs, ...item },
+        ...(approve ? [{ action: result?.first === false ? "redesign" : "migrate", via: "suggestion", by: found.by ?? person(actor), reviewedBy: person(actor), adjusted: Boolean(spec), ...item }] : []),
+      );
       return change(async (state) => {
         const now = new Date().toISOString();
         for (const entry of state.suggestions) {
@@ -310,14 +399,44 @@ function createMigration(archiveRoot, { recycleBin, renderDesign, polls, designP
 
     /** Removes a person from the suggestions (account deleted). */
     async forget(discordId) {
-      return change(async (state) => {
+      await change(async (state) => {
         state.suggestions = state.suggestions
           .filter((entry) => !(entry.status === "pending" && entry.by?.discordId === discordId))
           .map((entry) => (entry.by?.discordId === discordId ? { ...entry, by: null } : entry));
       });
+      // The log keeps the counts, without them.
+      const run = logQueue.then(async () => {
+        const events = await readLog();
+        if (!events) return;
+        const gone = (who) => (who?.discordId === discordId ? null : who);
+        const kept = events.map((event) => ({ ...event, by: gone(event.by), suggestedBy: gone(event.suggestedBy), reviewedBy: gone(event.reviewedBy) }));
+        const temporary = `${LOG}.${crypto.randomBytes(6).toString("hex")}.tmp`;
+        await fs.writeFile(temporary, kept.map((event) => `${JSON.stringify(event)}\n`).join(""), "utf8");
+        await fs.rename(temporary, LOG);
+      });
+      logQueue = run.catch((error) => console.warn("[FDC migration] Log forget:", error.message));
+      return logQueue;
+    },
+
+    /*
+     * A design saved in the FDC manage view. `before`: whether the option
+     * had a design already; a picture option without one counts as migrated.
+     */
+    async recordManage({ date, optionNumber, description, hadDesign, hadPicture }, actor) {
+      if (!hadPicture) return;
+      await record({ action: hadDesign ? "redesign" : "migrate", via: "manage", by: person(actor), itemId: `p.${date}.${optionNumber}`, description, date, optionNumber, source: "poll" });
+    },
+
+    /** Every logged event (oldest first), the log created first if needed, plus the current counts. */
+    async log() {
+      if (!(await readLog())) await record();
+      await logQueue;
+      return { events: (await readLog()) ?? [], counts: await instance.counts() };
     },
   };
   instances.add(instance);
+  // Start the log (with the designs made so far) soon after the server starts.
+  setTimeout(() => record(), 15_000).unref?.();
   return instance;
 }
 

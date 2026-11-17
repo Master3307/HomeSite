@@ -12,8 +12,10 @@ const {
 const { getInternalKey, getBotInternalUrl } = require("./internalKey.cjs");
 const { renderDesign, normalize: normalizeDesignSpec } = require("./bongoRender.cjs");
 const { createMigration } = require("./fdcMigration.cjs");
+const { registerStats } = require("./statsWeb.cjs");
 const bongoAssets = require("./bongoAssets.cjs");
 const { createRecycleBin } = require("./fdcRecycle.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * Public website routes for FDC polls, the Discord widget and the lobby code,
@@ -33,10 +35,6 @@ const LOBBY_FILE = path.join(__dirname, "db", "lobby-code.json");
 const PERMISSION_CACHE_MS = 60_000;
 const DISCORD_INVITE_CODE = process.env.DISCORD_INVITE_CODE || "3vCGMRapHT";
 const CREATE_BODY_LIMIT = "48mb";
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
 
 /* With the Bongo Cat assets imported, options are designed cats: no new or changed pictures. */
 const PICTURES_RETIRED = "FDC options are designed cats now: pictures can't be added or changed anymore.";
@@ -550,6 +548,10 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, getDatabase = 
       if (!rawChanges.length) throw httpError(400, "Nothing to change.");
       // Migrated for good: a design isn't taken away and the poll doesn't go back to the picture.
       if (picturesRetired() && rawChanges.some((change) => change?.design === null || change?.display === "image")) throw httpError(400, PICTURES_RETIRED);
+      // What the options were before (a picture option getting its first design is a migration).
+      const before = await archivePolls()
+        .then((list) => list.find((entry) => String(entry.public.id) === String(pollId)) ?? null)
+        .catch(() => null);
       const changes = await Promise.all(
         rawChanges.map(async (change) => ({
           number: Number(change?.number),
@@ -563,6 +565,16 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, getDatabase = 
         timeout: 180_000,
       });
       readCache.clear();
+      const actor = { discordId: session.discord_user_id, name: session.display_name || session.username };
+      for (const change of changes) {
+        if (!change.design || !before) continue;
+        const raw = before.raw.options.find((option) => option.number === change.number);
+        const shown = before.public.options.find((option) => option.number === change.number);
+        await migration.recordManage(
+          { date: before.public.date, optionNumber: change.number, description: shown?.description ?? null, hadDesign: Boolean(raw?.design), hadPicture: Boolean(raw?.media) },
+          actor,
+        );
+      }
       audit(session, {
         level: result.archiveOnly ? "risky" : "normal",
         action: "fdc-design",
@@ -731,6 +743,9 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, getDatabase = 
   };
 
   const migration = createMigration(ARCHIVE_ROOT, { recycleBin, renderDesign, polls: archivePolls, designPoll: designPollOption, nameOf: nameOfMember });
+
+  // The Stats page (FDC editors): the migration log, lobby cat taps and pets.
+  registerStats(app, { requireStorage, getRequestSession, getDatabase, canView: canCreateFdc, migration });
 
   const suggestLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,

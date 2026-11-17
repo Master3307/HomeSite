@@ -8,6 +8,10 @@ const { setting, number, origin } = require("../config.cjs");
 const { getInternalKey, getBotInternalUrl, isValidInternalKey } = require("./internalKey.cjs");
 const privacy = require("./privacy.cjs");
 const bongoAssets = require("./bongoAssets.cjs");
+const { ensureLobbyDaily } = require("./statsWeb.cjs");
+
+/* Today as a UTC day (the per-day lobby cat counters). */
+const today = () => new Date().toISOString().slice(0, 10);
 
 /*
  * Member profiles and everything privacy on /cult (account API):
@@ -52,13 +56,13 @@ const SNOWFLAKE = /^\d{17,20}$/;
  * the bot moves the roles of people with an account here (services/profileRoles.cjs).
  */
 const PROFILE_OPTIONS = require("../../shared/profile-options.json");
+const { httpError } = require("./http.cjs");
 const GENDERS = new Set(PROFILE_OPTIONS.gender.map((entry) => entry.id));
 const HOBBIES = new Set(PROFILE_OPTIONS.hobbies.map((entry) => entry.id));
 const cleanHobbies = (list) => [...new Set((Array.isArray(list) ? list : []).map(String).filter((id) => HOBBIES.has(id)))];
 
 const OWN_FILES = ["bongo-favorites.json", "lobby-cat-style.json", "fdc-polls/recycling-bin/suggestions.json", "birthday-reminders.json"];
 
-const httpError = (status, message) => Object.assign(new Error(message), { status });
 const nowIso = () => new Date().toISOString();
 
 let avatarModule = null;
@@ -121,6 +125,7 @@ function registerMembers(app, { requireStorage, getRequestSession, getDatabase, 
     add("presets_json", "TEXT NOT NULL DEFAULT '[]'");
     add("last_member_at", "TEXT");
     add("taps", "INTEGER NOT NULL DEFAULT 0");
+    ensureLobbyDaily(handle);
     handle.exec(`
       CREATE TABLE IF NOT EXISTS reports (
         id TEXT PRIMARY KEY,
@@ -741,8 +746,14 @@ function registerMembers(app, { requireStorage, getRequestSession, getDatabase, 
       const session = getRequestSession(req);
       const handle = database();
       handle.transaction(() => {
-        handle.prepare("INSERT INTO site_counters (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = value + excluded.value").run(session ? "taps:members" : "taps:guests", taps);
-        if (session) handle.prepare("UPDATE users SET taps = taps + ? WHERE id = ?").run(taps, session.user_id);
+        const add = handle.prepare("INSERT INTO site_counters (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = value + excluded.value");
+        add.run(session ? "taps:members" : "taps:guests", taps);
+        // Per day too, for the Stats page (services/statsWeb.cjs).
+        add.run(`taps-day:${today()}:${session ? "members" : "guests"}`, taps);
+        if (session) {
+          handle.prepare("UPDATE users SET taps = taps + ? WHERE id = ?").run(taps, session.user_id);
+          handle.prepare("INSERT INTO lobby_daily (user_id, day, taps) VALUES (?, ?, ?) ON CONFLICT(user_id, day) DO UPDATE SET taps = taps + excluded.taps").run(session.user_id, today(), taps);
+        }
       })();
       return { ...counters(), ...mine(session) };
     }),
@@ -756,9 +767,14 @@ function registerMembers(app, { requireStorage, getRequestSession, getDatabase, 
       const count = Math.floor(Number(req.body?.count));
       if (!Number.isFinite(count) || count < 1) throw httpError(400, "Invalid count.");
       const session = getRequestSession(req);
-      database()
-        .prepare("INSERT INTO site_counters (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = value + excluded.value")
-        .run(session ? "pets:members" : "pets:guests", Math.min(MAX_PETS_PER_REQUEST, count));
+      const pets = Math.min(MAX_PETS_PER_REQUEST, count);
+      const handle = database();
+      handle.transaction(() => {
+        const add = handle.prepare("INSERT INTO site_counters (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = value + excluded.value");
+        add.run(session ? "pets:members" : "pets:guests", pets);
+        add.run(`pets-day:${today()}:${session ? "members" : "guests"}`, pets);
+        if (session) handle.prepare("INSERT INTO lobby_daily (user_id, day, pets) VALUES (?, ?, ?) ON CONFLICT(user_id, day) DO UPDATE SET pets = pets + excluded.pets").run(session.user_id, today(), pets);
+      })();
       return { ...counters(), ...mine(session) };
     }),
   );

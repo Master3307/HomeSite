@@ -51,7 +51,7 @@ const EXCLUDED_COMPONENTS = new Set([
 ])
 
 /** Namespaces that only hold UI status strings (loading, errors, buttons…). */
-const EXCLUDED_NAMESPACES = new Set(['language', 'themeswitch', 'login', 'error'])
+const EXCLUDED_NAMESPACES = new Set(['language', 'themeswitch', 'login', 'error', 'stats'])
 
 /** Individual keys that are pure UI noise (matched against `<ns>:<key>`). */
 const EXCLUDED_KEY_PATTERNS = [
