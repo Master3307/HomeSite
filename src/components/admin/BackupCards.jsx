@@ -69,7 +69,7 @@ function when(ms, language) {
   return new Intl.DateTimeFormat(language || undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(ms))
 }
 
-export function KeyField({ value, onChange, label, hint, autoFocus = false }) {
+function KeyField({ value, onChange, label, hint, autoFocus = false, login = false }) {
   const { t } = useTranslation('backup')
   const id = useId()
   const [shown, setShown] = useState(false)
@@ -78,10 +78,16 @@ export function KeyField({ value, onChange, label, hint, autoFocus = false }) {
       <label htmlFor={id}>{label}</label>
       <div className="bk-key">
         <span className="material-symbols-outlined" aria-hidden="true">key</span>
+        {/*
+          login: this is the site's admin key, so password managers fill it from the "admin" login.
+          Otherwise (an older key) they keep out of it.
+        */}
+        {login && <input className="sr-only" type="text" name="username" autoComplete="username" value="admin" readOnly tabIndex={-1} aria-hidden="true" />}
         <input
           id={id}
+          name={login ? 'password' : undefined}
           type={shown ? 'text' : 'password'}
-          autoComplete="off"
+          {...(login ? { autoComplete: 'current-password' } : { autoComplete: 'off', 'data-1p-ignore': '', 'data-lpignore': 'true', 'data-bwignore': '', 'data-protonpass-ignore': '' })}
           spellCheck="false"
           value={value}
           autoFocus={autoFocus}
@@ -224,6 +230,7 @@ export function ExportCard({ adminKey, twoFactor: twoFactorOn, onLocked }) {
 
       <form onSubmit={run} className="bk-actions">
         <KeyField
+          login
           value={key}
           onChange={setKey}
           label={t('adminKey', { defaultValue: 'Admin key' })}
@@ -393,7 +400,7 @@ export function ImportCard({ adminKey, twoFactor: twoFactorOn, onLocked }) {
             <strong>{file ? file.name : t('import.choose', { defaultValue: 'Choose a backup file' })}</strong>
             {file && <small>{bytes(file.size)}</small>}
           </label>
-          <KeyField value={key} onChange={setKey} label={t('adminKey', { defaultValue: 'Admin key' })} />
+          <KeyField login value={key} onChange={setKey} label={t('adminKey', { defaultValue: 'Admin key' })} />
           <label className="bk-check">
             <input type="checkbox" checked={otherKey} onChange={(event) => setOtherKey(event.target.checked)} />
             {t('import.otherKey', { defaultValue: 'The backup was made with a different admin key' })}

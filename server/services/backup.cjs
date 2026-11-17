@@ -70,6 +70,8 @@ const EXCLUDED = [
   "server/services/db/hub-sessions.json",
   // The hub's live activity feed (last 7 days, rebuilt by itself).
   "server/services/db/hub-live.jsonl",
+  // Running hub terminals (sockets of live shells; meaningless anywhere else).
+  "server/services/db/hub-terminal/",
 ];
 
 // Used when git isn't available.

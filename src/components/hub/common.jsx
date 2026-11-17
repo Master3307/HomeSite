@@ -137,11 +137,13 @@ export function CopyButton({ text, label = 'Copy', className = 'hub-icon-button'
 }
 
 /** Data from a hub GET route, with reload. */
+/** Loads a hub route (again every `interval` ms); `path` null loads nothing. */
 export function useHubData(path, params, { interval = 0, onLocked } = {}) {
-  const [state, setState] = useState({ data: null, error: null, loading: true })
+  const [state, setState] = useState({ data: null, error: null, loading: Boolean(path) })
   const [version, setVersion] = useState(0)
   const key = JSON.stringify(params ?? {})
   useEffect(() => {
+    if (!path) return undefined
     let active = true
     let timer = null
     const load = async () => {

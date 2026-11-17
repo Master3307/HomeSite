@@ -7,6 +7,12 @@ import { CodeField } from '/src/components/admin/BackupCards'
 import '/src/styles/settings-workspace.css'
 
 /*
+ * Settings values (SMTP password, tokens …) are not logins of this site:
+ * password managers neither offer to save them nor fill them in.
+ */
+const NOT_A_LOGIN = { autoComplete: 'off', 'data-1p-ignore': '', 'data-lpignore': 'true', 'data-bwignore': '', 'data-protonpass-ignore': '', 'data-form-type': 'other' }
+
+/*
  * Every .env setting as a form (config/settings.cjs describes them), in
  * clickable tabs: an overview, one tab per section, custom values and any
  * extra tabs (backup & restore, Bongo Cat assets in /hub).
@@ -37,7 +43,7 @@ const STATE_LABELS = {
   missing: 'Optional',
 }
 
-export const RESTART_LABELS = {
+const RESTART_LABELS = {
   bot: { icon: 'smart_toy', label: 'Discord bot', command: 'pnpm bot' },
   accounts: { icon: 'manage_accounts', label: 'Account API', command: 'pnpm accounts' },
   profile: { icon: 'badge', label: 'Profile API', command: 'pnpm discord' },
@@ -200,7 +206,7 @@ function Setting(props) {
             <input
               id={inputId}
               type="password"
-              autoComplete="new-password"
+              {...NOT_A_LOGIN}
               spellCheck={false}
               disabled={removing}
               placeholder={entry.set ? '•••••••• saved · type to replace' : entry.generate ? 'Empty · generate one →' : 'Empty'}
@@ -598,7 +604,7 @@ export default function SettingsWorkspace({ api, twoFactor: twoFactorOn, onLocke
               />
               <input
                 type="password"
-                autoComplete="new-password"
+                {...NOT_A_LOGIN}
                 placeholder="Value"
                 disabled={!validNewName}
                 value={drafts[newName] ?? ''}

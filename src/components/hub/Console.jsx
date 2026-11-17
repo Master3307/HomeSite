@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -8,6 +8,7 @@ import '/src/styles/nerd-font.css'
 
 import { ACCOUNT_API_URL, hubGet, hubSend, terminalSocketUrl } from '/src/lib/hub'
 import { copyText, Empty, ErrorNote, Icon } from './common'
+import ContextMenu from './ContextMenu'
 
 /*
  * The server terminal (server/services/hubTerminal.cjs). A real pty with
@@ -87,6 +88,16 @@ const KEYS = [
 ]
 
 const INPUT_KEY = 'hub.terminal.input'
+// The tab order and names you gave the terminals (this browser only).
+const ORDER_KEY = 'hub.terminal.order'
+const NAMES_KEY = 'hub.terminal.names'
+const readJson = (key, fallback) => {
+  try {
+    return JSON.parse(localStorage.getItem(key)) ?? fallback
+  } catch {
+    return fallback
+  }
+}
 const touchDevice = () => window.matchMedia?.('(pointer: coarse)').matches ?? false
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('motion-reduce') || document.documentElement.classList.contains('motion-none')
 
@@ -143,13 +154,17 @@ function connect(sessionId, { onOutput, onReset, onExit, onState, getOffset }) {
   let pending = ''
   let flushTimer = null
   let lastSize = null
+  // Keys typed while there's no connection (the account API restarting): sent in order once it's back.
+  let queued = ''
+  let streamOpen = false
 
   const flushHttp = () => {
     flushTimer = null
     if (!pending) return
     const data = pending
     pending = ''
-    hubSend(`/hub/terminal/${sessionId}/input`, { d: data }).catch(() => {})
+    // Not delivered (the API went away): back in the queue, sent first when it's back.
+    hubSend(`/hub/terminal/${sessionId}/input`, { d: data }).catch(() => (queued = data + queued))
   }
 
   const handle = (message) => {
@@ -169,6 +184,10 @@ function connect(sessionId, { onOutput, onReset, onExit, onState, getOffset }) {
       clearTimeout(timeout)
       onState('ws')
       if (lastSize) socket.send(JSON.stringify({ t: 'r', c: lastSize.cols, r: lastSize.rows }))
+      if (queued) {
+        socket.send(JSON.stringify({ t: 'i', d: queued }))
+        queued = ''
+      }
     }
     socket.onmessage = (event) => {
       try {
@@ -199,7 +218,13 @@ function connect(sessionId, { onOutput, onReset, onExit, onState, getOffset }) {
     source = new EventSource(url, { withCredentials: true })
     source.onopen = () => {
       onState('http')
+      streamOpen = true
       if (lastSize) hubSend(`/hub/terminal/${sessionId}/resize`, lastSize).catch(() => {})
+      if (queued) {
+        pending = queued + pending
+        queued = ''
+        flushHttp()
+      }
     }
     source.onmessage = (event) => {
       try {
@@ -209,6 +234,7 @@ function connect(sessionId, { onOutput, onReset, onExit, onState, getOffset }) {
       }
     }
     source.onerror = () => {
+      streamOpen = false
       source.close()
       source = null
       if (closed) return
@@ -239,10 +265,10 @@ function connect(sessionId, { onOutput, onReset, onExit, onState, getOffset }) {
   return {
     send(data) {
       if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ t: 'i', d: data }))
-      else {
+      else if (mode === 'http' && streamOpen) {
         pending += data
         if (!flushTimer) flushTimer = setTimeout(flushHttp, 25)
-      }
+      } else queued += data
     },
     resize(cols, rows) {
       lastSize = { cols, rows }
@@ -309,7 +335,121 @@ function TextView({ text, onClose }) {
   )
 }
 
-function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyping, onTitle, onExited }) {
+/* Saves the whole output as a .txt file (in the app through Android's Save as, src/lib/native.js). */
+function saveOutput(term, name) {
+  const text = bufferText(term, term.buffer.active.length)
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+  const slug = String(name || 'terminal').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'terminal'
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(new Blob([`${text}\n`], { type: 'text/plain' }))
+  link.download = `${slug}-${stamp}.txt`
+  // In the page, so the app's download handler (a capture-phase listener) sees the click.
+  document.body.append(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(link.href), 2000)
+}
+
+/* Every place `query` appears in the output (case-insensitive), oldest first; capped. */
+function findAll(term, query) {
+  const buffer = term.buffer.active
+  const needle = query.toLowerCase()
+  const found = []
+  if (!needle) return found
+  for (let row = 0; row < buffer.length && found.length < 2000; row++) {
+    const text = buffer.getLine(row)?.translateToString(true).toLowerCase()
+    if (!text) continue
+    for (let at = text.indexOf(needle); at !== -1 && found.length < 2000; at = text.indexOf(needle, at + needle.length)) found.push({ row, col: at })
+  }
+  return found
+}
+
+/*
+ * Find in the output (Ctrl+Shift+F or the menu). Starts at the newest
+ * match; Enter goes further back, Shift+Enter forward. The match is
+ * selected (so Ctrl+Shift+C copies it) and scrolled to the middle.
+ */
+function FindBar({ term, onClose }) {
+  const [query, setQuery] = useState('')
+  const [result, setResult] = useState(null)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+    inputRef.current?.select()
+  }, [])
+
+  const show = (text, pick) => {
+    const matches = findAll(term, text)
+    if (!matches.length) {
+      term.clearSelection()
+      setResult(text ? { index: -1, total: 0 } : null)
+      return
+    }
+    const index = Math.max(0, Math.min(matches.length - 1, pick(matches)))
+    const match = matches[index]
+    term.select(match.col, match.row, text.length)
+    term.scrollToLine(Math.max(0, match.row - Math.floor(term.rows / 2)))
+    setResult({ index, total: matches.length, row: match.row, col: match.col })
+  }
+  // Older / newer than the match shown now (found again each time: the output keeps changing).
+  const step = (direction) =>
+    show(query, (matches) => {
+      if (!result || result.index < 0) return matches.length - 1
+      const here = matches.findIndex((match) => match.row > result.row || (match.row === result.row && match.col >= result.col))
+      const current = here === -1 ? matches.length : here
+      const next = direction < 0 ? current - 1 : current + (matches[current]?.row === result.row && matches[current]?.col === result.col ? 1 : 0)
+      return (next + matches.length) % matches.length
+    })
+
+  const close = () => {
+    term.clearSelection()
+    onClose()
+  }
+
+  return (
+    <div className="hub-term__find" role="search">
+      <Icon name="search" />
+      <input
+        ref={inputRef}
+        type="search"
+        name="terminal-find"
+        aria-label="Find in the output"
+        placeholder="Find in the output"
+        value={query}
+        autoComplete="off"
+        spellCheck={false}
+        onChange={(event) => {
+          setQuery(event.target.value)
+          show(event.target.value, (matches) => matches.length - 1)
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            step(event.shiftKey ? 1 : -1)
+          } else if (event.key === 'Escape') {
+            event.preventDefault()
+            close()
+          }
+        }}
+      />
+      <span className="hub-term__find-count" aria-live="polite">
+        {result ? (result.total ? `${result.index + 1} / ${result.total}` : 'No match') : ''}
+      </span>
+      <button type="button" className="hub-icon-button" title="Older (Enter)" disabled={!result?.total} onClick={() => step(-1)}>
+        <Icon name="keyboard_arrow_up" />
+      </button>
+      <button type="button" className="hub-icon-button" title="Newer (Shift+Enter)" disabled={!result?.total} onClick={() => step(1)}>
+        <Icon name="keyboard_arrow_down" />
+      </button>
+      <button type="button" className="hub-icon-button" title="Close (Esc)" onClick={close}>
+        <Icon name="close" />
+      </button>
+    </div>
+  )
+}
+
+function TerminalView({ session, name, active, fontSize, setFontSize, inputMode, onTyping, onTitle, onExited, onActivity, onClose }) {
   const box = useRef(null)
   const termRef = useRef(null)
   const linkRef = useRef(null)
@@ -324,8 +464,15 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
   const [mod, setMod] = useState(null)
   const [textView, setTextView] = useState(null)
   const [scrolledUp, setScrolledUp] = useState(false)
+  const [menu, setMenu] = useState(null)
+  const [finding, setFinding] = useState(false)
+  const [ringing, setRinging] = useState(false)
+  const activeRef = useRef(active)
+  // Output while another tab is shown marks that tab (not the history replayed right after connecting).
+  const liveSince = useRef(Infinity)
   modeRef.current = inputMode
   fontRef.current = fontSize
+  activeRef.current = active
 
   const setModifier = (next) => {
     modifier.current = next
@@ -347,11 +494,17 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
       cursorStyle: 'bar',
       // The typing field has the focus on phones; the cursor stays a bar instead of an outline.
       cursorInactiveStyle: 'bar',
-      scrollback: 10_000,
+      scrollback: 20_000,
       allowProposedApi: true,
       macOptionIsMeta: true,
       rightClickSelectsWord: true,
-      smoothScrollDuration: 80,
+      // Scrolling follows the wheel / finger at once (a smoothing delay made it trail behind).
+      smoothScrollDuration: 0,
+      // A wheel step moves a useful amount (xterm's default felt like crawling through long output).
+      scrollSensitivity: 5,
+      // Alt + wheel: through the history fast.
+      fastScrollModifier: 'alt',
+      fastScrollSensitivity: 8,
       theme: THEME,
     })
     const fit = new FitAddon()
@@ -364,9 +517,28 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
     termRef.current = { term, fit }
 
     // Ctrl+Shift+C copies, Ctrl+Shift+V pastes (Ctrl+C stays an interrupt).
+    // Shift+PageUp / PageDown scroll the history a page, Shift+Home / End to its start / end (like other terminals).
     term.attachCustomKeyEventHandler((event) => {
       if (event.type !== 'keydown') return true
       const key = event.key.toLowerCase()
+      if (event.shiftKey && !event.ctrlKey && !event.altKey && term.buffer.active.type === 'normal') {
+        const scroll = { pageup: () => term.scrollPages(-1), pagedown: () => term.scrollPages(1), home: () => term.scrollToTop(), end: () => term.scrollToBottom() }[key]
+        if (scroll) {
+          scroll()
+          event.preventDefault()
+          return false
+        }
+      }
+      if (event.ctrlKey && event.shiftKey && key === 'f') {
+        setFinding(true)
+        event.preventDefault()
+        return false
+      }
+      if (event.ctrlKey && event.shiftKey && key === 'a') {
+        term.selectAll()
+        event.preventDefault()
+        return false
+      }
       if (event.ctrlKey && event.shiftKey && key === 'c') {
         const selection = term.getSelection()
         if (selection) navigator.clipboard?.writeText(selection).catch(() => {})
@@ -386,13 +558,20 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
       onOutput: (data, offset) => {
         term.write(data)
         offsetRef.current = offset
+        if (!activeRef.current && performance.now() - liveSince.current > 1500) onActivity(session.id, 'output')
       },
-      onReset: () => term.reset(),
+      onReset: () => {
+        term.reset()
+        liveSince.current = performance.now()
+      },
       onExit: () => {
         setState('exited')
         onExited(session.id)
       },
-      onState: (next) => setState((current) => (current === 'exited' ? current : next)),
+      onState: (next) => {
+        if (next === 'ws' || next === 'http') liveSince.current = performance.now()
+        setState((current) => (current === 'exited' ? current : next))
+      },
       getOffset: () => offsetRef.current,
     })
     linkRef.current = link
@@ -406,15 +585,30 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
       link.send(out)
     })
     term.onTitleChange((title) => onTitle(session.id, title))
-    // "Back to the end" shows while you read older output.
-    term.onScroll(() => {
-      const buffer = term.buffer.active
-      setScrolledUp(buffer.viewportY < buffer.baseY)
+    // The bell (e.g. a finished job with `; printf '\\a'`): a short flash here, or a mark on the tab.
+    let ringTimer = null
+    term.onBell(() => {
+      if (!activeRef.current) {
+        onActivity(session.id, 'bell')
+        return
+      }
+      if (reducedMotion()) return
+      setRinging(true)
+      clearTimeout(ringTimer)
+      ringTimer = setTimeout(() => setRinging(false), 320)
     })
-    term.onWriteParsed(() => {
+    // "Back to the end" shows while you read older output (only re-rendered when that changes, not per output chunk).
+    let up = false
+    const checkScrolled = () => {
       const buffer = term.buffer.active
-      setScrolledUp(buffer.viewportY < buffer.baseY)
-    })
+      const next = buffer.viewportY < buffer.baseY
+      if (next !== up) {
+        up = next
+        setScrolledUp(next)
+      }
+    }
+    term.onScroll(checkScrolled)
+    term.onWriteParsed(checkScrolled)
 
     // xterm measures the font once; measure again when the web font arrives.
     document.fonts
@@ -476,6 +670,7 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
     }
 
     let touch = null
+    let heldOpen = false
     let glide = 0
     const stopGlide = () => {
       cancelAnimationFrame(glide)
@@ -486,12 +681,21 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
     const onTouchStart = (event) => {
       stopGlide()
       if (event.touches.length === 2) {
+        clearTimeout(touch?.hold)
         touch = { pinch: distance(event.touches), font: fontRef.current, moved: true }
         return
       }
       if (event.touches.length !== 1) return
       const point = event.touches[0]
       touch = { startY: point.clientY, startX: point.clientX, lastY: point.clientY, lastTime: performance.now(), velocity: 0, rest: 0, moved: false }
+      // Holding a finger still opens the menu (copy, paste, find, …).
+      const held = touch
+      held.hold = setTimeout(() => {
+        if (touch !== held || held.moved) return
+        touch = null
+        heldOpen = true
+        setMenu({ x: held.startX, y: held.startY })
+      }, 550)
     }
     const onTouchMove = (event) => {
       if (!touch) return
@@ -505,6 +709,7 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
       const point = event.touches[0]
       if (!touch.moved && Math.abs(point.clientY - touch.startY) < 8 && Math.abs(point.clientX - touch.startX) < 8) return
       touch.moved = true
+      clearTimeout(touch.hold)
       event.preventDefault()
       const now = performance.now()
       const dy = touch.lastY - point.clientY
@@ -522,7 +727,14 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
       }
     }
     const onTouchEnd = (event) => {
+      // Lifting the finger after a long press: no click (it would focus the typing field and close the menu).
+      if (heldOpen && !event.touches.length) {
+        heldOpen = false
+        if (event.cancelable) event.preventDefault()
+        return
+      }
       if (!touch) return
+      clearTimeout(touch.hold)
       const ended = touch
       if (event.touches.length) return
       touch = null
@@ -561,6 +773,21 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
       if (modeRef.current === 'line' && !term.hasSelection()) inputRef.current?.focus({ preventScroll: true })
     }
     screen.addEventListener('click', onClick)
+    // Right click: our menu (xterm has already selected the word under it). Shift + right click: the browser's.
+    const onContextMenu = (event) => {
+      if (event.shiftKey) return
+      event.preventDefault()
+      setMenu({ x: event.clientX, y: event.clientY })
+    }
+    // Ctrl + wheel (and a touchpad pinch): the text size, not the page zoom.
+    const onWheel = (event) => {
+      if (!event.ctrlKey) return
+      event.preventDefault()
+      event.stopPropagation()
+      setFontSize((value) => Math.min(24, Math.max(8, value + (event.deltaY < 0 ? 1 : -1))))
+    }
+    screen.addEventListener('contextmenu', onContextMenu)
+    screen.addEventListener('wheel', onWheel, { passive: false, capture: true })
     // Capture, so xterm doesn't also turn the touches into mouse selections.
     screen.addEventListener('touchstart', onTouchStart, { passive: true, capture: true })
     screen.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
@@ -570,6 +797,9 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
     return () => {
       stopGlide()
       screen.removeEventListener('click', onClick)
+      screen.removeEventListener('contextmenu', onContextMenu)
+      screen.removeEventListener('wheel', onWheel, { capture: true })
+      clearTimeout(ringTimer)
       screen.removeEventListener('touchstart', onTouchStart, { capture: true })
       screen.removeEventListener('touchmove', onTouchMove, { capture: true })
       screen.removeEventListener('touchend', onTouchEnd, { capture: true })
@@ -704,6 +934,8 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
     if (event.nativeEvent.isComposing || event.keyCode === 229) return
     const empty = !field.value
     const term = termRef.current?.term
+    // Every key that goes to the shell shows the end of the output first (like typing in a terminal).
+    if (event.key !== 'Shift' && event.key !== 'Control' && event.key !== 'Alt' && event.key !== 'Meta') term?.scrollToBottom()
     if (event.key === 'Enter' && !event.shiftKey) {
       onSubmit(event)
       return
@@ -776,15 +1008,52 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
 
   const [icon, label, tone] = STATE_LABELS[state] ?? STATE_LABELS.connecting
   const closeTextView = useCallback(() => setTextView(null), [])
+  const closeMenu = useCallback(() => setMenu(null), [])
+  const closeFind = useCallback(() => {
+    setFinding(false)
+    refocus()
+  }, [refocus])
+
+  const menuItems = () => {
+    const term = termRef.current?.term
+    if (!term) return []
+    const selected = term.hasSelection()
+    const live = state !== 'exited'
+    const then = (action) => () => {
+      action()
+      refocus()
+    }
+    return [
+      { label: 'Copy', icon: 'content_copy', hint: 'Ctrl+Shift+C', disabled: !selected, onSelect: then(() => copyText(term.getSelection())) },
+      { label: 'Paste', icon: 'content_paste', hint: 'Ctrl+Shift+V', disabled: !live, onSelect: paste },
+      { label: 'Select all', icon: 'select_all', hint: 'Ctrl+Shift+A', onSelect: then(() => term.selectAll()) },
+      '-',
+      { label: 'Find…', icon: 'search', hint: 'Ctrl+Shift+F', onSelect: () => setFinding(true) },
+      { label: 'Show as text', icon: 'article', onSelect: () => setTextView(bufferText(term)) },
+      { label: 'Save output as file', icon: 'download', onSelect: then(() => saveOutput(term, name)) },
+      '-',
+      { label: 'Larger text', icon: 'text_increase', hint: 'Ctrl+wheel', onSelect: then(() => setFontSize((value) => Math.min(24, value + 1))) },
+      { label: 'Smaller text', icon: 'text_decrease', onSelect: then(() => setFontSize((value) => Math.max(8, value - 1))) },
+      { label: 'To the top', icon: 'vertical_align_top', hint: 'Shift+Home', onSelect: then(() => term.scrollToTop()) },
+      { label: 'To the end', icon: 'vertical_align_bottom', hint: 'Shift+End', onSelect: then(() => term.scrollToBottom()) },
+      '-',
+      { label: 'Clear screen', icon: 'mop', onSelect: then(() => term.clear()) },
+      live && { label: 'Interrupt (Ctrl+C)', icon: 'block', onSelect: then(() => send('\x03')) },
+      { label: 'Close terminal', icon: 'close', hint: 'Middle click on its tab', danger: true, onSelect: () => onClose(session.id) },
+    ]
+  }
 
   return (
-    <div className={`hub-term${active ? ' is-active' : ''}`} hidden={!active}>
+    <div className={`hub-term${active ? ' is-active' : ''}${ringing ? ' is-ringing' : ''}`} hidden={!active}>
       <div className="hub-term__bar">
         <span className={`hub-term__state hub-tone--${tone}`} title={label}>
           <Icon name={icon} />
           <span className="hub-term__label">{label}</span>
         </span>
         <span className="hub-term__tools">
+          <button type="button" className="hub-icon-button" title="Find (Ctrl+Shift+F)" aria-pressed={finding} onClick={() => (finding ? closeFind() : setFinding(true))}>
+            <Icon name="search" />
+          </button>
           <button type="button" className="hub-icon-button" title="Show as text (select and copy)" onClick={() => setTextView(bufferText(termRef.current.term))}>
             <Icon name="article" />
           </button>
@@ -814,7 +1083,9 @@ function TerminalView({ session, active, fontSize, setFontSize, inputMode, onTyp
           </button>
         )}
         {textView !== null && <TextView text={textView} onClose={closeTextView} />}
+        {finding && termRef.current && <FindBar term={termRef.current.term} onClose={closeFind} />}
       </div>
+      {menu && <ContextMenu x={menu.x} y={menu.y} label="Terminal" tone="dark" items={menuItems()} onClose={closeMenu} />}
       {inputMode === 'line' && (
         <form className="hub-term__input" onSubmit={onSubmit}>
           <span className="hub-term__prompt" aria-hidden="true">
@@ -874,7 +1145,38 @@ export default function Console({ onLocked }) {
   const [fontSize, setFontSize] = useState(readFont)
   const [inputMode, setInputMode] = useState(readInputMode)
   const [fullscreen, setFullscreen] = useState(false)
+  const [order, setOrder] = useState(() => readJson(ORDER_KEY, []))
+  const [names, setNames] = useState(() => readJson(NAMES_KEY, {}))
+  const [renaming, setRenaming] = useState(null)
+  const [unread, setUnread] = useState({}) // id -> 'output' | 'bell'
+  const [menu, setMenu] = useState(null) // { x, y, id }
+  const [dragging, setDragging] = useState(null)
   const consoleRef = useRef(null)
+  const tabsRef = useRef(null)
+  const dragged = useRef(false)
+
+  // The tabs in your order; new ones at the end.
+  const sessions = useMemo(() => {
+    const rank = new Map(order.map((id, index) => [id, index]))
+    return [...(info?.sessions ?? [])].sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity))
+  }, [info, order])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ORDER_KEY, JSON.stringify(order))
+      localStorage.setItem(NAMES_KEY, JSON.stringify(names))
+    } catch {
+      // storage blocked
+    }
+  }, [order, names])
+
+  // Opening a tab: its mark goes (the shown tab never has one).
+  const showTab = (id) => {
+    setActiveId(id)
+    setUnread((current) => (current[id] ? Object.fromEntries(Object.entries(current).filter(([key]) => key !== id)) : current))
+  }
+
+  const onActivity = useCallback((id, kind) => setUnread((current) => (current[id] === kind || current[id] === 'bell' ? current : { ...current, [id]: kind })), [])
 
   const refresh = useCallback(async () => {
     try {
@@ -943,6 +1245,7 @@ export default function Console({ onLocked }) {
     try {
       const session = await hubSend('/hub/terminal/sessions', { cols: 120, rows: 32 })
       setInfo((current) => ({ ...current, sessions: [...(current?.sessions ?? []), session] }))
+      setOrder((current) => [...current.filter((id) => id !== session.id), session.id])
       setActiveId(session.id)
     } catch (createError) {
       if (createError.locked) onLocked?.()
@@ -950,14 +1253,105 @@ export default function Console({ onLocked }) {
     }
   }
 
-  async function close(id) {
+  // Ends the shell. The tab next to it (in your order) becomes the shown one.
+  const close = useCallback(async (id) => {
+    const shown = sessions.map((entry) => entry.id)
+    const at = shown.indexOf(id)
+    const neighbour = shown[at + 1] ?? shown[at - 1] ?? null
+    setActiveId((current) => (current === id ? neighbour : current))
+    setInfo((current) => current && { ...current, sessions: current.sessions.filter((entry) => entry.id !== id) })
+    setOrder((current) => current.filter((entry) => entry !== id))
+    setNames((current) => (current[id] ? Object.fromEntries(Object.entries(current).filter(([key]) => key !== id)) : current))
     await hubSend(`/hub/terminal/${id}/close`).catch(() => {})
-    setInfo((current) => {
-      const sessions = current.sessions.filter((entry) => entry.id !== id)
-      if (activeId === id) setActiveId(sessions.at(-1)?.id ?? null)
-      return { ...current, sessions }
-    })
+  }, [sessions])
+
+  const moveTab = (id, to) => {
+    const ids = sessions.map((entry) => entry.id).filter((entry) => entry !== id)
+    ids.splice(Math.max(0, Math.min(ids.length, to)), 0, id)
+    setOrder(ids)
   }
+
+  const rename = (id, value) => {
+    const name = value.trim().slice(0, 40)
+    setNames((current) => {
+      const next = { ...current }
+      if (name) next[id] = name
+      else delete next[id]
+      return next
+    })
+    setRenaming(null)
+  }
+
+  /*
+   * Dragging a tab (mouse or pen) moves it: it follows the pointer and the
+   * others make room as it passes their middle. A drag never counts as a
+   * click. On touch the row scrolls instead; a long press opens the tab's
+   * menu (move left / right there).
+   */
+  const onTabPointerDown = (event, id) => {
+    if (event.button !== 0 || event.pointerType === 'touch' || renaming === id) return
+    const tab = event.currentTarget
+    const startX = event.clientX
+    const grab = startX - tab.getBoundingClientRect().left
+    let moving = false
+    dragged.current = false
+    const onMove = (move) => {
+      if (!moving) {
+        if (Math.abs(move.clientX - startX) < 6) return
+        moving = true
+        dragged.current = true
+        setDragging(id)
+        tab.setPointerCapture?.(event.pointerId)
+      }
+      const others = [...tabsRef.current.querySelectorAll('[data-tab]')].filter((element) => element.dataset.tab !== id)
+      const to = others.filter((element) => {
+        const box = element.getBoundingClientRect()
+        return box.left + box.width / 2 < move.clientX
+      }).length
+      const ids = others.map((element) => element.dataset.tab)
+      if (ids[to - 1] !== undefined || to === 0) {
+        const current = [...tabsRef.current.querySelectorAll('[data-tab]')].map((element) => element.dataset.tab)
+        if (current.indexOf(id) !== to) {
+          ids.splice(to, 0, id)
+          setOrder(ids)
+        }
+      }
+      // Follow the pointer from wherever its slot is now.
+      tab.style.transform = ''
+      const slot = tab.getBoundingClientRect().left
+      tab.style.transform = `translateX(${move.clientX - grab - slot}px)`
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      tab.style.transform = ''
+      setDragging(null)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+  }
+
+  const tabMenu = (id) => {
+    const ids = sessions.map((entry) => entry.id)
+    const at = ids.indexOf(id)
+    const rest = ids.filter((entry) => entry !== id)
+    const right = ids.slice(at + 1)
+    return [
+      { label: 'Rename', icon: 'edit', hint: 'Double click', onSelect: () => setRenaming(id) },
+      { label: 'New terminal', icon: 'add', onSelect: create },
+      '-',
+      { label: 'Move left', icon: 'chevron_left', disabled: at <= 0, onSelect: () => moveTab(id, at - 1) },
+      { label: 'Move right', icon: 'chevron_right', disabled: at >= ids.length - 1, onSelect: () => moveTab(id, at + 1) },
+      '-',
+      { label: 'Close the others', icon: 'tab_close', disabled: !rest.length, onSelect: () => rest.forEach(close) },
+      { label: 'Close the ones to the right', icon: 'tab_close_right', disabled: !right.length, onSelect: () => right.forEach(close) },
+      { label: 'Close', icon: 'close', hint: 'Middle click', danger: true, onSelect: () => close(id) },
+    ]
+  }
+  const closeMenu = useCallback(() => setMenu(null), [])
+
 
   const onTitle = useCallback((id, title) => setTitles((current) => ({ ...current, [id]: title })), [])
   const onExited = useCallback((id) => setInfo((current) => current && { ...current, sessions: current.sessions.map((entry) => (entry.id === id ? { ...entry, exited: true } : entry)) }), [])
@@ -977,18 +1371,72 @@ export default function Console({ onLocked }) {
   return (
     <div ref={consoleRef} className={`hub-console${fullscreen ? ' is-fullscreen' : ''}`}>
       <div className="hub-console__head">
-        <div className="hub-console__tabs" role="tablist">
-          {info.sessions.map((session, index) => (
-            <div key={session.id} role="tab" aria-selected={session.id === activeId} className={`hub-console__tab${session.id === activeId ? ' is-active' : ''}${session.exited ? ' is-exited' : ''}`}>
-              <button type="button" onClick={() => setActiveId(session.id)}>
-                <Icon name={session.exited ? 'power_settings_new' : 'terminal'} />
-                <span>{titles[session.id] || session.title || `Terminal ${index + 1}`}</span>
-              </button>
-              <button type="button" className="hub-console__close" title="Close (ends the shell)" onClick={() => close(session.id)}>
-                <Icon name="close" />
-              </button>
-            </div>
-          ))}
+        <div ref={tabsRef} className="hub-console__tabs" role="tablist">
+          {sessions.map((session, index) => {
+            const title = names[session.id] || titles[session.id] || session.title || `Terminal ${index + 1}`
+            const mark = session.id === activeId ? null : unread[session.id]
+            return (
+              <div
+                key={session.id}
+                data-tab={session.id}
+                role="tab"
+                aria-selected={session.id === activeId}
+                title={`${title} · double click to rename, middle click to close, drag to move`}
+                className={`hub-console__tab${session.id === activeId ? ' is-active' : ''}${session.exited ? ' is-exited' : ''}${dragging === session.id ? ' is-dragging' : ''}${mark ? ` has-${mark}` : ''}`}
+                onPointerDown={(event) => onTabPointerDown(event, session.id)}
+                // The middle button closes (and must not start the browser's auto-scroll).
+                onMouseDown={(event) => event.button === 1 && event.preventDefault()}
+                onAuxClick={(event) => {
+                  if (event.button !== 1) return
+                  event.preventDefault()
+                  close(session.id)
+                }}
+                onContextMenu={(event) => {
+                  event.preventDefault()
+                  setMenu({ x: event.clientX, y: event.clientY, id: session.id })
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (dragged.current) {
+                      dragged.current = false
+                      return
+                    }
+                    showTab(session.id)
+                  }}
+                  onDoubleClick={() => setRenaming(session.id)}
+                >
+                  <Icon name={session.exited ? 'power_settings_new' : 'terminal'} />
+                  {renaming === session.id ? (
+                    <input
+                      className="hub-console__rename"
+                      aria-label="Terminal name"
+                      defaultValue={names[session.id] || ''}
+                      placeholder={titles[session.id] || session.title || `Terminal ${index + 1}`}
+                      maxLength={40}
+                      autoFocus
+                      onFocus={(event) => event.target.select()}
+                      onClick={(event) => event.stopPropagation()}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => {
+                        event.stopPropagation()
+                        if (event.key === 'Enter') rename(session.id, event.currentTarget.value)
+                        if (event.key === 'Escape') setRenaming(null)
+                      }}
+                      onBlur={(event) => rename(session.id, event.currentTarget.value)}
+                    />
+                  ) : (
+                    <span>{title}</span>
+                  )}
+                  {mark && <span className="hub-console__mark" aria-label={mark === 'bell' ? 'Rang the bell' : 'New output'} />}
+                </button>
+                <button type="button" className="hub-console__close" title="Close (ends the shell) · middle click" onClick={() => close(session.id)}>
+                  <Icon name="close" />
+                </button>
+              </div>
+            )
+          })}
           <button type="button" className="hub-console__new" title="New terminal" onClick={create}>
             <Icon name="add" />
           </button>
@@ -1017,11 +1465,16 @@ export default function Console({ onLocked }) {
 
       <ErrorNote error={error} />
 
+      {menu && <ContextMenu x={menu.x} y={menu.y} label="Terminal tab" items={tabMenu(menu.id)} onClose={closeMenu} />}
+
       {info.sessions.length ? (
-        info.sessions.map((session) => (
+        info.sessions.map((session, index) => (
           <TerminalView
             key={session.id}
             session={session}
+            name={names[session.id] || titles[session.id] || session.title || `Terminal ${index + 1}`}
+            onActivity={onActivity}
+            onClose={close}
             active={session.id === activeId}
             fontSize={fontSize}
             setFontSize={setFontSize}

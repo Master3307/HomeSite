@@ -103,9 +103,12 @@ function Login({ session, onDone }) {
         </p>
         {!viaDiscord && (
           <>
+            {/* Password managers keep the key as the "hub" login of this site. */}
+            <input className="sr-only" type="text" name="username" autoComplete="username" value="hub" readOnly tabIndex={-1} aria-hidden="true" />
             <label htmlFor="hub-key">{!session.hubKeySet ? 'Admin key' : session.adminKeyAllowed ? 'Hub key or admin key' : 'Hub key'}</label>
             <input
               id="hub-key"
+              name="password"
               className="hub-input"
               type="password"
               autoComplete="current-password"
@@ -122,6 +125,7 @@ function Login({ session, onDone }) {
             <label htmlFor="hub-code">Authenticator code</label>
             <input
               id="hub-code"
+              name="totp"
               className="hub-input hub-login__code"
               inputMode="numeric"
               autoComplete="one-time-code"
@@ -349,9 +353,14 @@ export default function Hub() {
     return () => document.removeEventListener('keydown', onKey)
   }, [moreOpen])
 
+  // The console, once opened, stays mounted (see below).
+  const [consoleOpened, setConsoleOpened] = useState(tab === 'console')
+  if (tab === 'console' && !consoleOpened) setConsoleOpened(true)
+
   const onLocked = useCallback(() => setSession((current) => (current ? { ...current, authenticated: false } : current)), [])
   const authenticated = Boolean(session?.authenticated)
-  const overview = useHubData(authenticated ? '/hub/overview' : '/hub/session', null, { interval: authenticated ? 30_000 : 0, onLocked })
+  // Locked: checkSession above already asked; nothing more to load.
+  const overview = useHubData(authenticated ? '/hub/overview' : null, null, { interval: authenticated ? 30_000 : 0, onLocked })
   const data = authenticated && overview.data?.services ? overview.data : null
   const current = TABS.find((entry) => entry.id === tab)
 
@@ -370,11 +379,8 @@ export default function Hub() {
       case 'commands':
         return <Commands onLocked={onLocked} />
       case 'console':
-        return (
-          <Suspense fallback={<div className="hub-loading">Loading the terminal…</div>}>
-            <Console onLocked={onLocked} />
-          </Suspense>
-        )
+        // Rendered below, kept alive across tabs.
+        return null
       case 'logs':
         return <Logs onLocked={onLocked} />
       case 'database':
@@ -487,6 +493,20 @@ export default function Hub() {
           </header>
         )}
         <TabBoundary key={tab}>{content()}</TabBoundary>
+        {/*
+          The console stays mounted (hidden) once opened: its sessions keep their
+          connection, output and scroll position while other tabs are open,
+          instead of being rebuilt from the server's replay each time.
+        */}
+        {consoleOpened && (
+          <div className="hub-console-keep" hidden={tab !== 'console'}>
+            <TabBoundary>
+              <Suspense fallback={<div className="hub-loading">Loading the terminal…</div>}>
+                <Console onLocked={onLocked} />
+              </Suspense>
+            </TabBoundary>
+          </div>
+        )}
       </main>
     </div>
   )

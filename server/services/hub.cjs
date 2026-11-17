@@ -13,6 +13,7 @@ const backup = require("./backup.cjs");
 const hubLogs = require("./hubLogs.cjs");
 const { createHubDb } = require("./hubDb.cjs");
 const { registerTerminal, attachTerminalSockets, terminalEnabled } = require("./hubTerminal.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * /hub (account API): one place for members, live activity, bot commands,
@@ -49,10 +50,6 @@ const adminKeyAllowed = () => twoFactorEnabled() || !hubKey();
 const OFF_MESSAGE = "The hub is off: set HUB_KEY (or at least ADMIN_KEY) in the settings (pnpm setup:gui) and restart the account API.";
 const sha256 = (value) => crypto.createHash("sha256").update(String(value)).digest();
 const tokenHash = (token) => sha256(token).toString("hex");
-
-function httpError(status, message, extra = {}) {
-  return Object.assign(new Error(message), { status, ...extra });
-}
 
 function keyMatches(received) {
   const expected = hubKey();
@@ -104,7 +101,9 @@ const sessions = (() => {
     saveTimer = setTimeout(() => {
       try {
         fs.mkdirSync(path.dirname(SESSIONS_FILE), { recursive: true });
-        fs.writeFileSync(SESSIONS_FILE, JSON.stringify(Object.fromEntries(map)), { mode: 0o600 });
+        const temporary = `${SESSIONS_FILE}.${process.pid}.tmp`;
+        fs.writeFileSync(temporary, JSON.stringify(Object.fromEntries(map)), { mode: 0o600 });
+        fs.renameSync(temporary, SESSIONS_FILE);
       } catch (error) {
         console.error("[Hub] Could not save sessions:", error.message);
       }
@@ -354,7 +353,8 @@ function registerHub(app, { getRequestSession, toPublicUser, getDatabase, activi
     const holders = [session?.id ? `hub:${session.id}` : null, account?.session_id ? `account:${account.session_id}` : null];
     // Until when a 2FA code from a moment ago still counts (the page skips the code field).
     base.twoFactorFreshUntil = twoFactorFreshUntil(holders);
-    if (!session) return res.status(401).json({ authenticated: false, ...base });
+    // Locked is a normal answer (the hub page and the profile API's pages ask), not an error.
+    if (!session) return res.json({ authenticated: false, ...base });
     return res.json({ authenticated: true, ...base, viaDiscord: Boolean(session.viaDiscord), expiresAt: new Date(session.expiresAt).toISOString(), terminal: terminalEnabled() });
   });
 

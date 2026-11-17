@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { ActivityType, ChannelType } = require("discord.js");
 const hubCommands = require("./hubCommands.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * /hub data from the bot (routes on the internal API, called by the account
@@ -25,10 +26,6 @@ const MEMBER_REFRESH_MS = 10 * 60 * 1000;
 const STATUS_RANK = { online: 0, idle: 1, dnd: 2, offline: 3 };
 
 const fetchedAt = new Map(); // guildId -> last full member fetch
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
 
 const isSnowflake = (value) => /^\d{17,20}$/.test(String(value ?? ""));
 
@@ -384,7 +381,8 @@ function emit(event) {
   if (recent.size > 500) for (const [entry, at] of recent) if (now - at > 10_000) recent.delete(entry);
   const entry = { id: ++liveSeq, at: new Date().toISOString(), ...event };
   live.push(entry);
-  if (live.length > LIVE_KEEP) live = live.slice(-LIVE_KEEP);
+  // One in, one out (no copy of the whole list per event).
+  while (live.length > LIVE_KEEP) live.shift();
   persist(entry);
   const data = `data: ${JSON.stringify(entry)}\n\n`;
   for (const res of subscribers) res.write(data);
