@@ -86,7 +86,17 @@ const FALLBACK_PATHS = [
 
 const toPosix = (value) => value.split(path.sep).join("/");
 
+/*
+ * The apps (app/): everything there is made again by `pnpm app:build`
+ * (Gradle output, the APKs / AABs, the copied site, generated configs),
+ * over 1.5 GB. Only what can't be made again goes into a backup: the
+ * signing key (losing it means no more updates on Google Play) and the
+ * Firebase config.
+ */
+const APP_KEPT = /^app\/(keys\/|google-services\.json$)/;
+
 function isExcluded(rel) {
+  if (rel.startsWith("app/") && !APP_KEPT.test(rel)) return true;
   if (rel.endsWith(".tmp") || /\.tmp$|\.[0-9a-f-]{36}\.tmp$/.test(rel)) return true;
   // Bongo Cat imports in progress (uploads, the next version, the one being replaced).
   if (/^server\/services\/db\/bongo-cat\/\.(uploads|next-[^/]+|old-[^/]+)\//.test(rel)) return true;
@@ -166,6 +176,16 @@ async function readJson(file, fallback) {
   }
 }
 
+/* .env and other files: written next to it, then renamed (never half-written). */
+async function writeFileSafely(file, text, mode) {
+  // An existing file keeps its permissions (other services may read it).
+  const existing = await fs.stat(file).catch(() => null);
+  const temporary = `${file}.${process.pid}.${Date.now()}.tmp`;
+  await fs.writeFile(temporary, text, { mode: existing ? existing.mode & 0o777 : mode });
+  if (existing) await fs.chmod(temporary, existing.mode & 0o777);
+  await fs.rename(temporary, file);
+}
+
 async function writeJson(file, value) {
   await fs.mkdir(path.dirname(file), { recursive: true });
   const temporary = `${file}.${crypto.randomUUID()}.tmp`;
@@ -213,6 +233,8 @@ async function describeFiles(files) {
 
 async function saveTimes(described, extra = {}) {
   const index = await loadTimes();
+  // Paths no longer backed up (e.g. the apps' build output) leave the index.
+  for (const rel of Object.keys(index.files)) if (isExcluded(rel)) delete index.files[rel];
   for (const file of described) {
     index.files[file.path] = { sha256: file.sha256, size: file.size, createdAt: file.createdAt };
   }
@@ -1001,6 +1023,15 @@ function mergeAccounts(localDb, backupPath, selected, report, strategy = "merge"
             continue;
           }
 
+          // Lobby cat taps / pets per member and day (Stats page): the higher count of each.
+          if (name === "lobby_daily" && !restore) {
+            localDb
+              .prepare("INSERT INTO lobby_daily (user_id, day, taps, pets) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, day) DO UPDATE SET taps = MAX(taps, excluded.taps), pets = MAX(pets, excluded.pets)")
+              .run(row.user_id, row.day, row.taps ?? 0, row.pets ?? 0);
+            report.rowsMerged += 1;
+            continue;
+          }
+
           if (name === "lobby_cat") {
             const local = localDb.prepare("SELECT * FROM lobby_cat WHERE user_id = ?").get(row.user_id);
             if (local && restore) {
@@ -1194,7 +1225,7 @@ async function applyImport({ planId, adminKey, localDb, choices, activity }) {
     if (Object.keys(changes).length) {
       const envPath = path.join(REPO_ROOT, ".env");
       const current = await fs.readFile(envPath, "utf8").catch(() => "");
-      await fs.writeFile(envPath, setEnvValues(current, changes, `Imported from the backup of ${new Date(plan.manifest.exportedAt ?? Date.now()).toISOString()}`), { mode: 0o600 });
+      await writeFileSafely(envPath, setEnvValues(current, changes, `Imported from the backup of ${new Date(plan.manifest.exportedAt ?? Date.now()).toISOString()}`), 0o600);
       report.envChanged = Object.keys(changes);
     }
   }
@@ -1316,7 +1347,7 @@ async function setEnv(changes) {
   // Previous version kept (it is in the next backup too).
   await fs.mkdir(BACKUP_DIR, { recursive: true, mode: 0o700 });
   await fs.writeFile(path.join(BACKUP_DIR, `env-${Date.now()}.bak`), current, { mode: 0o600 });
-  await fs.writeFile(envPath, setEnvValues(current, clean, `Added on the website ${new Date().toISOString()}`), { mode: 0o600 });
+  await writeFileSafely(envPath, setEnvValues(current, clean, `Added on the website ${new Date().toISOString()}`), 0o600);
   return Object.keys(clean);
 }
 
@@ -1336,7 +1367,7 @@ async function removeEnv(names) {
     const match = line.match(ENV_LINE);
     return !(match && remove.has(match[1]));
   });
-  await fs.writeFile(envPath, `${kept.join("\n").replace(/\n+$/, "")}\n`, { mode: 0o600 });
+  await writeFileSafely(envPath, `${kept.join("\n").replace(/\n+$/, "")}\n`, 0o600);
   return [...remove];
 }
 

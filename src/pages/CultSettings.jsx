@@ -11,6 +11,7 @@ import { useAccountSettings } from '/src/lib/accountSettings'
 import { useDashSettings, updateDashSettings } from '/src/lib/dashSettings'
 import { deleteAccount, forgetThisBrowser, GOODBYE_KEY, loadProfile, profilePath, updateProfile } from '/src/lib/members'
 import SecuritySettings from '/src/components/cult/SecuritySettings'
+import PushSettings from '/src/components/cult/PushSettings'
 import VisibilityChoice from '/src/components/cult/VisibilityChoice'
 import { loadStaff } from '/src/lib/moderation'
 import { timeOptions } from '/src/lib/prefs'
@@ -288,8 +289,9 @@ export default function CultSettings() {
 
             <Section icon="notifications" title={t('notify.title')} text={t('notify.text')}>
               <div id="notifications" className="notify-prefs">
+                <PushSettings />
                 {notifyCategories.map(([category, label, text]) => {
-                  const choice = { site: true, email: false, ...(prefs.notify?.[category] ?? {}) }
+                  const choice = { site: true, email: false, push: true, ...(prefs.notify?.[category] ?? {}) }
                   const change = (patch) => setPrefs({ notify: { ...(prefs.notify ?? {}), [category]: { ...choice, ...patch } } })
                   return (
                     <div key={category} className="notify-pref">
@@ -297,14 +299,20 @@ export default function CultSettings() {
                         <strong>{label}</strong>
                         <small>{text}</small>
                       </span>
-                      <label className="notify-pref__toggle">
-                        <input type="checkbox" checked={choice.site} onChange={(event) => change({ site: event.target.checked })} />
-                        {t('notify.site')}
-                      </label>
-                      <label className="notify-pref__toggle">
-                        <input type="checkbox" checked={choice.email} onChange={(event) => change({ email: event.target.checked })} />
-                        {t('notify.email')}
-                      </label>
+                      <span className="notify-pref__toggles">
+                        <label className="notify-pref__toggle">
+                          <input type="checkbox" checked={choice.site} onChange={(event) => change({ site: event.target.checked })} />
+                          {t('notify.site')}
+                        </label>
+                        <label className="notify-pref__toggle">
+                          <input type="checkbox" checked={choice.email} onChange={(event) => change({ email: event.target.checked })} />
+                          {t('notify.email')}
+                        </label>
+                        <label className="notify-pref__toggle">
+                          <input type="checkbox" checked={choice.push} onChange={(event) => change({ push: event.target.checked })} />
+                          {t('notify.push')}
+                        </label>
+                      </span>
                     </div>
                   )
                 })}

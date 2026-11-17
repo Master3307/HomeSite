@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Splash icon: HomeSiteIcon.svg (house + H), 240dp canvas, inside the 160dp circle. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="240dp"
+    android:height="240dp"
+    android:viewportWidth="240"
+    android:viewportHeight="240">
+    <group
+        android:scaleX="0.29297"
+        android:scaleY="0.29297"
+        android:translateX="45.0000"
+        android:translateY="45.0000">
+        <path
+            android:fillColor="#5416A4"
+            android:pathData="M245,26Q256,21 267,26L451,109Q472,118 472,141V466Q472,492 446,492H66Q40,492 40,466V141Q40,118 61,109Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M128,170H218V267H294V170H384V450H294V353H218V450H128Z" />
+    </group>
+</vector>

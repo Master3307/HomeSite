@@ -12,7 +12,7 @@
  *   customCss         the user's own CSS (max 20 000 characters)
  *   customCssEnabled  boolean
  *   blockInsights     boolean: stop Cloudflare's page analytics from sending anything
- *   notify            { [category]: { site: boolean, email: boolean } }
+ *   notify            { [category]: { site: boolean, email: boolean, push: boolean } }
  *   dash              the /dash start page: look, search engines, widgets (src/lib/dashSettings.js), plain JSON up to 80 KB
  *   _at               when the settings were last changed (ms, by the browser): the
  *                     newer side wins when a browser and the account disagree
@@ -91,7 +91,7 @@ function cleanSetting(key, value, languages) {
       const clean = {};
       for (const [category, choice] of Object.entries(value).slice(0, 20)) {
         if (!/^[a-z]{1,24}$/.test(category) || !choice || typeof choice !== "object") continue;
-        clean[category] = { site: choice.site !== false, email: choice.email === true };
+        clean[category] = { site: choice.site !== false, email: choice.email === true, push: choice.push !== false };
       }
       return { ok: true, value: clean };
     }

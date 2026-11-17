@@ -60,6 +60,8 @@ const FEATURES = [
   { id: "members", title: "Members & privacy", text: "Member profiles on /cult (bongo avatars, member list, reports), the privacy page, account deletion and the yearly cleanup of accounts that left the server." },
   { id: "email", title: "Email (login codes)", text: "Sends verification and login codes, so members can log in with a verified email and a password (accounts are still only created with Discord)." },
   { id: "hub", title: "Admin hub", text: "/hub: members, live activity, bot commands, logs, database, settings and a server terminal, behind the hub key (and 2FA when on)." },
+  { id: "app", title: "Android / iOS apps", text: "The website as two apps (`pnpm app:build`), HomeSite and Cult of black Cats: the same pages bundled into each, the APIs over the internet, Discord login in the system browser." },
+  { id: "push", title: "Push notifications", text: "Notifications on people's phones and computers, in the browser (Web Push) and in the app (Firebase). Everyone turns it on per device in Settings → Notifications." },
 ];
 
 const DEV_PORTAL = { label: "Discord Developer Portal", url: "https://discord.com/developers/applications" };
@@ -1068,6 +1070,145 @@ const SETTINGS = [
     importance: "optional",
     default: "",
     applies: ["site"],
+  },
+  /* ---------- App & push ---------- */
+  {
+    key: "APP_ID",
+    section: "site",
+    feature: "app",
+    label: "HomeSite app ID",
+    description:
+      "The HomeSite app's package name / bundle ID (reverse domain, e.g. com.example.home). Also its login address (<APP_ID>://login). Can't be changed once the app is in a store.",
+    type: "text",
+    importance: "optional",
+    default: "",
+    example: "com.example.home",
+    suggest: (env) => {
+      try {
+        return new URL(env.FRONTEND_ORIGIN).hostname.split(".").reverse().join(".").toLowerCase().replace(/[^a-z0-9.]/g, "_");
+      } catch {
+        return "";
+      }
+    },
+    applies: ["accounts", "site"],
+  },
+  {
+    key: "APP_NAME",
+    section: "site",
+    feature: "app",
+    label: "HomeSite app name",
+    description: "The name under the HomeSite app's icon. Empty: HomeSite App.",
+    type: "text",
+    importance: "optional",
+    default: "",
+    example: "HomeSite",
+    applies: ["site"],
+  },
+  {
+    key: "CULT_APP_ID",
+    section: "site",
+    feature: "app",
+    label: "Cult app ID",
+    description:
+      "The second app, Cult of black Cats (only the /cult pages): its package name, also its login address. Can't be changed once it is in a store.",
+    type: "text",
+    importance: "optional",
+    default: "",
+    example: "com.example.cult",
+    suggest: (env) => {
+      try {
+        const parts = new URL(env.FRONTEND_ORIGIN).hostname.split(".").reverse();
+        return [...parts.slice(0, 2), "cult"].join(".").toLowerCase().replace(/[^a-z0-9.]/g, "_");
+      } catch {
+        return "";
+      }
+    },
+    applies: ["accounts", "site"],
+  },
+  {
+    key: "CULT_APP_NAME",
+    section: "site",
+    feature: "app",
+    label: "Cult app name",
+    description: "The name under the Cult app's icon. Empty: CultSite App.",
+    type: "text",
+    importance: "optional",
+    default: "",
+    example: "CultSite App",
+    applies: ["site"],
+  },
+  {
+    key: "APP_CERT_FINGERPRINTS",
+    section: "site",
+    feature: "app",
+    label: "App signing fingerprints",
+    description:
+      "SHA-256 fingerprints of the app's signing keys (comma-separated; `pnpm app:build` prints the local one, Google Play shows its own under App signing). The site publishes them in /.well-known/assetlinks.json, so links to the site and passkeys work in the app.",
+    type: "text",
+    importance: "optional",
+    default: "",
+    example: "AB:CD:…",
+    applies: ["site"],
+  },
+  {
+    key: "APP_TEAM_ID",
+    section: "site",
+    feature: "app",
+    label: "Apple team ID",
+    description: "For the iOS app: the Apple developer team ID, published in /.well-known/apple-app-site-association. Empty: no iOS links.",
+    type: "text",
+    importance: "optional",
+    default: "",
+    example: "ABCDE12345",
+    applies: ["site"],
+  },
+  {
+    key: "WEB_PUSH_PUBLIC_KEY",
+    section: "integrations",
+    feature: "push",
+    label: "Web Push public key",
+    description: "VAPID public key for push notifications in browsers. Written by `pnpm push:setup`.",
+    type: "text",
+    importance: "optional",
+    default: "",
+    applies: ["accounts"],
+  },
+  {
+    key: "WEB_PUSH_PRIVATE_KEY",
+    section: "integrations",
+    feature: "push",
+    label: "Web Push private key",
+    description: "VAPID private key that belongs to the public key (`pnpm push:setup`). Changing it ends every browser's push subscription.",
+    type: "secret",
+    importance: "optional",
+    needed: true,
+    default: "",
+    applies: ["accounts"],
+  },
+  {
+    key: "WEB_PUSH_CONTACT",
+    section: "integrations",
+    feature: "push",
+    label: "Web Push contact",
+    description: "mailto: or https: address push services can reach you at. Empty: the privacy contact email or the website address.",
+    type: "text",
+    importance: "optional",
+    default: "",
+    example: "mailto:you@example.com",
+    applies: ["accounts"],
+  },
+  {
+    key: "FCM_SERVICE_ACCOUNT",
+    section: "integrations",
+    feature: "push",
+    label: "Firebase service account",
+    description:
+      "Push in the Android / iOS app: the service account JSON of your Firebase project (Project settings → Service accounts → Generate new private key), as one line or base64. The app itself needs that project's google-services.json in app/ (see docs/app.md).",
+    type: "secret",
+    importance: "optional",
+    default: "",
+    help: [{ label: "Firebase console", url: "https://console.firebase.google.com/" }],
+    applies: ["accounts"],
   },
   {
     key: "ACTIVITY_POLL_INTERVAL_MS",

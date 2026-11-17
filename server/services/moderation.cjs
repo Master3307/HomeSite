@@ -6,6 +6,7 @@ const rateLimit = require("express-rate-limit");
 const { setting } = require("../config.cjs");
 const { getInternalKey, getBotInternalUrl, isValidInternalKey } = require("./internalKey.cjs");
 const mail = require("./mail.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * Moderation and notifications (account API).
@@ -31,7 +32,7 @@ const mail = require("./mail.cjs");
  * deleted, like reports), so deleting an account doesn't undo them.
  * Notification categories: "moderation" (about your own account),
  * "reports" (staff), "fdc" (your suggested cat designs), "birthdays"
- * (a birthday celebration moves). Settings → Notifications picks site / email per category.
+ * (a birthday celebration moves). Settings → Notifications picks site / email / push per category.
  */
 
 const ACTIONS = new Set(["warn", "limit", "unlimit", "ban", "unban", "remove-avatar", "remove-background", "delete"]);
@@ -39,7 +40,6 @@ const OWNER_ONLY = new Set(["delete"]);
 const STAFF_CACHE_MS = 2 * 60_000;
 const BONGO_DIR = path.join(__dirname, "avatars", "bongo");
 
-const httpError = (status, message) => Object.assign(new Error(message), { status });
 const nowIso = () => new Date().toISOString();
 const id = () => crypto.randomBytes(8).toString("hex");
 
@@ -69,7 +69,7 @@ async function botFetch(route, { method = "GET", body, timeout = 8000 } = {}) {
   return response.json();
 }
 
-function registerModeration(app, { requireStorage, getRequestSession, getDatabase, activity, members }) {
+function registerModeration(app, { requireStorage, getRequestSession, getDatabase, activity, members, push }) {
   let ready = false;
   const db = () => {
     const handle = getDatabase();
@@ -164,10 +164,10 @@ function registerModeration(app, { requireStorage, getRequestSession, getDatabas
       // defaults
     }
     const choice = settings.notify?.[category] ?? {};
-    return { site: choice.site !== false, email: choice.email === true };
+    return { site: choice.site !== false, email: choice.email === true, push: choice.push !== false };
   };
 
-  /** Notifies accounts on the site and/or by email, as each of them chose for this category. */
+  /** Notifies accounts on the site, by email and/or by push (services/push.cjs), as each of them chose for this category. */
   async function notify(users, { category, title, body = "", link = null }) {
     for (const user of users) {
       const want = prefsOf(user, category);
@@ -179,6 +179,8 @@ function registerModeration(app, { requireStorage, getRequestSession, getDatabas
       if (want.email && user.email && user.email_verified_at) {
         await mail.sendNotice({ to: user.email, user, subject: title, text: body, link, category }).catch((error) => console.warn("[Moderation] Email failed:", error.message));
       }
+      // Only to devices the person turned push on for (none: nothing happens).
+      if (want.push && push) await push.sendToUser(user.id, { title: title.slice(0, 200), body: String(body).slice(0, 500), link, category }).catch(() => {});
     }
   }
 

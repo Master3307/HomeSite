@@ -6,6 +6,8 @@ import { Trans, useTranslation } from 'react-i18next'
 import { getFaviconSrc } from '/src/lib/seasonalAssets'
 import { siteConfig } from '/src/lib/siteConfig'
 import { apiUrl, keyPath, loadOwners } from '/src/lib/members'
+import { appBrand } from '/src/lib/native'
+import { PageTitle } from '/src/components/SiteLogo'
 import '/src/styles/cult.css'
 import '/src/styles/members.css'
 
@@ -80,31 +82,46 @@ export function CultFooter() {
   )
 }
 
-/** A /cult sub page (profile, settings, members, privacy): header, back link, content, footer. */
+/**
+ * A /cult sub page (profile, settings, members, privacy): header, back link, content, footer.
+ * In the HomeSite app the shared account pages (settings, notifications,
+ * privacy; src/lib/native.js) wear HomeSite's look and lead back to its start.
+ */
 export default function CultShell({ title, back = { to: '/cult', label: 'Cult of Black Cats' }, wide = false, children }) {
+  const { t } = useTranslation('title')
+  const homeApp = appBrand === 'home'
   useEffect(() => {
+    if (homeApp) return undefined
     document.body.classList.add('cult-page')
     return () => document.body.classList.remove('cult-page')
-  }, [])
+  }, [homeApp])
+  const backLink = homeApp && back ? { to: '/', label: 'HomeSite' } : back
+  const siteName = homeApp ? 'HomeSite' : 'Cult of Black Cats'
 
   return (
     <>
       <Helmet>
-        <title>{title ? `${title} · Cult of Black Cats` : 'Cult of Black Cats'}</title>
-        <link rel="icon" type="image/webp" href={getFaviconSrc()} />
+        <title>{title ? `${title} · ${siteName}` : siteName}</title>
+        {!homeApp && <link rel="icon" type="image/webp" href={getFaviconSrc()} />}
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <CultHeader />
+      {homeApp ? (
+        <header className="head">
+          <PageTitle text={t('home')} />
+        </header>
+      ) : (
+        <CultHeader />
+      )}
 
 
       <main className={`cult cult-sub${wide ? ' cult-sub--wide' : ''}`}>
-        {back && (
-          <Link className="cult-back" to={back.to}>
+        {backLink && (
+          <Link className="cult-back" to={backLink.to}>
             <span className="material-symbols-outlined" aria-hidden="true">
               arrow_back
             </span>
-            {back.label}
+            {backLink.label}
           </Link>
         )}
         {children}

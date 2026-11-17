@@ -16,6 +16,7 @@ const { registerLobbyCat } = require("./services/lobbyCat.cjs");
 const { registerMembers } = require("./services/members.cjs");
 const { registerEmailAuth } = require("./services/emailAuth.cjs");
 const { registerModeration } = require("./services/moderation.cjs");
+const { registerPush } = require("./services/push.cjs");
 const { registerEmailUnsubscribe } = require("./services/emailUnsubscribe.cjs");
 const { registerBirthdaysWeb } = require("./services/birthdaysWeb.cjs");
 const { isValidInternalKey } = require("./services/internalKey.cjs");
@@ -126,7 +127,9 @@ const adminSettings = registerAdminBackup(app, { ...accounts, activity, hubSessi
 registerLobbyCat(app, accounts);
 const emailAuth = registerEmailAuth(app, { ...accounts, activity, isBanned: (discordId) => loginGate.banned(discordId) });
 const members = registerMembers(app, { ...accounts, activity, emailAuth });
-const moderation = registerModeration(app, { ...accounts, activity, members });
+// Push notifications to the browsers / app installs people turned it on for.
+const push = registerPush(app, accounts);
+const moderation = registerModeration(app, { ...accounts, activity, members, push });
 moderationRef = moderation;
 registerEmailUnsubscribe(app, { ...accounts, activity });
 registerBirthdaysWeb(app, { ...accounts, activity, members, getModeration: () => moderation });

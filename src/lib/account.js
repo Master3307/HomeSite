@@ -143,6 +143,8 @@ export async function patchAccountSettings(settings) {
 export async function logoutAccount() {
   const local = getLocalAdminSession();
   clearLocalAdminSession();
+  // Push on this device belongs to the account: off before the session ends (lib/push.js).
+  await import("./push").then((push) => push.disablePushOnLogout()).catch(() => {});
 
   let response;
 

@@ -13,6 +13,8 @@
   --m-danger: #e5484d;
 
   max-width: 880px;
+  /* Room for the content before it has loaded: the footer stays down instead of jumping. */
+  min-height: 60vh;
   padding-top: 104px;
 }
 .cult-sub--wide {
@@ -940,6 +942,10 @@ select.members-input option {
 .settings-swatch--default {
   background: var(--accent-default, #b60b0b);
 }
+/* In the HomeSite app the settings wear HomeSite's look: its own colour is the site's violet (main.css, dark). */
+.is-app--home .settings-swatch--default {
+  background: #3d29d4;
+}
 .settings-swatch--any {
   background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
   overflow: hidden;
@@ -1135,9 +1141,6 @@ select.members-input option {
 }
 .tap-counter .material-symbols-outlined {
   font-size: 18px;
-}
-.tap-counter__label {
-  opacity: 0.8;
 }
 
 /* ---------- small screens ---------- */
@@ -1425,7 +1428,7 @@ select.members-input option {
 }
 .notify-pref {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px 16px;
   padding: 10px 12px;
@@ -1450,6 +1453,110 @@ select.members-input option {
 }
 .notify-pref__toggle input {
   accent-color: var(--accent);
+}
+.notify-pref > .notify-pref__toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
+/* Push on this device + the devices that get them (PushSettings.jsx). */
+.push-settings {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 4px;
+  border-radius: 14px;
+  background: var(--m-raised);
+}
+.push-settings__device {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+}
+.push-settings__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+.push-settings__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.push-settings__text small,
+.push-settings__hint {
+  color: var(--m-muted);
+  font-size: 0.8rem;
+}
+.push-settings__text em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--m-muted);
+}
+.push-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.push-settings__message {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.push-settings__message--ok {
+  color: var(--m-muted);
+}
+.push-settings__message--error {
+  color: #ff8a8a;
+}
+.push-settings__list h3 {
+  margin: 4px 0 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--m-muted);
+}
+.push-settings__list ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.push-settings__list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px 6px 8px;
+  border-radius: 10px;
+}
+.push-settings__list li > .material-symbols-outlined {
+  color: var(--m-muted);
+  font-size: 20px;
+}
+.push-settings__remove {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--m-muted);
+  cursor: pointer;
+}
+.push-settings__remove:hover,
+.push-settings__remove:focus-visible {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
 }
 
 /* ---------- moderation ---------- */
@@ -1678,6 +1785,17 @@ select.members-input option {
   .mod-accounts__grid,
   .notify-pref {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .push-settings__device {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .push-settings__actions {
+    grid-column: 1 / -1;
+    justify-content: stretch;
+  }
+  .push-settings__actions > .members-button {
+    flex: 1 1 auto;
+    justify-content: center;
   }
   .mod-log li {
     grid-template-columns: minmax(0, 1fr);

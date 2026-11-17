@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Small notification icon (white silhouette, Android tints it). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <group
+        android:scaleX="0.07143"
+        android:scaleY="0.07143"
+        android:translateX="-6.2857"
+        android:translateY="-10.1429">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M128,170H218V267H294V170H384V450H294V353H218V450H128Z" />
+    </group>
+</vector>

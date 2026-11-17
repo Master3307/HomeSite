@@ -81,6 +81,11 @@ export default function CultPrivacy() {
             "Trust this browser", a second cookie lets that browser skip the extra step for 30 days (it is signed and stops working when your password or
             second step changes). No other cookies.
           </p>
+          <p>
+            <strong>The apps</strong> (HomeSite App and CultSite App) are this website in an app: they store and send exactly the same, and each keeps its
+            own login cookie inside the app. Logging in with Discord opens your browser for that one step and hands a one-time code back to the app, which
+            is only good for two minutes and only for the app that asked for it.
+          </p>
         </Block>
 
         <Block icon="inventory_2" title="What we keep about you">
@@ -101,6 +106,12 @@ export default function CultPrivacy() {
               <strong>Notifications:</strong> your newest 200 notifications on the site. Emails are only sent for what you turned on in Settings, to
               your verified email, in your language and look (with your own CSS, if you set one). Every one has a link to stop them. Security emails
               (a new login with your email, a changed password or second step) are always sent, so you notice if it wasn't you.
+            </li>
+            <li>
+              <strong>Push notifications,</strong> only on the devices where you turn them on (in Settings). For each one we keep its push address (a
+              random token from your browser's push service or, in the app, from Google's Firebase), a short name like “Chrome · Android”, and when it
+              was added and last used. The notification itself goes through that push service (Google, Mozilla, Apple …) to your device. Turning push
+              off or logging out on that device removes it here; a device the push service no longer knows is removed by itself.
             </li>
             <li>
               <strong>About you, if you add it:</strong> hobbies and gender (from the server's onboarding questions, which move here once you have an
@@ -167,7 +178,7 @@ export default function CultPrivacy() {
             In <Link to="/cult/settings">Settings</Link>, “Delete my account” removes <strong>everything</strong> about you, right away:
           </p>
           <ul className="privacy-list">
-            <li>your account, profile, avatar, pictures, settings, email and saved looks,</li>
+            <li>your account, profile, avatar, pictures, settings, email, saved looks and push devices,</li>
             <li>your levels, points, pets, taps, achievements and birthday,</li>
             <li>messages from our bot that mention you,</li>
             <li>everything about you in the activity log,</li>

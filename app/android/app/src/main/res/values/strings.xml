@@ -1,0 +1,5 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- app_name comes from APP_NAME (.env) through homesite.properties (app/build.gradle). -->
+    <string name="title_activity_main">@string/app_name</string>
+</resources>
