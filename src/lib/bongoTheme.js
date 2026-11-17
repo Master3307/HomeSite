@@ -13,7 +13,7 @@ import { loadFavorites, localTheme, setTheme, THEME_EVENT } from './bongo'
  * `--b-panel`, `--b-accent`, `--b-ink`… from the palette the import took from
  * the theme's textures. Null theme (or one without a palette) = the site's look.
  */
-export function themeVars(catalog, themeId) {
+function themeVars(catalog, themeId) {
   const theme = themeId && catalog?.themes?.find((entry) => entry.id === themeId)
   const palette = theme?.palette
   if (!palette) return { className: '', style: undefined }

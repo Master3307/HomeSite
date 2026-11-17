@@ -47,7 +47,7 @@ let pageVisit = null;
 
 // Special people, matched by Discord ID (never by name):
 // LobbyCat's owner (~ MrKoby07 ~) and the cult leader (RottedFox13, "Fox").
-export const OWNER_DISCORD_ID = siteConfig.ownerDiscordId;
+const OWNER_DISCORD_ID = siteConfig.ownerDiscordId;
 export const LEADER_DISCORD_ID = siteConfig.leaderDiscordId;
 const LEADER_NAME = "Fox";
 

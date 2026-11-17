@@ -6,6 +6,7 @@ const rateLimit = require("express-rate-limit");
 
 const assets = require("./bongoAssets.cjs");
 const lobbyStyle = require("./lobbyStyle.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * Bongo Cat routes on the account API.
@@ -87,10 +88,6 @@ function readAliases() {
 }
 const SLOT_KEY = /^[a-z][a-z0-9_]{0,23}$/;
 const MAX_FAVORITES = 300;
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
 
 function readFavorites() {
   try {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-import { catOutfits, DESIGN, designFrames, emptyCat, FRAME_MS, itemById, MAX_CATS, MAX_FIXED, NONE, normalizeDesign, SLOT_LIST, TAP } from '/shared/bongo-design.mjs'
+import { CAT_SCALE, catOutfits, DESIGN, designFrames, emptyCat, FRAME_MS, itemById, MAX_CATS, MAX_FIXED, NONE, normalizeDesign, SLOT_LIST, TAP } from '/shared/bongo-design.mjs'
 import CatPicker from './CatPicker'
 import { BongoCat, DesignPreview, GameIcon, ItemIcon } from './BongoRender'
 import '/src/styles/bongo.css'
@@ -389,9 +389,9 @@ export default function DesignEditor({ catalog, design: initial, title = 'Design
                 <span className="material-symbols-outlined" aria-hidden="true">
                   photo_size_select_small
                 </span>
-                <input type="range" min={0.3} max={2} step={0.01} value={cat.scale} aria-label="Size" onChange={(event) => updateCat(index, { scale: Number(event.target.value) })} />
+                <input type="range" min={CAT_SCALE.min} max={CAT_SCALE.max} step={0.01} value={cat.scale} aria-label="Size" onChange={(event) => updateCat(index, { scale: Number(event.target.value) })} />
               </label>
-              <button type="button" className="bd-tool" onClick={() => updateCat(index, { x: 0, y: 0, scale: 1 })} title="Back to its place and size" disabled={!cat.x && !cat.y && cat.scale === 1}>
+              <button type="button" className="bd-tool" onClick={() => updateCat(index, { x: 0, y: 0, scale: CAT_SCALE.start })} title="Back to its place and size" disabled={!cat.x && !cat.y && cat.scale === CAT_SCALE.start}>
                 <span className="material-symbols-outlined" aria-hidden="true">
                   restart_alt
                 </span>

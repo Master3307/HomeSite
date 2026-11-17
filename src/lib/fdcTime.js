@@ -6,7 +6,7 @@ import { timeOptions } from "./prefs.js";
  * moment in the visitor's local time when that differs.
  */
 
-export const FDC_TIME_ZONE = "Europe/Berlin";
+const FDC_TIME_ZONE = "Europe/Berlin";
 
 const partsFormatter = new Map();
 

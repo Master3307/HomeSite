@@ -19,7 +19,7 @@ const LobbyWardrobe = lazy(() => import("/src/components/bongo/LobbyWardrobe"));
 const CAT_WIDTH = 132;
 const CAT_WIDTH_SMALL = 108;
 const TAP_MS = 110;
-export const LOBBY_STYLE_EVENT = "homesite:lobby-style";
+const LOBBY_STYLE_EVENT = "homesite:lobby-style";
 
 /*
  * The lobby cat wears what editors chose (server: services/lobbyStyle.cjs)

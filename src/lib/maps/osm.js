@@ -33,7 +33,7 @@ export const OSM_SERVERS = {
 
 const SCOPES = 'read_prefs write_api write_notes'
 const TOKEN_KEY = (server) => `osmAuth:${server}`
-export const OSM_PENDING_KEY = 'osmAuth:pending'
+const OSM_PENDING_KEY = 'osmAuth:pending'
 const CREATED_BY = 'HomeSite Maps (home.master3307.org)'
 
 export function getOsmServer(id) {
@@ -71,7 +71,7 @@ if (typeof window !== 'undefined') {
   })
 }
 
-export function getOsmAuth(serverId) {
+function getOsmAuth(serverId) {
   if (!(serverId in authCache)) authCache[serverId] = readAuth(serverId)
   return authCache[serverId]
 }

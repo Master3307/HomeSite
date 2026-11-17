@@ -7,6 +7,7 @@ const crypto = require("node:crypto");
 const { spawn, execFile } = require("node:child_process");
 const { pipeline } = require("node:stream/promises");
 const settingsSchema = require("../../config/settings.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * Full backups of everything that is not in git: the databases and data
@@ -80,10 +81,6 @@ const FALLBACK_PATHS = [
   "server/services/avatars",
   "server/services/db",
 ];
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
 
 const toPosix = (value) => value.split(path.sep).join("/");
 

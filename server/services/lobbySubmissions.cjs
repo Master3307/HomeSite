@@ -2,6 +2,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { setting } = require("../config.cjs");
+const { httpError } = require("./http.cjs");
 const {
   ActionRowBuilder,
   ButtonBuilder,
@@ -45,10 +46,6 @@ const LIMITS = { code: 100, description: 1000, name: 32 };
 const LEADER_DISCORD_ID = setting("COMMUNITY_LEADER_ID");
 
 let storeQueue = Promise.resolve();
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
 
 async function readStore() {
   try {

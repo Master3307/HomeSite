@@ -33,14 +33,13 @@ export async function uploadBackground(file) {
 }
 export const loadPresets = () => call('/account/presets')
 export const savePresets = (presets) => call('/account/presets', { method: 'PUT', body: { presets } })
-export const loadEmail = () => call('/account/email')
 export const saveNickname = (nickname) => call('/account/nickname', { method: 'PATCH', body: { nickname } })
 export const saveEmail = (email) => call('/account/email', { method: 'PATCH', body: { email } })
 export const sendReport = (report) => call('/members/report', { method: 'POST', body: report })
 export const deleteAccount = () => call('/account/delete', { method: 'POST', body: { confirm: 'DELETE' } })
 export const loadTaps = () => call('/lobby-cat/taps')
-export const sendTaps = (count) => call('/lobby-cat/taps', { method: 'POST', body: { count } })
-export const sendPets = (count) => call('/lobby-cat/pets', { method: 'POST', body: { count } })
+const sendTaps = (count) => call('/lobby-cat/taps', { method: 'POST', body: { count } })
+const sendPets = (count) => call('/lobby-cat/pets', { method: 'POST', body: { count } })
 
 /** The address of a profile: /cult/@name (like youtube.com/@handle); IDs go through /cult/user/<id>. */
 export const keyPath = (key) => {

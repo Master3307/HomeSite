@@ -2,6 +2,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const sharp = require("sharp");
+const { httpError } = require("./http.cjs");
 
 /*
  * Builds an archive entry for an FDC that only exists elsewhere, e.g. the
@@ -18,10 +19,6 @@ const DISCORD_EPOCH = 1420070400000n;
 const MIN_OPTIONS = 1;
 const MAX_OPTIONS = 6;
 const MAX_DESCRIPTION_LENGTH = 400;
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
 
 const stamp = (ms) => ({ iso: new Date(ms).toISOString(), ms });
 

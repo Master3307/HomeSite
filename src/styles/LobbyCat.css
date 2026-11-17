@@ -27,26 +27,6 @@
     isolation: isolate;
   }
 
-  /* Allow hearts to float outside cat cards. */
-  .cat-card {
-    overflow: visible;
-  }
-
-  /* The wrapper handles the card's outer width and spacing. */
-  .lobby-cat-wrap > .card.lobby-cat-card {
-    position: relative;
-    display: block;
-
-    width: 100%;
-    max-width: none;
-    min-width: 0;
-
-    margin: 0;
-    padding: 28px 26px;
-
-    overflow: visible;
-  }
-
   /* =========================================================
      Cat hitbox
      ========================================================= */
@@ -299,34 +279,12 @@
     overflow-wrap: anywhere;
   }
 
-  .lobby-cat-wrap .lobby-updater {
-    min-width: 0;
-  }
-
   .lobby-cat-wrap .lobby-avatar {
     flex-shrink: 0;
   }
 
-  .lobby-cat-wrap .lobby-updater-info {
-    min-width: 0;
-  }
-
-  .lobby-cat-wrap .lobby-updater-name,
-  .lobby-cat-wrap .lobby-updater-username {
+  .lobby-cat-wrap .lobby-updater-name {
     overflow-wrap: anywhere;
-  }
-
-  .lobby-cat-wrap .lobby-timestamp {
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  .lobby-cat-wrap .lobby-timestamp > .material-symbols-outlined {
-    flex-shrink: 0;
-  }
-
-  .lobby-cat-wrap .lobby-timestamp > span:last-child {
-    min-width: 0;
   }
 
   /* =========================================================
@@ -341,10 +299,6 @@
 
       width: 95%;
       margin-bottom: 32px;
-    }
-
-    .lobby-cat-wrap > .card.lobby-cat-card {
-      padding: 22px 16px;
     }
 
     .lobby-cat-wrap .lobby-copy-button {
@@ -362,11 +316,6 @@
   @media (max-width: 340px) {
     .lobby-cat-wrap {
       --lobby-cat-right: 12px;
-    }
-
-    .lobby-cat-wrap > .card.lobby-cat-card {
-      padding-right: 12px;
-      padding-left: 12px;
     }
 
     .lobby-cat-wrap .lobby-copy-button {

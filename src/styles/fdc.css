@@ -335,9 +335,7 @@
   outline-color: var(--fdc-success);
 }
 
-.fdc .fdc-option--pending {
-  opacity: 0.6;
-}
+/* Voting shows at once (FdcPoll.jsx, optimistic): no "waiting" look while the server confirms. */
 
 /* Thumbnails are 16:10. */
 .fdc .fdc-option__media {

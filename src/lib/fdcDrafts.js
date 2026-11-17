@@ -69,7 +69,7 @@ export async function saveFdcDraft({ endsAt, options }) {
   return draft;
 }
 
-export async function listFdcDrafts() {
+async function listFdcDrafts() {
   if (!("indexedDB" in window)) return [];
 
   const drafts = await withStore("readonly", (store) => store.getAll());

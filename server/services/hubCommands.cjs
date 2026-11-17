@@ -1,3 +1,4 @@
+const { httpError } = require("./http.cjs");
 const {
   ApplicationCommandOptionType,
   ChannelType,
@@ -30,10 +31,6 @@ const OPTION_TYPES = {
 
 const SUB = ApplicationCommandOptionType.Subcommand;
 const GROUP = ApplicationCommandOptionType.SubcommandGroup;
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
 
 /* ---------- describing commands ---------- */
 

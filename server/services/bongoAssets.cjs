@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
 const sharp = require("sharp");
+const { httpError } = require("./http.cjs");
 
 let sharedModule = null;
 /* The import rules (ESM, shared with the browser). */
@@ -66,10 +67,6 @@ const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const MAX_FONT_BYTES = 16 * 1024 * 1024; // the CJK Noto fonts are ~10 MB
 
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
-
-function httpError(status, message, extra = {}) {
-  return Object.assign(new Error(message), { status, ...extra });
-}
 
 /* ---------- item definitions ---------- */
 

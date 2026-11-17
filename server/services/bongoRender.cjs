@@ -1,6 +1,7 @@
 const path = require("node:path");
 const sharp = require("sharp");
 const assets = require("./bongoAssets.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * Renders an FDC design (shared/bongo-design.mjs) to an image: one frame
@@ -10,10 +11,6 @@ const assets = require("./bongoAssets.cjs");
 
 let shared = null;
 const design = async () => (shared ??= await import(path.join(__dirname, "..", "..", "shared", "bongo-design.mjs")));
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
 
 /** The catalog with a lookup map, or an error when no assets are imported. */
 async function catalog() {

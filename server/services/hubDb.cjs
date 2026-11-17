@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { v7: uuidv7 } = require("uuid");
+const { httpError } = require("./http.cjs");
 
 /*
  * /hub database tools (account API):
@@ -21,10 +22,6 @@ const READ_ONLY = new Set(["activity-log.jsonl", "backup-file-times.json", "hub-
 const HIDDEN = new Set(["hub-sessions.json"]);
 const MAX_FILE = 4 * 1024 * 1024;
 const ROLES = new Set(["user", "admin", "owner"]);
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
 
 const quote = (name) => `"${String(name).replace(/"/g, '""')}"`;
 

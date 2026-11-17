@@ -18,7 +18,7 @@ export function markFresh(until = Date.now() + 9 * 60_000) {
   notify()
 }
 
-export function markStale() {
+function markStale() {
   freshUntil = 0
   notify()
 }

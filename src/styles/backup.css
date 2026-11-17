@@ -1,48 +1,6 @@
-/* Backup & restore (src/pages/Backup.jsx). */
-
-.bk-page {
-  --bk-surface: color-mix(in srgb, var(--text-primary) 5%, transparent);
-  --bk-raised: color-mix(in srgb, var(--text-primary) 8%, transparent);
-  --bk-border: color-mix(in srgb, var(--text-primary) 12%, transparent);
-  --bk-ok: #6be0a4;
-  --bk-danger: #ff9aa8;
-  --bk-warn: #f5c542;
-
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  width: min(940px, 100%);
-  margin: 0 auto;
-  padding: 72px 16px 64px;
-  color: var(--text-primary);
-  text-align: left;
-}
-
-.bk-logo {
-  margin-bottom: 18px;
-}
-.bk-logo img {
-  height: 40px;
-}
-
-.bk-header h1 {
-  margin: 0.4rem 0 0.3rem;
-  font-size: clamp(1.6rem, 4vw, 2.2rem);
-}
-
-.bk-header p,
 .bk-card header p {
   margin: 0;
   color: var(--text-secondary);
-}
-
-.bk-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  color: var(--text-secondary);
-  font-size: 0.88rem;
-  text-decoration: none;
 }
 
 .bk-card {
@@ -577,8 +535,7 @@
   line-height: 1.4;
 }
 
-.bk-env__row > input,
-.bk-env__name {
+.bk-env__row > input {
   padding: 0.45rem 0.6rem;
   border: 1px solid var(--bk-border);
   border-radius: 9px;
@@ -586,12 +543,6 @@
   color: var(--text-primary);
   font: inherit;
   font-size: 0.85rem;
-}
-
-.bk-env__name {
-  font-family: monospace;
-  min-width: 0;
-  flex: 1;
 }
 
 .bk-env__head {
@@ -707,102 +658,6 @@
   }
 }
 
-/* ---------- .env editor: status rows ---------- */
-
-.bk-group-title {
-  margin: 0.6rem 0 0.1rem;
-  color: color-mix(in srgb, var(--text-primary) 86%, transparent);
-  font-size: 0.95rem;
-  font-weight: 650;
-}
-
-.bk-env--edit .bk-env__row {
-  --tone: var(--text-secondary);
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--tone) 28%, transparent);
-  background: color-mix(in srgb, var(--tone) 8%, transparent);
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.bk-env--edit .bk-env__row--set { --tone: var(--bk-ok); background: color-mix(in srgb, var(--tone) 11%, transparent); }
-.bk-env--edit .bk-env__row--missing-required { --tone: var(--bk-danger); background: color-mix(in srgb, var(--tone) 13%, transparent); }
-.bk-env--edit .bk-env__row--missing-important { --tone: var(--bk-warn); background: color-mix(in srgb, var(--tone) 12%, transparent); }
-.bk-env--edit .bk-env__row--missing,
-.bk-env--edit .bk-env__row--new { --tone: color-mix(in srgb, var(--text-primary) 45%, transparent); background: color-mix(in srgb, var(--text-primary) 4%, transparent); }
-.bk-env--edit .bk-env__row--removing { --tone: var(--bk-danger); opacity: 0.75; }
-.bk-env--edit .bk-env__row--new { border-style: dashed; background: transparent; }
-
-.bk-env__mark {
-  flex: none;
-  color: var(--tone);
-  font-size: 2rem !important;
-  line-height: 1;
-  font-variation-settings: 'FILL' 1, 'wght' 500;
-}
-
-.bk-env__row--missing .bk-env__mark,
-.bk-env__row--new .bk-env__mark {
-  font-variation-settings: 'FILL' 0, 'wght' 400;
-  opacity: 0.7;
-}
-
-.bk-env__body {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
-.bk-env--edit .bk-env__status {
-  color: var(--tone);
-  font-weight: 600;
-}
-
-.bk-env__controls {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.bk-env__controls input {
-  flex: 1;
-  min-width: 0;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid var(--bk-border);
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--bg-primary) 50%, transparent);
-  color: var(--text-primary);
-  font: inherit;
-  font-size: 0.85rem;
-}
-
-.bk-env__controls input:disabled {
-  opacity: 0.5;
-}
-
-.bk-env__controls .bk-link.is-active {
-  background: color-mix(in srgb, var(--bk-danger) 20%, transparent);
-  color: var(--bk-danger);
-}
-
-.bk-env__revealed {
-  display: block;
-  padding: 0.4rem 0.55rem;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--bg-primary) 70%, transparent);
-  font-size: 0.8rem;
-  overflow-wrap: anywhere;
-  user-select: all;
-}
-
-.bk-warning--danger {
-  background: color-mix(in srgb, var(--bk-danger) 12%, transparent);
-  color: var(--bk-danger);
-}
-
 .bk-field--code {
   flex: 0 1 11rem;
 }
@@ -811,28 +666,6 @@
   font-family: monospace;
   letter-spacing: 0.2em;
   width: 9ch;
-}
-
-.bk-2fa-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.5rem !important;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bk-warn) 14%, transparent);
-  color: var(--bk-warn) !important;
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.bk-2fa-status.is-on {
-  background: color-mix(in srgb, var(--bk-ok) 14%, transparent);
-  color: var(--bk-ok) !important;
-}
-
-.bk-2fa-status .material-symbols-outlined {
-  font-size: 1rem;
 }
 
 /* Bongo Cat assets (BongoAssetsCard) */

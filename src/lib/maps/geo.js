@@ -41,13 +41,13 @@ export function humanizeCategory(category) {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-export function formatAddress(tags = {}) {
+function formatAddress(tags = {}) {
   const street = [tags['addr:street'] || tags['addr:place'], tags['addr:housenumber']].filter(Boolean).join(' ')
   const city = [tags['addr:postcode'], tags['addr:city']].filter(Boolean).join(' ')
   return [street, city].filter(Boolean).join(', ')
 }
 
-export function placeKey(osmType, osmId, lat, lon) {
+function placeKey(osmType, osmId, lat, lon) {
   return osmType && osmId ? `${osmType}/${osmId}` : `point/${lat.toFixed(6)},${lon.toFixed(6)}`
 }
 
@@ -340,4 +340,4 @@ export function formatCoordinates(lat, lon) {
   return `${lat.toFixed(5)}, ${lon.toFixed(5)}`
 }
 
-export { distanceMeters }
+

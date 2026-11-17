@@ -27,16 +27,6 @@
   --b-surface: var(--bg-secondary);
   --b-scroll: color-mix(in srgb, var(--b-ink) 26%, transparent);
 }
-
-/*
- * The game's own fonts once imported (html.bongo-fonts, src/lib/bongo.js):
- * Nunito for titles, names and buttons here; on the cult page Noto Sans for
- * text and Nunito for headings, like in the game.
- */
-.bongo-fonts :is(.bongo-dialog__head h2, .bp-bar__title, .bp-tooltip, .bp-menu__name, .bongo-button, .bd-cat, .bd-slot__head, .bpr-card__name, .bpr-list__toggle, .bongo-option-mode .bongo-segment > button, .bw-tabs > button, .bongo-option-design__empty, .bongo-mode strong, .bw-winner strong) {
-  font-family: "Bongo Nunito", "Google Sans Flex", sans-serif;
-  font-weight: 800;
-}
 .bongo-fonts .cult *:not(.material-symbols-outlined, code, kbd, pre, samp) {
   font-family: "Bongo Noto Sans", "Google Sans Flex", sans-serif;
   /* The game ships Noto Sans in Regular only: no faked bold (it looks smeared and stretched). */
@@ -299,9 +289,6 @@
   height: 16px;
   margin: 0;
   accent-color: var(--b-accent);
-}
-.bongo-switch {
-  display: none;
 }
 .bongo-checks {
   display: flex;
@@ -1561,33 +1548,6 @@ label.bp-tool:hover {
 .bpr-new .bongo-button {
   --b-pad: 6px 12px;
 }
-
-/* ---------- FDC options (create / manage) ---------- */
-
-.bongo-option-mode {
-  display: grid;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.bongo-option-mode .bongo-segment > button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  --b-pad: 7px 10px;
-}
-.bongo-option-mode .bongo-segment .material-symbols-outlined {
-  font-size: 18px;
-}
-.bongo-option-mode .bongo-segment > button.is-active .material-symbols-outlined {
-  color: var(--b-accent);
-}
-.bongo-option-mode__hint {
-  margin: 0;
-  color: var(--b-muted);
-  font-size: 0.78rem;
-  line-height: 1.35;
-}
 .bongo-option-design {
   display: flex;
   flex-direction: column;
@@ -1635,18 +1595,6 @@ label.bp-tool:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-}
-.bongo-option-display {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  margin: 8px 0;
-  font-size: 0.88rem;
-}
-.bongo-option-display .bongo-segment {
-  flex: 1;
-  min-width: 170px;
 }
 
 /* ---------- game UI themes ---------- */
@@ -1799,12 +1747,6 @@ label.bp-tool:hover {
   .lobby-cat-dress {
     transition: none;
   }
-}
-
-/* Pickers, previews, tabs and the cat itself are widgets, not text to copy. */
-:is(.bp, .bp-menu__head, .bd-stage, .bd-cats, .bd-tools, .bd-slots, .bw-side, .bw-tabs, .bpr, .bongo-cat, .bongo-segment, .bongo-option-mode, .bongo-option-design, .lobby-cat-wrap) {
-  -webkit-user-select: none;
-  user-select: none;
 }
 
 /* ---------- bongo avatar designer (.av, AvatarEditor.jsx) ---------- */
@@ -2142,8 +2084,7 @@ label.bp-tool:hover {
   aspect-ratio: 16 / 10;
   object-fit: contain;
 }
-.bd-reference figcaption,
-.bd-reference__label {
+.bd-reference figcaption {
   display: inline-flex;
   align-items: center;
   gap: 5px;

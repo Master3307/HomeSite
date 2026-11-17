@@ -161,5 +161,3 @@ export function avatarDrawList(spec, catalog) {
   return list;
 }
 
-/** The ids an avatar uses (for "what does it wear"). */
-export const avatarItems = (spec) => spec.layers.filter((layer) => layer.id).map((layer) => layer.id);

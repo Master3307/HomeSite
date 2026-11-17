@@ -14,8 +14,8 @@
 
 const KEY = 'homesite:prefs'
 export const PREF_KEYS = ['clock', 'timeZone', 'accent', 'motion', 'blockInsights', 'notify']
-export const DEFAULT_PREFS = { clock: 'auto', timeZone: 'auto', accent: null, motion: 'full', blockInsights: false, notify: {} }
-export const MOTIONS = ['full', 'reduce', 'none']
+const DEFAULT_PREFS = { clock: 'auto', timeZone: 'auto', accent: null, motion: 'full', blockInsights: false, notify: {} }
+const MOTIONS = ['full', 'reduce', 'none']
 
 /* Old values and broken ones become defaults ("auto" was "like my device"). */
 function clean(prefs) {

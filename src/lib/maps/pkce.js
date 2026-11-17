@@ -1,6 +1,6 @@
 /* PKCE helpers shared by the OSM and Wikimedia OAuth 2 logins (public clients, no secret). */
 
-export function base64Url(bytes) {
+function base64Url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
     .replaceAll('+', '-')
     .replaceAll('/', '_')

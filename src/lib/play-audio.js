@@ -1,5 +1,3 @@
-const playingAudios = new Set()
-
 export async function playAudio(src, options = {}) {
   if (!src) return
 
@@ -38,15 +36,6 @@ export async function playAudio(src, options = {}) {
     const start = Math.max(0, audio.duration * startAt || 0)
     audio.currentTime = Math.min(start, Math.max(0, audio.duration - 0.01))
 
-    playingAudios.add(audio)
-
-    const removeAudio = () => {
-      playingAudios.delete(audio)
-    }
-
-    audio.addEventListener('ended', removeAudio, { once: true })
-    audio.addEventListener('error', removeAudio, { once: true })
-
     if (fadeOut) {
       let fading = false
 
@@ -83,13 +72,4 @@ export async function playAudio(src, options = {}) {
       console.warn('Playback failed for', src, error)
     }
   }
-}
-
-export function stopAllAudio() {
-  for (const audio of playingAudios) {
-    audio.pause()
-    audio.currentTime = 0
-  }
-
-  playingAudios.clear()
 }

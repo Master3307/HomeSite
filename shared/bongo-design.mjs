@@ -15,7 +15,6 @@
 export const CANVAS = 256;
 
 export const DEFAULT_SKIN = "cat"; // the built-in cat (no item definition)
-export const DEFAULT_BONGOS = "1319"; // "Default Bongo"
 export const NONE = "none"; // FDC designer: deliberately nothing in this slot
 
 export const SLOTS = ["skin", "hat", "bongos"];
@@ -151,7 +150,9 @@ const clamp = (value, min, max, fallback) => {
 export const SLOT_LIST = { skin: "skins", hat: "hats", bongos: "bongos" };
 export const MAX_CATS = 4;
 
-export const emptyCat = () => ({ skins: [], hats: [], bongos: [], combine: "all", outfits: [], link: false, x: 0, y: 0, scale: 1, flip: true });
+/* A cat's size on the picture (the layout still keeps it fully inside). New cats start fully zoomed in. */
+export const CAT_SCALE = { min: 0.3, max: 2, start: 2 };
+export const emptyCat = () => ({ skins: [], hats: [], bongos: [], combine: "all", outfits: [], link: false, x: 0, y: 0, scale: CAT_SCALE.start, flip: true });
 export const COMBINES = ["all", "paired"];
 export const MAX_FIXED = 12;
 

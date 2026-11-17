@@ -55,7 +55,7 @@ if (typeof window !== 'undefined') {
   })
 }
 
-export function getWikimediaAuth() {
+function getWikimediaAuth() {
   if (cached === undefined) cached = readAuth()
   return cached
 }

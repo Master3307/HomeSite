@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
 const assets = require("./bongoAssets.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * What the lobby cat wears (db/lobby-cat-style.json), set by FDC editors:
@@ -28,10 +29,6 @@ const DEFAULT_OUTFIT = { skin: null, hat: null, bongos: "1319" };
 const MODES = new Set(["outfit", "random", "randomOutfits"]);
 const MAX_LISTS = 40;
 const MAX_OUTFITS = 200;
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
 
 const defaults = () => ({
   version: 1,

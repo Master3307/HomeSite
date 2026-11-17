@@ -7,6 +7,7 @@ const { setting, origin } = require("../config.cjs");
 const birthdays = require("./birthday.cjs");
 const reminders = require("./birthdayReminders.cjs");
 const privacy = require("./privacy.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * Birthdays on the website (/cult/birthdays, profiles, the lobby cat).
@@ -33,8 +34,6 @@ const privacy = require("./privacy.cjs");
 
 const DRESS_DIR = path.join(__dirname, "db", "birthday-dress");
 const SNOWFLAKE = /^\d{17,20}$/;
-
-const httpError = (status, message, extra = {}) => Object.assign(new Error(message), { status, ...extra });
 
 function registerBirthdaysWeb(app, { requireStorage, getDatabase, getRequestSession, activity = null, members, getModeration = () => null }) {
   const readLimiter = rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: "draft-8", legacyHeaders: false });

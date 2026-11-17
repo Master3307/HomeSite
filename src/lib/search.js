@@ -38,7 +38,7 @@ export function normalize(value) {
     .toLowerCase()
 }
 
-export function tokenize(value) {
+function tokenize(value) {
   return normalize(value)
     .split(/[^\p{L}\p{N}]+/u)
     .filter(Boolean)

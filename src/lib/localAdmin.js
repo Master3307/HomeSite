@@ -12,7 +12,7 @@ const VERIFIER = import.meta.env.VITE_ADMIN_KEY_VERIFIER || "";
 const SESSION_KEY = "homesite:localAdmin";
 const SESSION_MS = 12 * 60 * 60 * 1000;
 
-export const LOCAL_ADMIN_USER = Object.freeze({
+const LOCAL_ADMIN_USER = Object.freeze({
   id: "local-admin",
   discordUserId: siteConfig.botUserId || "admin",
   role: "owner",

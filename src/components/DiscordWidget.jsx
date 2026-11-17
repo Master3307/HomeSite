@@ -12,7 +12,7 @@ const GUILD_ID = siteConfig.guildId
 const DISCORD_API = 'https://discord.com/api/v10'
 const CDN = 'https://cdn.discordapp.com'
 
-export const DISCORD_INVITE_URL = discordInviteUrl
+const DISCORD_INVITE_URL = discordInviteUrl
 
 /*
  * Serverless fallback: Discord's public invite and widget endpoints allow

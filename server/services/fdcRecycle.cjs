@@ -3,6 +3,7 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 
 const { toPublicPoll } = require("./fdcPublic.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * FDC recycling bin: options of ended polls (won or not) that editors keep
@@ -29,10 +30,6 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ID_PATTERN = /^[A-Za-z0-9_-]{8,40}$/;
 const MAX_FOLDER_NAME = 40;
 const MAX_ITEMS_PER_REQUEST = 100;
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
 
 const newId = () => crypto.randomBytes(9).toString("base64url");
 

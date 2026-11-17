@@ -20,7 +20,7 @@ export const FDC_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const FDC_OPTION_COUNT = 4;
 export const FDC_DEFAULT_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣"];
 
-export function timestampMs(value) {
+function timestampMs(value) {
   if (value === null || value === undefined) return null;
 
   const ms =
@@ -154,7 +154,7 @@ async function loadWithFallback(serverPath, staticPath, signal) {
   }
 }
 
-export async function loadFdcSummary(signal) {
+async function loadFdcSummary(signal) {
   const data = await loadWithFallback("/fdc/summary", "summary.json", signal);
 
   if (!Array.isArray(data.polls)) {
@@ -177,7 +177,7 @@ export async function loadFdcSummary(signal) {
   };
 }
 
-export async function loadFdcPoll(entry, signal) {
+async function loadFdcPoll(entry, signal) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(entry?.date ?? "")) {
     throw new Error("Invalid FDC date.");
   }

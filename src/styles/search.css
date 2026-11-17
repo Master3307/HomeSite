@@ -18,13 +18,6 @@
   margin: 69px auto 42px;
 }
 
-/* Inside SearchCard the card provides width and spacing. */
-.search-card .site-search {
-  width: auto;
-  max-width: none;
-  margin: 0;
-}
-
 /* Input row */
 .site-search__form {
   display: flex;
@@ -40,23 +33,6 @@
 .site-search__form:focus-within {
   box-shadow:
     inset 0 0 0 1px var(--search-line),
-    0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
-}
-
-/* Standalone (not inside SearchCard): the box looks like a .card (main.css). */
-.site-search:not(.search-card .site-search) .site-search__form {
-  background: #ffffff04;
-  -webkit-backdrop-filter: blur(13px);
-  backdrop-filter: blur(13px);
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.047);
-}
-
-.site-search:not(.search-card .site-search) .site-search__form:focus-within {
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.047),
     0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 

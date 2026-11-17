@@ -50,7 +50,7 @@ function readToken(instance) {
   }
 }
 
-export function getPanoramaxToken(instance) {
+function getPanoramaxToken(instance) {
   if (!(instance in cache)) cache[instance] = readToken(instance)
   return cache[instance]
 }
@@ -129,12 +129,12 @@ export function isMapillaryConfigured() {
   return Boolean(MAPILLARY_TOKEN)
 }
 
-export function mapillaryViewerUrl(id) {
+function mapillaryViewerUrl(id) {
   return `https://www.mapillary.com/app/?pKey=${id}&focus=photo`
 }
 
 /** Interactive street-level viewer (works in an iframe). */
-export function mapillaryEmbedUrl(id) {
+function mapillaryEmbedUrl(id) {
   return `https://www.mapillary.com/embed?image_key=${id}&style=photo`
 }
 

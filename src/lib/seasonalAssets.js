@@ -4,7 +4,7 @@ import { seasonFor } from '/shared/seasons.mjs'
 
 const ASSET_BASE_PATH = '/hehehe'
 
-export const getSeasonalCode = (date = new Date()) => seasonFor(date)
+const getSeasonalCode = (date = new Date()) => seasonFor(date)
 
 export function getDiscordPicSrc(date = new Date()) {
   return `${ASSET_BASE_PATH}/${getSeasonalCode(date)}-logo.webp`

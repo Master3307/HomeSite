@@ -74,7 +74,7 @@ function BirthdayPicker({ initial, busy, onCancel, onSave }) {
         <span>
           {t('mine.year')} <small>{t('mine.optional')}</small>
         </span>
-        <input className="members-input" inputMode="numeric" maxLength={4} value={year} onChange={(event) => setYear(event.target.value.replace(/\D/g, ''))} disabled={busy} placeholder="—" aria-invalid={!yearValid} />
+        <input className="members-input" name="bday-year" autoComplete="bday-year" inputMode="numeric" maxLength={4} value={year} onChange={(event) => setYear(event.target.value.replace(/\D/g, ''))} disabled={busy} placeholder="—" aria-invalid={!yearValid} />
       </label>
       <div className="birthday-picker__foot">
         <p className="members-hint">

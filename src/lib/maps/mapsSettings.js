@@ -14,8 +14,8 @@ import { BASE_LAYERS, DEFAULT_BASE_LAYER, OVERLAYS } from './layers.js'
  * then works automatically (newest `updatedAt` wins).
  */
 
-export const MAPS_SETTINGS_KEY = 'mapsSettings'
-export const MAPS_SETTINGS_VERSION = 1
+const MAPS_SETTINGS_KEY = 'mapsSettings'
+const MAPS_SETTINGS_VERSION = 1
 
 export const MAP_THEMES = ['site', 'midnight', 'forest', 'ocean', 'sunset', 'paper']
 export const TILE_FILTERS = ['auto', 'none', 'dark', 'dim']
@@ -24,7 +24,7 @@ export const UNITS = ['metric', 'imperial']
 export const OSM_SERVERS = ['production', 'dev']
 /** Where place photos come from. Mapillary is the main source; Panoramax is optional. */
 export const PHOTO_SOURCES = ['mapillary', 'commons', 'panoramax']
-export const UPLOAD_TARGETS = ['commons', 'panoramax']
+const UPLOAD_TARGETS = ['commons', 'panoramax']
 export const LIST_COLORS = ['#3d29d4', '#00d5ff', '#e5484d', '#f5a524', '#30a46c', '#d6409f', '#8e4ec6']
 
 const MAX_RECENT = 8
@@ -66,7 +66,7 @@ function finite(value) {
 }
 
 /** A saved place snapshot. Only what we need to show and re-open it. */
-export function normalizePlace(place) {
+function normalizePlace(place) {
   if (!place || typeof place !== 'object') return null
 
   const lat = finite(place.lat)
@@ -181,7 +181,7 @@ function readFromStorage() {
     const raw = localStorage.getItem(MAPS_SETTINGS_KEY)
     return raw ? normalizeMapsSettings(JSON.parse(raw)) : normalizeMapsSettings(DEFAULT_SETTINGS)
   } catch (error) {
-    console.error('Could not read maps settings:', error)
+    if (error?.name !== 'SecurityError') console.error('Could not read maps settings:', error)
     return normalizeMapsSettings(DEFAULT_SETTINGS)
   }
 }
@@ -357,17 +357,9 @@ function scheduleAccountSync() {
  * When it can, this becomes something like:
  *   return updateAccountSettings({ maps: settingsForAccount(settings) })
  */
-export async function pushMapsSettingsToAccount(settings) {
+async function pushMapsSettingsToAccount(settings) {
   void settings
   return null
-}
-
-/** What would be sent to the account (the remembered view stays local). */
-export function settingsForAccount(settings) {
-  const { lastView, recent, ...rest } = settings
-  void lastView
-  void recent
-  return rest
 }
 
 /** Merge maps settings stored on the account. The newer copy wins. */

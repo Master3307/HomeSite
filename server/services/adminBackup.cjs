@@ -11,6 +11,7 @@ const { ADMIN_DISCORD_USER_ID, adminKeyMatches } = require("./discordOAuth.cjs")
 const { twoFactorEnabled, checkTwoFactor } = require("./totp.cjs");
 const { setting } = require("../config.cjs");
 const backup = require("./backup.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * Backup, restore and .env editing for the admin account (the admin-code
@@ -37,10 +38,6 @@ const backup = require("./backup.cjs");
 
 
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024;
-
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
 
 /*
  * `hubSessionOf(req)`: an unlocked hub session (services/hub.cjs) counts as an
