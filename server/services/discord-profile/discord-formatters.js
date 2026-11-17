@@ -1,6 +1,7 @@
 import { ActivityType } from "discord.js";
 
 import { CDN } from "./config.js";
+import { displayActivityName, knownAppImage } from "./utils.js";
 import { USER_FLAGS } from "./constants.js";
 
 function hasFlag(bits = 0, flag) {
@@ -195,7 +196,7 @@ export function formatActivity(activity) {
   const smallImage = activity.assets?.smallImageURL() ?? null;
 
   return {
-    name: activity.name,
+    name: displayActivityName(activity.name),
     type: activity.type,
     type_label: ActivityType[activity.type] ?? "Unknown",
     details: activity.details ?? null,
@@ -225,7 +226,8 @@ export function formatActivity(activity) {
           small_text: activity.assets.smallText ?? null,
         }
       : null,
-    image_url: largeImage || smallImage || null,
+    // Known apps without art of their own (Bongo Cat) get their Steam artwork.
+    image_url: largeImage || smallImage || knownAppImage(activity.name) || null,
     application_id: activity.applicationId ?? null,
     url: activity.url ?? null,
     sync_id: activity.syncId ?? null,

@@ -13,7 +13,7 @@ import {
 
 import { readJsonFile, writeJsonFile } from "./file-store.js";
 
-import { normalizeName, safeJsonParseArray, scoreNameMatch } from "./utils.js";
+import { displayActivityName, knownAppImage, normalizeName, safeJsonParseArray, scoreNameMatch } from "./utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -510,6 +510,7 @@ export function createEnrichmentService() {
     }
 
     if (row.kind === "game") {
+      row.name = displayActivityName(row.name);
       const result = await fetchBestGameImage(row.name);
 
       if (result?.url) {
@@ -517,6 +518,15 @@ export function createEnrichmentService() {
         row.image_source = result.source || null;
 
         return result.url;
+      }
+
+      // Known apps (Bongo Cat): their own Steam artwork.
+      const steam = knownAppImage(row.name);
+      if (steam) {
+        row.small_image = steam;
+        row.image_source = "steam";
+
+        return steam;
       }
     }
 

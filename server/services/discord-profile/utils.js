@@ -12,6 +12,28 @@ export function safeJsonParseArray(value) {
   }
 }
 
+/*
+ * Apps whose Discord name needs help: the name shown (and searched for
+ * artwork), and their Steam app for a picture when nothing else has one.
+ * Keyed by the name without spaces, lower case.
+ */
+const KNOWN_APPS = {
+  bongocat: { name: "Bongo Cat", steamAppId: 3419430 },
+};
+
+const knownKey = (name) => String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/** The app as the site shows it ("BongoCat" → "Bongo Cat"). */
+export function displayActivityName(name) {
+  return KNOWN_APPS[knownKey(name)]?.name ?? name;
+}
+
+/** Steam artwork for a known app, or null. */
+export function knownAppImage(name) {
+  const app = KNOWN_APPS[knownKey(name)];
+  return app?.steamAppId ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${app.steamAppId}/header.jpg` : null;
+}
+
 export function normalizeName(value) {
   return String(value || "")
     .toLowerCase()

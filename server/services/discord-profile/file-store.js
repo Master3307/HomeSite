@@ -141,5 +141,8 @@ export async function writeJsonFile(filePath, value) {
     recursive: true,
   });
 
-  await fs.writeFile(filePath, JSON.stringify(value, null, 2), "utf8");
+  // Written next to it, then renamed: a crash never leaves half a file.
+  const temporary = `${filePath}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
+  await fs.writeFile(temporary, JSON.stringify(value, null, 2), "utf8");
+  await fs.rename(temporary, filePath);
 }

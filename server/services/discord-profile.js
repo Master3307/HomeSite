@@ -165,6 +165,19 @@ registerProfileRoutes(app, {
   getActivityHistory,
 });
 
+// Blocked origins get a short 403 (no stack trace per request in the log).
+app.use((error, _req, res, _next) => {
+  if (error?.message?.startsWith("CORS origin not allowed:")) {
+    return res.status(403).json({ error: error.message });
+  }
+  const status = Number(error?.status || error?.statusCode);
+  if (status >= 400 && status < 500) {
+    return res.status(status).json({ error: error.expose && error.message ? error.message : "Bad request." });
+  }
+  console.error("[Profile API] Unhandled error:", error);
+  return res.status(500).json({ error: "Internal server error." });
+});
+
 const server = app.listen(PORT, "127.0.0.1", () => {
   console.log(`Discord profile API listening on 127.0.0.1:${PORT}`);
   console.log("Live guild member endpoint: /:discordUserId");
@@ -197,6 +210,10 @@ async function shutdown(signal) {
     const serverClosed = new Promise((resolve) => {
       server.close(resolve);
     });
+    // Idle keep-alive and streaming connections would hold close() open
+    // until the forced exit.
+    server.closeIdleConnections?.();
+    setTimeout(() => server.closeAllConnections?.(), 2000).unref();
 
     await client.destroy();
     await serverClosed;
@@ -208,6 +225,10 @@ async function shutdown(signal) {
     process.exit(1);
   }
 }
+
+process.on("unhandledRejection", (error) => {
+  console.error("[Profile API] Unhandled promise rejection:", error);
+});
 
 process.once("SIGINT", () => {
   void shutdown("SIGINT");

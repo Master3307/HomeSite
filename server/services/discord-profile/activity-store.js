@@ -9,6 +9,7 @@ import { formatPresence } from "./discord-formatters.js";
 
 import {
   activityKey,
+  displayActivityName,
   normalizeActivityKind,
   safeJsonParseArray,
   updateGameStreak,
@@ -32,7 +33,7 @@ function toActivityRow(
   return {
     key: activityKey(activity),
     kind,
-    name: activity.name ?? null,
+    name: displayActivityName(activity.name) ?? null,
     type: activity.type ?? null,
     type_label: activity.type_label ?? null,
     application_id: activity.application_id ?? null,

@@ -22,8 +22,19 @@ import { registerLiveUserUiRoute } from "./live-user-ui.js";
 const GUILD_SCAN_CONCURRENCY = 3;
 
 // Coalesce simultaneous requests for the same user.
-// Completed results are not retained as a lookup cache.
 const activeLookups = new Map();
+
+/*
+ * The slow part of a lookup (Discord REST: the user, the bot's guilds, the
+ * membership in each) takes seconds and hardly ever changes, so it is kept
+ * for SCAN_FRESH_MS. After that the kept one is still answered at once while
+ * a new scan runs (until SCAN_MAX_AGE_MS). The presence is never kept: it is
+ * read live from the gateway cache on every request (formatLiveUser).
+ */
+const SCAN_FRESH_MS = 60_000;
+const SCAN_MAX_AGE_MS = 10 * 60_000;
+const scans = new Map(); // userId -> { at, scan }
+const pendingScans = new Map(); // userId -> Promise<scan>
 
 function isDiscordSnowflake(value) {
   return /^\d{17,20}$/.test(value);
@@ -179,7 +190,36 @@ async function inspectGuild(client, guildId, userId) {
   };
 }
 
-async function buildLiveUserResponse(client, discordUserId) {
+function refreshScan(client, discordUserId) {
+  const existing = pendingScans.get(discordUserId);
+  if (existing) return existing;
+  const pending = scanUser(client, discordUserId)
+    .then((scan) => {
+      scans.set(discordUserId, { at: Date.now(), scan });
+      // Only hub logins can look up other people; still, never grow forever.
+      if (scans.size > 200) {
+        for (const [id, kept] of scans) if (Date.now() - kept.at > SCAN_MAX_AGE_MS) scans.delete(id);
+      }
+      return scan;
+    })
+    .finally(() => pendingScans.delete(discordUserId));
+  pendingScans.set(discordUserId, pending);
+  return pending;
+}
+
+/** A recent scan at once (refreshing it in the background when it is getting old), else a new one. */
+async function getScan(client, discordUserId) {
+  const kept = scans.get(discordUserId);
+  const age = kept ? Date.now() - kept.at : Infinity;
+  if (age < SCAN_FRESH_MS) return kept.scan;
+  if (age < SCAN_MAX_AGE_MS) {
+    refreshScan(client, discordUserId).catch(() => {});
+    return kept.scan;
+  }
+  return refreshScan(client, discordUserId);
+}
+
+async function scanUser(client, discordUserId) {
   // Global profile remains independent of guild membership.
   const apiUser = await client.rest.get(Routes.user(discordUserId));
 
@@ -231,6 +271,15 @@ async function buildLiveUserResponse(client, discordUserId) {
     ...(configuredResult ? [configuredResult] : []),
     ...otherResults,
   ];
+
+  return { apiUser, warnings, guildIds, guildListComplete, configuredResult, results, verifiedAt: new Date().toISOString() };
+}
+
+async function buildLiveUserResponse(client, discordUserId) {
+  const scan = await getScan(client, discordUserId);
+  const { apiUser, guildIds, guildListComplete, configuredResult, results } = scan;
+  // A copy: the lines below add to it per request.
+  const warnings = [...scan.warnings];
 
   const sharedResults = results.filter((result) => result.status === "member");
 
@@ -295,7 +344,7 @@ async function buildLiveUserResponse(client, discordUserId) {
       ...formatGuild(result.guild),
       is_primary: result.guild_id === selected?.guild_id,
       is_configured: result.guild_id === DISCORD_GUILD_ID,
-      membership_verified_at: new Date().toISOString(),
+      membership_verified_at: scan.verifiedAt,
       member: formatLiveGuildMember(result.member),
       presence: cachedPresence ? formatPresence(cachedPresence) : null,
     };
