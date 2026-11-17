@@ -23,11 +23,16 @@ export const LINKS = [
  * card.json (setup.facts.*). Brand and model names stay untranslated.
  */
 export const SETUP = [
+  { id: 'setup', model: 'setup', icon: 'desk', nameKey: 'setup.setupName', facts: ['setupParts', 'setupPick'], options: ['cables'] },
+  { id: 'pc', model: 'pc', icon: 'computer', nameKey: 'setup.pcName', facts: ['pcParts', 'pcPick'], options: ['cables'] },
   { id: 'cpu', model: 'cpu', icon: 'memory', name: 'AMD Ryzen 5 5600X', facts: ['cores', 'clock', 'socket'] },
   { id: 'gpu', model: 'gpu', icon: 'videogame_asset', name: 'Gigabyte GeForce RTX 4060 AERO OC 8G', facts: ['vram', 'cooling', 'outputs'] },
   { id: 'ram', model: 'ram', icon: 'memory_alt', name: 'Kingston FURY Beast DDR4', facts: ['capacity', 'type'] },
   { id: 'board', model: 'board', icon: 'developer_board', name: 'Gigabyte B550M DS3H', facts: ['format', 'chipset', 'slots'] },
   { id: 'displays', model: 'displays', icon: 'desktop_windows', name: 'LG 22″ IPS + Samsung S22D300', facts: ['resolution', 'screens'] },
+  { id: 'keyboard', model: 'keyboard', icon: 'keyboard', name: 'HyperX Alloy Elite RGB', facts: ['kbLayout', 'kbLight'] },
+  { id: 'mouse', model: 'mouse', icon: 'mouse', name: 'Redragon M908 Impact', facts: ['mouseButtons', 'mouseDpi'] },
+  { id: 'mic', model: 'mic', icon: 'mic', name: 'HyperX QuadCast', facts: ['micPatterns', 'micMute'] },
   { id: 'software', model: null, icon: 'terminal', nameKey: 'setup.softwareName', facts: [] },
 ]
 
@@ -52,27 +57,30 @@ export const SOFTWARE = {
   processors: '12 × AMD Ryzen 5 5600X 6-Core Processor',
   memory: { total: 32, usable: 31.3 },
   graphics: 'NVIDIA GeForce RTX 4060',
-  manufacturer: 'Gigabyte Technology Co., Ltd.',
-  product: 'B550M DS3H',
+  // As the system reports it (the PC was built by CSL).
+  manufacturer: 'CSL Computer GmbH',
+  product: '5814',
+  version: '-CF',
 }
 
 /*
- * What I build with (/card): Simple Icons keys in components/BrandIcon.jsx
- * and the name shown on hover. The things without a logo are in card.json
+ * What I build with (/card): Simple Icons keys in components/BrandIcon.jsx,
+ * the name shown on hover and the link in the card a click opens
+ * (descriptions in card.json skills.items). The things without a logo are in card.json
  * (skills.also).
  */
 export const TOOLBELT = [
-  { icon: 'javascript', label: 'JavaScript' },
-  { icon: 'react', label: 'React' },
-  { icon: 'nodedotjs', label: 'Node.js' },
-  { icon: 'vite', label: 'Vite' },
-  { icon: 'html5', label: 'HTML' },
-  { icon: 'css3', label: 'CSS' },
-  { icon: 'sqlite', label: 'SQLite' },
-  { icon: 'git', label: 'Git' },
-  { icon: 'linux', label: 'Linux' },
-  { icon: 'archlinux', label: 'Arch / CachyOS' },
-  { icon: 'kde', label: 'KDE Plasma' },
+  { icon: 'javascript', label: 'JavaScript', url: 'https://developer.mozilla.org/docs/Web/JavaScript' },
+  { icon: 'react', label: 'React', url: 'https://react.dev/' },
+  { icon: 'nodedotjs', label: 'Node.js', url: 'https://nodejs.org/' },
+  { icon: 'vite', label: 'Vite', url: 'https://vite.dev/' },
+  { icon: 'html5', label: 'HTML', url: 'https://developer.mozilla.org/docs/Web/HTML' },
+  { icon: 'css3', label: 'CSS', url: 'https://developer.mozilla.org/docs/Web/CSS' },
+  { icon: 'sqlite', label: 'SQLite', url: 'https://sqlite.org/' },
+  { icon: 'git', label: 'Git', url: 'https://git-scm.com/' },
+  { icon: 'linux', label: 'Linux', url: 'https://kernel.org/' },
+  { icon: 'archlinux', label: 'Arch / CachyOS', url: 'https://cachyos.org/' },
+  { icon: 'kde', label: 'KDE Plasma', url: 'https://kde.org/plasma-desktop/' },
 ]
 
 /* The first version of the site (static, still online), named on /about. */

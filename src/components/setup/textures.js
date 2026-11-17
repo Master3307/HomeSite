@@ -60,7 +60,7 @@ function brushed(context, width, height, base, spread = 10, seed = 3, vertical =
 
 let logoImage = null
 let logoPromise = null
-export function cachyLogo() {
+function cachyLogo() {
   if (!logoPromise) {
     logoPromise = new Promise((resolve) => {
       const image = new Image()
@@ -212,7 +212,7 @@ export const substrateTexture = (bottom = false) =>
 /* ---------- Gigabyte GeForce RTX 4060 AERO OC 8G ---------- */
 
 /* The AERO mark: Λ Σ R O in thin geometric strokes. */
-export function aeroMark(context, x, y, height, { weight = 0.13, gap = 0.28 } = {}) {
+function aeroMark(context, x, y, height, { weight = 0.13, gap = 0.28 } = {}) {
   const w = height * 0.82
   const line = height * weight
   context.save()
@@ -296,43 +296,277 @@ export const shroudPanelTexture = (bump = false) =>
     { srgb: !bump, repeat: true },
   )
 
-/* The glowing GIGABYTE logo on the top edge (RGB Fusion); its colour is set on the material. */
-export const rgbLogoTexture = () =>
-  canvasTexture(1024, 128, (context, w, h) => {
+/* Text squeezed or stretched to an exact width (cm-measured prints). */
+function fitText(context, text, x, baseline, width) {
+  const measured = context.measureText(text).width
+  context.save()
+  context.translate(x, baseline)
+  context.scale(width / measured, 1)
+  context.fillText(text, 0, 0)
+  context.restore()
+}
+
+const roundRectPath = (context, x, y, width, height, radius) => {
+  context.beginPath()
+  context.roundRect(x, y, width, height, radius)
+}
+
+/*
+ * The card's prints are laid out in cm from the photos of the real card,
+ * `s` measured from the I/O bracket. The side edge reads the right way up
+ * with the card installed (fans down): bracket on the left.
+ */
+export const GPU_SIDE = {
+  from: 1.6, // the flat part of the edge (the shroud starts 0.7 cm from the bracket), s 1.6 → 27.0
+  length: 25.4,
+  height: 1.26,
+  aero: { top: [1.8, 9.4], bottom: [2.15, 9.95], letters: [3.7, 0.56] },
+}
+
+function aeroPanelPath(context, unit, h) {
+  const { top, bottom } = GPU_SIDE.aero
+  const x = (s) => (s - GPU_SIDE.from) * unit
+  context.beginPath()
+  context.moveTo(x(top[0]), h * 0.1)
+  context.lineTo(x(top[1]), h * 0.1)
+  context.lineTo(x(bottom[1]), h * 0.8)
+  context.lineTo(x(bottom[0]), h * 0.8)
+  context.closePath()
+}
+
+function aeroLetters(context, unit, h, colour) {
+  const [start, height] = GPU_SIDE.aero.letters
+  context.strokeStyle = colour
+  aeroMark(context, (start - GPU_SIDE.from) * unit, h * 0.45 - (height * unit) / 2, height * unit, { weight: 0.15, gap: 0.3 })
+}
+
+/* The shroud's top edge: the AERO panel (dark blue film), the light facets and GEFORCE RTX. */
+export const gpuSideTexture = () =>
+  canvasTexture(4096, 204, (context, w, h) => {
+    const unit = w / GPU_SIDE.length
+    const x = (s) => (s - GPU_SIDE.from) * unit
+    const base = context.createLinearGradient(0, 0, 0, h)
+    base.addColorStop(0, '#dfe2e6')
+    base.addColorStop(0.5, '#eceef1')
+    base.addColorStop(1, '#e2e5e9')
+    context.fillStyle = base
+    context.fillRect(0, 0, w, h)
+    const facet = (points, fill) => {
+      context.fillStyle = fill
+      context.beginPath()
+      points.forEach(([s, v], index) => context[index ? 'lineTo' : 'moveTo'](x(s), v * h))
+      context.closePath()
+      context.fill()
+    }
+    // The light strip before the panel and the silver facet after it.
+    facet([[0.2, 0.1], [1.5, 0.1], [1.85, 0.8], [0.55, 0.8]], '#cdd1d7')
+    const silver = context.createLinearGradient(x(9.6), 0, x(15.5), 0)
+    silver.addColorStop(0, '#f6f7f9')
+    silver.addColorStop(1, '#d9dde2')
+    facet([[9.55, 0], [14.2, 0], [15.4, 1], [10.1, 1]], silver)
+    facet([[14.2, 0], [14.32, 0], [15.52, 1], [15.4, 1]], 'rgba(120,126,136,0.35)')
+    // The AERO panel: a dark blue film over the RGB, lighter towards its end.
+    const film = context.createLinearGradient(x(1.8), 0, x(9.9), h)
+    film.addColorStop(0, '#1b2f52')
+    film.addColorStop(0.55, '#21507a')
+    film.addColorStop(1, '#2f7f9c')
+    aeroPanelPath(context, unit, h)
+    context.fillStyle = film
+    context.fill()
+    context.strokeStyle = 'rgba(255,255,255,0.35)'
+    context.lineWidth = 2
+    context.stroke()
+    aeroLetters(context, unit, h, '#f4f8ff')
+    // GEFORCE RTX in NVIDIA's dark grey.
+    context.fillStyle = '#383c43'
+    context.font = `800 ${h * 0.62}px ${FONT}`
+    context.letterSpacing = `${unit * 0.06}px`
+    context.textBaseline = 'alphabetic'
+    fitText(context, 'GEFORCE RTX', x(15.9), h * 0.79, unit * 9.4)
+    context.letterSpacing = '0px'
+    // Fine edges along both sides of the band.
+    context.fillStyle = 'rgba(255,255,255,0.7)'
+    context.fillRect(0, 0, w, 2)
+    context.fillStyle = 'rgba(90,96,106,0.35)'
+    context.fillRect(0, h - 3, w, 3)
+  })
+
+/* Only the AERO letters with a soft glow: drawn additively over the panel, coloured by RGB Fusion. */
+export const aeroGlowTexture = () =>
+  canvasTexture(4096, 204, (context, w, h) => {
+    const unit = w / GPU_SIDE.length
+    context.fillStyle = '#000'
+    context.fillRect(0, 0, w, h)
+    context.save()
+    aeroPanelPath(context, unit, h)
+    context.clip()
+    // Light leaking through the film, strongest around the letters.
+    const leak = context.createRadialGradient((5.6 - GPU_SIDE.from) * unit, h * 0.45, 0, (5.6 - GPU_SIDE.from) * unit, h * 0.45, unit * 4.6)
+    leak.addColorStop(0, 'rgba(255,255,255,0.32)')
+    leak.addColorStop(1, 'rgba(255,255,255,0.04)')
+    context.fillStyle = leak
+    context.fillRect(0, 0, w, h)
+    context.restore()
+    context.shadowColor = '#fff'
+    context.shadowBlur = 18
+    context.lineWidth = 1
+    aeroLetters(context, unit, h, '#fff')
+    context.shadowBlur = 0
+  })
+
+/* The silver plate on the backplate's edge with GIGABYTE (8.4 × 1.15 cm), transparent around the print. */
+export const gigabytePlateTexture = () =>
+  canvasTexture(1024, 140, (context, w, h) => {
+    context.clearRect(0, 0, w, h)
+    context.fillStyle = '#353941'
+    context.font = `800 ${h * 0.66}px ${FONT}`
+    context.letterSpacing = '6px'
+    context.textBaseline = 'alphabetic'
+    fitText(context, 'GIGABYTE', w * 0.12, h * 0.8, w * 0.78)
+    context.letterSpacing = '0px'
+  })
+
+/* The small RGB strip next to the plate: five slanted bars (white, coloured on the material). */
+export const ledStripTexture = () =>
+  canvasTexture(256, 96, (context, w, h) => {
     context.fillStyle = '#000'
     context.fillRect(0, 0, w, h)
     context.fillStyle = '#fff'
-    context.font = `800 76px ${FONT}`
-    context.textAlign = 'center'
-    context.textBaseline = 'middle'
-    context.letterSpacing = '10px'
-    context.fillText('GIGABYTE', w / 2, h / 2 + 3)
+    context.shadowColor = '#fff'
+    context.shadowBlur = 8
+    for (let i = 0; i < 5; i += 1) {
+      const x = 28 + i * 42
+      context.beginPath()
+      context.moveTo(x, h * 0.28)
+      context.lineTo(x + 20, h * 0.28)
+      context.lineTo(x + 10, h * 0.72)
+      context.lineTo(x - 10, h * 0.72)
+      context.closePath()
+      context.fill()
+    }
   })
 
-/* The metal backplate: brushed silver, the AERO mark and a few lines; the cut-out end is geometry. */
+/*
+ * The metal backplate (25.7 × 11.2 cm): brushed silver, the pressed panel
+ * with AERO | GIGABYTE, the screws, the label, the slanted vents along the
+ * top edge, BIOS OC/SILENT and GEFORCE RTX beside the open end. Drawn as
+ * seen from the back with the card installed: bracket on the left, top edge
+ * at the bottom. The cut-outs are geometry.
+ */
+export const BACKPLATE = { from: 0.1, length: 25.7, top: 5.6 }
 export const backplateTexture = () =>
-  canvasTexture(2048, 832, (context, w, h) => {
-    brushed(context, w, h, '#d6d9de', 9, 7)
-    context.strokeStyle = 'rgba(120,126,136,0.5)'
-    context.lineWidth = 5
-    context.beginPath()
-    context.moveTo(w * 0.04, h * 0.86)
-    context.lineTo(w * 0.36, h * 0.86)
-    context.lineTo(w * 0.42, h * 0.62)
-    context.lineTo(w * 0.7, h * 0.62)
+  canvasTexture(2048, 896, (context, w, h) => {
+    const unit = w / BACKPLATE.length
+    const x = (s) => (s - BACKPLATE.from) * unit
+    const y = (z) => (z + BACKPLATE.top) * unit
+    brushed(context, w, h, '#d5d8dd', 9, 7)
+    // The pressed panel: a light step on two sides, a shadow on the others.
+    const [left, right, far, near] = [x(2.0), x(15.6), y(-4.9), y(3.8)]
+    roundRectPath(context, left, far, right - left, near - far, unit * 0.7)
+    context.fillStyle = 'rgba(255,255,255,0.08)'
+    context.fill()
+    context.lineWidth = unit * 0.06
+    context.strokeStyle = 'rgba(80,86,96,0.4)'
     context.stroke()
-    context.beginPath()
-    context.moveTo(w * 0.04, h * 0.14)
-    context.lineTo(w * 0.22, h * 0.14)
-    context.lineTo(w * 0.26, h * 0.3)
-    context.lineTo(w * 0.5, h * 0.3)
+    roundRectPath(context, left + unit * 0.06, far + unit * 0.06, right - left - unit * 0.12, near - far - unit * 0.12, unit * 0.64)
+    context.strokeStyle = 'rgba(255,255,255,0.55)'
+    context.lineWidth = unit * 0.035
     context.stroke()
-    context.strokeStyle = 'rgba(88,94,104,0.75)'
-    aeroMark(context, w * 0.46, h * 0.36, 120, { weight: 0.1 })
-    context.fillStyle = 'rgba(88,94,104,0.7)'
-    context.font = `600 34px ${FONT}`
-    context.letterSpacing = '8px'
-    context.fillText('GIGABYTE', w * 0.46, h * 0.68)
+    // AERO | GIGABYTE and the dotted line under it.
+    const ink = 'rgba(64,69,78,0.88)'
+    context.strokeStyle = ink
+    context.fillStyle = ink
+    const letters = unit * 0.78
+    const aeroEnd = x(3.4) + aeroMark(context, x(3.4), y(1.6) - letters, letters, { weight: 0.1, gap: 0.3 })
+    context.fillRect(aeroEnd + unit * 0.55, y(1.6) - letters * 1.05, unit * 0.07, letters * 1.1)
+    context.font = `800 ${letters * 1.36}px ${FONT}`
+    context.letterSpacing = `${unit * 0.05}px`
+    context.textBaseline = 'alphabetic'
+    fitText(context, 'GIGABYTE', aeroEnd + unit * 1.2, y(1.6), unit * 6.1)
+    for (let s = 3.4; s < 13.6; s += 0.16) context.fillRect(x(s), y(2.1), unit * 0.07, unit * 0.07)
+    // Screws (pressed dimples with a screw head).
+    const screw = (s, z) => {
+      const gradient = context.createRadialGradient(x(s) - unit * 0.05, y(z) - unit * 0.05, 0, x(s), y(z), unit * 0.26)
+      gradient.addColorStop(0, '#9ea3ab')
+      gradient.addColorStop(0.7, '#7d838c')
+      gradient.addColorStop(1, 'rgba(70,75,84,0.9)')
+      context.fillStyle = gradient
+      context.beginPath()
+      context.arc(x(s), y(z), unit * 0.24, 0, Math.PI * 2)
+      context.fill()
+      context.strokeStyle = 'rgba(255,255,255,0.6)'
+      context.lineWidth = unit * 0.03
+      context.beginPath()
+      context.arc(x(s), y(z), unit * 0.27, Math.PI * 0.1, Math.PI * 0.9)
+      context.stroke()
+    }
+    for (const [s, z] of [[5.4, -1.4], [9.6, -1.4], [5.4, 2.9], [9.6, 2.9], [12.6, 4.4], [15.2, 0.9], [17.3, 4.4], [25.3, 4.4], [17.3, -5.0], [25.3, -5.0], [2.8, -4.3]]) screw(s, z)
+    // The label (model and revision, barcodes; no serial).
+    context.fillStyle = '#eeeeea'
+    context.fillRect(x(4.1), y(4.2), unit * 4.5, unit * 0.86)
+    context.fillStyle = '#26272b'
+    context.font = `600 ${unit * 0.2}px ${FONT}`
+    context.fillText('GV-N4060AERO OC-8GD', x(4.25), y(4.47))
+    context.font = `500 ${unit * 0.16}px ${FONT}`
+    context.fillText('rev. 1.0', x(4.25), y(4.7))
+    const next = random(41)
+    for (const [from, to, top] of [[5.3, 6.9, 4.56], [6.95, 8.45, 4.3]]) {
+      let s = from
+      while (s < to) {
+        const bar = 0.012 + next() * 0.03
+        if (next() > 0.35) context.fillRect(x(s), y(top), unit * bar, unit * 0.34)
+        s += bar + 0.014
+      }
+    }
+    // Slanted vents along the top edge, up to the power plug.
+    context.fillStyle = '#25282d'
+    for (let s = 4.0; s < 13.9; s += 0.34) {
+      context.beginPath()
+      context.moveTo(x(s), y(5.12))
+      context.lineTo(x(s + 0.13), y(5.12))
+      context.lineTo(x(s + 0.4), y(5.5))
+      context.lineTo(x(s + 0.27), y(5.5))
+      context.closePath()
+      context.fill()
+    }
+    context.fillStyle = ink
+    context.font = `600 ${unit * 0.17}px ${FONT}`
+    context.letterSpacing = `${unit * 0.02}px`
+    context.fillText('BIOS  OC / SILENT', x(1.0), y(5.2))
+    // GEFORCE RTX beside the open end, and a fine edge around the opening.
+    context.font = `800 ${unit * 0.92}px ${FONT}`
+    context.letterSpacing = `${unit * 0.05}px`
+    fitText(context, 'GEFORCE RTX', x(17.9), y(5.0), unit * 6.95)
+    context.letterSpacing = '0px'
+    roundRectPath(context, x(17.95), y(-4.45), unit * 7.5, unit * 7.5, unit * 0.35)
+    context.strokeStyle = 'rgba(70,75,84,0.6)'
+    context.lineWidth = unit * 0.08
+    context.stroke()
+  })
+
+/* The end cap's back: fine diagonal ribs on its outer half (transparent elsewhere). */
+export const endRibsTexture = () =>
+  canvasTexture(256, 512, (context, w, h) => {
+    context.clearRect(0, 0, w, h)
+    context.save()
+    context.beginPath()
+    context.rect(0, 0, w, h)
+    context.clip()
+    for (let i = -h; i < w + h; i += 9) {
+      context.strokeStyle = 'rgba(120,126,136,0.38)'
+      context.lineWidth = 2.4
+      context.beginPath()
+      context.moveTo(i, 0)
+      context.lineTo(i + h * 0.6, h)
+      context.stroke()
+      context.strokeStyle = 'rgba(255,255,255,0.7)'
+      context.lineWidth = 1.4
+      context.beginPath()
+      context.moveTo(i + 3, 0)
+      context.lineTo(i + 3 + h * 0.6, h)
+      context.stroke()
+    }
+    context.restore()
   })
 
 /* ---------- Kingston FURY Beast DDR4 (black) ---------- */
@@ -412,34 +646,51 @@ function furyWordmark(context, x, y, height) {
   return 33 * u
 }
 
-/* The front of a stick: KINGSTON, the FURY mark, BEAST, DDR4 and the fine angled lines (transparent around the print). */
+/*
+ * The front of a stick, as on the real ones (transparent around the print):
+ * KINGSTON over the FURY mark at the vented end, FURY in italics along the
+ * top band, BEAST in bold italics with a row of short slanted dashes under
+ * it, DDR4 in the end cap. 2048 px = 13.1 cm, 520 px = 3.0 cm.
+ */
 export const furyTexture = () =>
   canvasTexture(2048, 520, (context, w, h) => {
     context.clearRect(0, 0, w, h)
-    // Faint angled hatching at the bottom right of the raised panel.
-    context.strokeStyle = 'rgba(255,255,255,0.06)'
-    context.lineWidth = 3
-    for (let x = 1260; x < 1900; x += 26) {
-      context.beginPath()
-      context.moveTo(x, h)
-      context.lineTo(x + 60, h - 90)
-      context.stroke()
+    const italic = (text, x, baseline, size, weight, spacing = 0) => {
+      context.save()
+      context.translate(x, baseline)
+      context.transform(1, 0, -0.2, 1, 0, 0)
+      context.font = `${weight} ${size}px ${FONT}`
+      context.letterSpacing = `${spacing}px`
+      context.fillText(text, 0, 0)
+      context.restore()
     }
-    context.fillStyle = 'rgba(206,210,216,0.9)'
-    context.font = `600 34px ${FONT}`
-    context.letterSpacing = '18px'
     context.textBaseline = 'alphabetic'
-    context.fillText('KINGSTON', 210, 196)
+    context.fillStyle = 'rgba(206,210,216,0.88)'
+    context.font = `600 30px ${FONT}`
+    context.letterSpacing = '17px'
+    context.fillText('KINGSTON', 286, 262)
     context.letterSpacing = '0px'
-    context.fillStyle = 'rgba(196,200,206,0.95)'
-    furyWordmark(context, 200, 222, 120)
-    context.fillStyle = 'rgba(240,242,245,0.95)'
-    context.font = `500 86px ${FONT}`
-    context.letterSpacing = '12px'
-    context.fillText('BEAST', 1330, 360)
-    context.font = `700 58px ${FONT}`
-    context.letterSpacing = '4px'
-    context.fillText('DDR4', 1800, 176)
+    context.fillStyle = 'rgba(214,218,224,0.95)'
+    furyWordmark(context, 276, 280, 112)
+    context.fillStyle = 'rgba(222,225,230,0.92)'
+    italic('FURY', 1150, 88, 62, 700, 3)
+    context.fillStyle = 'rgba(236,238,242,0.95)'
+    italic('BEAST', 1360, 226, 112, 800, 4)
+    context.fillStyle = 'rgba(200,204,210,0.32)'
+    for (let x = 1370; x < 1800; x += 34) {
+      context.beginPath()
+      context.moveTo(x, 262)
+      context.lineTo(x + 18, 262)
+      context.lineTo(x + 10, 274)
+      context.lineTo(x - 8, 274)
+      context.closePath()
+      context.fill()
+    }
+    context.fillStyle = 'rgba(232,234,238,0.95)'
+    context.font = `700 50px ${FONT}`
+    context.letterSpacing = '3px'
+    context.fillText('DDR4', 1846, 96)
+    context.letterSpacing = '0px'
   })
 
 /* The back of a stick: Kingston's white label. */
@@ -463,15 +714,6 @@ export const furyLabelTexture = () =>
       if (next() > 0.4) context.fillRect(x, 150, bar, 70)
       x += bar + 2
     }
-  })
-
-/* The top edge of the raised panel: the small FURY print. */
-export const furyTopTexture = () =>
-  canvasTexture(1024, 64, (context, w, h) => {
-    context.fillStyle = '#17181b'
-    context.fillRect(0, 0, w, h)
-    context.fillStyle = 'rgba(210,214,220,0.85)'
-    furyWordmark(context, w * 0.28, 16, 30)
   })
 
 /* ---------- Gigabyte B550M DS3H ---------- */
@@ -632,6 +874,17 @@ export const boardTexture = (size = 4096) =>
     label('F_USB1  F_USB2', -4.8, 11.9, 0.2)
     label('F_AUDIO', -11.6, 11.9, 0.2)
     label('Designed in Taipei', 6.4, -11.75, 0.18, 400)
+    label('D_LED2', 10.5, -7.6, 0.2)
+    label('LED_C2', 10.5, -8.6, 0.2)
+    label('SATA3', -1.0, 11.0, 0.22)
+    // The "Ultra Durable" script near the bottom right corner (as on the board).
+    context.save()
+    context.translate(...at(8.4, 4.4))
+    context.transform(1, 0, -0.25, 1, 0, 0)
+    context.font = `italic 600 ${unit * 0.42}px ${FONT}`
+    context.fillStyle = 'rgba(234,236,240,0.7)'
+    context.fillText('Ultra Durable', 0, 0)
+    context.restore()
     label('CPU_OPT', -5.6, -11.8, 0.2)
     label('AMD AM4', -2.4, -7.6, 0.24)
     // Outlines around connectors.
@@ -677,20 +930,36 @@ export const socketTexture = () =>
     context.fill()
   })
 
-/* The VRM heatsink's face: dark grey with the yellow ULTRA DURABLE plate. */
+/*
+ * The VRM heatsink's raised strip (2.0 × 7.1 cm): dark brushed metal,
+ * ULTRA DURABLE in gold reading along it (towards the top of the board,
+ * the letters' tops to the rear I/O), fine slanted lines along its inner edge.
+ */
 export const vrmLabelTexture = () =>
   canvasTexture(256, 1024, (context, w, h) => {
-    brushed(context, w, h, '#3a3d42', 10, 27, true)
-    context.fillStyle = '#16171a'
-    context.fillRect(40, 60, w - 80, 330)
+    brushed(context, w, h, '#2c2f34', 10, 27, true)
     context.save()
-    context.translate(w / 2 + 6, 225)
-    context.rotate(Math.PI / 2)
-    context.fillStyle = '#e8b83a'
+    context.beginPath()
+    context.rect(w * 0.8, 0, w * 0.2, h)
+    context.clip()
+    context.strokeStyle = 'rgba(150,154,162,0.35)'
+    context.lineWidth = 3
+    for (let y = -40; y < h + 40; y += 14) {
+      context.beginPath()
+      context.moveTo(w * 0.8, y + 30)
+      context.lineTo(w, y)
+      context.stroke()
+    }
+    context.restore()
+    context.save()
+    context.translate(w * 0.4, h * 0.27)
+    context.rotate(-Math.PI / 2)
+    context.fillStyle = '#e3b23c'
     context.textAlign = 'center'
-    context.font = `900 54px ${FONT}`
-    context.fillText('ULTRA', 0, -12)
-    context.fillText('DURABLE', 0, 42)
+    context.textBaseline = 'middle'
+    context.font = `900 66px ${FONT}`
+    context.fillText('ULTRA', 0, -36)
+    context.fillText('DURABLE', 0, 36)
     context.restore()
   })
 
@@ -1286,3 +1555,390 @@ export function rightScreenTexture() {
     }),
   )
 }
+
+/* ---------- the PC case, its fans and the tower cooler ---------- */
+
+/*
+ * A panel's look and cut-outs, drawn in cm: `paint(context, s)` the colour
+ * (canvas origin top left, `s` px per cm), `holes(context, s)` black where
+ * the steel is cut (white elsewhere). Returns `{ map, alphaMap }`.
+ */
+export function panelTextures(width, height, { paint, holes, scale = 24, base = '#eef0f3' } = {}) {
+  const s = Math.min(scale, 2048 / Math.max(width, height))
+  const w = Math.round(width * s)
+  const h = Math.round(height * s)
+  const map = canvasTexture(w, h, (context) => {
+    context.fillStyle = base
+    context.fillRect(0, 0, w, h)
+    // Powder-coated steel: a very fine grain.
+    const next = random(Math.round(width * 7 + height))
+    for (let i = 0; i < (w * h) / 60; i += 1) {
+      context.fillStyle = `rgba(${next() > 0.5 ? '255,255,255' : '90,96,108'},${0.025 + next() * 0.03})`
+      context.fillRect(next() * w, next() * h, 1.4, 1.4)
+    }
+    paint?.(context, s)
+  })
+  const alphaMap = holes
+    ? canvasTexture(
+        w,
+        h,
+        (context) => {
+          context.fillStyle = '#fff'
+          context.fillRect(0, 0, w, h)
+          context.fillStyle = '#000'
+          holes(context, s)
+        },
+        { srgb: false },
+      )
+    : null
+  return { map, alphaMap }
+}
+
+/*
+ * The case's "tumbling blocks" perforation: pointy-top hexagons, each cut
+ * into three rhombi (top, left, right) with thin bars between them, filling
+ * `region` ({ x, y, w, h } in cm). `size`: the hexagon's radius in cm.
+ */
+export function cubePattern(context, s, { x, y, w, h }, size = 0.75, gap = 0.2, clip = null) {
+  context.save()
+  context.beginPath()
+  if (clip) clip(context, s)
+  else context.rect(x * s, y * s, w * s, h * s)
+  context.clip()
+  const dx = Math.sqrt(3) * size
+  const dy = 1.5 * size
+  const corner = (cx, cy, k) => [cx + size * Math.cos(Math.PI / 6 + (k * Math.PI) / 3), cy + size * Math.sin(Math.PI / 6 + (k * Math.PI) / 3)]
+  for (let row = -1; row * dy < h + size; row += 1) {
+    for (let col = -1; col * dx < w + size; col += 1) {
+      const cx = x + col * dx + (row % 2 ? dx / 2 : 0)
+      const cy = y + row * dy
+      // Corners k: 0 lower right, 1 bottom, 2 lower left, 3 upper left, 4 top, 5 upper right.
+      const c = [0, 1, 2, 3, 4, 5].map((k) => corner(cx, cy, k))
+      const centre = [cx, cy]
+      for (const rhombus of [
+        [c[4], c[5], centre, c[3]],
+        [c[3], centre, c[1], c[2]],
+        [c[5], c[0], c[1], centre],
+      ]) {
+        const mx = rhombus.reduce((sum, p) => sum + p[0], 0) / 4
+        const my = rhombus.reduce((sum, p) => sum + p[1], 0) / 4
+        const shrink = 1 - gap
+        context.beginPath()
+        rhombus.forEach(([px, py], index) => context[index ? 'lineTo' : 'moveTo']((mx + (px - mx) * shrink) * s, (my + (py - my) * shrink) * s))
+        context.closePath()
+        context.fill()
+      }
+    }
+  }
+  context.restore()
+}
+
+/* A rounded slot (cable holes, floor slots), in cm. */
+export function slot(context, s, x, y, w, h) {
+  context.beginPath()
+  context.roundRect(x * s, y * s, w * s, h * s, (Math.min(w, h) / 2) * s)
+  context.fill()
+}
+
+/* The soft glow around a fan's RGB rings (additive; white, coloured by the material). */
+export const fanGlowTexture = () =>
+  canvasTexture(256, 256, (context, w) => {
+    const r = w / 2
+    context.clearRect(0, 0, w, w)
+    const ring = (radius, width, alpha) => {
+      const gradient = context.createRadialGradient(r, r, Math.max(0, radius - width), r, r, radius + width)
+      gradient.addColorStop(0, 'rgba(255,255,255,0)')
+      gradient.addColorStop(0.5, `rgba(255,255,255,${alpha})`)
+      gradient.addColorStop(1, 'rgba(255,255,255,0)')
+      context.fillStyle = gradient
+      context.fillRect(0, 0, w, w)
+    }
+    context.globalCompositeOperation = 'lighter'
+    ring(r * 0.78, r * 0.16, 0.55)
+    ring(r * 0.32, r * 0.12, 0.45)
+  })
+
+/* The tower cooler's maker mark on its top cover: a squared B with an inner stroke (transparent around it). */
+export const coolerLogoTexture = () =>
+  canvasTexture(256, 256, (context, w) => {
+    context.clearRect(0, 0, w, w)
+    context.strokeStyle = '#2b2d33'
+    context.lineWidth = 16
+    context.lineJoin = 'round'
+    const u = w / 10
+    // Outer B: a square with two rounded bowls on the right.
+    context.beginPath()
+    context.moveTo(2 * u, 1.6 * u)
+    context.lineTo(6.6 * u, 1.6 * u)
+    context.quadraticCurveTo(8.2 * u, 1.6 * u, 8.2 * u, 3.2 * u)
+    context.quadraticCurveTo(8.2 * u, 4.6 * u, 7.0 * u, 5.0 * u)
+    context.quadraticCurveTo(8.4 * u, 5.4 * u, 8.4 * u, 6.8 * u)
+    context.quadraticCurveTo(8.4 * u, 8.4 * u, 6.8 * u, 8.4 * u)
+    context.lineTo(2 * u, 8.4 * u)
+    context.closePath()
+    context.stroke()
+    // The inner stroke.
+    context.beginPath()
+    context.moveTo(3.6 * u, 6.8 * u)
+    context.lineTo(3.6 * u, 4.2 * u)
+    context.lineTo(6.2 * u, 4.2 * u)
+    context.quadraticCurveTo(6.8 * u, 4.2 * u, 6.8 * u, 4.9 * u)
+    context.lineTo(6.8 * u, 6.8 * u)
+    context.stroke()
+  })
+
+/* The glowing "D" light on the back of the case (white, coloured on the material). */
+export const caseLightTexture = () =>
+  canvasTexture(256, 128, (context, w, h) => {
+    context.fillStyle = '#000'
+    context.fillRect(0, 0, w, h)
+    context.strokeStyle = '#fff'
+    context.shadowColor = '#fff'
+    context.shadowBlur = 14
+    context.lineWidth = 14
+    context.lineCap = 'round'
+    context.beginPath()
+    context.moveTo(w * 0.32, h * 0.25)
+    context.lineTo(w * 0.55, h * 0.25)
+    context.arc(w * 0.55, h * 0.5, h * 0.25, -Math.PI / 2, Math.PI / 2)
+    context.lineTo(w * 0.32, h * 0.75)
+    context.closePath()
+    context.stroke()
+  })
+
+/* The honeycomb cover on the tray above the board (cable pass-through). */
+export const hexCoverTexture = () =>
+  canvasTexture(512, 160, (context, w, h) => {
+    context.clearRect(0, 0, w, h)
+    context.fillStyle = '#eceef1'
+    context.beginPath()
+    context.moveTo(w * 0.06, 0)
+    context.lineTo(w * 0.94, 0)
+    context.lineTo(w * 0.84, h)
+    context.lineTo(w * 0.16, h)
+    context.closePath()
+    context.fill()
+    context.strokeStyle = 'rgba(70,76,88,0.55)'
+    context.lineWidth = 3
+    context.stroke()
+    const r = 26
+    for (let row = 0; row < 3; row += 1) {
+      for (let col = 0; col < 7; col += 1) {
+        const cx = w * 0.22 + col * r * 1.75 + (row % 2 ? r * 0.87 : 0)
+        const cy = 30 + row * r * 1.5
+        if (cx > w * 0.82) continue
+        context.beginPath()
+        for (let k = 0; k < 6; k += 1) context.lineTo(cx + r * 0.92 * Math.cos(Math.PI / 6 + (k * Math.PI) / 3), cy + r * 0.92 * Math.sin(Math.PI / 6 + (k * Math.PI) / 3))
+        context.closePath()
+        context.stroke()
+      }
+    }
+  })
+
+/* The power supply's back: a dark honeycomb grille, the C14 socket and the switch. */
+export const psuBackTexture = () =>
+  canvasTexture(256, 512, (context, w, h) => {
+    context.fillStyle = '#17181b'
+    context.fillRect(0, 0, w, h)
+    context.fillStyle = '#060607'
+    const r = 9
+    for (let row = 0; row * r * 1.5 < h * 0.62; row += 1) {
+      for (let col = 0; col * r * 1.75 < w; col += 1) {
+        const cx = 14 + col * r * 1.75 + (row % 2 ? r * 0.87 : 0)
+        const cy = 16 + row * r * 1.5
+        context.beginPath()
+        for (let k = 0; k < 6; k += 1) context.lineTo(cx + r * 0.78 * Math.cos(Math.PI / 6 + (k * Math.PI) / 3), cy + r * 0.78 * Math.sin(Math.PI / 6 + (k * Math.PI) / 3))
+        context.closePath()
+        context.fill()
+      }
+    }
+    context.fillStyle = '#0a0a0b'
+    context.fillRect(w * 0.25, h * 0.7, w * 0.5, h * 0.14)
+    context.fillStyle = '#2c2d31'
+    for (const x of [0.35, 0.5, 0.65]) context.fillRect(w * x - 6, h * 0.74, 12, h * 0.06)
+    context.fillStyle = '#26272b'
+    context.fillRect(w * 0.38, h * 0.88, w * 0.24, h * 0.07)
+    context.fillStyle = '#c9cbd0'
+    context.font = `600 18px ${FONT}`
+    context.fillText('I / O', w * 0.42, h * 0.925)
+  })
+
+/* The SSD's label: blue, like the one between the cooler and the graphics card (2 TB, NVMe, 2280). */
+export const ssdLabelTexture = () =>
+  canvasTexture(1024, 288, (context, w, h) => {
+    const gradient = context.createLinearGradient(0, 0, w, h)
+    gradient.addColorStop(0, '#1f5fbf')
+    gradient.addColorStop(1, '#2a7ad8')
+    context.fillStyle = gradient
+    context.fillRect(0, 0, w, h)
+    context.fillStyle = 'rgba(255,255,255,0.92)'
+    context.font = `800 92px ${FONT}`
+    context.textBaseline = 'alphabetic'
+    context.fillText('2 TB', 48, 140)
+    context.font = `600 40px ${FONT}`
+    context.fillText('NVMe  PCIe  M.2 2280', 48, 214)
+    context.fillStyle = 'rgba(255,255,255,0.85)'
+    const next = random(77)
+    let x = 640
+    while (x < 980) {
+      const bar = 2 + Math.floor(next() * 5)
+      if (next() > 0.4) context.fillRect(x, 70, bar, 110)
+      x += bar + 2
+    }
+  })
+
+/* Sleeved cable: black braid with a few gold threads (repeats along the cable). */
+export const sleeveTexture = () =>
+  canvasTexture(
+    64,
+    64,
+    (context, w, h) => {
+      context.fillStyle = '#141416'
+      context.fillRect(0, 0, w, h)
+      const next = random(9)
+      for (let i = 0; i < 70; i += 1) {
+        context.fillStyle = next() > 0.82 ? 'rgba(214,170,80,0.65)' : 'rgba(255,255,255,0.07)'
+        const x = next() * w
+        const y = next() * h
+        context.fillRect(x, y, 3, 1.5)
+      }
+    },
+    { repeat: true },
+  )
+
+/* ---------- the desk ---------- */
+
+/* Oak: warm planks with long grain lines and a few knots (repeats along the desk). */
+export const oakTexture = () =>
+  canvasTexture(
+    1024,
+    512,
+    (context, w, h) => {
+      context.fillStyle = '#b98a57'
+      context.fillRect(0, 0, w, h)
+      const next = random(52)
+      for (let plank = 0; plank < 5; plank += 1) {
+        const top = (plank * h) / 5
+        context.fillStyle = `rgba(${next() > 0.5 ? '255,236,200' : '120,72,30'},${0.06 + next() * 0.08})`
+        context.fillRect(0, top, w, h / 5)
+        for (let i = 0; i < 46; i += 1) {
+          const y = top + next() * (h / 5)
+          context.strokeStyle = `rgba(${next() > 0.3 ? '110,66,28' : '235,205,160'},${0.12 + next() * 0.22})`
+          context.lineWidth = 0.6 + next() * 1.8
+          context.beginPath()
+          context.moveTo(0, y)
+          for (let x = 0; x <= w; x += 32) context.lineTo(x, y + Math.sin(x * 0.006 + i) * (2 + next() * 3))
+          context.stroke()
+        }
+        context.fillStyle = 'rgba(80,46,18,0.35)'
+        context.fillRect(0, top, w, 1.5)
+      }
+    },
+    { repeat: true },
+  )
+
+/* The keyboard's top: legends (white, on transparent), German layout. Positions come from the key list. */
+export function keyLegendTexture(keys, { width, depth, scale = 40 }) {
+  return canvasTexture(Math.round(width * scale), Math.round(depth * scale), (context, w, h) => {
+    context.clearRect(0, 0, w, h)
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    for (const key of keys) {
+      if (!key.label) continue
+      const x = (key.x + width / 2) * scale
+      const y = (key.z + depth / 2) * scale
+      const size = key.label.length > 3 ? 0.26 : key.label.length > 1 ? 0.32 : 0.46
+      context.fillStyle = key.glow ?? 'rgba(244,246,250,0.95)'
+      context.shadowColor = key.glow ?? 'rgba(255,255,255,0.7)'
+      context.shadowBlur = 6
+      context.font = `800 ${size * scale}px ${FONT}`
+      const lines = key.label.split('\n')
+      lines.forEach((line, index) => context.fillText(line, x, y + (index - (lines.length - 1) / 2) * size * scale * 1.05))
+    }
+    context.shadowBlur = 0
+  })
+}
+
+/* The keyboard's plate: black brushed steel, the backlight glowing out from under every key. */
+export function keyPlateTexture(keys, { width, depth, scale = 24 }) {
+  return canvasTexture(Math.round(width * scale), Math.round(depth * scale), (context, w, h) => {
+    brushed(context, w, h, '#17181b', 14, 61)
+    context.save()
+    context.shadowColor = 'rgba(235,240,255,0.95)'
+    context.shadowBlur = 0.9 * scale
+    context.fillStyle = 'rgba(230,236,255,0.85)'
+    for (const key of keys) {
+      if (key.top) continue
+      const x = (key.x + width / 2) * scale
+      const y = (key.z + depth / 2) * scale
+      context.fillRect(x - (key.w / 2) * scale + 2, y - (key.d / 2) * scale + 2, key.w * scale - 4, key.d * scale - 4)
+    }
+    context.restore()
+    // HyperX in the corner above the number pad.
+    context.fillStyle = 'rgba(160,166,178,0.45)'
+    context.font = `800 ${0.55 * scale}px ${FONT}`
+    context.letterSpacing = `${0.08 * scale}px`
+    context.fillText('HYPERX', w - 6.4 * scale, 2.75 * scale)
+  })
+}
+
+/*
+ * The SteelSeries mark on the mouse pad, as on my QcK: a white disc with a
+ * black ring and a black dot in its middle, two rounded knobs on its edge
+ * (top right, left) and a loose dot off its top left.
+ */
+export const padLogoTexture = () =>
+  canvasTexture(256, 256, (context, w) => {
+    context.clearRect(0, 0, w, w)
+    const c = w / 2 + 8
+    const r = 70
+    const dot = (angle, distance, radius) => {
+      context.beginPath()
+      context.arc(c + Math.cos(angle) * distance, c + Math.sin(angle) * distance, radius, 0, Math.PI * 2)
+      context.fill()
+    }
+    context.fillStyle = '#e9e7e4'
+    dot(0, 0, r)
+    dot(-Math.PI * 0.36, r * 0.98, r * 0.24) // top right
+    dot(Math.PI * 1.06, r * 0.98, r * 0.24) // left
+    dot(-Math.PI * 0.71, r * 1.42, r * 0.2) // loose, top left
+    context.fillStyle = '#141518'
+    context.beginPath()
+    context.arc(c, c, r * 0.6, 0, Math.PI * 2)
+    context.arc(c, c, r * 0.4, 0, Math.PI * 2, true)
+    context.fill()
+    dot(0, 0, r * 0.1)
+  })
+
+/* The QuadCast's grille: round holes in rows (alpha: black = hole). */
+export const grilleTexture = () =>
+  canvasTexture(
+    512,
+    512,
+    (context, w, h) => {
+      context.fillStyle = '#fff'
+      context.fillRect(0, 0, w, h)
+      context.fillStyle = '#000'
+      const step = w / 24
+      for (let row = 0; row * step * 0.88 < h + step; row += 1) {
+        for (let col = 0; col <= 24; col += 1) {
+          context.beginPath()
+          context.arc(col * step + (row % 2 ? step / 2 : 0), row * step * 0.88, step * 0.36, 0, Math.PI * 2)
+          context.fill()
+        }
+      }
+    },
+    { srgb: false, repeat: true },
+  )
+
+/* HyperX on the microphone's base (white on transparent). */
+export const hyperxTexture = (text = 'HYPERX', colour = 'rgba(240,240,244,0.92)') =>
+  canvasTexture(512, 128, (context, w, h) => {
+    context.clearRect(0, 0, w, h)
+    context.fillStyle = colour
+    context.font = `800 64px ${FONT}`
+    context.letterSpacing = '6px'
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    context.fillText(text, w / 2, h / 2 + 4)
+  })

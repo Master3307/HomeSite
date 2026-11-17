@@ -10,6 +10,7 @@ const cookieParser = require("cookie-parser");
 
 const { registerDiscordOAuth } = require("./services/discordOAuth.cjs");
 const { registerFdcWeb, canCreateFdc, LARGE_BODY_PATHS } = require("./services/fdcWeb.cjs");
+const { registerSetup } = require("./services/setupWeb.cjs");
 const { registerBongo } = require("./services/bongoWeb.cjs");
 const { registerLobbyCat } = require("./services/lobbyCat.cjs");
 const { registerMembers } = require("./services/members.cjs");
@@ -119,6 +120,8 @@ const accounts = registerDiscordOAuth(app, { activity, isBanned: (discordId) => 
 // Moderation comes later (it needs the members); FDC asks for it when used.
 let moderationRef = null;
 registerFdcWeb(app, { ...accounts, activity, getModeration: () => moderationRef });
+// The /card setup's Network page: the visitor's own connection (nothing stored).
+registerSetup(app);
 const adminSettings = registerAdminBackup(app, { ...accounts, activity, hubSessionOf });
 registerLobbyCat(app, accounts);
 const emailAuth = registerEmailAuth(app, { ...accounts, activity, isBanned: (discordId) => loginGate.banned(discordId) });

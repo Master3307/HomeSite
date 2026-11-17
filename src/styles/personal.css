@@ -221,9 +221,11 @@
 .me-hero {
   padding-right: 44px; /* the close button */
 }
+
 .me-hero .discord-card {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  /* max-content: the picture's column never shrinks under it (with auto the name slid over the picture on phones). */
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
   gap: 8px 26px;
   margin: 0;
@@ -265,19 +267,43 @@
 .me-hero .discord-card__username a:hover {
   color: var(--text-primary);
 }
-/* What I'm doing right now: under the hero, full width. */
-.me-hero .discord-card__body > :is(.discord-presence-card, .discord-presence, .discord-card__activity) {
-  margin-top: 14px;
+/*
+ * What I'm doing right now: under the avatar and the name, across the
+ * hero's whole width (the body steps aside so the card isn't squeezed next
+ * to the avatar; long titles pan slowly inside it).
+ */
+.me-hero .discord-card {
+  grid-template-rows: auto auto auto;
+}
+.me-hero .discord-card__media {
+  grid-row: 1 / 3;
+}
+.me-hero .discord-card__body {
+  display: contents;
+}
+.me-hero .discord-card__topline {
+  grid-column: 2;
+  align-self: end;
+  min-width: 0;
+}
+.me-hero .discord-card__username {
+  grid-column: 2;
+  align-self: start;
+}
+.me-hero .discord-card__body > :not(.discord-card__topline, .discord-card__username) {
+  grid-column: 1 / -1;
+  min-width: 0;
+  max-width: 100%;
+}
+.me-hero .discord-presence-card {
+  width: 100%;
+  margin: 6px 0 0;
 }
 
 .me-intro {
   margin-top: 26px;
 }
-.me-intro__bio {
-  max-width: 60ch;
-  font-size: 1.12rem;
-}
-.me-intro__facts {
+.me-facts {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 20px;
@@ -287,19 +313,14 @@
   color: var(--muted);
   font-size: 0.95rem;
 }
-.me-intro__facts li {
+.me-facts li {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
-.me-intro__facts .material-symbols-outlined {
+.me-facts .me-glyph {
+  margin: 0;
   color: var(--text-primary);
-  font-size: 1.1rem;
-}
-.me-intro__into {
-  margin-top: 10px !important;
-  color: var(--muted);
-  font-size: 0.95rem;
 }
 
 .me-block {
@@ -343,6 +364,7 @@
     background-color 0.2s ease,
     color 0.2s ease;
 }
+/* Hovered, the square tilts up, every other one the other way (the name stays straight). */
 .me-tools li:nth-child(odd) .me-tool:focus-visible {
   transform: translateY(-4px) rotate(-6deg);
 }
@@ -385,13 +407,7 @@
 }
 .me-tool:is(:hover, :focus-visible) .me-tool__name {
   opacity: 1;
-  transform: translate(-50%, 0) rotate(var(--tilt, 0deg));
-}
-.me-tools li:nth-child(odd) .me-tool__name {
-  --tilt: 6deg;
-}
-.me-tools li:nth-child(even) .me-tool__name {
-  --tilt: -6deg;
+  transform: translate(-50%, 0);
 }
 
 /* Links: one row of round brand buttons; the name slides out on hover. */
@@ -441,6 +457,18 @@
   gap: 10px;
   padding-right: 18px;
   background: color-mix(in srgb, var(--brand) 18%, transparent);
+}
+/*
+ * The icon keeps its own colour on hover (the site-wide a:hover would turn
+ * every one the accent): a shade of it, deeper in light mode and brighter
+ * in dark, following the theme switch.
+ */
+.me-social:is(:hover, :focus-visible, :active) {
+  color: color-mix(
+    in oklab,
+    color-mix(in oklab, var(--brand), #000 22%),
+    color-mix(in oklab, var(--brand), #fff 22%) calc(var(--theme-progress, 1) * 100%)
+  );
 }
 .me-social:is(:hover, :focus-visible) .me-social__label {
   max-width: 180px;
@@ -655,11 +683,12 @@
 }
 
 /*
- * Touch screens: nothing can be hovered, so the names are always there.
- * The toolbelt becomes small chips (logo + name), the links a two-column
- * list (logo, name, what it is) with big tap targets.
+ * Touch screens and narrow windows: the toolbelt as small chips (logo +
+ * name), nothing can be hovered there. With a mouse on a wide screen they
+ * are the squares above: the logo in the text colour, its brand colour and
+ * the name above it on hover. Either way an opened tool grows out of it.
  */
-@media (hover: none), (max-width: 600px) {
+@media (hover: none), (max-width: 699px) {
   .me-tools {
     gap: 6px;
   }
@@ -676,6 +705,9 @@
     width: 19px;
     height: 19px;
   }
+  .me-tools li:nth-child(n) .me-tool:is(:hover, :focus-visible) {
+    transform: translateY(-2px);
+  }
   .me-tool__name,
   .me-tool:is(:hover, :focus-visible) .me-tool__name {
     position: static;
@@ -687,12 +719,17 @@
     opacity: 1;
     transform: none;
   }
-  .me-tools li .me-tool:is(:hover, :focus-visible) {
-    transform: none;
-  }
+}
+
+/*
+ * Touch screens: nothing can be hovered, so the links become a list
+ * (logo, name, what it is) with big tap targets.
+ */
+@media (hover: none), (max-width: 600px) {
   .me-socials {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    /* Wide enough that the names and what they are fit (one column on small phones). */
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
     gap: 8px;
   }
   .me-socials li {
@@ -745,15 +782,17 @@
   .me-block {
     margin-top: 30px;
   }
-  .me-intro__bio {
-    font-size: 1.05rem;
-  }
   .me-hero {
     padding-right: 0;
   }
   .me-hero .discord-card {
     grid-template-columns: minmax(0, 1fr);
     justify-items: start;
+  }
+  /* One column: everything in it (otherwise the name keeps its column 2 and slides over the picture). */
+  .me-hero :is(.discord-card__media, .discord-card__topline, .discord-card__username) {
+    grid-row: auto;
+    grid-column: 1;
   }
   .me-hero .discord-card__media {
     margin-top: 24px;
@@ -793,4 +832,511 @@
 }
 :root:is(.motion-reduce, .motion-none) :is(.me-tool, .me-social, .me-social__label, .home-place__go, .me-button) {
   transition: none;
+}
+
+
+/* ---------- /card: layout, prompt, glyphs, the Discord hero, the tool cards ---------- */
+
+/*
+ * Sharp rendering: the site's .card rests in a 3D transform (for the tilt
+ * elsewhere), which makes Chrome draw its contents as a scaled bitmap,
+ * blurring icons and text. /card has no tilt, so no transform.
+ */
+.card.me-card {
+  transform: none;
+}
+
+/*
+ * Nunito on /card: smooth, rounded type (styles/nunito.css). The site sets
+ * its font on every element, so the card's elements get it the same way,
+ * except the icons and the Plasma window (which shows the desktop's font).
+ */
+.me-card :where(*:not(.material-symbols-outlined, .setup-about, .setup-about *)),
+.me-toolcard :where(*:not(.material-symbols-outlined)),
+.me-toolcard {
+  font-family: "Nunito", "Google Sans Flex", system-ui, sans-serif;
+}
+
+/*
+ * Phones and narrow windows: one column in the old order (the two
+ * wrappers step aside with display: contents). Wide screens: see below.
+ */
+.me-layout {
+  display: flex;
+  flex-direction: column;
+}
+.me-aside,
+.me-main {
+  display: contents;
+}
+.me-hero {
+  order: 1;
+}
+.me-intro {
+  order: 2;
+}
+.me-facts {
+  order: 3;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.me-block--tools {
+  order: 4;
+}
+.me-block--links {
+  order: 5;
+}
+.me-layout .setup {
+  order: 6;
+}
+
+/* Nerd Font glyphs as icons, the font of the hub's console. */
+.me-glyph {
+  display: inline-block;
+  margin-right: 10px;
+  font-size: 1.05em;
+  color: color-mix(in srgb, var(--text-primary) 55%, transparent);
+  font-family: "JetBrainsMono Nerd Font Mono", ui-monospace, monospace;
+  font-weight: 400;
+}
+.me-card .me-block > h3 {
+  display: flex;
+  align-items: baseline;
+  font-weight: 620;
+  letter-spacing: 0;
+}
+
+/* Everything in mono (the site sets its font on every element, so the children need it too). */
+.me-hero .discord-card__username :is(*, *::before) {
+  font-family: "JetBrainsMono Nerd Font Mono", ui-monospace, monospace;
+}
+
+
+/*
+ * The intro as a terminal session (ProfileCard.jsx), as in my terminal:
+ * Konsole's dark background, Tide's two-line prompt and colours (frame
+ * grey, path blue with the last folder bold, branch green, Node green and
+ * the time on the right). The prompt's two lines sit tight so the frame
+ * joins up like in a real terminal.
+ */
+.me-shell {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px 16px;
+  border-radius: 14px;
+  background: #1e1f22;
+  color: #d0d0d0;
+  font-size: 0.86rem;
+  box-shadow: 0 14px 40px rgb(0 0 0 / 0.22);
+}
+/* Both layers of the session (Terminal in ProfileCard.jsx) in one cell: the unseen finished one sets the height. */
+.me-shell__layer {
+  grid-area: 1 / 1;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+}
+.me-shell__layer--ghost {
+  visibility: hidden;
+}
+.me-shell :is(*, *::before) {
+  font-family: "JetBrainsMono Nerd Font Mono", ui-monospace, monospace !important;
+}
+.me-shell__block {
+  display: grid;
+}
+/* The two-line prompt with Tide's frame (╭─ / ╰─) drawn as one rounded line. */
+.me-shell__prompt {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding-left: 2.6ch;
+}
+.me-shell__prompt::before {
+  position: absolute;
+  top: 0.62em;
+  bottom: 0.62em;
+  left: 0.4ch;
+  width: 1.6ch;
+  border: 1.5px solid #6c6c6c;
+  border-right: 0;
+  border-radius: 7px 0 0 7px;
+  content: "";
+}
+.me-shell p {
+  margin: 0;
+}
+.me-shell__line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6ch;
+  min-width: 0;
+  line-height: 1.2 !important;
+  white-space: nowrap;
+}
+.me-shell__sep {
+  color: #6c6c6c;
+}
+.me-shell__os {
+  color: #e8e8e8;
+}
+.me-shell__dir {
+  overflow: hidden;
+  color: #1e9ff2;
+  text-overflow: ellipsis;
+}
+.me-shell__dir b {
+  font-weight: 700;
+}
+.me-shell__git {
+  color: #5fd700;
+}
+.me-shell__right {
+  display: inline-flex;
+  gap: 0.6ch;
+  margin-left: auto;
+  padding-left: 2ch;
+}
+.me-shell__node {
+  color: #44883e;
+}
+.me-shell__time {
+  color: #5f8787;
+}
+.me-shell__arrow {
+  color: #5fd700;
+}
+.me-shell__cmd {
+  /* fish colours a valid command blue. */
+  color: #2aa8f0;
+}
+.me-shell__frame {
+  color: #6c6c6c;
+}
+.me-shell__out {
+  margin: 2px 0 0 !important;
+  color: #d0d0d0;
+  line-height: 1.55 !important;
+}
+.me-shell__text {
+  max-width: 72ch;
+  white-space: normal;
+}
+.me-shell__ls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 2.2ch;
+}
+.me-shell__ls span {
+  color: #1e9ff2;
+  font-weight: 700;
+}
+.me-shell__cursor {
+  display: inline-block;
+  width: 1ch;
+  height: 1.15em;
+  align-self: center;
+  background: #d0d0d0;
+  animation: me-cursor 1.1s steps(2, jump-none) infinite;
+}
+@keyframes me-cursor {
+  50% {
+    opacity: 0;
+  }
+}
+@media (max-width: 560px) {
+  .me-shell {
+    font-size: 0.78rem;
+  }
+  .me-shell__right {
+    display: none;
+  }
+}
+
+/* The Discord card, in the site's style: a slowly turning ring of the accent, the name in display type, the handle in mono. */
+.me-hero .discord-card__name {
+  font-weight: 680;
+  letter-spacing: -0.01em;
+}
+.me-hero .discord-card__username {
+  font-family: "JetBrainsMono Nerd Font Mono", ui-monospace, monospace;
+  font-size: 0.9rem;
+}
+.me-hero .discord-presence-card {
+  width: 100%;
+  margin: 0;
+  border-color: var(--line);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  box-shadow: none;
+}
+
+/* The toolbelt chips are buttons now: open a card on click (padding stays the chip's own). */
+.me-tool {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.me-tool.is-open {
+  visibility: hidden;
+}
+
+/*
+ * A tool opened (ProfileCard.jsx ToolCard): the chip morphs into a bigger
+ * card in its place. The background is exactly the chip's under the mouse
+ * (its tint over the page's own fixed gradient, so nothing shows through
+ * and the colour matches wherever it opens); the outline grows out of the
+ * chip (clip-path), the icon flies from the chip to its place, the texts
+ * come in one after another. Clicking anywhere but the link closes it.
+ */
+.me-toolcard-shade {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgb(10 4 24 / 0.22);
+}
+.me-toolcard {
+  position: fixed;
+  z-index: 901;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 22px 24px;
+  color: var(--text-primary);
+  text-align: center;
+  cursor: pointer;
+}
+/*
+ * The card's surface, its own layer so it can grow out of the chip with a
+ * transform (ToolCard). The page's gradient is placed as if fixed to the
+ * window (--at-x / --at-y: minus the card's position), under the chip's
+ * hover tint.
+ */
+.me-toolcard__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 22px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--brand) 22%, transparent), color-mix(in srgb, var(--brand) 22%, transparent)),
+    linear-gradient(to bottom, var(--bg-secondary) 0%, var(--bg-primary) 80%) var(--at-x, 0) var(--at-y, 0) / 100vw 100vh no-repeat;
+  box-shadow: 0 22px 60px rgb(0 0 0 / 0.28);
+  transform-origin: 0 0;
+}
+.me-toolcard:focus {
+  outline: none;
+}
+.me-toolcard__icon {
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+  color: var(--brand);
+}
+.me-toolcard strong {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.me-toolcard p {
+  max-width: 30ch;
+  margin: 0;
+  color: color-mix(in srgb, var(--text-primary) 86%, transparent);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.me-toolcard__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand) 18%, transparent);
+  color: var(--text-primary);
+  font-size: 0.86rem;
+  font-weight: 650;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+.me-toolcard__link:hover,
+.me-toolcard__link:focus-visible {
+  background: color-mix(in srgb, var(--brand) 32%, transparent);
+  color: var(--text-primary);
+}
+.me-toolcard__link .material-symbols-outlined {
+  font-size: 1.05rem;
+}
+
+/*
+ * Wide screens: slightly less of a card. The page is the surface; me and
+ * my links sit in a soft glass column on the left that stays in view,
+ * the rest flows on the right with space instead of boxes.
+ */
+@media (min-width: 1100px) {
+  .card.me-card {
+    width: calc(100% - 64px);
+    max-width: 1220px;
+    margin-top: 40px;
+    padding: 24px 28px 56px;
+    overflow: clip;
+    background: transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .me-layout {
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    align-items: start;
+    gap: 56px;
+  }
+  .me-aside {
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding: 28px 24px 24px;
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    background: color-mix(in srgb, var(--bg-secondary) 34%, transparent);
+    box-shadow: 0 24px 60px rgb(0 0 0 / 0.16);
+    /*
+     * No backdrop blur: behind it is only the page's smooth gradient (a blur
+     * changes nothing), and a blurred layer under the header's blur made the
+     * picture flicker while scrolling.
+     */
+  }
+  .me-main {
+    display: flex;
+    flex-direction: column;
+    gap: 52px;
+    padding-top: 56px; /* under the close button */
+  }
+  .me-main > * {
+    margin: 0;
+  }
+  /* The hero stacked in the column: the avatar, the name, what I'm doing now. */
+  .me-hero {
+    padding: 0;
+  }
+  .me-hero .discord-card {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+    gap: 4px;
+  }
+  .me-hero :is(.discord-card__media, .discord-card__topline, .discord-card__username) {
+    grid-row: auto;
+    grid-column: 1;
+  }
+  .me-hero .pfp-wrap {
+    margin: 0 0 10px;
+  }
+  .me-hero .discord-card__name {
+    font-size: 2.4rem;
+  }
+  .me-facts {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    font-size: 0.92rem;
+  }
+  .me-facts li {
+    display: flex;
+    gap: 10px;
+  }
+  .me-facts .me-glyph {
+    width: 1.2em;
+    color: color-mix(in srgb, var(--text-primary) 55%, transparent);
+    text-align: center;
+  }
+  .me-block--links {
+    margin: 0;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+  .me-block--links > h3 {
+    margin-bottom: 10px;
+    font-size: 1rem;
+  }
+  /* The links as a quiet list: logo, name, what it is. */
+  .me-aside .me-socials {
+    display: grid;
+    gap: 2px;
+  }
+  .me-aside .me-social {
+    gap: 12px;
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 12px;
+    background: transparent;
+  }
+  .me-aside .me-social__label {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    max-width: none;
+    overflow: visible;
+    color: var(--muted);
+    font-size: 0.8rem;
+    opacity: 1;
+  }
+  /* What a link is: slides out to the right of the name on hover. */
+  .me-aside .me-social__what {
+    max-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition:
+      max-width 0.32s ease,
+      opacity 0.22s ease,
+      transform 0.32s ease;
+  }
+  .me-aside .me-social:is(:hover, :focus-visible) .me-social__what {
+    max-width: 180px;
+    opacity: 1;
+    transform: none;
+  }
+  .me-aside .me-social__label strong {
+    color: var(--text-primary);
+    font-size: 0.92rem;
+  }
+  .me-aside .me-social:is(:hover, :focus-visible) {
+    gap: 12px;
+    padding-right: 12px;
+  }
+  .me-intro {
+    margin: 0;
+  }
+  .me-card .me-block > h3 {
+    font-size: 1.3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .me-shell__cursor {
+    animation: none;
+  }
+}
+:root.motion-none .me-shell__cursor {
+  animation: none;
+}
+
+/*
+ * Nothing to select in icons, glyphs, buttons, the terminal's chrome or the
+ * 3D stage (a long press or drag shouldn't paint them blue). The texts
+ * themselves (bio, facts, specs) stay selectable.
+ */
+.me-card :is(.material-symbols-outlined, .me-glyph, svg, img, button, .me-tool, .me-social, .me-shell__sep, .me-shell__line:first-child, .me-shell__arrow, .me-shell__cursor, .setup__stage, .setup__parts, .setup__alone, .setup__hint, .setup__tip),
+.me-toolcard :is(.material-symbols-outlined, .me-toolcard__icon) {
+  -webkit-user-select: none;
+  user-select: none;
 }

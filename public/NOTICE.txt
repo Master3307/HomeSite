@@ -12,5 +12,5 @@ Code from earlier versions was published under the MIT License; those copies
 keep that license. Third-party parts keep their own licenses:
 - Brand icons: Simple Icons (CC0 1.0), https://simpleicons.org
 - Emoji: Twemoji (CC-BY 4.0), https://github.com/jdecked/twemoji
-- Material Symbols (Apache 2.0), Google Sans Flex (OFL 1.1),
+- Material Symbols (Apache 2.0), Google Sans Flex (OFL 1.1), Nunito (OFL 1.1),
   JetBrains Mono Nerd Font (OFL 1.1)

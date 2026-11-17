@@ -2,11 +2,19 @@
  * "My setup" on /card (components/setup/SetupShowcase.jsx): a studio stage
  * like a product shot with the 3D part, its name and facts, and the parts as
  * tabs under it. Wide screens: the caption sits in the stage's corner.
- * Phones: a square stage, the caption under it, the tabs as a 3 × 2 grid.
+ * Phones: a square stage, the caption under it, the tabs as a 4 + 3 grid.
+ *
+ * Light and dark are mixed by --theme-progress (theme-transition.css), so
+ * the stage follows the theme switch while it slides (the 3D lighting does
+ * the same in scene.js). Light: a lilac-white sweep that sits in the light
+ * page; dark: the dim studio.
  */
 
-.setup__view {
-  position: relative;
+.setup {
+  --setup-dark: calc(var(--theme-progress, 1) * 100%);
+  --setup-ink: color-mix(in oklab, #1d1830, #fff var(--setup-dark));
+  --setup-soft: color-mix(in oklab, rgb(29 24 48 / 0.6), rgb(255 255 255 / 0.6) var(--setup-dark));
+  --setup-glass: color-mix(in oklab, rgb(46 30 82 / 0.07), rgb(255 255 255 / 0.08) var(--setup-dark));
 }
 
 .setup__stage {
@@ -15,21 +23,16 @@
   aspect-ratio: 16 / 10;
   border-radius: 20px;
   background:
-    radial-gradient(ellipse 75% 60% at 50% 62%, rgb(255 255 255 / 0.1), transparent 70%),
-    linear-gradient(180deg, #1c1a24 0%, #0d0c12 100%);
+    radial-gradient(ellipse 78% 62% at 50% 60%, color-mix(in oklab, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0.1) var(--setup-dark)), transparent 72%),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, #f8f4fd, #1c1a24 var(--setup-dark)) 0%,
+      color-mix(in oklab, #e2d6f1, #0d0c12 var(--setup-dark)) 100%
+    );
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.06),
-    0 18px 40px rgb(0 0 0 / 0.25);
+    inset 0 1px 0 color-mix(in oklab, rgb(255 255 255 / 0.8), rgb(255 255 255 / 0.06) var(--setup-dark)),
+    0 18px 40px color-mix(in oklab, rgb(46 24 92 / 0.2), rgb(0 0 0 / 0.25) var(--setup-dark));
   isolation: isolate;
-}
-:root[data-theme="light"] .setup__stage {
-  /* A white sweep, like the makers' own renders. */
-  background:
-    radial-gradient(ellipse 80% 65% at 50% 60%, #ffffff, transparent 75%),
-    linear-gradient(180deg, #f1f0f5 0%, #dcdae4 100%);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.7),
-    0 18px 40px rgb(30 20 60 / 0.16);
 }
 
 .setup__canvas {
@@ -50,14 +53,14 @@
   opacity: 1;
 }
 .is-software .setup__canvas {
-  display: none;
+  visibility: hidden;
 }
 
 .setup__status,
 .setup__hint {
   position: absolute;
   margin: 0;
-  color: rgb(255 255 255 / 0.55);
+  color: var(--setup-soft);
   font-size: 0.82rem;
 }
 .setup__status {
@@ -68,6 +71,9 @@
 .setup__hint {
   top: 14px;
   right: 16px;
+  left: 16px;
+  justify-content: flex-end;
+  text-align: right;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -87,8 +93,22 @@
     display: inline;
   }
 }
-:root[data-theme="light"] :is(.setup__status, .setup__hint) {
-  color: rgb(30 24 48 / 0.55);
+
+/* The name of the part under the mouse (PC view). */
+.setup__tip {
+  position: absolute;
+  z-index: 2;
+  padding: 5px 10px;
+  border-radius: 9px;
+  background: color-mix(in oklab, rgb(255 255 255 / 0.92), rgb(20 18 28 / 0.88) var(--setup-dark));
+  color: var(--setup-ink);
+  font-size: 0.82rem;
+  font-weight: 650;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 14px));
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.18);
+  backdrop-filter: blur(6px);
 }
 
 /* Zoom out, zoom in, and back to the start view once moved. */
@@ -100,7 +120,7 @@
   gap: 4px;
   padding: 4px;
   border-radius: 14px;
-  background: rgb(255 255 255 / 0.08);
+  background: var(--setup-glass);
   backdrop-filter: blur(8px);
 }
 .setup__zoom button {
@@ -112,13 +132,17 @@
   border: 0;
   border-radius: 10px;
   background: transparent;
-  color: rgb(255 255 255 / 0.85);
+  color: var(--setup-ink);
   cursor: pointer;
   touch-action: manipulation;
   transition: background-color 0.15s ease;
 }
 .setup__zoom button:hover:not(:disabled) {
-  background: rgb(255 255 255 / 0.12);
+  background: var(--setup-glass);
+}
+.setup__zoom button.is-on {
+  background: var(--accent);
+  color: #fff;
 }
 .setup__zoom button:disabled {
   opacity: 0.35;
@@ -131,127 +155,34 @@
 .setup__zoom .material-symbols-outlined {
   font-size: 1.25rem;
 }
-:root[data-theme="light"] .setup__zoom {
-  background: rgb(30 24 48 / 0.07);
-}
-:root[data-theme="light"] .setup__zoom button {
-  color: rgb(30 24 48 / 0.8);
-}
-:root[data-theme="light"] .setup__zoom button:hover:not(:disabled) {
-  background: rgb(30 24 48 / 0.08);
-}
 
-/* Name and facts: bottom left, over the stage (wide screens). */
-.setup__caption {
-  position: absolute;
-  left: 20px;
-  bottom: 18px;
-  right: 150px;
-  display: grid;
-  justify-items: start;
-  gap: 2px;
-  color: #fff;
-  pointer-events: none;
-  text-shadow: 0 1px 12px rgb(0 0 0 / 0.5);
-}
-.setup__kind {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: rgb(255 255 255 / 0.6);
-}
-.setup__caption strong {
-  font-size: clamp(1.05rem, 2.6vw, 1.35rem);
-  font-weight: 750;
-  letter-spacing: -0.01em;
-}
-.setup__caption ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  margin: 4px 0 0;
-  padding: 0;
-  list-style: none;
-  color: rgb(255 255 255 / 0.78);
-  font-size: 0.86rem;
-}
-:root[data-theme="light"] .setup__caption {
-  color: #1d1830;
-  text-shadow: none;
-}
-:root[data-theme="light"] .setup__kind,
-:root[data-theme="light"] .setup__caption ul {
-  color: rgb(29 24 48 / 0.65);
-}
-.is-software .setup__caption {
-  display: none;
-}
-
-/* The parts. */
-.setup__parts {
-  display: flex;
-  gap: 4px;
-  margin-top: 10px;
-  padding: 4px;
-  overflow-x: auto;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
-  scrollbar-width: none;
-}
-.setup__parts button {
-  display: inline-flex;
-  flex: 1 0 auto;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: 8px 12px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: color-mix(in srgb, var(--text-primary) 70%, transparent);
-  font: inherit;
-  font-size: 0.88rem;
-  white-space: nowrap;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-@media (hover: hover) {
-  .setup__parts button:hover {
-    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
-    color: var(--text-primary);
-  }
-}
-.setup__parts button.is-active {
-  background: var(--accent);
-  color: #fff;
-  font-weight: 650;
-}
-.setup__parts button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-.setup__parts .material-symbols-outlined {
-  font-size: 1.15rem;
-}
-
-/* ---------- the software tab: Plasma's Info Center, Darkly with the black MateriaDark colours ---------- */
+/*
+ * ---------- the software tab: Plasma's Info Center ----------
+ * Dark: Darkly with the black MateriaDark colours (as set up). Light: the
+ * same window in Plasma's light colours (Breeze Light). Mixed by the theme.
+ */
 .setup-about {
+  --about-bg: color-mix(in oklab, #fcfcfc, #000 var(--setup-dark));
+  --about-side: color-mix(in oklab, #eff0f1, #181818 var(--setup-dark));
+  --about-text: color-mix(in oklab, #232629, #dfdfdf var(--setup-dark));
+  --about-muted: color-mix(in oklab, rgb(35 38 41 / 0.62), rgb(223 223 223 / 0.6) var(--setup-dark));
+  --about-line: color-mix(in oklab, rgb(35 38 41 / 0.12), rgb(255 255 255 / 0.08) var(--setup-dark));
+  --about-button: color-mix(in oklab, #d1d3d6, #3c3c3c var(--setup-dark));
+  --about-link: color-mix(in oklab, #5420c6, #9b7bff var(--setup-dark));
+
   position: absolute;
   inset: 4.5% 5%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border-radius: 12px;
-  background: #000;
-  color: #dfdfdf;
+  background: var(--about-bg);
+  color: var(--about-text);
   font-family: "Google Sans Flex", system-ui, sans-serif;
   font-weight: 500;
   box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.1),
-    0 24px 60px rgb(0 0 0 / 0.6);
+    0 0 0 1px var(--about-line),
+    0 24px 60px color-mix(in oklab, rgb(46 24 92 / 0.22), rgb(0 0 0 / 0.6) var(--setup-dark));
   animation: setup-window-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 @keyframes setup-window-in {
@@ -291,7 +222,7 @@
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  background: #3c3c3c;
+  background: var(--about-button);
 }
 .setup-about__buttons i.is-close {
   background: #ff5f57;
@@ -300,27 +231,75 @@
   display: flex;
   flex: 1;
   min-height: 0;
-  border-top: 1px solid rgb(255 255 255 / 0.08);
+  border-top: 1px solid var(--about-line);
 }
 .setup-about__side {
+  display: flex;
   flex: none;
+  flex-direction: column;
+  gap: 1px;
   width: 30%;
   max-width: 190px;
-  margin: 0;
   padding: 8px;
-  list-style: none;
-  border-right: 1px solid rgb(255 255 255 / 0.08);
-  background: #181818;
+  border-right: 1px solid var(--about-line);
+  background: var(--about-side);
   font-size: 0.78rem;
 }
-.setup-about__side li {
+.setup-about__side button {
+  display: block;
+  width: 100%;
+  min-height: 0;
   padding: 7px 10px;
+  border: 0;
   border-radius: 6px;
-  color: rgb(223 223 223 / 0.85);
+  background: none;
+  color: var(--about-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
-.setup-about__side li.is-active {
+.setup-about__side button:hover {
+  background: color-mix(in oklab, transparent, var(--about-text) 9%);
+}
+.setup-about__side button.is-active {
   background: #5420c6;
   color: #fff;
+}
+.setup-about__side button:focus-visible {
+  outline: 2px solid #9b7bff;
+  outline-offset: -2px;
+}
+/* The other pages: their title, notes, the interfaces table. */
+.setup-about__page-title {
+  margin: 0 0 2px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: center;
+}
+.setup-about__note {
+  margin: 0;
+  font-size: 0.74rem;
+  text-align: center;
+}
+.setup-about__mono {
+  font-family: "JetBrainsMono Nerd Font Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.95em;
+}
+.setup-about__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.74rem;
+}
+.setup-about__table th,
+.setup-about__table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--about-line);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.setup-about__table th {
+  color: var(--about-muted);
+  font-weight: 600;
 }
 .setup-about__body {
   display: grid;
@@ -332,9 +311,11 @@
   overflow: auto;
 }
 .setup-about__head {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 4px;
 }
 .setup-about__head img {
   width: 52px;
@@ -346,9 +327,98 @@
   font-size: 1.15rem;
   font-weight: 700;
 }
-.setup-about__head span {
-  color: #9b7bff;
-  font-size: 0.78rem;
+.setup-about__head a {
+  color: var(--about-link);
+  font-size: 0.82rem;
+  text-decoration: underline;
+}
+.setup-about__head a:hover {
+  text-decoration-thickness: 2px;
+}
+.setup-about__pill {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in oklab, #3f8f4e, #64c477 var(--setup-dark));
+  border-radius: 99px;
+  background: color-mix(in oklab, rgb(63 143 78 / 0.12), rgb(100 196 119 / 0.18) var(--setup-dark));
+  color: color-mix(in oklab, #2f6e3b, #a9e3b4 var(--setup-dark));
+  font-size: 0.72em;
+  line-height: 1.5;
+}
+.setup-about__help {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 1.6em;
+  height: 1.6em;
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--about-text);
+  font: inherit;
+  font-weight: 700;
+  vertical-align: middle;
+  cursor: help;
+}
+.setup-about__help:is(:hover, :focus-visible) {
+  background: color-mix(in oklab, transparent, var(--about-text) 12%);
+  outline: none;
+}
+/* Plasma's tooltip: a rounded grey box above the button. */
+.setup-about__tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 3;
+  width: max-content;
+  max-width: min(300px, 70vw);
+  padding: 6px 10px;
+  border: 1px solid var(--about-line);
+  border-radius: 6px;
+  background: color-mix(in oklab, #fcfcfc, #4a4a4c var(--setup-dark));
+  color: var(--about-text);
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+}
+.setup-about__help:is(:hover, :focus-visible) .setup-about__tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .setup-about__tooltip {
+    transition: none;
+  }
+}
+.setup-about__show {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--about-side);
+  color: var(--about-text);
+  font: inherit;
+  font-size: 0.95em;
+  cursor: pointer;
+}
+.setup-about__show .material-symbols-outlined {
+  font-size: 1.1em;
+}
+.setup-about__muted {
+  color: var(--about-muted);
 }
 .setup-about__group {
   display: grid;
@@ -362,7 +432,7 @@
   gap: 10px;
 }
 .setup-about__group dt {
-  color: rgb(223 223 223 / 0.6);
+  color: var(--about-muted);
   text-align: right;
 }
 .setup-about__group dd {
@@ -371,7 +441,7 @@
 }
 .setup-about__heading {
   margin-bottom: 2px;
-  color: #dfdfdf !important;
+  color: var(--about-text) !important;
   font-weight: 700;
   text-align: center !important;
 }
@@ -395,46 +465,13 @@
     width: 40px;
     height: 40px;
   }
-  /* The caption under the stage, so it never covers the part. */
-  .setup__caption,
-  .is-software .setup__caption {
-    position: static;
-    display: grid;
-    margin-top: 12px;
-    padding: 0 4px;
-    color: var(--text-primary);
-    text-shadow: none;
-  }
-  .setup__kind,
-  .setup__caption ul,
-  :root[data-theme="light"] .setup__kind,
-  :root[data-theme="light"] .setup__caption ul {
-    color: color-mix(in srgb, var(--text-primary) 62%, transparent);
-  }
-  .setup__caption strong {
-    font-size: 1.15rem;
-  }
-  .setup__parts {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    overflow: visible;
-  }
-  .setup__parts button {
-    flex-direction: column;
-    gap: 2px;
-    min-height: 56px;
-    padding: 8px 4px;
-    font-size: 0.8rem;
-    white-space: normal;
-    text-align: center;
-  }
-  .setup__parts .material-symbols-outlined {
-    font-size: 1.3rem;
-  }
-  /* The About window: the whole stage, no sidebar. */
-  .is-software .setup__stage {
+  /* The About window: the whole stage. */
+  .setup__stage.is-software {
     aspect-ratio: auto;
     min-height: 0;
+  }
+  .setup__stage.is-software .setup__canvas {
+    position: absolute;
   }
   .setup-about {
     position: relative;
@@ -442,8 +479,23 @@
     margin: 10px;
     animation: none;
   }
+  /* The pages as a row of tabs over the content. */
+  .setup-about__window {
+    flex-direction: column;
+  }
   .setup-about__side {
-    display: none;
+    flex-direction: row;
+    width: auto;
+    max-width: none;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--about-line);
+    scrollbar-width: none;
+  }
+  .setup-about__side button {
+    flex: none;
+    width: auto;
+    white-space: nowrap;
   }
   .setup-about__body {
     padding: 14px 12px 14px;
@@ -470,4 +522,151 @@
 }
 :root.motion-none .setup__canvas {
   transition: none;
+}
+
+/*
+ * ---------- the stage and the panel ----------
+ * Wide: the stage, and next to it the parts (two columns of buttons, all
+ * visible) with the picked part's facts and specs. Narrow: the panel under
+ * the stage, the parts in a grid (no sideways scrolling).
+ */
+.setup__layout {
+  display: grid;
+  gap: 14px;
+}
+/* (Sized by the room the section has, not the window: it sits in the right column on wide screens.) */
+.setup {
+  container-type: inline-size;
+}
+@container (min-width: 1000px) {
+  .setup__layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    align-items: start;
+  }
+}
+/* Medium: the stage over the whole width, under it the parts and the details side by side. */
+@container (min-width: 640px) and (max-width: 999px) {
+  .setup__panel {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 18px;
+  }
+}
+.setup__panel {
+  display: grid;
+  gap: 12px;
+}
+.setup__parts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+  padding: 4px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+@container (max-width: 639px) {
+  .setup__parts {
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  }
+}
+.setup__parts button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: color-mix(in srgb, var(--text-primary) 72%, transparent);
+  font: inherit;
+  font-size: 0.86rem;
+  justify-content: flex-start;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+.setup__parts button:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
+}
+.setup__parts button.is-active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.setup__parts button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.setup__parts .material-symbols-outlined {
+  flex: none;
+  font-size: 1.1rem;
+}
+.setup__info {
+  display: grid;
+  gap: 3px;
+  padding: 2px 4px;
+}
+.setup__kind {
+  color: color-mix(in srgb, var(--text-primary) 60%, transparent);
+  font-size: 0.8rem;
+}
+.setup__info > strong {
+  font-size: 1.12rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.setup__facts {
+  margin: 2px 0 0 !important;
+  color: color-mix(in srgb, var(--text-primary) 72%, transparent);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.setup__specs {
+  display: grid;
+  gap: 0;
+  margin: 8px 0 0;
+}
+.setup__specs > div {
+  display: grid;
+  grid-template-columns: minmax(84px, 0.8fr) minmax(0, 1.4fr);
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid color-mix(in srgb, var(--text-primary) 9%, transparent);
+  font-size: 0.84rem;
+}
+.setup__specs dt {
+  color: color-mix(in srgb, var(--text-primary) 60%, transparent);
+}
+.setup__specs dd {
+  margin: 0;
+}
+.setup__alone {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text-primary) 9%, transparent);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.setup__alone:hover {
+  background: color-mix(in srgb, var(--text-primary) 15%, transparent);
+}
+.setup__alone .material-symbols-outlined {
+  font-size: 1.05rem;
 }

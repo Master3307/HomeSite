@@ -2,20 +2,35 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 
 import {
+  aeroGlowTexture,
+  BACKPLATE,
   backplateTexture,
   boardTexture,
   canvasTexture,
   chipsetTexture,
+  caseLightTexture,
+  coolerLogoTexture,
+  cubePattern,
+  endRibsTexture,
   fanCapTexture,
+  fanGlowTexture,
   furyLabelTexture,
   furyTexture,
-  furyTopTexture,
+  gigabytePlateTexture,
+  hexCoverTexture,
+  GPU_SIDE,
+  gpuSideTexture,
   ihsTexture,
   leftScreenTexture,
-  rgbLogoTexture,
+  ledStripTexture,
+  panelTextures,
+  psuBackTexture,
   rightScreenTexture,
   shroudPanelTexture,
+  sleeveTexture,
+  slot,
   socketTexture,
+  ssdLabelTexture,
   substrateTexture,
   vrmLabelTexture,
 } from './textures.js'
@@ -122,13 +137,6 @@ function upright(shape, depth, material, { z = 0, bevel = 0, curveSegments = 12 
   return mesh
 }
 
-/* A texture mapped onto a shape's own (cm) UVs: covers width × height centred on cx, cy. */
-function fitTexture(texture, width, height, cx = 0, cy = 0) {
-  texture.repeat.set(1 / width, 1 / height)
-  texture.offset.set(0.5 - cx / width, 0.5 - cy / height)
-  return texture
-}
-
 /* ---------- AMD Ryzen 5 5600X (AM4, PGA) ---------- */
 
 export function buildCpu() {
@@ -178,10 +186,10 @@ export function buildCpu() {
 
 /*
  * One fan blade as a curved, twisted surface: swept forwards towards the tip,
- * steep at the hub and flatter at the tip. `direction` mirrors it for the
- * fan that spins the other way.
+ * steep at the hub and flatter at the tip, with the raised stripes that run
+ * along each blade. `direction` mirrors it for the fan that spins the other way.
  */
-function bladeGeometry(direction, { hub = 1.5, tip = 3.98, radial = 16, chordwise = 10 } = {}) {
+function bladeGeometry(direction, { hub = 1.5, tip = 3.98, radial = 16, chordwise = 30 } = {}) {
   const positions = []
   const indices = []
   for (let i = 0; i <= radial; i += 1) {
@@ -198,7 +206,10 @@ function bladeGeometry(direction, { hub = 1.5, tip = 3.98, radial = 16, chordwis
       const theta = sweep - local * chord
       const arc = (local - 0.5) * chord * r
       const camber = Math.sin(Math.PI * local) * 0.05 * r * 0.4
-      const y = -arc * Math.tan(pitch) * 0.36 + camber
+      // Three small steps across the blade (the stripes in the photos), stronger towards the tip.
+      let steps = 0
+      for (const edge of [0.3, 0.52, 0.74]) steps += THREE.MathUtils.smoothstep(local, edge - 0.025, edge + 0.025)
+      const y = -arc * Math.tan(pitch) * 0.36 + camber + steps * 0.035 * (0.45 + 0.55 * t)
       positions.push(r * Math.cos(theta), y, direction * r * Math.sin(theta))
     }
   }
@@ -227,7 +238,7 @@ function fan(direction, materials) {
     mesh.rotation.y = (i / 11) * Math.PI * 2
     rotor.add(mesh)
   }
-  // The hub: a short drum with a rounded top edge, the AERO cap on it.
+  // The hub: a short drum with a rounded top edge, the mirror-silver AERO cap on it.
   const hubProfile = [
     [0, -0.55],
     [1.52, -0.55],
@@ -258,73 +269,147 @@ function fan(direction, materials) {
   return { group, rotor }
 }
 
-export function buildGpu() {
-  const group = new THREE.Group()
+/*
+ * Built lying down (fans up, +y; top edge +z; I/O bracket at +x), then stood
+ * up like on the box: fans to the front, top edge up, bracket on the left.
+ * Places along the card come from photos of the real one as `s`, cm from
+ * the bracket.
+ */
+/* `installed`: lying as built (for the PC view, which places it itself). */
+export function buildGpu({ installed = false } = {}) {
+  const card = new THREE.Group()
   const L = 28.1
   const H = 11.4
+  const top = H / 2
+  const x = (s) => L / 2 - s
   const fansX = [-9.22, 0, 9.22]
   const white = plastic('#e8eaed', 0.48, { clearcoat: 0.3, clearcoatRoughness: 0.45 })
   const materials = {
     white,
     blade: plastic('#e3e6ea', 0.5, { clearcoat: 0.2, side: THREE.DoubleSide }),
-    cap: new THREE.MeshPhysicalMaterial({ map: fanCapTexture(), roughness: 0.3, clearcoat: 0.6 }),
+    cap: new THREE.MeshPhysicalMaterial({ map: fanCapTexture(), metalness: 0.85, roughness: 0.22, clearcoat: 0.6 }),
   }
+  const silver = metal('#d3d6db', 0.34)
   const fin = metal('#9ba1aa', 0.45)
   const darkFin = metal('#4a4f57', 0.45)
+  const black = plastic('#0d0e10', 0.65)
 
-  // The metal backplate: brushed silver with its print and the open end where air goes through.
-  const plateShape = roundedRect(L - 0.2, H - 0.2, 0.5)
-  plateShape.holes.push(holePath(2.8, 7.4, 0.5, 12.0, 0))
-  const plateMap = fitTexture(backplateTexture(), L - 0.2, H - 0.2)
-  group.add(slab(plateShape, 0.16, metal('#d7dade', 0.34, { map: plateMap }), { bevel: 0.03 }))
+  // The metal backplate, s 0.1 → 25.8 (the end cap covers the rest): a notch for the power plug, the open end.
+  const plateStart = x(BACKPLATE.from)
+  const plateEnd = x(BACKPLATE.from + BACKPLATE.length)
+  const plug = { from: x(16.85), to: x(14.65) }
+  const edge = BACKPLATE.top
+  // Shape y is −z, so the top edge is at shape y = −edge.
+  const plateShape = polygon([
+    [plateEnd, -edge],
+    [plug.from, -edge],
+    [plug.from + 0.22, -edge + 0.9],
+    [plug.to - 0.22, -edge + 0.9],
+    [plug.to, -edge],
+    [plateStart - 0.25, -edge],
+    [plateStart, -edge + 0.25],
+    [plateStart, edge - 0.25],
+    [plateStart - 0.25, edge],
+    [plateEnd, edge],
+  ])
+  // The open end (flow-through), s 17.95 → 25.45.
+  plateShape.holes.push(holePath(7.5, 7.5, 0.35, (x(17.95) + x(25.45)) / 2, -(-4.45 + 3.05) / 2))
+  // Read from the back: the bracket on the canvas' left, the top edge at its bottom.
+  const plateMap = backplateTexture()
+  plateMap.repeat.set(-1 / BACKPLATE.length, 1 / (edge * 2))
+  plateMap.offset.set(0.5 + (plateStart + plateEnd) / 2 / BACKPLATE.length, 0.5)
+  card.add(slab(plateShape, 0.12, metal('#d5d8dd', 0.34), { bevel: 0.02 }))
+  // The print only on the outside: a flat copy of the outline, seen from below.
+  const plateFace = new THREE.Mesh(new THREE.ShapeGeometry(plateShape, 12), metal('#ffffff', 0.34, { map: plateMap, side: THREE.BackSide, polygonOffset: true, polygonOffsetFactor: -2 }))
+  plateFace.rotation.x = -Math.PI / 2
+  card.add(at(plateFace, 0, -0.001, 0))
 
-  // The board: short (the cooler is longer), its PCIe fingers and the 8-pin plug.
+  // Along the backplate's top edge: the GIGABYTE plate, a lip, the RGB strip, the Dual BIOS switch.
+  const plateEdge = polygon([
+    [x(1.8), 0.85],
+    [x(1.8), 0.08],
+    [x(10.2), 0.08],
+    [x(10.2), 1.25],
+    [x(2.2), 1.25],
+  ])
+  card.add(upright(plateEdge, 0.12, silver, { z: top - 0.06, bevel: 0.015 }))
+  const plateText = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 1.15), new THREE.MeshPhysicalMaterial({ map: gigabytePlateTexture(), transparent: true, roughness: 0.5, depthWrite: false }))
+  plateText.rotation.z = Math.PI
+  card.add(at(plateText, x(6.0), 0.665, top + 0.062))
+  card.add(at(box(x(10.2) - x(14.65), 0.34, 0.1, silver, 0.02), (x(10.2) + x(14.65)) / 2, 0.25, top - 0.05))
+  card.add(at(box(x(16.85) - x(25.8), 0.24, 0.1, silver, 0.02), (x(16.85) + x(25.8)) / 2, 0.2, top - 0.05))
+  card.add(at(box(1.8, 0.5, 0.3, plastic('#101114', 0.5)), x(11.25), 0.72, top - 0.2))
+  const ledMaterial = new THREE.MeshBasicMaterial({ map: ledStripTexture(), color: '#ff7ad9', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })
+  const led = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.6), ledMaterial)
+  led.rotation.z = Math.PI
+  card.add(at(led, x(11.25), 0.72, top - 0.045))
+  card.add(at(box(0.8, 0.32, 0.3, black), x(1.0), 0.32, top - 0.17))
+  card.add(at(box(0.22, 0.16, 0.06, plastic('#e9e9e6', 0.5)), x(0.85), 0.32, top - 0.01))
+
+  // The board: short (the cooler is longer), its PCIe fingers, a few parts near the top edge.
   const pcbMaterial = plastic('#111316', 0.6)
-  group.add(at(box(18.0, 0.16, 10.8, pcbMaterial), -4.95, 0.43, 0.1))
-  // The edge connector: x16 long, only the x8 half has contacts; the key notch 11.65 mm from the bracket side.
-  group.add(at(box(1.15, 0.16, 0.9, pcbMaterial), -11.0, 0.43, -5.75))
-  group.add(at(box(7.55, 0.16, 0.9, pcbMaterial), -6.52, 0.43, -5.75))
+  const pcbFrom = x(0.2)
+  const pcbTo = x(17.6)
+  card.add(at(box(pcbFrom - pcbTo, 0.16, 10.8, pcbMaterial), (pcbFrom + pcbTo) / 2, 0.43, 0.1))
+  // The edge connector: x16 long, only the x8 half has contacts; the key notch near the bracket.
+  card.add(at(box(1.15, 0.16, 0.9, pcbMaterial), 11.0, 0.43, -5.75))
+  card.add(at(box(7.55, 0.16, 0.9, pcbMaterial), 6.52, 0.43, -5.75))
   const fingers = []
-  for (let i = 0; i < 11; i += 1) fingers.push([-11.48 + i * 0.1, 0, -5.82])
-  for (let i = 0; i < 38; i += 1) fingers.push([-10.18 + i * 0.1, 0, -5.82])
+  for (let i = 0; i < 11; i += 1) fingers.push(11.48 - i * 0.1)
+  for (let i = 0; i < 38; i += 1) fingers.push(10.18 - i * 0.1)
   const fingerGeometry = new THREE.BoxGeometry(0.07, 0.008, 0.62)
-  for (const y of [0.515, 0.345]) group.add(instanced(fingerGeometry, GOLD(), fingers.map(([x, , z]) => [x, y, z])))
-  // 8-pin power on the board's top edge, opening upwards.
-  const plug = box(2.1, 0.95, 1.0, plastic('#0d0e10', 0.65), 0.05)
-  group.add(at(plug, 2.6, 1.0, 5.0))
-  // The Dual BIOS switch near the bracket.
-  group.add(at(box(0.5, 0.2, 0.25, plastic('#0d0e10')), -12.6, 0.6, 5.4))
+  for (const y of [0.515, 0.345]) card.add(instanced(fingerGeometry, GOLD(), fingers.map((fx) => [fx, y, -5.82])))
+  const choke = metal('#5d636c', 0.5)
+  for (let i = 0; i < 4; i += 1) card.add(at(box(0.7, 0.48, 0.7, choke, 0.05), x(2.3 + i * 0.95), 0.75, 4.55))
+  for (let i = 0; i < 3; i += 1) card.add(at(cylinder(0.24, 0.5, metal('#b9bec6', 0.3), 16), x(6.6 + i * 0.7), 0.76, 4.7))
+  // The 8-pin power socket on the top edge, in the backplate's notch, opening outwards.
+  const plugX = (plug.from + plug.to) / 2
+  card.add(at(box(2.15, 0.96, 1.25, black, 0.05), plugX, 0.99, top - 0.725))
+  const pinHole = plastic('#020203', 0.9)
+  for (let i = 0; i < 4; i += 1) for (const dy of [-0.23, 0.23]) card.add(at(box(0.36, 0.36, 0.02, pinHole), plugX + (i - 1.5) * 0.47, 0.99 + dy, top - 0.095))
+  card.add(at(box(0.6, 0.18, 0.32, black, 0.03), plugX, 1.53, top - 0.3))
 
-  // Heatsink: fins across the whole length (they show at the edges and through the backplate), heat pipes.
-  const fins = []
-  for (let x = -13.5; x <= 13.6; x += 0.19) fins.push([x, 1.55, 0])
-  group.add(instanced(new THREE.BoxGeometry(0.035, 1.85, 10.4), fin, fins))
-  group.add(at(box(L - 0.6, 0.12, 10.4, darkFin), 0, 0.62, 0))
+  // Heatsink: fins across the whole length (taller past the board, under the open end), the base and heat pipes.
+  const overBoard = []
+  const pastBoard = []
+  for (let fx = plateEnd + 0.1; fx <= 13.6; fx += 0.19) (fx > pcbTo ? overBoard : pastBoard).push(fx)
+  card.add(instanced(new THREE.BoxGeometry(0.035, 1.42, 10.4), fin, overBoard.map((fx) => [fx, 1.76, 0])))
+  card.add(instanced(new THREE.BoxGeometry(0.035, 2.17, 10.4), fin, pastBoard.map((fx) => [fx, 1.385, 0])))
+  card.add(at(box(13.6 - pcbTo, 0.08, 10.4, darkFin), (13.6 + pcbTo) / 2, 0.99, 0))
   const pipeMaterial = metal('#d6d9de', 0.2)
-  for (const z of [-2.7, -0.9, 0.9, 2.7]) {
-    const pipe = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 25.6, 6, 16), pipeMaterial)
+  for (const [z, from] of [
+    [-2.0, plateEnd + 0.3],
+    [2.0, plateEnd + 0.3],
+    [-0.65, -4.0],
+    [0.65, -4.0],
+  ]) {
+    const to = 13.2
+    const pipe = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, to - from - 0.6, 6, 16), pipeMaterial)
     pipe.rotation.z = Math.PI / 2
-    group.add(at(pipe, 0, 1.0, z))
+    card.add(at(pipe, (from + to) / 2, 1.25, z))
   }
-  // Copper base on the GPU (under the middle fan).
-  group.add(at(box(4.6, 0.3, 4.6, metal('#c98a5a', 0.3)), -2.6, 0.68, 0.2))
+  // The copper plate on the GPU.
+  card.add(at(box(4.0, 0.46, 4.0, metal('#c98a5a', 0.3)), x(7.5), 0.745, 0.2))
 
   // The white shroud: body, the raised white rim, the grooved silver panel, the fan rings.
   const shroudBottom = 2.48
   const shroudTop = 3.81
-  const body = roundedRect(L, H, 1.1)
-  for (const x of fansX) body.holes.push(circlePath(4.2, x, 0))
-  group.add(slab(body, 3.62 - shroudBottom, white, { y: shroudBottom, bevel: 0.1, curveSegments: 64 }))
-  const rim = roundedRect(L, H, 1.1)
-  rim.holes.push(holePath(L - 1.1, H - 1.0, 0.7, 0, 0))
-  group.add(slab(rim, shroudTop - 3.5, white, { y: 3.5, bevel: 0.08, curveSegments: 48 }))
+  // The shroud stops short of the bracket (0.7 cm), like on the real card.
+  const shroudL = L - 0.7
+  const shroudX = -0.35
+  const body = roundedRect(shroudL, H, 1.1, shroudX)
+  for (const fx of fansX) body.holes.push(circlePath(4.2, fx, 0))
+  card.add(slab(body, 3.62 - shroudBottom, white, { y: shroudBottom, bevel: 0.1, curveSegments: 64 }))
+  const rim = roundedRect(shroudL, H, 1.1, shroudX)
+  rim.holes.push(holePath(shroudL - 1.1, H - 1.0, 0.7, shroudX, 0))
+  card.add(slab(rim, shroudTop - 3.5, white, { y: 3.5, bevel: 0.08, curveSegments: 48 }))
   // (Every fan's hole has to stay inside the panel's outline, or it isn't cut.)
-  const panel = roundedRect(L - 0.5, H - 0.9, 0.7)
-  for (const x of fansX) panel.holes.push(circlePath(4.4, x, 0))
+  const panel = roundedRect(shroudL - 0.5, H - 0.9, 0.7, shroudX)
+  for (const fx of fansX) panel.holes.push(circlePath(4.4, fx, 0))
   const grooves = shroudPanelTexture()
   const groovesBump = shroudPanelTexture(true)
   for (const texture of [grooves, groovesBump]) texture.repeat.set(0.42, 0.42)
-  group.add(slab(panel, 0.1, new THREE.MeshPhysicalMaterial({ color: '#e6e8ec', metalness: 0.7, roughness: 0.34, map: grooves, bumpMap: groovesBump, bumpScale: 0.6 }), { y: 3.6, curveSegments: 64 }))
+  card.add(slab(panel, 0.1, new THREE.MeshPhysicalMaterial({ color: '#eceef1', metalness: 0.4, roughness: 0.36, map: grooves, bumpMap: groovesBump, bumpScale: 0.6 }), { y: 3.6, curveSegments: 64 }))
   // Fan rings: a smooth white lip that rises above the panel.
   const ringProfile = [
     [4.18, -1.15],
@@ -334,27 +419,51 @@ export function buildGpu() {
     [4.55, 0.73],
     [4.75, 0.66],
     [4.82, 0.54],
-  ].map(([x, y]) => new THREE.Vector2(x, y))
+  ].map(([px, py]) => new THREE.Vector2(px, py))
   const ringGeometry = new THREE.LatheGeometry(ringProfile, 96)
-  for (const x of fansX) group.add(at(new THREE.Mesh(ringGeometry, white), x, 3.08, 0))
-  // A thin silver line along each long side.
-  for (const z of [-1, 1]) group.add(at(box(L - 2.4, 0.06, 0.08, metal('#c3c8cf', 0.25)), 0, 3.55, z * (H / 2 + 0.005)))
+  for (const fx of fansX) card.add(at(new THREE.Mesh(ringGeometry, white), fx, 3.08, 0))
+  // A thin silver line along the fan side of the bottom edge.
+  card.add(at(box(L - 2.4, 0.06, 0.08, metal('#c3c8cf', 0.25)), 0, 3.55, -(H / 2 + 0.1)))
+
+  // The end cap: the shroud wraps around the far end, flush with the backplate, ribbed on its outer half.
+  const r = 1.1
+  const endShape = new THREE.Shape()
+  endShape.moveTo(plateEnd, -H / 2)
+  endShape.lineTo(plateEnd, H / 2)
+  endShape.lineTo(-L / 2 + r, H / 2)
+  endShape.quadraticCurveTo(-L / 2, H / 2, -L / 2, H / 2 - r)
+  endShape.lineTo(-L / 2, -H / 2 + r)
+  endShape.quadraticCurveTo(-L / 2, -H / 2, -L / 2 + r, -H / 2)
+  endShape.closePath()
+  card.add(slab(endShape, shroudBottom + 0.06, white, { y: -0.06, bevel: 0.08, curveSegments: 24 }))
+  const ribs = decal(2.0, 4.8, endRibsTexture(), { transparent: true, depthWrite: false })
+  ribs.rotation.x = Math.PI / 2
+  card.add(at(ribs, (plateEnd - L / 2) / 2, -0.065, -2.9))
+  card.add(at(box(2.1, 0.02, 0.05, plastic('#aeb3ba', 0.5)), (plateEnd - L / 2) / 2, -0.065, -0.3))
+
+  // The top edge of the shroud: AERO panel, GEFORCE RTX (a print the right way up with the fans down).
+  const sideY = shroudBottom + 0.04 + GPU_SIDE.height / 2
+  const sideZ = top + 0.1 + 0.004
+  const side = new THREE.Mesh(
+    new THREE.PlaneGeometry(GPU_SIDE.length, GPU_SIDE.height),
+    new THREE.MeshPhysicalMaterial({ map: gpuSideTexture(), roughness: 0.46, clearcoat: 0.3, clearcoatRoughness: 0.45, polygonOffset: true, polygonOffsetFactor: -2 }),
+  )
+  side.rotation.z = Math.PI
+  card.add(at(side, x(GPU_SIDE.from + GPU_SIDE.length / 2), sideY, sideZ))
+  const glowMaterial = new THREE.MeshBasicMaterial({ map: aeroGlowTexture(), color: '#6fb8ff', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(GPU_SIDE.length, GPU_SIDE.height), glowMaterial)
+  glow.rotation.z = Math.PI
+  card.add(at(glow, x(GPU_SIDE.from + GPU_SIDE.length / 2), sideY, sideZ + 0.004))
 
   // Fans: the middle one turns the other way (alternate spinning).
   const rotors = []
-  fansX.forEach((x, index) => {
+  fansX.forEach((fx, index) => {
     const direction = index === 1 ? -1 : 1
     const { group: fanGroup, rotor } = fan(direction, materials)
-    fanGroup.position.set(x, 3.1, 0)
-    group.add(fanGroup)
+    fanGroup.position.set(fx, 3.1, 0)
+    card.add(fanGroup)
     rotors.push({ rotor, direction })
   })
-
-  // The GIGABYTE logo on the top edge (RGB Fusion).
-  const logoMaterial = new THREE.MeshBasicMaterial({ map: rgbLogoTexture(), color: '#ff4fd8', transparent: true, blending: THREE.AdditiveBlending, toneMapped: false })
-  const logo = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 0.7), logoMaterial)
-  logo.position.set(-7.4, 3.0, H / 2 + 0.02)
-  group.add(logo)
 
   // The I/O bracket: steel, two slots high, zigzag vents over the ports (HDMI, DP, DP, HDMI).
   const steel = metal('#cdd0d5', 0.3)
@@ -377,10 +486,31 @@ export function buildGpu() {
     { u: 2.4, kind: 'hdmi' },
   ]
   const portSize = { hdmi: [1.55, 0.6], dp: [1.75, 0.55] }
-  for (const { u, kind } of ports) {
+  // HDMI: wider at the top, its lower corners cut; DisplayPort: one corner cut off.
+  const portHole = (kind, u, v, grow = 0.06) => {
     const [width, height] = portSize[kind]
-    outline.holes.push(holePath(width + 0.12, height + 0.12, 0.08, u, 0.95))
+    const w = width / 2 + grow
+    const h = height / 2 + grow
+    const points =
+      kind === 'hdmi'
+        ? [
+            [u - w, v + h],
+            [u + w, v + h],
+            [u + w, v - h * 0.2],
+            [u + w - 0.22, v - h],
+            [u - w + 0.22, v - h],
+            [u - w, v - h * 0.2],
+          ]
+        : [
+            [u - w, v + h],
+            [u + w, v + h],
+            [u + w, v - h],
+            [u - w + 0.26, v - h],
+            [u - w, v - h + 0.26],
+          ]
+    return polygon(points, new THREE.Path())
   }
+  for (const { u, kind } of ports) outline.holes.push(portHole(kind, u, 0.95))
   // The vents: alternating triangles along the upper slot.
   for (let i = 0; i < 9; i += 1) {
     const u0 = -5.4 + i * 1.18
@@ -411,15 +541,23 @@ export function buildGpu() {
     bracket.add(at(box(1.2, height, width, shell, 0.04), 0.66, 0.95, -u))
     bracket.add(at(box(0.04, height * 0.5, width * 0.78, insert), 0.05, 0.95 - height * 0.05, -u))
   }
-  bracket.position.set(-L / 2 - 0.1, 0, 0)
-  group.add(bracket)
+  // Built facing −x; mirrored onto the bracket end at +x.
+  bracket.scale.x = -1
+  bracket.position.set(L / 2 + 0.1, 0, 0)
+  card.add(bracket)
 
-  group.position.y = -1.9
   const update = (time, delta) => {
     for (const { rotor, direction } of rotors) rotor.rotation.y -= delta * 3.4 * direction
-    logoMaterial.color.setHSL((time * 0.06) % 1, 0.85, 0.6)
+    const hue = (time * 0.06) % 1
+    glowMaterial.color.setHSL(hue, 0.85, 0.62)
+    ledMaterial.color.setHSL((hue + 0.12) % 1, 0.7, 0.7)
   }
-  return { object: group, view: { polar: 0.78, azimuth: 0.62 }, update }
+  if (installed) return { object: card, update }
+  // Stand it up: fans to the front (+z), top edge up, bracket on the left.
+  card.rotation.set(Math.PI / 2, 0, Math.PI, 'ZYX')
+  const group = new THREE.Group()
+  group.add(card)
+  return { object: group, view: { polar: 1.02, azimuth: 0.42 }, update }
 }
 
 /* ---------- Kingston FURY Beast DDR4 (black) ---------- */
@@ -467,12 +605,13 @@ function memoryStick(front, label) {
   outline.lineTo(6.3, 3.34)
   outline.lineTo(-1.6, 3.34)
   outline.lineTo(-1.9, 3.41)
-  for (let i = 3; i >= 0; i -= 1) {
-    const x = -6.0 + i * 0.7
-    outline.lineTo(x + 0.62, 3.41)
-    outline.lineTo(x + 0.34, 2.9)
-    outline.lineTo(x + 0.1, 2.9)
-    outline.lineTo(x + 0.38, 3.41)
+  // Five slanted vents at the logo end.
+  for (let i = 4; i >= 0; i -= 1) {
+    const x = -6.1 + i * 0.62
+    outline.lineTo(x + 0.56, 3.41)
+    outline.lineTo(x + 0.3, 2.92)
+    outline.lineTo(x + 0.08, 2.92)
+    outline.lineTo(x + 0.34, 3.41)
   }
   outline.lineTo(-6.35, 3.41)
   outline.lineTo(-6.6, 3.16)
@@ -503,13 +642,10 @@ function memoryStick(front, label) {
     group.add(upright(wing, 0.06, facet, { z: raisedZ, bevel: 0.012 }))
     group.add(upright(cap, 0.06, facet, { z: raisedZ, bevel: 0.012 }))
   }
-  // The top edges joined, with the small FURY print.
+  // The top edges joined.
   group.add(at(box(8.1, 0.05, 0.66, anodised), 2.15, 3.315, 0))
-  const topPrint = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 0.42), new THREE.MeshPhysicalMaterial({ map: furyTopTexture(), roughness: 0.5 }))
-  topPrint.rotation.x = -Math.PI / 2
-  group.add(at(topPrint, 1.6, 3.342, 0))
   group.add(at(box(4.6, 0.05, 0.54, anodised), -4.2, 3.39, 0))
-  // Prints: the front (FURY, BEAST, DDR4), the white label at the back.
+  // Prints: the front (KINGSTON FURY, FURY, BEAST, DDR4), the white label at the back.
   const print = new THREE.Mesh(new THREE.PlaneGeometry(13.1, 3.0), new THREE.MeshPhysicalMaterial({ map: front, transparent: true, roughness: 0.5, depthWrite: false }))
   group.add(at(print, 0, 1.95, 0.332))
   const sticker = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.05), new THREE.MeshPhysicalMaterial({ map: label, roughness: 0.6 }))
@@ -547,7 +683,8 @@ function header(columns, rows, material, gold) {
   return group
 }
 
-export function buildBoard() {
+/* `textureSize`: the silkscreen canvas (the PC view uses a smaller one). */
+export function buildBoard({ textureSize = null } = {}) {
   const group = new THREE.Group()
   const black = plastic('#121316', 0.6)
   const grey = plastic('#4b4f56', 0.55)
@@ -556,7 +693,7 @@ export function buildBoard() {
   const B = 24.4
   const surface = 0.08
 
-  const big = window.matchMedia?.('(pointer: coarse)').matches ? 2048 : 4096
+  const big = textureSize ?? (window.matchMedia?.('(pointer: coarse)').matches ? 2048 : 4096)
   group.add(box(B, 0.16, B, plastic('#121316', 0.7)))
   const texture = boardTexture(big)
   group.add(at(decal(B, B, texture, { roughness: 0.62, clearcoat: 0.15 }), 0, surface + 0.001, 0))
@@ -586,12 +723,15 @@ export function buildBoard() {
   for (let i = 0; i < 6; i += 1) group.add(at(box(0.8, 0.6, 0.8, choke, 0.06), -5.2, surface + 0.3, -9.2 + i * 0.95))
   for (let i = 0; i < 5; i += 1) group.add(at(cylinder(0.26, 0.85, solidCap, 20), -4.1, surface + 0.43, -9.1 + i * 1.15))
   for (let i = 0; i < 4; i += 1) group.add(at(cylinder(0.26, 0.85, solidCap, 20), -5.4 + i * 1.05, surface + 0.43, -9.5))
+  // The VRM heatsink: a low black block with a raised strip, ULTRA DURABLE along it.
   const heatsink = new THREE.Group()
-  const sinkMetal = metal('#2c2f34', 0.45)
-  heatsink.add(at(box(2.9, 1.6, 10.1, sinkMetal, 0.1), 0, 0.8, 0))
-  for (let i = 0; i < 8; i += 1) heatsink.add(at(box(2.9, 0.5, 0.42, sinkMetal, 0.06), 0, 1.75, -4.4 + i * 1.26))
-  heatsink.add(at(decal(2.0, 7.0, vrmLabelTexture(), { metalness: 0.5, roughness: 0.4 }), 0.1, 2.005, -0.4))
-  heatsink.position.set(-7.35, surface, -4.45)
+  const sinkMetal = metal('#1d1f23', 0.45)
+  heatsink.add(at(box(2.6, 1.15, 7.6, sinkMetal, 0.12), 0, 0.575, 0))
+  // Fine grooves along its outer side.
+  for (let i = 0; i < 4; i += 1) heatsink.add(at(box(0.04, 0.06, 7.3, metal('#0f1012', 0.5)), -1.3, 0.3 + i * 0.2, 0))
+  heatsink.add(at(box(2.0, 0.14, 7.1, metal('#26292e', 0.4), 0.05), 0.08, 1.2, 0))
+  heatsink.add(at(decal(2.0, 7.1, vrmLabelTexture(), { metalness: 0.45, roughness: 0.42 }), 0.08, 1.272, 0))
+  heatsink.position.set(-7.35, surface, -4.6)
   group.add(heatsink)
   // 8-pin CPU power (top left).
   const plugMaterial = plastic('#0f1012', 0.62)
@@ -613,6 +753,16 @@ export function buildBoard() {
   battery.add(at(cylinder(1.0, 0.32, metal('#d2d6db', 0.22), 48), 0, 0.3, 0))
   battery.position.set(10.3, surface, -0.25)
   group.add(battery)
+  // As in the photos: three solid capacitors between the B2 slot and the 24-pin, two at the top right,
+  // and the white RGB headers (D_LED2, LED_C2) beside them.
+  for (const z of [-3.4, -4.4, -5.4]) group.add(at(cylinder(0.32, 0.8, solidCap, 20), 9.85, surface + 0.4, z))
+  for (const z of [-10.0, -10.9]) group.add(at(cylinder(0.32, 0.8, solidCap, 20), 10.3, surface + 0.4, z))
+  for (const z of [-7.9, -8.9]) {
+    const rgb = header(4, 1, plastic('#ece8dc', 0.6), gold)
+    rgb.rotation.y = Math.PI / 2
+    rgb.position.set(10.0, surface, z)
+    group.add(rgb)
+  }
 
   // M.2 (M2A_CPU) with its standoff, and the second slot (M2B_SB).
   group.add(at(box(0.6, 0.45, 2.2, black, 0.04), 1.9, surface + 0.22, 3.3))
@@ -705,7 +855,7 @@ export function buildBoard() {
   return { object: group, view: { polar: 0.72, azimuth: 0.38 }, update: null }
 }
 
-/* ---------- the screens: LG 22" IPS (left) and Samsung S22D300 (right) ---------- */
+/* ---------- the screens: LG 22MP55-class 22″ IPS (left) and Samsung S22D300HY (right) ---------- */
 
 const bezelLogo = (text, { width = 512, colour = '#c9ccd2', font = '700 120px "Google Sans Flex", system-ui, sans-serif', spacing = '18px' } = {}) =>
   canvasTexture(width, 160, (context, w, h) => {
@@ -718,30 +868,86 @@ const bezelLogo = (text, { width = 512, colour = '#c9ccd2', font = '700 120px "G
     context.fillText(text, w / 2, h / 2 + 6)
   })
 
-function monitor({ width, height, depth, screen, bezel, chin, texture, logo, logoWidth, base, neck, raise }) {
+/* A round (or, scaled, oval) glossy foot with a soft rounded rim. */
+function footGeometry(radius, height) {
+  const profile = [
+    [0, 0],
+    [radius - 0.25, 0],
+    [radius, 0.18],
+    [radius - 0.05, height * 0.6],
+    [radius - 0.6, height],
+    [0, height + 0.12],
+  ].map(([x, y]) => new THREE.Vector2(x, y))
+  return new THREE.LatheGeometry(profile, 72)
+}
+
+/*
+ * A monitor from its maker's measurements (cm): `body` [width, height,
+ * depth] without the stand, `screen` [width, height] of the picture,
+ * `bezel` [side, top, chin], `raise` (desk to the panel's lower edge),
+ * `stand` (draws the foot and neck), `led` (the power light on the chin).
+ * The origin is on the desk, under the panel.
+ */
+function monitor({ body: [width, height, depth], screen: [sw, sh], bezel: [, top, chin], texture, logo, logoWidth, raise, tilt = 0.06, stand, led = null }) {
   const group = new THREE.Group()
-  const gloss = plastic('#0d0e10', 0.25, { clearcoat: 0.9, clearcoatRoughness: 0.15 })
-  const matte = plastic('#151619', 0.7)
-  // Panel and the thicker back with the electronics.
-  group.add(at(box(width, height, 1.1, gloss, 0.2), 0, 0, 0))
-  group.add(at(box(width * 0.62, height * 0.62, depth - 1.1, matte, 0.8), 0, -height * 0.08, -depth / 2 - 0.2))
-  const [screenWidth, screenHeight] = screen
-  const display = new THREE.Mesh(new THREE.PlaneGeometry(screenWidth, screenHeight), new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }))
-  display.position.set(0, (chin - bezel) / 2, 0.556)
-  group.add(display)
-  // A faint sheen over the screen.
-  const glass = new THREE.Mesh(new THREE.PlaneGeometry(screenWidth, screenHeight), new THREE.MeshPhysicalMaterial({ color: '#000', transparent: true, opacity: 0.06, roughness: 0.2, clearcoat: 1 }))
-  glass.position.set(0, (chin - bezel) / 2, 0.56)
-  group.add(glass)
+  const gloss = plastic('#0b0c0e', 0.2, { clearcoat: 1, clearcoatRoughness: 0.1 })
+  const matte = plastic('#121316', 0.6)
+  const panel = new THREE.Group()
+  // The glossy front frame and the thin back shell behind it.
+  panel.add(at(box(width, height, 1.1, gloss, 0.22), 0, 0, 0))
+  panel.add(at(box(width - 0.5, height - 0.5, 1.4, matte, 0.55), 0, 0, -1.05))
+  // The bulge with the electronics and the VESA mount, lower and rounded.
+  const bulge = box(width * 0.66, height * 0.62, depth - 2.2, matte, 1.4)
+  panel.add(at(bulge, 0, -height * 0.08, -1.6 - (depth - 2.2) / 2))
+  // Vent lines along the bulge's top.
+  for (let i = 0; i < 18; i += 1) panel.add(at(box(width * 0.02, 0.05, (depth - 2.6) * 0.7, plastic('#050506', 0.8)), -width * 0.26 + i * width * 0.03, -height * 0.08 + height * 0.31 + 0.02, -1.6 - (depth - 2.2) / 2))
+  // The picture and a faint sheen of the glass.
+  const display = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }))
+  display.position.set(0, (chin - top) / 2, 0.556)
+  panel.add(display)
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), new THREE.MeshPhysicalMaterial({ color: '#000', transparent: true, opacity: 0.06, roughness: 0.15, clearcoat: 1 }))
+  glass.position.set(0, (chin - top) / 2, 0.56)
+  panel.add(glass)
   const mark = new THREE.Mesh(new THREE.PlaneGeometry(logoWidth, logoWidth * (logo.image.height / logo.image.width)), new THREE.MeshBasicMaterial({ map: logo, transparent: true }))
   mark.position.set(0, -height / 2 + chin / 2, 0.556)
-  group.add(mark)
-  // Stand: neck from the back to an oval base.
-  const neckHeight = raise + 6
-  group.add(at(box(neck[0], neckHeight, 1.6, gloss, 0.5), 0, -height / 2 + 6 - neckHeight / 2, -depth / 2 - 0.4))
-  const foot = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 64), gloss)
-  foot.scale.set(base[0] / 2, 0.9, base[1] / 2)
-  group.add(at(foot, 0, -height / 2 - raise, -depth / 2 + 0.6))
+  panel.add(mark)
+  if (led) {
+    const light = new THREE.Mesh(new THREE.CircleGeometry(0.09, 16), new THREE.MeshBasicMaterial({ color: led, toneMapped: false }))
+    light.position.set(width / 2 - 2.2, -height / 2 + chin / 2, 0.557)
+    panel.add(light)
+  }
+  // Leaning back a little, like on the desk.
+  panel.rotation.x = -tilt
+  panel.position.y = raise + height / 2
+  group.add(panel)
+  group.add(stand({ gloss, matte, height, depth, raise }))
+  return group
+}
+
+/* LG: the round foot and the curved arm that sweeps up into the back. */
+const lgStand = ({ gloss, raise, height }) => {
+  const group = new THREE.Group()
+  const foot = new THREE.Mesh(footGeometry(9.4, 1.0), gloss)
+  foot.position.set(0, 0, -3.6)
+  group.add(foot)
+  const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.9, -5.2), new THREE.Vector3(0, raise * 0.55, -8.6), new THREE.Vector3(0, raise + height * 0.18, -7.4), new THREE.Vector3(0, raise + height * 0.3, -5.6)])
+  const arm = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 1.05, 18), gloss)
+  arm.scale.x = 2.4
+  group.add(arm)
+  return group
+}
+
+/* Samsung: the oval foot and a short neck into the lower back. */
+const samsungStand = ({ gloss, raise }) => {
+  const group = new THREE.Group()
+  const foot = new THREE.Mesh(footGeometry(10, 1.1), gloss)
+  foot.scale.set(1.1, 1, 0.885)
+  foot.position.set(0, 0, -3.4)
+  group.add(foot)
+  const neck = box(5.2, raise + 6.5, 1.8, gloss, 0.6)
+  neck.position.set(0, (raise + 6.5) / 2 + 0.6, -5.4)
+  neck.rotation.x = -0.06
+  group.add(neck)
   return group
 }
 
@@ -749,41 +955,35 @@ export function buildDisplays(info) {
   const group = new THREE.Group()
   const left = leftScreenTexture(info)
   const right = rightScreenTexture()
+  // LG 22MP55 class: 50.8 × 31.2 × 6.0 cm, 41.6 cm tall on its stand (21.5″ picture).
   const lg = monitor({
-    width: 50.4,
-    height: 29.9,
-    depth: 4.4,
-    screen: [47.8, 26.9],
-    bezel: 0.9,
-    chin: 2.1,
+    body: [50.8, 31.2, 6.0],
+    screen: [47.6, 26.8],
+    bezel: [1.6, 1.6, 2.8],
     texture: left,
     logo: bezelLogo('LG', { colour: '#b9bcc2', spacing: '4px' }),
-    logoWidth: 3.6,
-    base: [21, 15],
-    neck: [4.2, 9],
-    raise: 9.0,
+    logoWidth: 3.4,
+    raise: 10.4,
+    stand: lgStand,
   })
-  lg.position.set(-26.4, 1.0, 5.2)
+  lg.position.set(-26.4, 0, 5.2)
   lg.rotation.y = 0.2
   group.add(lg)
+  // Samsung S22D300HY: 51.16 × 31.08 × 5.31 cm, 38.5 cm on its stand.
   const samsung = monitor({
-    width: 51.16,
-    height: 31.08,
-    depth: 5.31,
+    body: [51.16, 31.08, 5.31],
     screen: [47.6, 26.8],
-    bezel: 1.9,
-    chin: 2.4,
+    bezel: [1.78, 1.78, 2.5],
     texture: right,
     logo: bezelLogo('SAMSUNG', { width: 1024, colour: '#aeb2b9', font: '800 92px "Google Sans Flex", system-ui, sans-serif', spacing: '20px' }),
-    logoWidth: 9.0,
-    base: [22, 17.7],
-    neck: [5.0, 7],
+    logoWidth: 8.6,
     raise: 7.4,
+    stand: samsungStand,
+    led: '#2f8cff',
   })
-  samsung.position.set(26.6, -0.2, 5.2)
+  samsung.position.set(26.6, 0, 5.2)
   samsung.rotation.y = -0.2
   group.add(samsung)
-  group.position.y = 2
   // The clocks in the panels go on with the real time.
   let lastMinute = -1
   const update = () => {
@@ -796,4 +996,495 @@ export function buildDisplays(info) {
   return { object: group, view: { polar: 1.36, azimuth: 0.28 }, update, textures: [left, right] }
 }
 
-export const BUILDERS = { cpu: buildCpu, gpu: buildGpu, ram: buildRam, board: buildBoard, displays: buildDisplays }
+/* ---------- the whole PC: the case, the cooler, the fans, every part in its place ---------- */
+
+/*
+ * A 120 mm RGB fan like the ones in the case and on the cooler: white
+ * frame, nine milky blades, a glowing ring around the rim and one around
+ * the hub. Built facing +y (the side with the rings), turning about y.
+ */
+function caseFan({ size = 12, depth = 2.5, glow }) {
+  const group = new THREE.Group()
+  const white = plastic('#eef0f3', 0.5)
+  const frame = roundedRect(size, size, 0.9)
+  frame.holes.push(circlePath(size / 2 - 0.3, 0, 0))
+  for (const x of [-1, 1]) for (const z of [-1, 1]) frame.holes.push(circlePath(0.22, x * (size / 2 - 0.75), z * (size / 2 - 0.75)))
+  group.add(slab(frame, depth, white, { y: -depth / 2, bevel: 0.06, curveSegments: 48 }))
+  const rotor = new THREE.Group()
+  const blade = bladeGeometry(1, { hub: 2.0, tip: size / 2 - 0.5, radial: 8, chordwise: 10 })
+  const bladeMaterial = plastic('#f4f1fb', 0.4, { side: THREE.DoubleSide, transparent: true, opacity: 0.88, emissive: glow.color, emissiveIntensity: 0.08 })
+  for (let i = 0; i < 9; i += 1) {
+    const mesh = new THREE.Mesh(blade, bladeMaterial)
+    mesh.rotation.y = (i / 9) * Math.PI * 2
+    mesh.scale.y = 0.8
+    rotor.add(mesh)
+  }
+  rotor.add(at(cylinder(2.0, 1.2, white, 40), 0, 0, 0))
+  group.add(rotor)
+  // The rings and their soft light.
+  const ring = (radius, tube) => {
+    const mesh = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 10, 72), glow)
+    mesh.rotation.x = Math.PI / 2
+    return mesh
+  }
+  group.add(at(ring(size / 2 - 0.42, 0.16), 0, depth / 2 - 0.12, 0))
+  group.add(at(ring(2.15, 0.13), 0, 0.62, 0))
+  const halo = new THREE.Mesh(new THREE.PlaneGeometry(size * 1.3, size * 1.3), glow.userData.halo)
+  halo.rotation.x = -Math.PI / 2
+  halo.position.y = depth / 2 + 0.03
+  halo.raycast = () => {}
+  group.add(halo)
+  return { group, rotor }
+}
+
+/* The glow shared by all fans (purple, like the build), with its halo material. */
+function fanGlow() {
+  const glow = new THREE.MeshBasicMaterial({ color: '#b56bff', toneMapped: false })
+  glow.userData.halo = new THREE.MeshBasicMaterial({ map: fanGlowTexture(), color: '#a24dff', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, opacity: 0.6 })
+  return glow
+}
+
+/*
+ * The white tower cooler (120 mm fan, five heat pipes), in the board's
+ * frame: standing on the CPU, the fan on the side towards the front.
+ */
+function buildCooler(glow) {
+  const group = new THREE.Group()
+  const nickel = metal('#cfd3d8', 0.3)
+  const paint = plastic('#eceef1', 0.45, { clearcoat: 0.2 })
+  group.add(at(box(4.0, 0.7, 4.0, nickel, 0.08), 0, 0.35, 0))
+  group.add(at(box(9.6, 0.22, 1.3, metal('#b9bdc4', 0.35), 0.06), 0, 0.82, 0))
+  // Five U-shaped heat pipes: their ten ends come out of the top in two groups.
+  const legs = []
+  for (const side of [-1, 1]) {
+    for (const x of [-1.6, 0, 1.6]) legs.push([x, side * 4.9])
+    for (const x of [-0.8, 0.8]) legs.push([x, side * 3.7])
+  }
+  const pipe = new THREE.CylinderGeometry(0.3, 0.3, 15.2, 14)
+  for (const [x, z] of legs) group.add(at(new THREE.Mesh(pipe, paint), x, 8.2, z))
+  for (const [x, z] of legs) group.add(at(new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.3, 6, 12), paint), x, 15.95, z))
+  // The fin stack (about fifty fins) and the white top cover with the maker's mark.
+  const fins = []
+  for (let y = 3.2; y <= 15.0; y += 0.24) fins.push([0, y, 0])
+  group.add(instanced(new THREE.BoxGeometry(5.2, 0.045, 12.3), metal('#e4e6ea', 0.42), fins))
+  const cover = box(5.5, 0.32, 12.6, paint, 0.1)
+  group.add(at(cover, 0, 15.36, 0))
+  const logo = decal(3.0, 3.0, coolerLogoTexture(), { transparent: true, depthWrite: false })
+  group.add(at(logo, 0, 15.53, 0.2))
+  // The fan, blowing through the fins towards the back.
+  const { group: fanGroup, rotor } = caseFan({ glow })
+  fanGroup.rotation.z = -Math.PI / 2
+  fanGroup.position.set(4.05, 9.2, 0)
+  group.add(fanGroup)
+  return { group, rotor }
+}
+
+/*
+ * The case, from the owner's photos (cm; front +x, glass side +z, top +y):
+ * a white dual-chamber cube, glass on the front and the left side, the
+ * board on a tray with the power supply in the chamber behind it.
+ * Perforations ("tumbling blocks") are cut with alpha maps.
+ */
+const CASE = { depth: 42, height: 43, width: 32, tray: -6.5, floor: -18.5 }
+
+function buildCase(glow) {
+  const group = new THREE.Group()
+  const dx = CASE.depth / 2
+  const hy = CASE.height / 2
+  const hz = CASE.width / 2
+  const white = plastic('#eef0f3', 0.55)
+  const steel = (textures, extra = {}) =>
+    new THREE.MeshPhysicalMaterial({ map: textures.map, alphaMap: textures.alphaMap, alphaTest: textures.alphaMap ? 0.5 : 0, side: THREE.DoubleSide, roughness: 0.55, ...extra })
+  const glass = new THREE.MeshPhysicalMaterial({ color: '#dfe6f2', transparent: true, opacity: 0.13, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, depthWrite: false, side: THREE.DoubleSide })
+  const plane = (width, height, material) => new THREE.Mesh(new THREE.PlaneGeometry(width, height), material)
+  const noRay = (mesh) => {
+    mesh.raycast = () => {}
+    return mesh
+  }
+
+  // Back (x = −dx): I/O, rear fan grille, the vent of the cable chamber, the PSU, the slots, slits below.
+  const rear = panelTextures(CASE.width, CASE.height - 1.4, {
+    holes: (context, s) => {
+      const X = (z) => z + hz
+      const Y = (y) => hy - y
+      context.fillRect(X(-6.0) * s, Y(17.2) * s, 4.0 * s, 14.2 * s)
+      context.fillRect(X(-4.9) * s, Y(-0.8) * s, 11.8 * s, 10.2 * s)
+      context.fillRect(X(-15.2) * s, Y(-4.6) * s, 7.6 * s, 14 * s)
+      cubePattern(context, s, { x: X(0.4), y: Y(13.4), w: 12, h: 12 }, 0.85, 0.22, (c, k) => c.arc(X(6.4) * k, Y(7.4) * k, 5.9 * k, 0, Math.PI * 2))
+      cubePattern(context, s, { x: X(-15), y: Y(15), w: 6.8, h: 11 }, 0.6, 0.24)
+      for (let z = 1.5; z < 14.5; z += 0.85) slot(context, s, X(z), Y(-19.0), 0.34, 1.5)
+    },
+  })
+  const back = plane(CASE.width, CASE.height - 1.4, steel(rear))
+  back.rotation.y = -Math.PI / 2
+  group.add(at(back, -dx, 0.7, 0))
+  // The glowing mark at the top of the back.
+  const mark = noRay(plane(2.4, 1.2, new THREE.MeshBasicMaterial({ map: caseLightTexture(), color: '#8a6bff', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })))
+  mark.rotation.y = -Math.PI / 2
+  group.add(at(mark, -dx - 0.02, 19.0, -3.0))
+  // Slot covers under the graphics card (vented, white).
+  // (Slot 2 holds the Wi-Fi card, buildPc.)
+  for (const index of [3, 4]) {
+    const y = -0.87 - 2.03 * (index + 0.5)
+    group.add(at(box(0.12, 1.85, 11.8, white), -dx + 0.06, y, 1.0))
+    for (let i = 0; i < 7; i += 1) group.add(at(box(0.14, 0.9, 0.5, plastic('#1b1c20', 0.8)), -dx + 0.06, y, -3.4 + i * 1.4))
+  }
+
+  // Right side (z = −hz): solid, a tall vent near the front and a small one for the PSU.
+  const side = panelTextures(CASE.depth, CASE.height - 1.4, {
+    holes: (context, s) => {
+      cubePattern(context, s, { x: 3.5, y: 2.5, w: 13, h: 36 }, 0.7, 0.2)
+      cubePattern(context, s, { x: 34.5, y: 23, w: 6, h: 13 }, 0.55, 0.22)
+    },
+  })
+  const right = plane(CASE.depth, CASE.height - 1.4, steel(side))
+  right.rotation.y = Math.PI
+  group.add(at(right, 0, 0.7, -hz))
+
+  // Top: the dust filter over most of it, the front I/O along the right edge.
+  const topTextures = panelTextures(CASE.depth, CASE.width, {
+    paint: (context, s) => {
+      context.strokeStyle = 'rgba(120,126,138,0.35)'
+      context.lineWidth = Math.max(1, s * 0.03)
+      context.beginPath()
+      context.roundRect(2 * s, 1.6 * s, 33 * s, 22 * s, 1.2 * s)
+      context.stroke()
+      context.save()
+      context.beginPath()
+      context.roundRect(2 * s, 1.6 * s, 33 * s, 22 * s, 1.2 * s)
+      context.clip()
+      context.strokeStyle = 'rgba(150,156,168,0.28)'
+      for (let i = -40; i < 80; i += 0.28) {
+        context.beginPath()
+        context.moveTo(i * s, 0)
+        context.lineTo((i + 30) * s, 30 * s)
+        context.stroke()
+      }
+      context.restore()
+    },
+    holes: (context, s) => cubePattern(context, s, { x: 3.4, y: 3.0, w: 30, h: 19 }, 0.65, 0.3),
+  })
+  const top = plane(CASE.depth, CASE.width, steel(topTextures))
+  top.rotation.x = -Math.PI / 2
+  group.add(at(top, 0, hy, 0))
+  const button = plastic('#e3e5e9', 0.4)
+  const port = plastic('#111215', 0.7)
+  group.add(at(box(2.1, 0.25, 2.1, button, 0.3), dx - 2.6, hy + 0.12, -hz + 2.4))
+  group.add(at(box(0.95, 0.06, 0.32, port), dx - 5.0, hy + 0.03, -hz + 2.4))
+  group.add(at(box(1.25, 0.06, 0.5, plastic('#2f6fe0', 0.5)), dx - 6.9, hy + 0.03, -hz + 2.4))
+  group.add(at(cylinder(0.2, 0.06, port, 16), dx - 8.6, hy + 0.03, -hz + 2.4))
+  group.add(at(cylinder(0.12, 0.05, new THREE.MeshBasicMaterial({ color: '#3d8bff', toneMapped: false }), 12), dx - 9.8, hy + 0.03, -hz + 2.4))
+  for (const x of [11.2, 12.6]) group.add(at(box(0.9, 0.12, 0.9, button, 0.15), dx - x, hy + 0.06, -hz + 2.4))
+
+  // Floor of the main chamber: perforated, rows of cable slots front and back; dark below.
+  const floorWidth = hz - CASE.tray - 0.3
+  const floorTextures = panelTextures(CASE.depth - 1.2, floorWidth, {
+    holes: (context, s) => {
+      cubePattern(context, s, { x: 3, y: 2.6, w: CASE.depth - 7.5, h: floorWidth - 5.4 }, 0.62, 0.22)
+      for (let x = 2.5; x < CASE.depth - 5; x += 4.6) {
+        slot(context, s, x, 0.9, 2.6, 0.7)
+        slot(context, s, x + 1.2, floorWidth - 1.8, 2.6, 0.7)
+      }
+    },
+  })
+  const floor = plane(CASE.depth - 1.2, floorWidth, steel(floorTextures))
+  floor.rotation.x = -Math.PI / 2
+  group.add(at(floor, 0, CASE.floor, (hz + CASE.tray - 0.3) / 2))
+  group.add(at(box(CASE.depth - 1.6, 0.1, CASE.width - 1.0, plastic('#2a2b30', 0.8)), 0, -hy + 1.6, 0))
+  // The plinth and four feet.
+  group.add(at(box(CASE.depth - 1.0, 1.0, CASE.width - 1.0, white, 0.2), 0, -hy + 1.1, 0))
+  for (const x of [-1, 1]) for (const z of [-1, 1]) group.add(at(box(5.5, 0.7, 3.0, white, 0.2), x * (dx - 3.5), -hy + 0.35, z * (hz - 2.0)))
+
+  // The tray behind the board, with its cable holes and the honeycomb cover above the board.
+  const trayTextures = panelTextures(CASE.depth - 1.2, hy - CASE.floor, {
+    holes: (context, s) => {
+      const X = (x) => x + dx - 0.6
+      const Y = (y) => hy - y
+      slot(context, s, X(-14), Y(19.6), 4.5, 1.0)
+      slot(context, s, X(5.0), Y(14), 1.1, 14)
+      slot(context, s, X(-13), Y(-12.2), 5, 1.3)
+      slot(context, s, X(-3), Y(-12.2), 5, 1.3)
+      slot(context, s, X(-0.4), Y(19.6), 0.35, 1.2)
+      slot(context, s, X(1.2), Y(19.6), 0.35, 1.2)
+    },
+  })
+  const tray = plane(CASE.depth - 1.2, hy - CASE.floor, steel(trayTextures))
+  group.add(at(tray, 0, (hy + CASE.floor) / 2, CASE.tray))
+  // Behind the tray: the cable chamber, dark through the vents.
+  const chamber = plane(CASE.depth - 1.2, hy - CASE.floor, plastic('#2a2b31', 0.85))
+  chamber.rotation.y = Math.PI
+  group.add(at(chamber, 0, (hy + CASE.floor) / 2, CASE.tray - 0.08))
+  group.add(at(box(0.1, hy - CASE.floor, hz + CASE.tray - 0.3, plastic('#2a2b31', 0.85)), dx - 0.9, (hy + CASE.floor) / 2, (-hz + CASE.tray) / 2))
+  const cover = plane(7.0, 2.2, new THREE.MeshPhysicalMaterial({ map: hexCoverTexture(), transparent: true, roughness: 0.5 }))
+  group.add(at(cover, -4.5, 19.2, CASE.tray + 0.06))
+  // The cable chamber's floor.
+  group.add(at(box(CASE.depth - 1.2, 0.1, hz + CASE.tray, white), 0, CASE.floor, (-hz + CASE.tray) / 2))
+
+  // Front (x = +dx): the frame with the glass, a solid strip over the cable chamber with the mark.
+  const frameDepth = 0.7
+  const frontX = dx - frameDepth / 2
+  group.add(at(box(frameDepth, 2.6, CASE.width, white), frontX, hy - 1.3, 0))
+  group.add(at(box(frameDepth, 3.2, CASE.width, white), frontX, -hy + 1.6, 0))
+  group.add(at(box(frameDepth, CASE.height, 10.6, white, 0.1), frontX, 0, -hz + 5.3))
+  group.add(at(box(frameDepth, CASE.height, 0.5, white), frontX, 0, hz - 0.25))
+  const frontMark = decal(2.4, 2.4, coolerLogoTexture(), { transparent: true, depthWrite: false })
+  frontMark.rotation.set(0, Math.PI / 2, 0)
+  group.add(at(frontMark, dx + 0.01, -hy + 5.2, -hz + 2.4))
+  const frontGlass = noRay(plane(CASE.width - 10.4, CASE.height - 1.2, glass))
+  frontGlass.rotation.y = Math.PI / 2
+  group.add(at(frontGlass, dx + 0.12, 0, -hz + 10.4 + (CASE.width - 10.4) / 2))
+
+  // Left side (z = +hz): the frame and the big glass, screwed on at its corners.
+  group.add(at(box(CASE.depth, 2.0, frameDepth, white), 0, hy - 1.0, hz - frameDepth / 2))
+  group.add(at(box(CASE.depth, 2.8, frameDepth, white), 0, -hy + 1.4, hz - frameDepth / 2))
+  group.add(at(box(2.6, CASE.height, frameDepth, white), -dx + 1.3, 0, hz - frameDepth / 2))
+  group.add(at(box(0.5, CASE.height, frameDepth, white), dx - 0.25, 0, hz - frameDepth / 2))
+  const sideGlass = noRay(plane(CASE.depth - 0.8, CASE.height - 1.4, glass))
+  group.add(at(sideGlass, 0.2, 0.3, hz + 0.12))
+  const screw = metal('#c9ccd2', 0.3)
+  for (const [x, y] of [
+    [-dx + 1.4, hy - 1.0],
+    [dx - 1.3, hy - 1.0],
+    [-dx + 1.4, -hy + 1.6],
+    [dx - 1.3, -hy + 1.6],
+  ]) {
+    const head = cylinder(0.55, 0.25, screw, 24)
+    head.rotation.x = Math.PI / 2
+    group.add(at(head, x, y, hz + 0.3))
+  }
+  for (const [y, z] of [
+    [hy - 1.3, -hz + 11.6],
+    [-hy + 1.6, -hz + 11.6],
+    [-hy + 1.6, hz - 1.2],
+  ]) {
+    const head = cylinder(0.5, 0.25, screw, 24)
+    head.rotation.z = Math.PI / 2
+    group.add(at(head, dx + 0.3, y, z))
+  }
+
+  // The power supply in the cable chamber (only its back shows).
+  const psu = new THREE.Group()
+  psu.add(at(box(14, 14, 8.2, plastic('#141518', 0.55), 0.15), 0, 0, 0))
+  const psuBack = plane(8.2, 14, new THREE.MeshPhysicalMaterial({ map: psuBackTexture(), roughness: 0.6 }))
+  psuBack.rotation.y = -Math.PI / 2
+  psu.add(at(psuBack, -7.01, 0, 0))
+  psu.position.set(-dx + 7.6, CASE.floor + 7.05, -hz + 4.9)
+  group.add(psu)
+
+  // Fans: one out the back, three on the bracket in front of the board, facing the glass.
+  const rotors = []
+  const rearFan = caseFan({ glow })
+  rearFan.group.rotation.z = -Math.PI / 2
+  rearFan.group.position.set(-dx + 1.9, 7.4, 6.4)
+  group.add(rearFan.group)
+  rotors.push(rearFan.rotor)
+  for (const y of [12.6, 0.4, -11.8]) {
+    const fan = caseFan({ glow })
+    fan.group.rotation.x = Math.PI / 2
+    fan.group.position.set(14.1, y, CASE.tray + 1.5)
+    group.add(fan.group)
+    rotors.push(fan.rotor)
+  }
+  // Their mounting rail.
+  group.add(at(box(0.6, CASE.floor * -1 + hy - 1.2, 1.0, white), 20.0, (hy - 1.2 + CASE.floor) / 2, CASE.tray + 0.5))
+  group.add(at(box(0.6, CASE.floor * -1 + hy - 1.2, 1.0, white), 8.1, (hy - 1.2 + CASE.floor) / 2, CASE.tray + 0.5))
+
+  // Shadows: the walls don't throw the whole inside into darkness.
+  group.traverse((object) => {
+    if (object.isMesh) object.userData.castShadow = false
+  })
+  return { group, rotors }
+}
+
+/* The 2 TB M.2 2280 SSD: the board, its chips under the blue label, the notch in the contacts (along x). */
+function ssd() {
+  const group = new THREE.Group()
+  group.add(at(box(8.0, 0.08, 2.2, plastic('#0f1a12', 0.55)), 0, 0, 0))
+  for (const x of [-2.4, 0.4]) group.add(at(box(2.0, 0.14, 1.5, plastic('#141518', 0.45)), x, 0.11, 0))
+  group.add(at(box(1.1, 0.12, 1.1, plastic('#141518', 0.45)), 2.6, 0.1, 0))
+  const label = decal(7.1, 2.0, ssdLabelTexture(), { roughness: 0.35, clearcoat: 0.4 })
+  group.add(at(label, -0.3, 0.19, 0))
+  const contacts = []
+  for (let i = 0; i < 30; i += 1) if (i !== 6) contacts.push([3.92, 0.045, -0.95 + i * 0.065])
+  group.add(instanced(new THREE.BoxGeometry(0.16, 0.006, 0.035), GOLD(), contacts))
+  return group
+}
+
+/*
+ * The Wi-Fi card (PCIe), built as it sits in the case: its PCB flat (y up),
+ * the bracket at x = 0, the contacts along z = 0, the two antennas on the
+ * bracket outside, standing up and spread apart.
+ */
+function wifiCard() {
+  const group = new THREE.Group()
+  const pcb = plastic('#121316', 0.6)
+  group.add(at(box(10.5, 0.16, 5.2, pcb), 5.6, 0, 3.0))
+  group.add(at(box(6.5, 0.7, 4.2, metal('#2a2c31', 0.5), 0.1), 6.0, -0.45, 3.0))
+  for (let i = 0; i < 9; i += 1) group.add(at(box(6.2, 0.5, 0.06, metal('#3a3d44', 0.45)), 6.0, -0.75, 1.15 + i * 0.45))
+  const contacts = []
+  for (let i = 0; i < 18; i += 1) contacts.push([2.9 + i * 0.1, 0.09, 0.25])
+  group.add(instanced(new THREE.BoxGeometry(0.07, 0.008, 0.45), GOLD(), contacts))
+  // The bracket and the antennas' sockets.
+  group.add(at(box(0.08, 1.8, 11.8, metal('#cfd2d7', 0.3)), -0.2, 0, 3.6))
+  const antennas = new THREE.Group()
+  const rubber = plastic('#141416', 0.7)
+  ;[
+    [1.6, -0.35],
+    [5.2, 0.35],
+  ].forEach(([z, spread]) => {
+    const socket = cylinder(0.32, 1.0, metal('#d9b45a', 0.3), 16)
+    socket.rotation.z = Math.PI / 2
+    antennas.add(at(socket, -0.75, 0, z))
+    const antenna = new THREE.Group()
+    antenna.add(at(cylinder(0.45, 1.4, rubber, 16), 0, 0.7, 0))
+    const rod = box(1.0, 16.5, 0.55, rubber, 0.25)
+    antenna.add(at(rod, 0, 9.6, 0))
+    antenna.rotation.set(spread, 0, 0.35)
+    antenna.position.set(-1.35, 0, z)
+    antennas.add(antenna)
+  })
+  group.add(antennas)
+  return group
+}
+
+/* A cable along points (a smooth curve); `flat` squashes it (the 24-pin bundle). */
+function cable(points, radius, material, { flat = 1 } = {}) {
+  const curve = new THREE.CatmullRomCurve3(points.map(([x, y, z]) => new THREE.Vector3(x, y, z)))
+  const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.max(24, points.length * 14), radius, 10), material)
+  if (flat !== 1) mesh.scale.set(1, 1, flat)
+  mesh.userData.castShadow = false
+  return mesh
+}
+
+/*
+ * The PC's cables (shown with "Cables" on): power for the graphics card,
+ * the board and the CPU, the front panel and fan leads, and at the back
+ * the screens, the network and the power cord, hanging down.
+ */
+function pcCables() {
+  const group = new THREE.Group()
+  const sleeveMap = sleeveTexture()
+  sleeveMap.repeat.set(30, 1)
+  const sleeve = new THREE.MeshPhysicalMaterial({ map: sleeveMap, roughness: 0.75 })
+  const black = plastic('#121214', 0.6)
+  const white = plastic('#e8e8e4', 0.6)
+  group.add(cable([[-4.45, -1.9, 6.0], [-4.4, -1.95, 8.6], [-1.5, -5.5, 9.4], [1.5, -10.2, 6.5], [0.2, -12.0, 0.5], [-0.4, -12.2, -6.6]], 0.75, sleeve))
+  group.add(cable([[3.6, 9.5, -4.4], [5.0, 9.5, -4.2], [5.7, 9.4, -5.5], [5.6, 9.2, -6.8]], 0.95, sleeve, { flat: 0.55 }))
+  group.add(cable([[-14.9, 16.1, -4.4], [-14.6, 18.6, -4.6], [-12.6, 19.4, -5.6], [-11.8, 19.1, -6.8]], 0.5, sleeve))
+  for (const [x, z] of [
+    [-3.2, -4.9],
+    [0.4, -4.9],
+    [3.6, -4.9],
+  ])
+    group.add(cable([[x, -6.6, z], [x * 0.6, -9.5, z + 1.2], [x * 0.2 - 1.5, -12.1, -5.6], [x * 0.2 - 1.5, -12.2, -6.8]], 0.16, black))
+  // At the back: two HDMI to the screens, the network cable (white), the power cord.
+  for (const z of [4.94, -1.66]) group.add(cable([[-21.2, -1.8, z], [-24.5, -2.6, z], [-28, -10, z * 0.6], [-30, -24, z * 0.3 - 2]], 0.35, black))
+  group.add(cable([[-21.0, 12.2, -3.5], [-24, 11.5, -3.6], [-27.5, 2, -3.0], [-29, -24, -2.5]], 0.28, white))
+  group.add(cable([[-21.3, -14.5, -11.3], [-24.5, -15.2, -11.0], [-27, -20, -9.5], [-28, -24, -8]], 0.45, black))
+  group.visible = false
+  return group
+}
+
+/*
+ * Everything as built (the owner's photos): the board on the tray with the
+ * cooler and both sticks, the graphics card in the first slot, the case
+ * around them. Parts carry `userData.pick` (a tab of the showcase) so a
+ * click or tap opens them on their own.
+ */
+export function buildPc() {
+  const group = new THREE.Group()
+  const glow = fanGlow()
+  const { group: shell, rotors } = buildCase(glow)
+  group.add(shell)
+
+  // The board, flat as built, turned to stand on the tray: its top edge up, the I/O at the back.
+  const assembly = new THREE.Group()
+  const board = buildBoard({ textureSize: 2048 }).object
+  board.userData.pick = 'board'
+  assembly.add(board)
+  const cooler = buildCooler(glow)
+  cooler.group.position.set(0.25, 0.08 + 0.85, -3.9)
+  cooler.group.userData.pick = 'cpu'
+  assembly.add(cooler.group)
+  rotors.push(cooler.rotor)
+  const front = furyTexture()
+  const label = furyLabelTexture()
+  const sticks = new THREE.Group()
+  sticks.userData.pick = 'ram'
+  for (const x of [6.4, 8.3]) {
+    const stick = memoryStick(front, label)
+    stick.rotation.y = Math.PI / 2
+    stick.position.set(x, 0.46, -4.15)
+    sticks.add(stick)
+  }
+  assembly.add(sticks)
+  // The 2 TB SSD in the M.2 slot by the CPU (M2A_CPU), between the cooler and the graphics card.
+  const drive = ssd()
+  drive.position.set(-2.1, 0.08 + 0.42, 3.3)
+  drive.rotation.y = Math.PI
+  drive.userData.pick = 'board'
+  assembly.add(drive)
+  assembly.rotation.x = Math.PI / 2
+  assembly.position.set(-7.6, 4.8, CASE.tray + 0.68)
+  group.add(assembly)
+
+  // The graphics card in the first x16 slot: backplate up, fans down, its bracket at the back.
+  const gpu = buildGpu({ installed: true })
+  gpu.object.rotation.z = Math.PI
+  gpu.object.position.set(-6.15, -0.87, 0.74)
+  gpu.object.userData.pick = 'gpu'
+  group.add(gpu.object)
+
+  // The Wi-Fi card in the lower x16 slot, its antennas out the back.
+  const wifi = wifiCard()
+  wifi.position.set(-20.2, -5.4, -5.74 + 0.2)
+  wifi.userData.pick = 'pc'
+  group.add(wifi)
+
+  const cables = pcCables()
+  group.add(cables)
+
+  // The fans' light inside the case.
+  const light = new THREE.PointLight('#a35cff', 320, 70, 2)
+  light.position.set(4, 4, 8)
+  group.add(light)
+
+  const update = (time, delta) => {
+    for (const rotor of rotors) rotor.rotation.y -= delta * 5.5
+    gpu.update(time, delta)
+  }
+  // Dots that follow the parts (tap targets on phones), placed where each part shows best.
+  const hotspots = [
+    { id: 'cpu', object: cooler.group, anchor: new THREE.Vector3(0, 16.2, 3.5) },
+    { id: 'gpu', object: gpu.object, anchor: new THREE.Vector3(4, 2.2, 5.9) },
+    { id: 'ram', object: sticks, anchor: new THREE.Vector3(7.35, 3.6, -0.5) },
+    { id: 'board', object: board, anchor: new THREE.Vector3(-7.35, 1.6, -7.5) },
+    { id: 'ssd', object: drive, anchor: new THREE.Vector3(1.2, 0.3, 0) },
+    { id: 'wifi', object: wifi, anchor: new THREE.Vector3(8, 0.3, 5) },
+  ]
+  const setOption = (name, value) => {
+    if (name === 'cables') cables.visible = value
+  }
+  return { object: group, view: { polar: 1.2, azimuth: 0.62, distance: 1.22 }, update, pickable: true, hotspots, setOption, options: ['cables'] }
+}
+
+/* The SSD on its own. */
+export function buildSsd() {
+  const group = new THREE.Group()
+  const drive = ssd()
+  drive.scale.setScalar(1)
+  group.add(drive)
+  return { object: group, view: { polar: 0.85, azimuth: 0.5 }, update: null }
+}
+
+/* The Wi-Fi card on its own (antennas up). */
+export function buildWifi() {
+  const group = new THREE.Group()
+  const card = wifiCard()
+  card.rotation.set(Math.PI / 2, 0, 0)
+  group.add(card)
+  return { object: group, view: { polar: 1.15, azimuth: -0.9 }, update: null }
+}
+
+/* Shared with desk.js (the desk, the keyboard, the mouse, the microphone). */
+export { at, box, cable, cylinder, decal, metal, plastic, roundedRect, slab }

@@ -15,8 +15,6 @@ import { promisify } from "node:util";
 const run = promisify(execFile);
 
 const publicFontsDirectory = resolve("public/fonts");
-const googleSansDirectory = resolve("public/fonts/google-sans-flex");
-const generatedGoogleSansCssFile = resolve("src/styles/google-sans-flex.css");
 const materialSymbolsExtraIconsFile = resolve(
   "scripts/material-symbols.extra.json",
 );
@@ -31,8 +29,23 @@ const browserHeaders = {
 };
 
 const googleSansFlex = {
+  label: "Google Sans Flex",
+  prefix: "GoogleSansFlex",
+  directory: resolve("public/fonts/google-sans-flex"),
+  publicPath: "/fonts/google-sans-flex",
+  cssFile: resolve("src/styles/google-sans-flex.css"),
   cssUrl:
-    "https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap",
+    "https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght,ROND@6..144,1..1000,0..100&display=swap",
+};
+
+/* Nunito: the smooth, rounded type of /card (styles/nunito.css, loaded there only). */
+const nunito = {
+  label: "Nunito",
+  prefix: "Nunito",
+  directory: resolve("public/fonts/nunito"),
+  publicPath: "/fonts/nunito",
+  cssFile: resolve("src/styles/nunito.css"),
+  cssUrl: "https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap",
 };
 
 const materialSymbols = {
@@ -137,41 +150,39 @@ async function clearDirectory(directory) {
   });
 }
 
-async function updateGoogleSansFlex() {
-  console.log("Fetching Google Sans Flex stylesheet...");
+/* A Google font as self-hosted WOFF2 subsets plus its @font-face CSS. */
+async function updateGoogleFont(font) {
+  console.log(`Fetching ${font.label} stylesheet...`);
 
-  const remoteCss = await fetchCss(googleSansFlex.cssUrl);
+  const remoteCss = await fetchCss(font.cssUrl);
   const urls = getWoff2Urls(remoteCss);
 
   if (urls.length === 0) {
-    throw new Error("Google Fonts returned no Google Sans Flex WOFF2 URLs.");
+    throw new Error(`Google Fonts returned no ${font.label} WOFF2 URLs.`);
   }
 
-  await clearDirectory(googleSansDirectory);
+  await clearDirectory(font.directory);
   await mkdir(resolve("src/styles"), {
     recursive: true,
   });
 
-  console.log(`Downloading ${urls.length} Google Sans Flex subset file(s)...`);
+  console.log(`Downloading ${urls.length} ${font.label} subset file(s)...`);
 
   let localCss = remoteCss;
 
   for (const [index, url] of urls.entries()) {
-    const filename = `GoogleSansFlex-${String(index).padStart(2, "0")}.woff2`;
-    const destination = resolve(googleSansDirectory, filename);
+    const filename = `${font.prefix}-${String(index).padStart(2, "0")}.woff2`;
+    const destination = resolve(font.directory, filename);
     const size = await downloadWoff2(url, destination);
 
-    localCss = localCss.replaceAll(
-      `url(${url})`,
-      `url("/fonts/google-sans-flex/${filename}")`,
-    );
+    localCss = localCss.replaceAll(`url(${url})`, `url("${font.publicPath}/${filename}")`);
 
     console.log(`✓ ${filename} (${formatSize(size)})`);
   }
 
-  await writeFile(generatedGoogleSansCssFile, `${localCss.trim()}\n`);
+  await writeFile(font.cssFile, `${localCss.trim()}\n`);
 
-  console.log("✓ Generated src/styles/google-sans-flex.css");
+  console.log(`✓ Generated ${font.cssFile.replace(resolve("."), "").replace(/^\//, "")}`);
 }
 
 async function getSourceFiles(directory) {
@@ -434,7 +445,8 @@ async function main() {
     recursive: true,
   });
 
-  await updateGoogleSansFlex();
+  await updateGoogleFont(googleSansFlex);
+  await updateGoogleFont(nunito);
   await updateMaterialSymbols();
   await updateNerdFont();
 }
