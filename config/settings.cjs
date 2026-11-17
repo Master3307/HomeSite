@@ -197,6 +197,31 @@ const SETTINGS = [
     applies: ["site"],
   },
 
+  {
+    key: "DASH_FEEDS",
+    section: "site",
+    label: "Feeds on the dashboard",
+    description:
+      "Lets logged-in people add RSS / Atom feeds (blogs, YouTube channels, subreddits …) to /dash. The account API fetches them for them (public addresses only, rate-limited, kept 10 minutes in memory). Off hides the feed widget.",
+    type: "toggle",
+    importance: "optional",
+    default: "on",
+    public: true,
+    applies: ["site", "accounts"],
+  },
+
+  {
+    key: "DASH_PRIVATE_INTEGRATIONS",
+    section: "site",
+    label: "Dashboard integrations on your own network",
+    description:
+      "Lets the site owner (DISCORD_USER_ID) connect /dash integrations (Navidrome, Jellyfin, Pi-hole …) at private addresses like 192.168.x.x or localhost, reached from the server running the account API. Everyone else can only use public addresses.",
+    type: "toggle",
+    importance: "optional",
+    default: "off",
+    applies: ["accounts"],
+  },
+
   /* ---------- Discord app & bot ---------- */
   {
     key: "DISCORD_CLIENT_ID",

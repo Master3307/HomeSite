@@ -13,7 +13,7 @@
  *   customCssEnabled  boolean
  *   blockInsights     boolean: stop Cloudflare's page analytics from sending anything
  *   notify            { [category]: { site: boolean, email: boolean, push: boolean } }
- *   dash              the /dash start page: look, search engines, widgets (src/lib/dashSettings.js), plain JSON up to 80 KB
+ *   dash              the /dash start page: look, pages, widgets, search engines (src/lib/dashSettings.js), plain JSON up to 130 KB (no limit for the site owner)
  *   _at               when the settings were last changed (ms, by the browser): the
  *                     newer side wins when a browser and the account disagree
  */
@@ -24,7 +24,9 @@ const MOTION = new Set(["auto", "full", "reduce", "none"]);
 const THEMES = new Set(["dark", "light", "system"]);
 const HEX = /^#[0-9a-f]{6}$/i;
 const MAX_CSS = 20_000;
-const MAX_DASH = 80_000; // under the 100 kB request limit (account-api.cjs jsonParser)
+// The /dash settings: 130 kB for everyone, no limit of its own for the site owner
+// (only the request limit for /account/settings, account-api.cjs).
+const MAX_DASH = 130_000;
 
 /* Only JSON values (no prototypes, bounded depth / sizes); unknown shapes are dropped. */
 function plainJson(value, depth = 0) {
@@ -57,7 +59,7 @@ function validTimeZone(zone) {
 }
 
 /** One setting: `{ ok: true, value }` or `{ ok: false }`. */
-function cleanSetting(key, value, languages) {
+function cleanSetting(key, value, languages, { dashLimit = Infinity } = {}) {
   switch (key) {
     case "theme":
       return THEMES.has(value) ? { ok: true, value } : { ok: false };
@@ -82,7 +84,8 @@ function cleanSetting(key, value, languages) {
       // The /dash start page (src/lib/dashSettings.js normalizes it on every read): plain JSON, size-limited.
       if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false };
       const clean = plainJson(value);
-      if (!clean || JSON.stringify(clean).length > MAX_DASH) return { ok: false };
+      // The limit counts when saving (cleanUpdates); stored settings are read back whatever their size.
+      if (!clean || JSON.stringify(clean).length > dashLimit) return { ok: false };
       clean.updatedAt = Number.isFinite(Number(value.updatedAt)) ? Number(value.updatedAt) : 0;
       return { ok: true, value: clean };
     }
@@ -125,12 +128,12 @@ function parseSettings(json, languages) {
  * that weren't (they are skipped, so one bad value can't block every other
  * change). `{ error }` only when nothing valid is left.
  */
-function cleanUpdates(body, languages) {
+function cleanUpdates(body, languages, { owner = false } = {}) {
   const updates = {};
   const rejected = [];
   for (const key of KEYS) {
     if (!Object.prototype.hasOwnProperty.call(body ?? {}, key)) continue;
-    const result = cleanSetting(key, body[key], languages);
+    const result = cleanSetting(key, body[key], languages, { dashLimit: owner ? Infinity : MAX_DASH });
     if (result.ok) updates[key] = result.value;
     else rejected.push(key);
   }
@@ -140,4 +143,4 @@ function cleanUpdates(body, languages) {
   return { updates, rejected };
 }
 
-module.exports = { KEYS, parseSettings, cleanUpdates, MAX_CSS };
+module.exports = { KEYS, parseSettings, cleanUpdates, MAX_CSS, MAX_DASH };

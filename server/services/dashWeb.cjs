@@ -1,0 +1,83 @@
+const rateLimit = require("express-rate-limit");
+
+const { enabled } = require("../config.cjs");
+const { httpError } = require("./http.cjs");
+const { safeFetch, parseTarget } = require("./safeFetch.cjs");
+const { registerDashIntegrations } = require("./dashIntegrations.cjs");
+
+/*
+ * /dash on the account API.
+ *
+ * Feeds (the feed widget: RSS, Atom, JSON Feed, YouTube channels, blogs …)
+ * and JSON APIs that don't let a browser on another site read them (CORS):
+ * the account API fetches them for logged-in people and hands back the text;
+ * the browser parses it (DOMParser, nothing is ever run or shown as HTML).
+ *
+ *   GET /dash/feed?url=https://…   { url, status, type, body }
+ *
+ * Locked down, because anyone can read this code:
+ *   - logged-in accounts only, rate-limited per person
+ *   - public addresses only, on the usual ports (safeFetch.cjs: no LAN,
+ *     localhost, cloud metadata; pinned to the checked address; redirects
+ *     checked again); no cookies or credentials are sent
+ *   - 8 s timeout, 2 MB at most, text answers only (XML, JSON, HTML for
+ *     finding a page's feed, plain text)
+ *   - answered as JSON (never as the feed's own type), with nosniff
+ *   - kept in memory for 10 minutes (shared, so a popular feed is fetched
+ *     once); nothing is written to disk, addresses are never logged
+ * DASH_FEEDS=off switches it off.
+ *
+ * Integrations (Navidrome, Jellyfin, GitHub …) are in dashIntegrations.cjs.
+ */
+
+const CACHE_MS = 10 * 60_000;
+const CACHE_MAX = 300;
+const TEXT_TYPE = /^(text\/|application\/(rss\+xml|atom\+xml|rdf\+xml|xml|json|feed\+json|ld\+json|xhtml\+xml)$|application\/[a-z.+-]*\+(xml|json)$)/i;
+
+function registerDashWeb(app, deps) {
+  const { getRequestSession } = deps;
+  const cache = new Map(); // url -> { at, value }
+  const pending = new Map(); // url -> Promise (one fetch for many people)
+  const perPerson = rateLimit({
+    windowMs: 60_000,
+    limit: 120,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    keyGenerator: (req) => `u:${getRequestSession(req)?.id ?? rateLimit.ipKeyGenerator(req.ip ?? "")}`,
+  });
+
+  function remember(key, value) {
+    cache.set(key, { at: Date.now(), value });
+    if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
+  }
+
+  async function fetchFeed(target) {
+    const answer = await safeFetch(target, { headers: { Accept: "application/rss+xml, application/atom+xml, application/feed+json, application/json;q=0.9, application/xml;q=0.9, text/xml;q=0.8, text/html;q=0.5" }, accept: TEXT_TYPE });
+    return { url: answer.url, status: answer.status, type: answer.type, body: answer.text() };
+  }
+
+  app.get("/dash/feed", perPerson, async (req, res) => {
+    res.set("Cache-Control", "private, no-store");
+    res.set("X-Content-Type-Options", "nosniff");
+    try {
+      if (!enabled("DASH_FEEDS")) throw httpError(404, "Feeds are switched off on this site.");
+      if (!getRequestSession(req)) throw httpError(401, "Log in to load feeds.");
+      const target = parseTarget(req.query.url).href;
+      const hit = cache.get(target);
+      if (hit && Date.now() - hit.at < CACHE_MS) return res.json({ ...hit.value, cached: true });
+      if (!pending.has(target)) pending.set(target, fetchFeed(target).finally(() => pending.delete(target)));
+      const value = await pending.get(target);
+      if (value.status >= 400) throw httpError(502, `It answered ${value.status}.`);
+      remember(target, value);
+      return res.json(value);
+    } catch (error) {
+      const status = error.status ?? 500;
+      if (!error.status) console.error("[Dash] feed failed:", error.message);
+      return res.status(status).json({ error: error.status ? error.message : "Something went wrong." });
+    }
+  });
+
+  registerDashIntegrations(app, { ...deps, limiter: perPerson });
+}
+
+module.exports = { registerDashWeb };

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Search from '../Search.jsx'
 import { hubGet, userPageUrl } from '../../lib/hub.js'
 import { buildSearchUrl, resolveSearch, updateDashSettings, useDashSettings, visibleProviders } from '../../lib/dashSettings.js'
-import { Favicon } from './widgets.jsx'
+import { Favicon } from './kit.jsx'
 
 /*
  * The /dash search: the site's own search bar (same look as on the home
@@ -51,8 +51,8 @@ export default function DashSearch({ owner }) {
   }, [t])
 
   return (
-    <Search className="dash-search" autoFocus sitePages={settings.siteResults} web={web} people={owner && settings.discordLookup ? people : null} placeholder={t('search.placeholder', { provider: active?.name ?? '' })}>
-      {providers.length > 1 && (
+    <Search className="dash-search" autoFocus={settings.top.autofocus} sitePages={settings.siteResults} web={web} people={owner && settings.discordLookup ? people : null} placeholder={t('search.placeholder', { provider: active?.name ?? '' })}>
+      {settings.top.showEngines && providers.length > 1 && (
         <div className="dash-engines" role="radiogroup" aria-label={t('search.providers')}>
           {providers.map((provider) => (
             <button key={provider.id} type="button" role="radio" aria-checked={provider.id === settings.activeProviderId} className={provider.id === settings.activeProviderId ? 'is-active' : ''} onClick={() => updateDashSettings({ activeProviderId: provider.id })} title={provider.keyword ? `!${provider.keyword}` : undefined}>

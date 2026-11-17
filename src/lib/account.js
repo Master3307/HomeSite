@@ -163,12 +163,23 @@ export async function patchAccountSettings(settings) {
   return { settings: data?.settings ?? null, rejected: Array.isArray(data?.rejected) ? data.rejected : [] };
 }
 
+/* /dash keeps answers of private widgets in sessionStorage (components/dash/kit.jsx). */
+export function forgetPrivateDashCache() {
+  try {
+    for (const key of Object.keys(sessionStorage)) if (key.startsWith("dash:cache:")) sessionStorage.removeItem(key);
+  } catch {
+    // storage blocked
+  }
+}
+
 export async function logoutAccount() {
   accountRequest = null;
   const local = getLocalAdminSession();
   clearLocalAdminSession();
   // Push on this device belongs to the account: off before the session ends (lib/push.js).
   await import("./push").then((push) => push.disablePushOnLogout()).catch(() => {});
+  // The dash's cached personal answers (notifications, integrations) stay with the account.
+  forgetPrivateDashCache();
 
   let response;
 

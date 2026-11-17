@@ -23,6 +23,7 @@ const { isValidInternalKey } = require("./services/internalKey.cjs");
 const { createActivityLog } = require("./services/activityLog.cjs");
 const { registerAdminBackup } = require("./services/adminBackup.cjs");
 const { registerHub, hubSessionOf } = require("./services/hub.cjs");
+const { registerDashWeb } = require("./services/dashWeb.cjs");
 
 const PORT = Number(process.env.ACCOUNT_API_PORT || 3002);
 
@@ -103,8 +104,10 @@ app.options(/.*/, cors(corsOptions));
 
 // Routes with uploads (LARGE_BODY_PATHS) parse their own, larger bodies.
 const jsonParser = express.json();
+// Settings carry the /dash (130 kB for everyone, more for the owner; accountPrefs.cjs checks per person).
+const settingsParser = express.json({ limit: "4mb" });
 app.use((req, res, next) =>
-  LARGE_BODY_PATHS.has(req.path) ? next() : jsonParser(req, res, next),
+  LARGE_BODY_PATHS.has(req.path) ? next() : req.path === "/account/settings" ? settingsParser(req, res, next) : jsonParser(req, res, next),
 );
 
 app.use(cookieParser());
@@ -121,6 +124,8 @@ const accounts = registerDiscordOAuth(app, { activity, isBanned: (discordId) => 
 // Moderation comes later (it needs the members); FDC asks for it when used.
 let moderationRef = null;
 registerFdcWeb(app, { ...accounts, activity, getModeration: () => moderationRef });
+// /dash feeds, fetched for logged-in people (public addresses only).
+registerDashWeb(app, { ...accounts, activity });
 // The /card setup's Network page: the visitor's own connection (nothing stored).
 registerSetup(app);
 const adminSettings = registerAdminBackup(app, { ...accounts, activity, hubSessionOf });

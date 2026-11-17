@@ -64,6 +64,14 @@ export function forgetThisBrowser() {
       // storage blocked
     }
   }
+  // The dash's cached answers (feeds, releases, integrations …).
+  for (const storage of [localStorage, sessionStorage]) {
+    try {
+      for (const key of Object.keys(storage)) if (key.startsWith('dash:cache:')) storage.removeItem(key)
+    } catch {
+      // storage blocked
+    }
+  }
   try {
     indexedDB.deleteDatabase('homesite-fdc')
   } catch {

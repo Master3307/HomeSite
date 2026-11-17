@@ -119,8 +119,30 @@ export default function CultPrivacy() {
               birthdays the bot should remind you of.
             </li>
             <li>
-              <strong>Fun stuff:</strong> lobby cat pets and taps, its trust in you, your FDC votes, favourite items, cat designs you suggested
-              for the recycling bin (with your name, so the editors know who sent them).
+              <strong>Fun stuff:</strong> lobby cat pets and taps (in total and per day), its trust in you, your FDC votes, favourite items, cat
+              designs you suggested for the recycling bin (with your name, so the editors know who sent them).
+            </li>
+            <li>
+              <strong>Your dash</strong> (<Link to="/dash">/dash</Link>), when you're logged in: its look, pages, widgets and what you put in them
+              (links, notes, to-dos, places for the weather, feeds and repositories you follow), so it's the same on every device. Feeds are fetched
+              for you by our server, because most feeds can't be read straight from a browser; it only sends their address, keeps the answer 10
+              minutes in memory (shared by everyone reading the same feed) and never writes down who asked. Weather, prices, Hacker News, releases
+              and favicons are loaded by your browser straight from those services.
+            </li>
+            <li>
+              <strong>Dash integrations,</strong> only if you add some: the address of each of your services (like your Navidrome, Jellyfin or
+              Home Assistant), a name, a user name if it needs one, and its password, token or key. Those secrets are encrypted on our server and never
+              sent back to any browser, not even yours; our server uses them to ask your service for what your widgets show, and keeps the answers a
+              few seconds in memory. Removing an integration deletes it right away.
+            </li>
+            <li>
+              <strong>The setup on /card:</strong> its "Network" page shows you your own IP address and roughly where it is (city,
+              region, country, time zone), as Cloudflare passes it along with your visit. It is shown only to you and never saved.
+            </li>
+            <li>
+              <strong>For the FDC editors:</strong> a log of the migration (who designed, suggested, approved or turned down which cat, and when),
+              and a stats page with everyone's taps and pets. If your profile is set to “Only me”, you're counted there but your name isn't shown.
+              Deleting your account takes your name out of the log; the counts stay without it.
             </li>
             <li>
               <strong>On the Discord server, the bot keeps:</strong> your level and points (it counts messages, it doesn't save what you write), pets given
@@ -178,7 +200,7 @@ export default function CultPrivacy() {
             In <Link to="/cult/settings">Settings</Link>, “Delete my account” removes <strong>everything</strong> about you, right away:
           </p>
           <ul className="privacy-list">
-            <li>your account, profile, avatar, pictures, settings, email, saved looks and push devices,</li>
+            <li>your account, profile, avatar, pictures, settings (your dash too), email, saved looks, push devices and dash integrations,</li>
             <li>your levels, points, pets, taps, achievements and birthday,</li>
             <li>messages from our bot that mention you,</li>
             <li>everything about you in the activity log,</li>

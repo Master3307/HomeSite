@@ -1179,7 +1179,9 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
     requireAuthenticatedUser,
     (req, res) => {
       const body = req.body && typeof req.body === "object" ? req.body : {};
-      const { updates, rejected, error } = accountPrefs.cleanUpdates(body, ALLOWED_LANGUAGES);
+      // The site owner's dash has no size limit of its own.
+      const owner = Boolean(setting("DISCORD_USER_ID")) && req.accountSession.discord_user_id === setting("DISCORD_USER_ID");
+      const { updates, rejected, error } = accountPrefs.cleanUpdates(body, ALLOWED_LANGUAGES, { owner });
       if (error) return res.status(400).json({ error, rejected });
 
       const currentSettings = parseSettings(req.accountSession.settings_json);

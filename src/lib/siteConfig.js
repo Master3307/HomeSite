@@ -21,6 +21,7 @@ export const siteConfig = Object.freeze({
   translateUrl: config.TRANSLATE_URL || "",
   searchEngineUrl: config.SEARCH_ENGINE_URL || "",
   searchEngineName: config.SEARCH_ENGINE_NAME || "My search",
+  dashFeeds: !/^(off|false|0|no)$/i.test(String(config.DASH_FEEDS ?? "on")),
   privacyName: config.PRIVACY_CONTACT_NAME || "",
   privacyEmail: config.PRIVACY_CONTACT_EMAIL || "",
   inactiveDays: Number(config.ACCOUNT_INACTIVE_DAYS ?? 730) || 0,

@@ -1,0 +1,135 @@
+{
+  "_comment": "The /dash integrations (server/services/dashIntegrations.cjs checks with this, the dash settings draw their forms from it). `provides` lists which widgets can use a kind. Fields: `secret` ones are sealed on the server and never sent back.",
+  "kinds": {
+    "navidrome": {
+      "name": "Navidrome",
+      "icon": "navidrome",
+      "provides": ["media", "library"],
+      "url": { "required": true, "placeholder": "https://music.example.com" },
+      "fields": [
+        { "key": "username", "type": "text", "required": true },
+        { "key": "password", "type": "secret", "required": true }
+      ],
+      "docs": "https://www.navidrome.org/docs/"
+    },
+    "jellyfin": {
+      "name": "Jellyfin / Emby",
+      "icon": "jellyfin",
+      "provides": ["media", "library"],
+      "url": { "required": true, "placeholder": "https://jellyfin.example.com" },
+      "fields": [{ "key": "apiKey", "type": "secret", "required": true }],
+      "docs": "https://jellyfin.org/docs/general/server/api-keys/"
+    },
+    "github": {
+      "name": "GitHub",
+      "icon": "github",
+      "provides": ["releases", "repo"],
+      "url": { "required": false, "default": "https://api.github.com", "placeholder": "https://api.github.com" },
+      "fields": [{ "key": "token", "type": "secret", "required": true, "placeholder": "github_pat_…" }],
+      "docs": "https://github.com/settings/personal-access-tokens"
+    },
+    "gitlab": {
+      "name": "GitLab",
+      "icon": "gitlab",
+      "provides": ["releases", "repo"],
+      "url": { "required": false, "default": "https://gitlab.com", "placeholder": "https://gitlab.com" },
+      "fields": [{ "key": "token", "type": "secret", "required": true, "placeholder": "glpat-…" }],
+      "docs": "https://docs.gitlab.com/user/profile/personal_access_tokens/"
+    },
+    "gitea": {
+      "name": "Gitea / Forgejo / Codeberg",
+      "icon": "gitea",
+      "provides": ["releases", "repo"],
+      "url": { "required": true, "default": "https://codeberg.org", "placeholder": "https://codeberg.org" },
+      "fields": [{ "key": "token", "type": "secret", "required": false }],
+      "docs": "https://docs.gitea.com/development/api-usage"
+    },
+    "pihole": {
+      "name": "Pi-hole",
+      "icon": "pi-hole",
+      "provides": ["dns"],
+      "url": { "required": true, "placeholder": "http://pi.hole" },
+      "fields": [
+        { "key": "version", "type": "select", "choices": ["v6", "v5"], "default": "v6" },
+        { "key": "password", "type": "secret", "required": false }
+      ],
+      "docs": "https://docs.pi-hole.net/api/"
+    },
+    "adguard": {
+      "name": "AdGuard Home",
+      "icon": "adguard-home",
+      "provides": ["dns"],
+      "url": { "required": true, "placeholder": "https://adguard.example.com" },
+      "fields": [
+        { "key": "username", "type": "text", "required": true },
+        { "key": "password", "type": "secret", "required": true }
+      ],
+      "docs": "https://github.com/AdguardTeam/AdGuardHome/wiki/Configuration"
+    },
+    "homeassistant": {
+      "name": "Home Assistant",
+      "icon": "home-assistant",
+      "provides": ["smarthome"],
+      "url": { "required": true, "placeholder": "https://home.example.com" },
+      "fields": [{ "key": "token", "type": "secret", "required": true }],
+      "docs": "https://developers.home-assistant.io/docs/auth_api/#long-lived-access-token"
+    },
+    "uptimekuma": {
+      "name": "Uptime Kuma",
+      "icon": "uptime-kuma",
+      "provides": ["uptime"],
+      "url": { "required": true, "placeholder": "https://status.example.com" },
+      "fields": [{ "key": "slug", "type": "text", "required": true, "placeholder": "default" }],
+      "docs": "https://github.com/louislam/uptime-kuma/wiki/Status-Page"
+    },
+    "sonarr": {
+      "name": "Sonarr",
+      "icon": "sonarr",
+      "provides": ["mediacal", "downloads"],
+      "url": { "required": true, "placeholder": "https://sonarr.example.com" },
+      "fields": [{ "key": "apiKey", "type": "secret", "required": true }],
+      "docs": "https://wiki.servarr.com/sonarr/settings#security"
+    },
+    "radarr": {
+      "name": "Radarr",
+      "icon": "radarr",
+      "provides": ["mediacal", "downloads"],
+      "url": { "required": true, "placeholder": "https://radarr.example.com" },
+      "fields": [{ "key": "apiKey", "type": "secret", "required": true }],
+      "docs": "https://wiki.servarr.com/radarr/settings#security"
+    },
+    "qbittorrent": {
+      "name": "qBittorrent",
+      "icon": "qbittorrent",
+      "provides": ["downloads"],
+      "url": { "required": true, "placeholder": "https://qbit.example.com" },
+      "fields": [
+        { "key": "username", "type": "text", "required": true },
+        { "key": "password", "type": "secret", "required": true }
+      ],
+      "docs": "https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)"
+    },
+    "glances": {
+      "name": "Glances",
+      "icon": "glances",
+      "provides": ["system"],
+      "url": { "required": true, "placeholder": "http://server:61208" },
+      "fields": [
+        { "key": "username", "type": "text", "required": false },
+        { "key": "password", "type": "secret", "required": false }
+      ],
+      "docs": "https://glances.readthedocs.io/en/latest/api.html"
+    },
+    "custom": {
+      "name": "JSON API",
+      "icon": "",
+      "provides": ["api"],
+      "url": { "required": true, "placeholder": "https://api.example.com/" },
+      "fields": [
+        { "key": "headerName", "type": "text", "required": false, "placeholder": "Authorization" },
+        { "key": "headerValue", "type": "secret", "required": false, "placeholder": "Bearer …" }
+      ],
+      "docs": ""
+    }
+  }
+}
