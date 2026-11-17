@@ -1,11 +1,17 @@
 import { useEffect, useId, useState } from 'react'
 
-import { emailLogin, emailLoginAvailable, finishLogin, passkeyLogin, resetPassword, sendLoginCode, startReset } from '../lib/security'
+import { emailLogin, finishLogin, loginOptions, passkeyLogin, passkeyOnlyLogin, resetPassword, sendLoginCode, startReset } from '../lib/security'
 
 /*
  * Logging in with a verified email + password (set up in Settings; the
  * account itself always comes from Discord), then the second factor the
- * account chose: an email code, an authenticator code or a passkey.
+ * account chose: an email code, an authenticator code or a passkey. Or with
+ * a passkey alone: the button, or the passkey the browser / password manager
+ * offers in the email field's suggestions (autocomplete="username webauthn").
+ *
+ * Password managers: real <form>s that submit, fields named and marked
+ * (username / current-password / new-password / one-time-code), and the
+ * email next to every new password, so they fill, save and update reliably.
  */
 
 const METHOD = {
@@ -16,7 +22,7 @@ const METHOD = {
 
 export default function EmailLogin() {
   const id = useId()
-  const [available, setAvailable] = useState(false)
+  const [available, setAvailable] = useState({ email: false, passkeys: false })
   // ?login=reset&email=…: the link in security emails ("Wasn't you? Reset your password").
   const fromLink = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('login') === 'reset'
   const [open, setOpen] = useState(fromLink)
@@ -35,13 +41,30 @@ export default function EmailLogin() {
 
   useEffect(() => {
     let alive = true
-    emailLoginAvailable().then((value) => alive && setAvailable(value))
+    loginOptions().then((value) => alive && setAvailable({ ...value, passkeys: value.passkeys && typeof window.PublicKeyCredential === 'function' }))
     return () => {
       alive = false
     }
   }, [])
 
-  if (!available) return null
+  // The passkey in the email field's suggestions, while the password form is open.
+  const offerPasskey = available.passkeys && open && step === 'password'
+  useEffect(() => {
+    if (!offerPasskey) return undefined
+    let alive = true
+    passkeyOnlyLogin({ autofill: true })
+      .then((result) => alive && result && window.location.reload())
+      .catch((reason) => {
+        // Only once a passkey was picked: the quiet offer itself never shows an error (closed, replaced by the button, server not ready …).
+        if (alive && reason?.picked) setError(reason.message)
+      })
+    return () => {
+      alive = false
+      import('@simplewebauthn/browser').then(({ WebAuthnAbortService }) => WebAuthnAbortService.cancelCeremony()).catch(() => {})
+    }
+  }, [offerPasskey])
+
+  if (!available.email && !available.passkeys) return null
 
   async function run(task) {
     setBusy(true)
@@ -70,14 +93,43 @@ export default function EmailLogin() {
     }
   }
 
-  if (!open) {
+  const passkeyButton = available.passkeys && (
+    <button
+      type="button"
+      className="login-panel__link"
+      disabled={busy}
+      onClick={() =>
+        run(async () => {
+          await passkeyOnlyLogin()
+          done()
+        })
+      }
+    >
+      <span className="material-symbols-outlined" aria-hidden="true">
+        passkey
+      </span>
+      Log in with a passkey
+    </button>
+  )
+
+  if (!open || !available.email) {
     return (
-      <button type="button" className="login-panel__link" onClick={() => setOpen(true)}>
-        <span className="material-symbols-outlined" aria-hidden="true">
-          mail
-        </span>
-        Log in with email
-      </button>
+      <>
+        {available.email && (
+          <button type="button" className="login-panel__link" onClick={() => setOpen(true)}>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              mail
+            </span>
+            Log in with email
+          </button>
+        )}
+        {passkeyButton}
+        {error && (
+          <p className="login-panel__error" role="alert">
+            {error}
+          </p>
+        )}
+      </>
     )
   }
 
@@ -103,13 +155,13 @@ export default function EmailLogin() {
         }}
       >
         <label htmlFor={`${id}-email`}>Email</label>
-        <input id={`${id}-email`} type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required disabled={step === 'resetCode'} />
+        <input id={`${id}-email`} name="email" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required readOnly={step === 'resetCode'} />
         {step === 'resetCode' && (
           <>
             <label htmlFor={`${id}-code`}>Code from the email</label>
-            <input id={`${id}-code`} inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(event) => setCode(event.target.value)} required />
+            <input id={`${id}-code`} name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(event) => setCode(event.target.value)} required />
             <label htmlFor={`${id}-new`}>New password</label>
-            <input id={`${id}-new`} type="password" autoComplete="new-password" minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} required />
+            <input id={`${id}-new`} name="new-password" type="password" autoComplete="new-password" minLength={10} value={password} onChange={(event) => setPassword(event.target.value)} required />
           </>
         )}
         {note && <p className="login-panel__note">{note}</p>}
@@ -155,7 +207,7 @@ export default function EmailLogin() {
               })
             }}
           >
-            <input inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(event) => setCode(event.target.value)} aria-label="Code" autoFocus placeholder="123456" />
+            <input name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(event) => setCode(event.target.value)} aria-label="Code" autoFocus placeholder="123456" />
             <button type="submit" disabled={busy || code.replace(/\s/g, '').length !== 6}>
               {busy ? '…' : 'Log in'}
             </button>
@@ -192,9 +244,10 @@ export default function EmailLogin() {
       }}
     >
       <label htmlFor={`${id}-email`}>Email</label>
-      <input id={`${id}-email`} type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required autoFocus />
+      {/* "webauthn": the browser also offers this site's passkeys in the suggestions. */}
+      <input id={`${id}-email`} name="email" type="email" autoComplete="username webauthn" value={email} onChange={(event) => setEmail(event.target.value)} required autoFocus />
       <label htmlFor={`${id}-password`}>Password</label>
-      <input id={`${id}-password`} type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+      <input id={`${id}-password`} name="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
       {note && <p className="login-panel__note">{note}</p>}
       {error && (
         <p className="login-panel__error" role="alert">
@@ -210,6 +263,7 @@ export default function EmailLogin() {
         </button>
       </div>
       <p className="login-panel__note">Works after you verified an email and set a password in Settings. New here? Use Discord.</p>
+      {passkeyButton}
     </form>
   )
 }

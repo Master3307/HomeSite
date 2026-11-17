@@ -3,10 +3,11 @@ const rateLimit = require("express-rate-limit");
 const QRCode = require("qrcode");
 
 const { setting, enabled } = require("../config.cjs");
-const { getInternalKey } = require("./internalKey.cjs");
+const { secretKey, seal, unseal } = require("./secretBox.cjs");
 const totp = require("./totp.cjs");
 const mail = require("./mail.cjs");
 const privacy = require("./privacy.cjs");
+const { httpError } = require("./http.cjs");
 
 /*
  * Logging in with a verified email and a password, and two-factor
@@ -53,27 +54,11 @@ const LOCK_AFTER = 8; // wrong passwords in a row -> 15 minutes locked
 const SCRYPT = { N: 2 ** 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
 
-const httpError = (status, message, extra = {}) => Object.assign(new Error(message), { status, ...extra });
 const nowIso = () => new Date().toISOString();
 
 /* ---------- small crypto helpers ---------- */
 
-const secretKey = () => crypto.createHash("sha256").update(`homesite-account-secrets:${getInternalKey() || setting("SESSION_SECRET") || ""}`).digest();
 const codeHmac = (purpose, subject, code) => crypto.createHmac("sha256", secretKey()).update(`${purpose}:${subject}:${code}`).digest("hex");
-
-function seal(text) {
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", secretKey(), iv);
-  const data = Buffer.concat([cipher.update(String(text), "utf8"), cipher.final()]);
-  return [iv, cipher.getAuthTag(), data].map((part) => part.toString("base64url")).join(".");
-}
-
-function unseal(sealed) {
-  const [iv, tag, data] = String(sealed).split(".").map((part) => Buffer.from(part, "base64url"));
-  const decipher = crypto.createDecipheriv("aes-256-gcm", secretKey(), iv);
-  decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
-}
 
 const scrypt = (password, salt) =>
   new Promise((resolve, reject) => crypto.scrypt(password.normalize("NFKC"), salt, 64, SCRYPT, (error, key) => (error ? reject(error) : resolve(key))));
@@ -415,7 +400,8 @@ function registerEmailAuth(app, { requireStorage, getRequestSession, getDatabase
         userID: new TextEncoder().encode(user.id),
         attestationType: "none",
         excludeCredentials: data.passkeys.map((key) => ({ id: key.id, transports: key.transports })),
-        authenticatorSelection: { residentKey: "preferred", userVerification: "preferred" },
+        // Discoverable (the device can offer it without an email first) and with the person checked: also good for logging in with the passkey alone.
+        authenticatorSelection: { residentKey: "required", requireResidentKey: true, userVerification: "preferred" },
       });
       remember(`register:${user.id}`, options.challenge);
       return options;
@@ -540,7 +526,8 @@ function registerEmailAuth(app, { requireStorage, getRequestSession, getDatabase
     accountLimiter,
     route(async (_req, res) => {
       res.set("Cache-Control", "no-store");
-      return { available: mail.available() };
+      // available: email + password logins; passkeys: logging in with a passkey alone (always, see below).
+      return { available: mail.available(), passkeys: true };
     }),
   );
 
@@ -637,6 +624,78 @@ function registerEmailAuth(app, { requireStorage, getRequestSession, getDatabase
       tickets.delete(String(req.body.ticket));
       if (req.body?.trust !== false) trustBrowser(res, userById(user.id) ?? user);
       return finish(req, res, user, method === "totp" ? "authenticator" : method);
+    }),
+  );
+
+  /* ----- logging in with a passkey alone ----- */
+
+  /*
+   * Passwordless: the browser / phone / password manager offers the passkeys
+   * it has for this site (also as autofill on the email field), without an
+   * email or password first. The passkey must check the person
+   * (fingerprint, face, PIN: userVerification required), which makes it two
+   * factors in one, so no second step follows. The account is found by the
+   * passkey's id (and its user handle must match); the same rules as every
+   * login apply (members only, bans, the lock after wrong tries).
+   */
+  function passkeyOwner(credentialId) {
+    // A quick pre-filter (LIKE with _ and % escaped), then the exact match below.
+    const pattern = `%${credentialId.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+    const rows = db().prepare("SELECT * FROM users WHERE twofa_json IS NOT NULL AND twofa_json LIKE ? ESCAPE '\\'").all(pattern);
+    for (const user of rows) {
+      const data = twofaOf(user);
+      const key = data.passkeys.find((entry) => entry.id === credentialId);
+      if (key) return { user, data, key };
+    }
+    return null;
+  }
+
+  app.post(
+    "/auth/email/passkey/options",
+    loginLimiter,
+    requireStorage,
+    route(async (req) => {
+      const { generateAuthenticationOptions } = await passkeyLib();
+      const { rpID } = relyingParty(req);
+      const options = await generateAuthenticationOptions({ rpID, allowCredentials: [], userVerification: "required" });
+      const flow = crypto.randomBytes(18).toString("base64url");
+      remember(`passkey:${flow}`, options.challenge);
+      return { flow, options };
+    }),
+  );
+
+  app.post(
+    "/auth/email/passkey",
+    loginLimiter,
+    requireStorage,
+    route(async (req, res) => {
+      const response = req.body?.response;
+      const credentialId = typeof response?.id === "string" ? response.id : "";
+      const expectedChallenge = recall(`passkey:${String(req.body?.flow ?? "")}`);
+      if (!/^[A-Za-z0-9_-]{16,1024}$/.test(credentialId)) throw httpError(400, "That passkey couldn't be checked.");
+      const found = passkeyOwner(credentialId);
+      if (!found) throw httpError(400, "This passkey isn't linked to an account here. Log in another way, then add it in Settings → Email & login.");
+      const { user, data, key } = found;
+      // The user handle the passkey was made with is the account id.
+      const handle = response?.response?.userHandle;
+      if (handle && Buffer.from(handle, "base64url").toString("utf8") !== user.id) throw httpError(400, "That passkey couldn't be checked.");
+      if (user.locked_until && Date.parse(user.locked_until) > Date.now()) throw httpError(429, "Too many wrong tries. Try again in 15 minutes, or log in with Discord.");
+      const { verifyAuthenticationResponse } = await passkeyLib();
+      const { origin, rpID } = relyingParty(req);
+      const result = await verifyAuthenticationResponse({
+        response,
+        expectedChallenge,
+        expectedOrigin: origin,
+        expectedRPID: rpID,
+        credential: { id: key.id, publicKey: Buffer.from(key.publicKey, "base64url"), counter: key.counter, transports: key.transports },
+        requireUserVerification: true,
+      }).catch(() => ({ verified: false }));
+      if (!result.verified) throw httpError(400, "That passkey couldn't be checked.");
+      if (!(await mayLogIn(user))) throw httpError(403, "Only members of the server can log in.");
+      key.counter = result.authenticationInfo.newCounter;
+      key.lastUsedAt = nowIso();
+      saveTwofa(user.id, data);
+      return finish(req, res, user, "passkey");
     }),
   );
 

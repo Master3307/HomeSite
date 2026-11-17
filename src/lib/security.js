@@ -13,7 +13,9 @@ async function call(path, { method = 'GET', body } = {}) {
   return data
 }
 
-export const emailLoginAvailable = () => call('/auth/email').then((data) => data.available).catch(() => false)
+/** { email: email + password logins work here, passkeys: logging in with a passkey alone works here } */
+export const loginOptions = () => call('/auth/email').then((data) => ({ email: Boolean(data.available), passkeys: Boolean(data.passkeys) })).catch(() => ({ email: false, passkeys: false }))
+export const emailLoginAvailable = () => loginOptions().then((options) => options.email)
 export const emailLogin = (email, password) => call('/auth/email/login', { method: 'POST', body: { email, password } })
 export const sendLoginCode = (ticket) => call('/auth/email/2fa/send', { method: 'POST', body: { ticket } })
 export const finishLogin = (ticket, method, proof) => call('/auth/email/2fa', { method: 'POST', body: { ticket, method, ...proof } })
@@ -45,4 +47,21 @@ export async function passkeyLogin(ticket, trust = true) {
   const optionsJSON = await call('/auth/email/2fa/options', { method: 'POST', body: { ticket } })
   const response = await startAuthentication({ optionsJSON })
   return finishLogin(ticket, 'passkey', { response, trust })
+}
+
+/**
+ * Logging in with a passkey alone (no email, no password). `autofill`: the
+ * quiet way, the browser offers the passkey in the email field's suggestions
+ * (conditional UI) and this resolves once one was picked; without it, the
+ * passkey prompt opens at once (needs a tap first on iPhones).
+ */
+export async function passkeyOnlyLogin({ autofill = false } = {}) {
+  const { startAuthentication, browserSupportsWebAuthnAutofill } = await import('@simplewebauthn/browser')
+  if (autofill && !(await browserSupportsWebAuthnAutofill())) return null
+  const { flow, options } = await call('/auth/email/passkey/options', { method: 'POST', body: {} })
+  const response = await startAuthentication({ optionsJSON: options, useBrowserAutofill: autofill })
+  // From here on the person picked a passkey: problems are theirs to see (`picked`).
+  return call('/auth/email/passkey', { method: 'POST', body: { flow, response } }).catch((error) => {
+    throw Object.assign(error, { picked: true })
+  })
 }

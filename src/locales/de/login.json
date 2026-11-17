@@ -1,5 +1,15 @@
 {
-    "login": "Einloggen ➜",
-    "logout": "Ausloggen ➜",
+  "login": "Einloggen ➜",
+  "logout": "Ausloggen ➜",
+  "settings": "Einstellungen",
+  "menu": {
+    "profile": "Profil",
+    "notifications": "Benachrichtigungen",
+    "newNotifications": "{{count}} neue Benachrichtigungen",
+    "moderation": "Moderation",
+    "stats": "Statistik",
+    "members": "Mitglieder",
+    "birthdays": "Geburtstage",
     "settings": "Einstellungen"
+  }
 }

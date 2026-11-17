@@ -85,7 +85,7 @@ export default function SecuritySettings() {
           {security.email && (security.emailVerified ? <span className="security-badge security-badge--ok">verified</span> : <span className="security-badge">not verified</span>)}
         </label>
         <div className="settings-inline">
-          <input id="security-email" className="members-input" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} />
+          <input id="security-email" name="email" className="members-input" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} />
           <button type="submit" className="members-button" disabled={emailTask.busy || email.trim() === (security.email ?? '')}>
             {email.trim() ? (security.mailAvailable ? 'Send code' : 'Save') : 'Remove'}
           </button>
@@ -187,10 +187,12 @@ export default function SecuritySettings() {
               }}
             >
               <p>We emailed you a code to confirm it's you.</p>
-              <input className="members-input" type="password" autoComplete="new-password" minLength={10} placeholder="New password (10+ characters)" value={password} onChange={(event) => setPasswordValue(event.target.value)} aria-label="New password" />
-              <input className="members-input" type="password" autoComplete="new-password" placeholder="The same again" value={repeat} onChange={(event) => setRepeat(event.target.value)} aria-label="Repeat the password" />
+              {/* The login the new password belongs to, for password managers (they save / update it under this email). */}
+              <input className="sr-only" type="email" name="email" autoComplete="username" value={security.email ?? ''} readOnly tabIndex={-1} aria-hidden="true" />
+              <input className="members-input" type="password" name="new-password" autoComplete="new-password" minLength={10} placeholder="New password (10+ characters)" value={password} onChange={(event) => setPasswordValue(event.target.value)} aria-label="New password" />
+              <input className="members-input" type="password" name="new-password-repeat" autoComplete="new-password" placeholder="The same again" value={repeat} onChange={(event) => setRepeat(event.target.value)} aria-label="Repeat the password" />
               <div className="settings-inline">
-                <input className="members-input security-code" inputMode="numeric" autoComplete="one-time-code" maxLength={7} placeholder="Code" value={passwordCode} onChange={(event) => setPasswordCode(event.target.value)} aria-label="Code from the email" />
+                <input className="members-input security-code" name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={7} placeholder="Code" value={passwordCode} onChange={(event) => setPasswordCode(event.target.value)} aria-label="Code from the email" />
                 <button type="button" className="members-button members-button--quiet" onClick={() => setPasswordOpen(false)}>
                   Cancel
                 </button>

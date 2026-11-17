@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { profilePath } from '../lib/members'
 import EmailLogin from './EmailLogin'
 import { loadNotifications, loadStaff, NOTIFICATIONS_EVENT } from '../lib/moderation'
+import { loadStatsAccess } from '../lib/stats'
 import {
   DISCORD_LOGIN_URL,
   LOGIN_AVAILABLE,
@@ -108,9 +109,12 @@ function LoginPanel({ onClose }) {
                 {t('adminCode', { defaultValue: 'Admin code' })}
               </label>
 
+              {/* Password managers keep the key as the "admin" login of this site. */}
+              <input className="sr-only" type="text" name="username" autoComplete="username" value="admin" readOnly tabIndex={-1} aria-hidden="true" />
               <div className="login-panel__row">
                 <input
                   id={codeId}
+                  name="password"
                   type="password"
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
@@ -135,6 +139,7 @@ function LoginPanel({ onClose }) {
                   <div className="login-panel__row">
                     <input
                       id={`${codeId}-totp`}
+                      name="totp"
                       type="text"
                       inputMode="numeric"
                       autoComplete="one-time-code"
@@ -228,8 +233,19 @@ export default function Login() {
     }
   }
 
+  // While the account loads: the guest buttons, invisible, so the bar already has its final size and nothing jumps.
   if (isLoading) {
-    return null
+    return (
+      <div className="login-wrap login-wrap--guest login-wrap--pending" aria-hidden="true">
+        {/* The same elements as below (a link and a button size differently from plain spans). */}
+        <a className="loginButton loginSettings" tabIndex={-1}>
+          <span className="material-symbols-outlined">settings</span>
+        </a>
+        <button type="button" className="loginButton" tabIndex={-1}>
+          <strong>{t('login')}</strong>
+        </button>
+      </div>
+    )
   }
 
   if (!user) {
@@ -282,11 +298,22 @@ export default function Login() {
 
 /** Avatar + name; a click opens Profile, Settings and Log out. */
 function AccountMenu({ user, badge, hasProfile, loggingOut, onLogout, title, logoutLabel }) {
+  const { t } = useTranslation('login')
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const menuId = useId()
   const [unread, setUnread] = useState(0)
   const [staff, setStaff] = useState(false)
+  // FDC editors get the Stats page (migration and lobby cat).
+  const [stats, setStats] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    loadStatsAccess().then((allowed) => alive && setStats(allowed))
+    return () => {
+      alive = false
+    }
+  }, [])
 
   // Unread notifications (checked every minute) and whether to show Moderation.
   useEffect(() => {
@@ -327,7 +354,7 @@ function AccountMenu({ user, badge, hasProfile, loggingOut, onLogout, title, log
         <span className="accountName">{user.displayName}</span>
         {badge && <span className="accountBadge">{badge}</span>}
         {unread > 0 && (
-          <span className="accountMenu__unread" aria-label={`${unread} new notifications`}>
+          <span className="accountMenu__unread" aria-label={t('menu.newNotifications', { count: unread })}>
             {unread > 9 ? '9+' : unread}
           </span>
         )}
@@ -343,7 +370,7 @@ function AccountMenu({ user, badge, hasProfile, loggingOut, onLogout, title, log
               <span className="material-symbols-outlined" aria-hidden="true">
                 account_circle
               </span>
-              Profile
+              {t('menu.profile')}
             </Link>
           )}
           {hasProfile && (
@@ -351,7 +378,7 @@ function AccountMenu({ user, badge, hasProfile, loggingOut, onLogout, title, log
               <span className="material-symbols-outlined" aria-hidden="true">
                 {unread ? 'notifications_unread' : 'notifications'}
               </span>
-              Notifications
+              {t('menu.notifications')}
               {unread > 0 && <span className="accountMenu__count">{unread}</span>}
             </Link>
           )}
@@ -360,7 +387,15 @@ function AccountMenu({ user, badge, hasProfile, loggingOut, onLogout, title, log
               <span className="material-symbols-outlined" aria-hidden="true">
                 shield
               </span>
-              Moderation
+              {t('menu.moderation')}
+            </Link>
+          )}
+          {stats && (
+            <Link role="menuitem" to="/cult/stats" onClick={() => setOpen(false)}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                monitoring
+              </span>
+              {t('menu.stats')}
             </Link>
           )}
           {hasProfile && (
@@ -368,7 +403,7 @@ function AccountMenu({ user, badge, hasProfile, loggingOut, onLogout, title, log
               <span className="material-symbols-outlined" aria-hidden="true">
                 groups
               </span>
-              Members
+              {t('menu.members')}
             </Link>
           )}
           {hasProfile && (
@@ -376,14 +411,14 @@ function AccountMenu({ user, badge, hasProfile, loggingOut, onLogout, title, log
               <span className="material-symbols-outlined" aria-hidden="true">
                 cake
               </span>
-              Birthdays
+              {t('menu.birthdays')}
             </Link>
           )}
           <Link role="menuitem" to="/cult/settings" onClick={() => setOpen(false)}>
             <span className="material-symbols-outlined" aria-hidden="true">
               settings
             </span>
-            Settings
+            {t('menu.settings')}
           </Link>
           <button role="menuitem" type="button" className="accountMenu__logout" onClick={onLogout} disabled={loggingOut}>
             <span className="material-symbols-outlined" aria-hidden="true">
