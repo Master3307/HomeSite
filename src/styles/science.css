@@ -1,0 +1,794 @@
+/* The /dash science reference: periodic table, element cards, formulas (components/dash/science/). */
+:root {
+  --sci-alkali: #f0716b;
+  --sci-alkaline: #f5a35c;
+  --sci-transition: #e9c46a;
+  --sci-post: #9bc26b;
+  --sci-metalloid: #4fbfa8;
+  --sci-nonmetal: #5aa9e6;
+  --sci-halogen: #7f8cf5;
+  --sci-noble: #b57cf0;
+  --sci-lanthanide: #ee7fb4;
+  --sci-actinide: #d982a6;
+  --sci-unknown: #8a8f9c;
+  --sci-block-s: #f0716b;
+  --sci-block-p: #5aa9e6;
+  --sci-block-d: #e9c46a;
+  --sci-block-f: #b57cf0;
+  --sci-state-solid: #8d99ae;
+  --sci-state-liquid: #3d9be9;
+  --sci-state-gas: #f4a261;
+}
+
+.sci-shade {
+  position: fixed;
+  inset: 0;
+  /* Above the site's corner buttons (theme, language, account). */
+  z-index: 100000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(8, 4, 20, 0.62);
+  backdrop-filter: blur(6px);
+  animation: sci-in 0.16s ease;
+}
+@keyframes sci-in {
+  from {
+    opacity: 0;
+  }
+}
+.sci-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(1320px, 100%);
+  height: min(920px, calc(100dvh - 32px));
+  overflow: hidden;
+  border: 1px solid var(--dash-line, rgba(255, 255, 255, 0.12));
+  border-radius: 20px;
+  outline: none;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+.sci-dialog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--dash-line, rgba(255, 255, 255, 0.1));
+}
+.sci-dialog__tabs {
+  flex: 0 1 auto;
+}
+.sci-dialog__tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sci-dialog__tabs .material-symbols-outlined {
+  font-size: 18px;
+}
+.sci-dialog__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 14px 18px 22px;
+}
+.sci-dialog__card {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  background: color-mix(in srgb, var(--bg-secondary) 55%, transparent);
+  backdrop-filter: blur(4px);
+  animation: sci-in 0.14s ease;
+}
+
+.sci-search {
+  display: flex;
+  flex: 1 1 260px;
+  align-items: center;
+  gap: 8px;
+  max-width: 420px;
+  padding: 0 12px;
+  border: 1px solid var(--dash-line, rgba(255, 255, 255, 0.12));
+  border-radius: 12px;
+  background: var(--dash-well, rgba(255, 255, 255, 0.05));
+}
+.sci-search:focus-within {
+  border-color: var(--dash-a, var(--accent));
+}
+.sci-search .material-symbols-outlined {
+  color: var(--dash-muted);
+  font-size: 19px;
+}
+.sci-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+/* ---------- periodic table ---------- */
+.sci-table__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+}
+.sci-table__mode,
+.sci-table__temperature {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+}
+.sci-table__mode select {
+  padding: 7px 10px;
+  border: 1px solid var(--dash-line, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  background: var(--dash-well, rgba(255, 255, 255, 0.05));
+  color: inherit;
+  font: inherit;
+}
+.sci-table__temperature input {
+  width: 200px;
+  accent-color: var(--dash-a, var(--accent));
+}
+.sci-table__scroll {
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+}
+.sci-table__grid {
+  display: grid;
+  grid-template-columns: 22px repeat(18, minmax(52px, 1fr));
+  grid-template-rows: auto repeat(7, minmax(58px, auto)) 12px repeat(2, minmax(58px, auto));
+  gap: 3px;
+  min-width: 1000px;
+}
+.sci-table__group,
+.sci-table__period {
+  display: grid;
+  place-items: center;
+  color: var(--dash-muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.sci-table__group {
+  align-content: end;
+  padding-bottom: 2px;
+  line-height: 1.1;
+}
+.sci-table__group small {
+  font-size: 0.62rem;
+  opacity: 0.8;
+}
+.sci-table__frow {
+  align-self: center;
+  justify-self: end;
+  padding-right: 6px;
+  color: var(--dash-muted);
+  font-size: 0.7rem;
+  text-align: right;
+}
+.sci-table__cell {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  min-width: 0;
+  padding: 3px 4px 4px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--tone) 85%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--tone) 46%, var(--bg-secondary));
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    opacity 0.15s ease,
+    background-color 0.2s ease;
+}
+.sci-table__cell:hover,
+.sci-table__cell:focus-visible,
+.sci-table__cell.is-hover {
+  z-index: 1;
+  outline: none;
+  background: color-mix(in srgb, var(--tone) 68%, var(--bg-secondary));
+  box-shadow: 0 0 0 2px var(--tone);
+  transform: scale(1.06);
+}
+.sci-table__cell.is-dim {
+  opacity: 0.22;
+}
+.sci-table__z {
+  font-size: 0.6rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+.sci-table__cell strong {
+  align-self: center;
+  font-size: 1.05rem;
+  font-weight: 750;
+  line-height: 1;
+}
+.sci-table__name,
+.sci-table__value {
+  overflow: hidden;
+  font-size: 0.56rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sci-table__value {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+.sci-table__detail {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  margin: 0 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+}
+.sci-table__big {
+  display: grid;
+  flex: none;
+  justify-items: center;
+  width: 96px;
+  padding: 8px;
+  border: 2px solid var(--tone);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--tone) 28%, var(--bg-secondary));
+  font-variant-numeric: tabular-nums;
+}
+.sci-table__big strong {
+  font-size: 2.3rem;
+  line-height: 1.1;
+}
+.sci-table__big span {
+  font-size: 0.75rem;
+}
+.sci-table__info {
+  min-width: 0;
+}
+.sci-table__info h3 {
+  margin: 0 0 2px;
+  font-size: 1.25rem;
+}
+.sci-table__info p {
+  margin: 2px 0;
+  font-size: 0.82rem;
+}
+.sci-table__config {
+  font-variant-numeric: tabular-nums;
+}
+.sci-table__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 12px;
+  font-size: 0.8rem;
+}
+.sci-table__legend > button,
+.sci-table__legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.sci-table__legend > button {
+  cursor: pointer;
+}
+.sci-table__legend > button:hover,
+.sci-table__legend > button.is-active {
+  border-color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 18%, transparent);
+}
+.sci-table__legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--tone);
+}
+.sci-table__scale i {
+  width: 140px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, hsl(230 70% 52%), hsl(140 70% 52%), hsl(55 70% 52%), hsl(5 70% 52%));
+}
+.sci-table__hint {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+}
+
+/* ---------- element card ---------- */
+.sci-card {
+  display: flex;
+  flex-direction: column;
+  width: min(1040px, 100%);
+  max-height: 100%;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--tone) 55%, transparent);
+  border-radius: 18px;
+  background: var(--bg-secondary);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.4);
+}
+.sci-card__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: linear-gradient(110deg, color-mix(in srgb, var(--tone) 30%, transparent), transparent 70%);
+}
+.sci-card__tile {
+  display: grid;
+  flex: none;
+  justify-items: center;
+  width: 84px;
+  padding: 6px;
+  border: 2px solid var(--tone);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--tone) 25%, var(--bg-secondary));
+  font-variant-numeric: tabular-nums;
+}
+.sci-card__tile strong {
+  font-size: 2rem;
+  line-height: 1.1;
+}
+.sci-card__tile span {
+  font-size: 0.72rem;
+}
+.sci-card__title {
+  flex: 1;
+  min-width: 0;
+}
+.sci-card__title h2 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+.sci-card__title p {
+  margin: 4px 0 0;
+  color: var(--dash-muted);
+  font-size: 0.85rem;
+}
+.sci-card__chip {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tone) 35%, transparent);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.sci-card__nav {
+  display: flex;
+  gap: 2px;
+}
+.sci-card__body {
+  display: grid;
+  grid-template-columns: minmax(240px, 340px) 1fr;
+  gap: 16px;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 16px 18px;
+}
+@media (max-width: 760px) {
+  .sci-card__body {
+    grid-template-columns: 1fr;
+  }
+}
+.sci-card__model {
+  margin: 0;
+}
+.sci-card__model .sci-atom {
+  width: 100%;
+  height: min(var(--atom-size), 70vw);
+}
+.sci-card__model figcaption {
+  display: grid;
+  gap: 4px;
+  color: var(--dash-muted);
+  font-size: 0.74rem;
+}
+.sci-card__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  color: var(--text-primary);
+}
+.sci-card__legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-left: 6px;
+  border-radius: 50%;
+}
+.sci-card__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 6px 22px;
+  align-content: start;
+}
+.sci-card__facts h3 {
+  margin: 10px 0 4px;
+  color: var(--dash-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.sci-card__facts dl {
+  margin: 0;
+}
+.sci-card__row {
+  display: grid;
+  grid-template-columns: minmax(120px, 44%) 1fr;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 8%, transparent);
+  font-size: 0.86rem;
+}
+.sci-card__row dt {
+  color: var(--dash-muted);
+}
+.sci-card__row dd {
+  display: grid;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.sci-card__row dd small {
+  color: var(--dash-muted);
+  font-size: 0.72rem;
+}
+.sci-card__shells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.sci-card__shells span {
+  display: inline-grid;
+  justify-items: center;
+  min-width: 26px;
+  padding: 1px 4px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--tone) 18%, transparent);
+  font-weight: 650;
+  line-height: 1.1;
+}
+.sci-card__shells small {
+  color: var(--dash-muted);
+  font-size: 0.6rem;
+  font-weight: 500;
+}
+.sci-card__swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  border-radius: 4px;
+  vertical-align: -2px;
+}
+.sci-card__links {
+  display: flex;
+  gap: 14px;
+}
+.sci-card__links a {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--tone) 80%, transparent);
+  text-underline-offset: 3px;
+}
+.sci-card__source {
+  font-size: 0.72rem;
+}
+.sci-atom {
+  width: var(--atom-size);
+  height: var(--atom-size);
+}
+.sci-atom canvas {
+  display: block;
+}
+
+/* ---------- formulas ---------- */
+.sci-formulas__bar {
+  position: sticky;
+  top: -14px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: -14px -18px 6px;
+  padding: 12px 18px 10px;
+  background: var(--bg-secondary);
+}
+.sci-formulas__group h2 {
+  margin: 18px 0 8px;
+  font-size: 1rem;
+}
+.sci-formulas__group h2 span {
+  color: var(--dash-muted);
+  font-weight: 500;
+}
+.sci-formulas__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+.sci-formula {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--dash-line, rgba(255, 255, 255, 0.1));
+  border-radius: 14px;
+  background: var(--dash-well, rgba(255, 255, 255, 0.04));
+  scroll-margin: 80px;
+}
+.sci-formula.is-highlighted {
+  border-color: var(--dash-a, var(--accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dash-a, var(--accent)) 30%, transparent);
+}
+.sci-formula__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sci-formula__head h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+.sci-formula__topic {
+  color: var(--dash-muted);
+  font-size: 0.72rem;
+}
+.sci-formula__main {
+  overflow-x: auto;
+  padding: 6px 2px 16px;
+  font-size: 1.45rem;
+  scrollbar-width: thin;
+}
+.sci-formula__note {
+  margin: 0;
+  color: var(--dash-muted);
+  font-size: 0.82rem;
+}
+.sci-formula__status {
+  margin: 0;
+  font-size: 0.86rem;
+}
+.sci-formula__status--result strong {
+  color: var(--dash-ok, #3ecf8e);
+}
+.sci-formula__status--holds {
+  color: var(--dash-ok, #3ecf8e);
+}
+.sci-formula__status--fails,
+.sci-formula__status--none {
+  color: var(--dash-bad, #f06b6b);
+}
+.sci-formula__status--fill,
+.sci-formula__status--invalid {
+  color: var(--dash-muted);
+}
+.sci-formula__vars {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sci-formula__vars li {
+  display: grid;
+  grid-template-columns: 44px 1fr 96px 64px;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+.sci-formula__vars li.is-result input::placeholder {
+  color: var(--dash-ok, #3ecf8e);
+  opacity: 1;
+}
+.sci-formula__letter {
+  font-size: 1.05rem;
+}
+.sci-formula__meaning small {
+  display: block;
+  color: var(--dash-muted);
+  font-size: 0.68rem;
+}
+.sci-formula__vars input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--dash-line, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  outline: none;
+  background: var(--bg-secondary);
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.sci-formula__vars input:focus {
+  border-color: var(--dash-a, var(--accent));
+}
+.sci-formula__unit {
+  color: var(--dash-muted);
+  font-size: 0.76rem;
+}
+.sci-formula__rule {
+  margin: 0;
+  color: var(--dash-muted);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+.sci-formula__forms,
+.sci-formula__methods {
+  display: grid;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+.sci-formula__label {
+  color: var(--dash-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.sci-formula__forms .dash-math {
+  font-size: 1.1rem;
+}
+.sci-formula__methods ol {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+.sci-constants {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sci-constants li {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 2px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--dash-line, rgba(255, 255, 255, 0.1));
+  border-radius: 12px;
+  background: var(--dash-well, rgba(255, 255, 255, 0.04));
+}
+.sci-constants__symbol {
+  grid-row: span 2;
+  align-self: center;
+  font-size: 1.25rem;
+}
+.sci-constants__name {
+  color: var(--dash-muted);
+  font-size: 0.78rem;
+}
+.sci-constants__value {
+  font-variant-numeric: tabular-nums;
+}
+.sci-constants__value small {
+  color: var(--dash-muted);
+}
+
+/* Clickable letters in a formula (MathView SlotContext). */
+.dash-math__slot {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+.dash-math__slot-button {
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1.5px dashed color-mix(in srgb, var(--dash-a, var(--accent)) 70%, transparent);
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+.dash-math__slot-button:hover,
+.dash-math__slot-button:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--dash-a, var(--accent)) 22%, transparent);
+}
+.dash-math__slot.is-set .dash-math__slot-button {
+  border-bottom-style: solid;
+}
+.dash-math__slot.is-result .dash-math__slot-button {
+  border-bottom-color: var(--dash-ok, #3ecf8e);
+}
+.dash-math__slot-value {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dash-a, var(--accent)) 25%, var(--bg-secondary));
+  font-family: var(--site-font, inherit);
+  font-size: 0.42em;
+  font-style: normal;
+  line-height: 1.5;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.dash-math__slot.is-result .dash-math__slot-value {
+  background: color-mix(in srgb, var(--dash-ok, #3ecf8e) 30%, var(--bg-secondary));
+}
+.dash-math__slot-input {
+  min-width: 3ch;
+  padding: 0 3px;
+  border: 1px solid var(--dash-a, var(--accent));
+  border-radius: 5px;
+  outline: none;
+  background: var(--bg-secondary);
+  color: inherit;
+  font-family: var(--site-font, inherit);
+  font-size: 0.6em;
+  text-align: center;
+}
+.dash-math__upright {
+  font-style: normal;
+}
+
+/* The search suggestions with an atom or a formula. */
+.site-search__visual {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%);
+}
+.site-search__option--extra {
+  flex-wrap: nowrap;
+  padding-right: 44px;
+}
+.site-search__option--extra .site-search__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.site-search__option--extra .site-search__math {
+  margin-left: 0;
+  font-size: 1rem;
+}
+.sci-formulas__hint {
+  margin: 0 0 4px;
+  font-size: 0.82rem;
+}

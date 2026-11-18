@@ -1,0 +1,1300 @@
+{
+    "title": "Formulas",
+    "search": "Search formulas: Pythagoras, Ohm, cutting speed…",
+    "all": "All",
+    "areas": {
+        "math": "Maths",
+        "physics": "Physics",
+        "metal": "Metalwork",
+        "fluid": "Pneumatics & hydraulics",
+        "chemistry": "Chemistry"
+    },
+    "topics": {
+        "functions": "Functions",
+        "quadratic": "Quadratic equations",
+        "powers": "Powers & logarithms",
+        "triangles": "Triangles",
+        "plane": "Plane figures",
+        "solids": "Solids",
+        "percent": "Percent & interest",
+        "growth": "Growth",
+        "motion": "Motion",
+        "forces": "Forces",
+        "pressure": "Pressure",
+        "energy": "Work, energy, power",
+        "heat": "Heat",
+        "electricity": "Electricity",
+        "waves": "Waves & optics",
+        "atoms": "Atoms",
+        "cutting": "Cutting",
+        "strength": "Strength",
+        "drives": "Drives",
+        "gears": "Gears",
+        "fits": "Fits & tolerances",
+        "shapes": "Tapers",
+        "pneumatics": "Pneumatics",
+        "hydraulics": "Hydraulics",
+        "amount": "Amount of substance",
+        "solutions": "Solutions"
+    },
+    "calc": {
+        "hint": "Click a letter in the formula and type its value. Leave one empty: it is worked out.",
+        "fill": "Fill in all values but one.",
+        "holds": "The formula holds ✓",
+        "fails": "These values don't fit the formula",
+        "noSolution": "No solution with these values",
+        "clear": "Clear",
+        "unit": "in {{unit}}",
+        "constant": "constant, can be changed",
+        "value": "Value of {{name}}",
+        "result": "Result"
+    },
+    "forms": "Also written as",
+    "methods": "Ways to solve it",
+    "rule": "Holds for all values",
+    "constants": "Constants",
+    "empty": "No formula found.",
+    "constantNames": {
+        "g": "Ortsfaktor (gravitational field strength) in Germany",
+        "c": "Speed of light in vacuum",
+        "NA": "Avogadro constant",
+        "e": "Elementary charge",
+        "R": "Gas constant",
+        "Vm": "Molar volume (0 °C, 1013 hPa)",
+        "cWater": "Specific heat capacity of water",
+        "rhoWater": "Density of water (about 4 °C)",
+        "pAmb": "Standard air pressure",
+        "zero": "Absolute zero",
+        "bar": "Bar",
+        "kwh": "Kilowatt hour",
+        "ps": "Metric horsepower (PS)"
+    },
+    "items": {
+        "line": {
+            "name": "Linear function (Gerade)",
+            "note": "The graph is a straight line. m is the slope (Steigung), t where it crosses the y-axis (y-Achsenabschnitt).",
+            "vars": {
+                "y": "y-value",
+                "m": "slope (Steigung)",
+                "x": "x-value",
+                "t": "y-intercept (y-Achsenabschnitt)"
+            }
+        },
+        "slope": {
+            "name": "Slope from two points",
+            "note": "Rise over run between P₁(x₁|y₁) and P₂(x₂|y₂); x₁ and x₂ must differ.",
+            "vars": {
+                "m": "slope",
+                "x_1": "x of P₁",
+                "y_1": "y of P₁",
+                "x_2": "x of P₂",
+                "y_2": "y of P₂"
+            }
+        },
+        "lineZero": {
+            "name": "Zero of a linear function (Nullstelle)",
+            "note": "Where y = mx + t crosses the x-axis: set y = 0 and solve for x (m ≠ 0).",
+            "vars": {
+                "x_0": "zero (Nullstelle)",
+                "t": "y-intercept",
+                "m": "slope"
+            }
+        },
+        "distance": {
+            "name": "Distance of two points",
+            "note": "The length of the segment P₁P₂ (Pythagoras in the coordinate system).",
+            "vars": {
+                "d": "distance",
+                "x_1": "x of P₁",
+                "y_1": "y of P₁",
+                "x_2": "x of P₂",
+                "y_2": "y of P₂"
+            }
+        },
+        "midpoint": {
+            "name": "Midpoint of a segment",
+            "note": "The midpoint M of P₁P₂; its y-coordinate likewise: y of M = (y₁ + y₂)/2.",
+            "vars": {
+                "x_M": "x of the midpoint M",
+                "x_1": "x of P₁",
+                "x_2": "x of P₂"
+            }
+        },
+        "vertexForm": {
+            "name": "Vertex form (Scheitelpunktform)",
+            "note": "A parabola with its vertex S(xₛ|yₛ). a > 0 opens upwards, a < 0 downwards; |a| > 1 narrower, |a| < 1 wider than the normal parabola.",
+            "vars": {
+                "y": "y-value",
+                "a": "stretch factor",
+                "x": "x-value",
+                "x_S": "x of the vertex S",
+                "y_S": "y of the vertex S"
+            }
+        },
+        "vertex": {
+            "name": "Vertex from the general form",
+            "note": "For y = ax² + bx + c the vertex is S(−b/(2a) | c − b²/(4a)).",
+            "vars": {
+                "x_S": "x of the vertex",
+                "a": "coefficient of x²",
+                "b": "coefficient of x"
+            }
+        },
+        "midnight": {
+            "name": "Quadratic formula (Mitternachtsformel)",
+            "note": "Solves ax² + bx + c = 0 (a ≠ 0). The part under the root is the discriminant D = b² − 4ac: D > 0 two solutions, D = 0 one, D < 0 none.",
+            "vars": {
+                "a": "coefficient of x²",
+                "b": "coefficient of x",
+                "c": "constant",
+                "x": "solutions",
+                "x_1_2": "the two solutions"
+            },
+            "methods": [
+                "Quadratic formula: put a, b, c of ax² + bx + c = 0 in. Example x² − 4x + 3 = 0: x = (4 ± √(16 − 12))/2, so x₁ = 3, x₂ = 1.",
+                "pq formula: divide by a first (x² + px + q = 0), then x = −p/2 ± √((p/2)² − q). Same example: x = 2 ± √(4 − 3) = 2 ± 1.",
+                "Completing the square (quadratische Ergänzung): x² − 4x + 3 = 0 → (x − 2)² − 1 = 0 → x − 2 = ±1.",
+                "Factoring: if you see two numbers with product c and sum −b (for a = 1): x² − 4x + 3 = (x − 1)(x − 3), so x = 1 or x = 3.",
+                "Without the constant (c = 0): factor out x: x(ax + b) = 0, so x = 0 or x = −b/a."
+            ]
+        },
+        "discriminant": {
+            "name": "Discriminant",
+            "note": "Tells how many real solutions ax² + bx + c = 0 has: D > 0 two, D = 0 one, D < 0 none.",
+            "vars": {
+                "D": "discriminant",
+                "a": "coefficient of x²",
+                "b": "coefficient of x",
+                "c": "constant"
+            }
+        },
+        "pq": {
+            "name": "pq formula",
+            "note": "For the normalised form x² + px + q = 0 (divide by a first).",
+            "vars": {
+                "p": "coefficient of x",
+                "q": "constant",
+                "x": "solutions",
+                "x_1_2": "the two solutions"
+            }
+        },
+        "binomial1": {
+            "name": "First binomial formula",
+            "note": "Square of a sum. Example: (x + 3)² = x² + 6x + 9.",
+            "vars": {}
+        },
+        "binomial2": {
+            "name": "Second binomial formula",
+            "note": "Square of a difference. Example: (x − 3)² = x² − 6x + 9.",
+            "vars": {}
+        },
+        "binomial3": {
+            "name": "Third binomial formula",
+            "note": "Sum times difference. Example: (x + 3)(x − 3) = x² − 9.",
+            "vars": {}
+        },
+        "powerProduct": {
+            "name": "Powers: same base, multiply",
+            "note": "Keep the base, add the exponents.",
+            "vars": {}
+        },
+        "powerQuotient": {
+            "name": "Powers: same base, divide",
+            "note": "Keep the base, subtract the exponents (a ≠ 0).",
+            "vars": {}
+        },
+        "powerPower": {
+            "name": "Power of a power",
+            "note": "Multiply the exponents.",
+            "vars": {}
+        },
+        "powerProductBase": {
+            "name": "Powers: same exponent, multiply",
+            "note": "Multiply the bases, keep the exponent.",
+            "vars": {}
+        },
+        "powerNegative": {
+            "name": "Negative exponent",
+            "note": "A negative exponent means the reciprocal (a ≠ 0).",
+            "vars": {}
+        },
+        "powerRoot": {
+            "name": "Root as a power",
+            "note": "The n-th root of a is a to the power 1/n (a ≥ 0).",
+            "vars": {}
+        },
+        "logDefinition": {
+            "name": "Logarithm",
+            "note": "x is the exponent that turns b into a: x = log of a to the base b (a > 0, b > 0, b ≠ 1).",
+            "vars": {
+                "b": "base",
+                "x": "exponent (the logarithm)",
+                "a": "value"
+            }
+        },
+        "logProduct": {
+            "name": "Logarithm of a product",
+            "note": "Becomes the sum of the logarithms.",
+            "vars": {}
+        },
+        "logQuotient": {
+            "name": "Logarithm of a quotient",
+            "note": "Becomes the difference of the logarithms.",
+            "vars": {}
+        },
+        "logPower": {
+            "name": "Logarithm of a power",
+            "note": "The exponent comes out in front.",
+            "vars": {}
+        },
+        "logChange": {
+            "name": "Change of base",
+            "note": "Any base with a calculator: divide by lg (or ln) of the base.",
+            "vars": {}
+        },
+        "pythagoras": {
+            "name": "Pythagorean theorem (Satz des Pythagoras)",
+            "note": "In a right triangle: the squares of the two legs (Katheten) a and b add up to the square of the hypotenuse c, opposite the right angle.",
+            "vars": {
+                "a": "leg (Kathete)",
+                "b": "leg (Kathete)",
+                "c": "hypotenuse (Hypotenuse)"
+            }
+        },
+        "legTheorem": {
+            "name": "Leg theorem (Kathetensatz)",
+            "note": "In a right triangle: a leg squared equals the hypotenuse times the part p of it next to that leg (b² = c·q likewise).",
+            "vars": {
+                "a": "leg",
+                "c": "hypotenuse",
+                "p": "hypotenuse section next to a"
+            }
+        },
+        "altitudeTheorem": {
+            "name": "Altitude theorem (Höhensatz)",
+            "note": "In a right triangle: the altitude h onto the hypotenuse squared equals the product of the two hypotenuse sections p and q.",
+            "vars": {
+                "h": "altitude onto the hypotenuse",
+                "p": "hypotenuse section",
+                "q": "hypotenuse section"
+            }
+        },
+        "sine": {
+            "name": "Sine, cosine, tangent",
+            "note": "In a right triangle (right angle at C): sine = opposite/hypotenuse (Gegenkathete/Hypotenuse), cosine = adjacent/hypotenuse (Ankathete/Hypotenuse), tangent = opposite/adjacent.",
+            "vars": {
+                "alpha": "angle α",
+                "a": "side opposite α (Gegenkathete)",
+                "c": "hypotenuse"
+            }
+        },
+        "lawOfSines": {
+            "name": "Law of sines (Sinussatz)",
+            "note": "In every triangle the ratio of a side to the sine of the opposite angle is the same (also c/sin γ).",
+            "vars": {
+                "a": "side a",
+                "alpha": "angle α opposite a",
+                "b": "side b",
+                "beta": "angle β opposite b"
+            }
+        },
+        "lawOfCosines": {
+            "name": "Law of cosines (Kosinussatz)",
+            "note": "In every triangle; with γ = 90° it becomes Pythagoras.",
+            "vars": {
+                "c": "side c",
+                "a": "side a",
+                "b": "side b",
+                "gamma": "angle γ between a and b"
+            }
+        },
+        "triangleSine": {
+            "name": "Area with two sides and the angle between them",
+            "note": "Works in every triangle.",
+            "vars": {
+                "A": "area",
+                "a": "side a",
+                "b": "side b",
+                "gamma": "angle γ between a and b"
+            }
+        },
+        "trigIdentity": {
+            "name": "Trigonometric Pythagoras",
+            "note": "Holds for every angle.",
+            "vars": {}
+        },
+        "radians": {
+            "name": "Degrees to radians (Bogenmaß)",
+            "note": "180° is π; the other way: α = x·180°/π.",
+            "vars": {
+                "x": "angle in radians",
+                "alpha": "angle in degrees"
+            }
+        },
+        "rectangle": {
+            "name": "Rectangle",
+            "note": "Area a·b; perimeter (Umfang) U = 2(a + b).",
+            "vars": {
+                "A": "area",
+                "a": "length",
+                "b": "width"
+            }
+        },
+        "square": {
+            "name": "Square",
+            "note": "Area a²; perimeter 4a; diagonal a·√2.",
+            "vars": {
+                "A": "area",
+                "a": "side"
+            }
+        },
+        "triangle": {
+            "name": "Triangle",
+            "note": "Half of base times height; the height is at right angles to the base g.",
+            "vars": {
+                "A": "area",
+                "g": "base (Grundlinie)",
+                "h": "height to that base"
+            }
+        },
+        "parallelogram": {
+            "name": "Parallelogram",
+            "note": "Base times height (not times the slanted side).",
+            "vars": {
+                "A": "area",
+                "g": "base",
+                "h": "height"
+            }
+        },
+        "trapezoid": {
+            "name": "Trapezoid (Trapez)",
+            "note": "a and c are the two parallel sides, h the distance between them.",
+            "vars": {
+                "A": "area",
+                "a": "parallel side",
+                "c": "parallel side",
+                "h": "height"
+            }
+        },
+        "kite": {
+            "name": "Kite and rhombus (Drachenviereck, Raute)",
+            "note": "Half the product of the diagonals e and f (they are at right angles).",
+            "vars": {
+                "A": "area",
+                "e": "diagonal",
+                "f": "diagonal"
+            }
+        },
+        "circle": {
+            "name": "Circle",
+            "note": "Area πr²; circumference 2πr; with the diameter d = 2r: A = πd²/4.",
+            "vars": {
+                "A": "area",
+                "r": "radius"
+            }
+        },
+        "sector": {
+            "name": "Circular sector (Kreissektor)",
+            "note": "The share α/360° of the circle; the arc length b likewise.",
+            "vars": {
+                "A": "area of the sector",
+                "alpha": "central angle",
+                "r": "radius"
+            }
+        },
+        "cube": {
+            "name": "Cube (Würfel)",
+            "note": "Volume a³; surface O = 6a².",
+            "vars": {
+                "V": "volume",
+                "a": "edge"
+            }
+        },
+        "cuboid": {
+            "name": "Cuboid (Quader)",
+            "note": "Volume a·b·c; surface O = 2(ab + ac + bc).",
+            "vars": {
+                "V": "volume",
+                "a": "length",
+                "b": "width",
+                "c": "height"
+            }
+        },
+        "prism": {
+            "name": "Prism (Prisma)",
+            "note": "Base area times height, for every prism.",
+            "vars": {
+                "V": "volume",
+                "G": "base area (Grundfläche)",
+                "h": "height"
+            }
+        },
+        "cylinder": {
+            "name": "Cylinder (Zylinder)",
+            "note": "Volume πr²h; lateral surface (Mantel) M = 2πrh; surface O = 2πr² + 2πrh.",
+            "vars": {
+                "V": "volume",
+                "r": "radius",
+                "h": "height"
+            }
+        },
+        "pyramid": {
+            "name": "Pyramid (Pyramide)",
+            "note": "A third of base area times height.",
+            "vars": {
+                "V": "volume",
+                "G": "base area",
+                "h": "height"
+            }
+        },
+        "cone": {
+            "name": "Cone (Kegel)",
+            "note": "A third of a cylinder; s is the slant height (Mantellinie), M = πrs.",
+            "vars": {
+                "V": "volume",
+                "r": "radius",
+                "h": "height"
+            }
+        },
+        "sphere": {
+            "name": "Sphere (Kugel)",
+            "note": "Volume 4/3·πr³; surface O = 4πr².",
+            "vars": {
+                "V": "volume",
+                "r": "radius"
+            }
+        },
+        "percent": {
+            "name": "Percent (Prozentrechnung)",
+            "note": "Prozentwert W, Grundwert G (the whole, 100 %), Prozentsatz p %.",
+            "vars": {
+                "W": "part (Prozentwert)",
+                "G": "whole (Grundwert)",
+                "p": "percentage (Prozentsatz)"
+            },
+            "methods": [
+                "Formula: W = G · p/100. 15 % of 80 €: W = 80 € · 15/100 = 12 €.",
+                "Rule of three (Dreisatz): 100 % ≙ 80 €, 1 % ≙ 0.80 €, 15 % ≙ 12 €.",
+                "Growth factor: increase by p % means times (1 + p/100), decrease times (1 − p/100). 80 € + 15 % = 80 € · 1.15 = 92 €."
+            ]
+        },
+        "interest": {
+            "name": "Interest for a year (Jahreszinsen)",
+            "note": "Interest Z on the capital K at the rate p % per year.",
+            "vars": {
+                "Z": "interest (Zinsen)",
+                "K": "capital (Kapital)",
+                "p": "interest rate (Zinssatz)"
+            }
+        },
+        "interestDays": {
+            "name": "Interest for days (Tageszinsen)",
+            "note": "German banking method: every month has 30 days, the year 360 (t in days).",
+            "vars": {
+                "Z": "interest",
+                "K": "capital",
+                "p": "interest rate per year",
+                "t": "days"
+            }
+        },
+        "compound": {
+            "name": "Compound interest (Zinseszins)",
+            "note": "The interest is added each year and earns interest too.",
+            "vars": {
+                "K_n": "capital after n years",
+                "K_0": "starting capital",
+                "p": "interest rate",
+                "n": "years"
+            }
+        },
+        "growth": {
+            "name": "Exponential growth and decay",
+            "note": "y₀ at the start, times a for each step: a > 1 grows, 0 < a < 1 shrinks.",
+            "vars": {
+                "y": "value after x steps",
+                "y_0": "starting value",
+                "a": "growth factor",
+                "x": "number of steps"
+            }
+        },
+        "growthPercent": {
+            "name": "Growth factor from percent",
+            "note": "Growth by p % per step; for decrease use a = 1 − p/100.",
+            "vars": {
+                "a": "growth factor",
+                "p": "growth rate"
+            }
+        },
+        "speed": {
+            "name": "Speed (Geschwindigkeit)",
+            "note": "For a uniform motion: distance per time. 1 m/s = 3.6 km/h.",
+            "vars": {
+                "v": "speed",
+                "s": "distance (Weg)",
+                "t": "time"
+            }
+        },
+        "acceleration": {
+            "name": "Acceleration (Beschleunigung)",
+            "note": "Change of speed per time.",
+            "vars": {
+                "a": "acceleration",
+                "Δv": "change of speed",
+                "Δt": "time it takes"
+            }
+        },
+        "accelDistance": {
+            "name": "Uniformly accelerated motion",
+            "note": "Starting from rest: s = ½at², v = a·t, and v = √(2as).",
+            "vars": {
+                "s": "distance",
+                "a": "acceleration",
+                "t": "time"
+            }
+        },
+        "freeFall": {
+            "name": "Free fall (freier Fall)",
+            "note": "Without air resistance, from rest; g = 9.81 m/s².",
+            "vars": {
+                "h": "height fallen",
+                "g": "gravitational acceleration",
+                "t": "time"
+            }
+        },
+        "circularSpeed": {
+            "name": "Speed on a circle",
+            "note": "One turn (circumference 2πr) in the period T.",
+            "vars": {
+                "v": "speed",
+                "r": "radius",
+                "T": "period (Umlaufdauer)"
+            }
+        },
+        "momentum": {
+            "name": "Momentum (Impuls)",
+            "note": "Mass times velocity.",
+            "vars": {
+                "p": "momentum",
+                "m": "mass",
+                "v": "speed"
+            }
+        },
+        "newton": {
+            "name": "Newton's second law (Grundgleichung der Mechanik)",
+            "note": "Force = mass × acceleration; 1 N = 1 kg·m/s².",
+            "vars": {
+                "F": "force",
+                "m": "mass",
+                "a": "acceleration"
+            }
+        },
+        "weight": {
+            "name": "Weight (Gewichtskraft)",
+            "note": "In Germany g = 9.81 N/kg (Ortsfaktor).",
+            "vars": {
+                "F_G": "weight force",
+                "m": "mass",
+                "g": "gravitational field strength (Ortsfaktor)"
+            }
+        },
+        "spring": {
+            "name": "Hooke's law (Hookesches Gesetz)",
+            "note": "Within the elastic range the extension s is proportional to the force; D is the spring constant (Federhärte).",
+            "vars": {
+                "F": "force",
+                "D": "spring constant (Federhärte)",
+                "s": "extension"
+            }
+        },
+        "lever": {
+            "name": "Law of the lever (Hebelgesetz)",
+            "note": "In balance: force times its lever arm (Kraftarm) on one side equals that on the other.",
+            "vars": {
+                "F_1": "force 1",
+                "a_1": "lever arm 1",
+                "F_2": "force 2",
+                "a_2": "lever arm 2"
+            }
+        },
+        "torque": {
+            "name": "Torque (Drehmoment)",
+            "note": "Force times the lever arm (at right angles to the force).",
+            "vars": {
+                "M": "torque",
+                "F": "force",
+                "a": "lever arm"
+            }
+        },
+        "centripetal": {
+            "name": "Centripetal force (Zentripetalkraft)",
+            "note": "The force that keeps a body on a circle.",
+            "vars": {
+                "F_Z": "centripetal force",
+                "m": "mass",
+                "v": "speed",
+                "r": "radius"
+            }
+        },
+        "density": {
+            "name": "Density (Dichte)",
+            "note": "Mass per volume. Water ≈ 1.00 g/cm³; 1 g/cm³ = 1000 kg/m³.",
+            "vars": {
+                "rho": "density",
+                "m": "mass",
+                "V": "volume"
+            }
+        },
+        "pressure": {
+            "name": "Pressure (Druck)",
+            "note": "Force per area; 1 Pa = 1 N/m², 1 bar = 100 000 Pa.",
+            "vars": {
+                "p": "pressure",
+                "F": "force",
+                "A": "area"
+            }
+        },
+        "hydrostatic": {
+            "name": "Pressure in liquids (Schweredruck)",
+            "note": "Grows with the depth h; does not depend on the shape of the container.",
+            "vars": {
+                "p": "pressure",
+                "rho": "density of the liquid",
+                "g": "Ortsfaktor",
+                "h": "depth"
+            }
+        },
+        "buoyancy": {
+            "name": "Buoyancy (Auftrieb, Archimedes)",
+            "note": "Equals the weight of the displaced fluid.",
+            "vars": {
+                "F_A": "buoyant force",
+                "rho_Fl": "density of the fluid",
+                "g": "Ortsfaktor",
+                "V": "displaced volume"
+            }
+        },
+        "work": {
+            "name": "Work (Arbeit)",
+            "note": "Force along the path times the distance; 1 J = 1 N·m.",
+            "vars": {
+                "W": "work",
+                "F": "force",
+                "s": "distance"
+            }
+        },
+        "liftingWork": {
+            "name": "Lifting work (Hubarbeit)",
+            "note": "Weight times height.",
+            "vars": {
+                "W": "work",
+                "m": "mass",
+                "g": "Ortsfaktor",
+                "h": "height"
+            }
+        },
+        "kinetic": {
+            "name": "Kinetic energy (Bewegungsenergie)",
+            "note": "Doubling the speed quadruples it.",
+            "vars": {
+                "E_kin": "kinetic energy",
+                "m": "mass",
+                "v": "speed"
+            }
+        },
+        "potential": {
+            "name": "Potential energy (Höhenenergie)",
+            "note": "Relative to the height you count from.",
+            "vars": {
+                "E_pot": "potential energy",
+                "m": "mass",
+                "g": "Ortsfaktor",
+                "h": "height"
+            }
+        },
+        "springEnergy": {
+            "name": "Elastic energy (Spannenergie)",
+            "note": "Stored in a stretched spring.",
+            "vars": {
+                "E_Sp": "elastic energy",
+                "D": "spring constant",
+                "s": "extension"
+            }
+        },
+        "power": {
+            "name": "Power (Leistung)",
+            "note": "Work per time; also P = F·v. 1 W = 1 J/s.",
+            "vars": {
+                "P": "power",
+                "W": "work",
+                "t": "time"
+            }
+        },
+        "efficiency": {
+            "name": "Efficiency (Wirkungsgrad)",
+            "note": "Useful energy (or power) by the energy put in; always less than 1 (100 %).",
+            "vars": {
+                "eta": "efficiency",
+                "E_nutz": "useful energy",
+                "E_zu": "energy put in"
+            }
+        },
+        "heat": {
+            "name": "Heat (Wärme)",
+            "note": "Energy to warm a mass m by ΔT. Water: c = 4.19 kJ/(kg·K) = 4190 J/(kg·K).",
+            "vars": {
+                "Q": "heat",
+                "c": "specific heat capacity",
+                "m": "mass",
+                "ΔT": "temperature change (in K, the same number as in °C)"
+            }
+        },
+        "kelvin": {
+            "name": "Celsius to Kelvin",
+            "note": "0 K = −273.15 °C (absolute zero).",
+            "vars": {
+                "T": "temperature in K",
+                "theta": "temperature in °C"
+            }
+        },
+        "expansion": {
+            "name": "Thermal expansion (Längenausdehnung)",
+            "note": "α is the linear expansion coefficient of the material (steel ≈ 0.000012 1/K).",
+            "vars": {
+                "Δl": "change in length",
+                "alpha": "expansion coefficient",
+                "l_0": "starting length",
+                "ΔT": "temperature change"
+            }
+        },
+        "ohm": {
+            "name": "Ohm's law (Ohmsches Gesetz)",
+            "note": "Voltage = resistance × current, for a resistor at constant temperature.",
+            "vars": {
+                "U": "voltage",
+                "R": "resistance",
+                "I": "current"
+            }
+        },
+        "electricPower": {
+            "name": "Electric power",
+            "note": "Voltage times current.",
+            "vars": {
+                "P": "power",
+                "U": "voltage",
+                "I": "current"
+            }
+        },
+        "electricEnergy": {
+            "name": "Electric energy",
+            "note": "1 kWh = 3.6 MJ.",
+            "vars": {
+                "W": "energy",
+                "U": "voltage",
+                "I": "current",
+                "t": "time"
+            }
+        },
+        "charge": {
+            "name": "Charge (Ladung)",
+            "note": "Current times time; 1 C = 1 A·s.",
+            "vars": {
+                "Q": "charge",
+                "I": "current",
+                "t": "time"
+            }
+        },
+        "wireResistance": {
+            "name": "Resistance of a wire",
+            "note": "ρ is the resistivity (copper ≈ 0.0178 Ω·mm²/m).",
+            "vars": {
+                "R": "resistance",
+                "rho": "resistivity",
+                "l": "length",
+                "A": "cross-section"
+            }
+        },
+        "series": {
+            "name": "Resistors in series (Reihenschaltung)",
+            "note": "The resistances add up; the current is the same everywhere, the voltages add up.",
+            "vars": {
+                "R": "total resistance",
+                "R_1": "resistor 1",
+                "R_2": "resistor 2"
+            }
+        },
+        "parallel": {
+            "name": "Resistors in parallel (Parallelschaltung)",
+            "note": "The reciprocals add up; the voltage is the same, the currents add up.",
+            "vars": {
+                "R": "total resistance",
+                "R_1": "resistor 1",
+                "R_2": "resistor 2"
+            }
+        },
+        "transformer": {
+            "name": "Transformer (Transformator)",
+            "note": "Ideal transformer: the voltages are in the ratio of the turns, the currents the other way round.",
+            "vars": {
+                "U_1": "primary voltage",
+                "U_2": "secondary voltage",
+                "N_1": "primary turns",
+                "N_2": "secondary turns"
+            }
+        },
+        "frequency": {
+            "name": "Frequency (Frequenz)",
+            "note": "The reciprocal of the period T.",
+            "vars": {
+                "f": "frequency",
+                "T": "period"
+            }
+        },
+        "wave": {
+            "name": "Wave speed",
+            "note": "Wavelength times frequency; light: c ≈ 3·10⁸ m/s, sound in air ≈ 343 m/s.",
+            "vars": {
+                "c": "speed of the wave",
+                "lambda": "wavelength",
+                "f": "frequency"
+            }
+        },
+        "lens": {
+            "name": "Lens equation (Linsengleichung)",
+            "note": "For a thin converging lens: f focal length (Brennweite), g object distance (Gegenstandsweite), b image distance (Bildweite).",
+            "vars": {
+                "f": "focal length",
+                "g": "object distance",
+                "b": "image distance"
+            }
+        },
+        "magnification": {
+            "name": "Image size (Abbildungsgleichung)",
+            "note": "Image size B to object size G as image distance b to object distance g.",
+            "vars": {
+                "B": "image size",
+                "G": "object size",
+                "b": "image distance",
+                "g": "object distance"
+            }
+        },
+        "decay": {
+            "name": "Radioactive decay (Zerfallsgesetz)",
+            "note": "After each half-life Tₕ half of the nuclei are left. t and Tₕ in the same unit.",
+            "vars": {
+                "N": "nuclei left",
+                "N_0": "nuclei at the start",
+                "t": "time",
+                "T_H": "half-life"
+            }
+        },
+        "cuttingSpeed": {
+            "name": "Cutting speed (Schnittgeschwindigkeit)",
+            "note": "Turning, drilling, milling: d is the diameter of the workpiece (turning) or of the tool. The speed n from the cutting speed: n = 1000 · v꜀ / (π · d).",
+            "vars": {
+                "v_c": "cutting speed",
+                "d": "diameter",
+                "n": "speed (Drehzahl)"
+            }
+        },
+        "feedTurning": {
+            "name": "Feed rate, turning (Vorschubgeschwindigkeit)",
+            "note": "Feed per revolution times speed.",
+            "vars": {
+                "v_f": "feed rate",
+                "f": "feed per revolution",
+                "n": "speed"
+            }
+        },
+        "feedMilling": {
+            "name": "Feed rate, milling",
+            "note": "Feed per tooth times number of teeth times speed.",
+            "vars": {
+                "v_f": "feed rate",
+                "f_z": "feed per tooth",
+                "z": "number of teeth",
+                "n": "speed"
+            }
+        },
+        "mainTime": {
+            "name": "Machining time, turning (Hauptnutzungszeit)",
+            "note": "L is the tool path with approach and overrun (L = l + lₐ + lᵤ), i the number of cuts.",
+            "vars": {
+                "t_h": "machining time",
+                "L": "tool path",
+                "i": "number of cuts",
+                "n": "speed",
+                "f": "feed per revolution"
+            }
+        },
+        "cuttingPower": {
+            "name": "Cutting power (Schnittleistung)",
+            "note": "Cutting force times cutting speed; with the cutting speed in m/min and the power in kW.",
+            "vars": {
+                "P_c": "cutting power",
+                "F_c": "cutting force",
+                "v_c": "cutting speed"
+            }
+        },
+        "stress": {
+            "name": "Stress (Spannung)",
+            "note": "Force per cross-section S; 1 N/mm² = 1 MPa.",
+            "vars": {
+                "sigma": "tensile / compressive stress",
+                "F": "force",
+                "S": "cross-section"
+            }
+        },
+        "tensileStrength": {
+            "name": "Tensile strength (Zugfestigkeit)",
+            "note": "The highest force of the tensile test by the starting cross-section.",
+            "vars": {
+                "R_m": "tensile strength",
+                "F_m": "maximum force",
+                "S_0": "starting cross-section"
+            }
+        },
+        "elongation": {
+            "name": "Strain (Dehnung)",
+            "note": "Change in length by the starting length, in %.",
+            "vars": {
+                "epsilon": "strain",
+                "Δl": "change in length",
+                "l_0": "starting length"
+            }
+        },
+        "hooke": {
+            "name": "Hooke's law for materials",
+            "note": "In the elastic range; ε as a plain ratio (not %). Steel: E ≈ 210 000 N/mm².",
+            "vars": {
+                "sigma": "stress",
+                "E": "modulus of elasticity",
+                "epsilon": "strain (ratio)"
+            }
+        },
+        "allowable": {
+            "name": "Allowable stress (zulässige Spannung)",
+            "note": "Yield strength by the safety factor ν (Sicherheitszahl).",
+            "vars": {
+                "sigma_zul": "allowable stress",
+                "R_e": "yield strength (Streckgrenze)",
+                "nu": "safety factor"
+            }
+        },
+        "shear": {
+            "name": "Shear stress (Scherspannung)",
+            "note": "Force by the sheared cross-section.",
+            "vars": {
+                "tau_a": "shear stress",
+                "F": "force",
+                "S": "sheared cross-section"
+            }
+        },
+        "mass": {
+            "name": "Mass from volume and density",
+            "note": "Steel ≈ 7.85 g/cm³, aluminium ≈ 2.7 g/cm³.",
+            "vars": {
+                "m": "mass",
+                "V": "volume",
+                "rho": "density"
+            }
+        },
+        "beltDrive": {
+            "name": "Belt drive (Riementrieb)",
+            "note": "Without slip: diameter times speed is the same on both pulleys.",
+            "vars": {
+                "d_1": "driving pulley",
+                "n_1": "driving speed",
+                "d_2": "driven pulley",
+                "n_2": "driven speed"
+            }
+        },
+        "ratio": {
+            "name": "Transmission ratio (Übersetzung)",
+            "note": "i > 1 slows down (Übersetzung ins Langsame), i < 1 speeds up.",
+            "vars": {
+                "i": "ratio",
+                "n_1": "driving speed",
+                "n_2": "driven speed"
+            }
+        },
+        "gearDrive": {
+            "name": "Gear drive (Zahnradtrieb)",
+            "note": "Number of teeth times speed is the same on both gears.",
+            "vars": {
+                "z_1": "teeth, driving gear",
+                "n_1": "driving speed",
+                "z_2": "teeth, driven gear",
+                "n_2": "driven speed"
+            }
+        },
+        "totalRatio": {
+            "name": "Total ratio",
+            "note": "Of several stages: the product of their ratios.",
+            "vars": {
+                "i": "total ratio",
+                "i_1": "first stage",
+                "i_2": "second stage"
+            }
+        },
+        "powerTorque": {
+            "name": "Power from torque",
+            "note": "With P in kW, M in N·m and n in 1/min. In SI units: P = 2π·n·M (n in 1/s).",
+            "vars": {
+                "P": "power",
+                "M": "torque",
+                "n": "speed"
+            }
+        },
+        "pitchDiameter": {
+            "name": "Pitch diameter (Teilkreisdurchmesser)",
+            "note": "Spur gear: module times number of teeth.",
+            "vars": {
+                "d": "pitch diameter",
+                "m": "module",
+                "z": "number of teeth"
+            }
+        },
+        "tipDiameter": {
+            "name": "Tip diameter (Kopfkreisdurchmesser)",
+            "note": "dₐ = d + 2m.",
+            "vars": {
+                "d_a": "tip diameter",
+                "m": "module",
+                "z": "number of teeth"
+            }
+        },
+        "rootDiameter": {
+            "name": "Root diameter (Fußkreisdurchmesser)",
+            "note": "With the tip clearance c = 0.25 · m the root diameter is the pitch diameter minus 2.5 · m.",
+            "vars": {
+                "d_f": "root diameter",
+                "m": "module",
+                "z": "number of teeth"
+            }
+        },
+        "toothHeight": {
+            "name": "Tooth height (Zahnhöhe)",
+            "note": "Addendum m plus dedendum 1.25·m.",
+            "vars": {
+                "h": "tooth height",
+                "m": "module"
+            }
+        },
+        "circularPitch": {
+            "name": "Pitch (Teilung)",
+            "note": "The distance from tooth to tooth on the pitch circle.",
+            "vars": {
+                "p": "pitch",
+                "m": "module"
+            }
+        },
+        "centerDistance": {
+            "name": "Centre distance (Achsabstand)",
+            "note": "Of two external spur gears with the same module.",
+            "vars": {
+                "a": "centre distance",
+                "m": "module",
+                "z_1": "teeth, gear 1",
+                "z_2": "teeth, gear 2"
+            }
+        },
+        "tolerance": {
+            "name": "Tolerance (Toleranz)",
+            "note": "Upper limit (Höchstmaß) minus lower limit (Mindestmaß).",
+            "vars": {
+                "T": "tolerance",
+                "G_o": "upper limit of size",
+                "G_u": "lower limit of size"
+            }
+        },
+        "maxClearance": {
+            "name": "Maximum clearance (Höchstspiel)",
+            "note": "Largest bore minus smallest shaft. B = bore (Bohrung), W = shaft (Welle).",
+            "vars": {
+                "P_SH": "maximum clearance",
+                "G_oB": "upper limit of the bore",
+                "G_uW": "lower limit of the shaft"
+            }
+        },
+        "minClearance": {
+            "name": "Minimum clearance (Mindestspiel)",
+            "note": "Smallest bore minus largest shaft; negative means interference (Übermaß).",
+            "vars": {
+                "P_SM": "minimum clearance",
+                "G_uB": "lower limit of the bore",
+                "G_oW": "upper limit of the shaft"
+            }
+        },
+        "taper": {
+            "name": "Taper (Kegelverjüngung)",
+            "note": "C = 1 : x means the diameter changes by 1 mm over x mm length.",
+            "vars": {
+                "C": "taper",
+                "D": "large diameter",
+                "d": "small diameter",
+                "L": "taper length"
+            }
+        },
+        "taperAngle": {
+            "name": "Taper angle (Kegelwinkel)",
+            "note": "α/2 is the setting angle (Einstellwinkel) for turning the taper.",
+            "vars": {
+                "alpha": "taper angle",
+                "D": "large diameter",
+                "d": "small diameter",
+                "L": "taper length"
+            }
+        },
+        "absolutePressure": {
+            "name": "Absolute pressure",
+            "note": "Gauges show the overpressure pₑ; the ambient pressure is about 1 bar (1.013 bar).",
+            "vars": {
+                "p_abs": "absolute pressure",
+                "p_e": "overpressure (gauge)",
+                "p_amb": "ambient pressure"
+            }
+        },
+        "pistonArea": {
+            "name": "Piston area",
+            "note": "Return stroke (rod side): A = π · (D² − d²) / 4 with D the piston and d the rod diameter.",
+            "vars": {
+                "A": "piston area",
+                "d": "piston diameter"
+            }
+        },
+        "pistonForce": {
+            "name": "Effective piston force (Kolbenkraft)",
+            "note": "1 bar = 10 N/cm², so with pₑ in bar and A in cm² the factor 10 gives newtons; η is the efficiency (friction).",
+            "vars": {
+                "F": "effective force",
+                "p_e": "overpressure",
+                "A": "piston area",
+                "eta": "efficiency"
+            }
+        },
+        "airConsumption": {
+            "name": "Air consumption (Luftverbrauch)",
+            "note": "The compressed volume of one stroke direction, turned into free air by the pressure ratio. Double-acting cylinders: add both directions (the rod side with the smaller ring area); divide by 1000 for l/min.",
+            "vars": {
+                "Q": "air consumption",
+                "A": "piston area",
+                "s": "stroke",
+                "n": "strokes per minute",
+                "p_e": "overpressure",
+                "p_amb": "ambient pressure"
+            }
+        },
+        "boyle": {
+            "name": "Boyle-Mariotte",
+            "note": "At constant temperature; with absolute pressures.",
+            "vars": {
+                "p_1": "pressure before",
+                "V_1": "volume before",
+                "p_2": "pressure after",
+                "V_2": "volume after"
+            }
+        },
+        "hydraulicPress": {
+            "name": "Hydraulic press",
+            "note": "The pressure is the same everywhere: small force on a small piston, large force on a large one. The paths go the other way (s₁A₁ = s₂A₂).",
+            "vars": {
+                "F_1": "force 1",
+                "A_1": "area 1",
+                "F_2": "force 2",
+                "A_2": "area 2"
+            }
+        },
+        "pistonSpeed": {
+            "name": "Piston speed",
+            "note": "Flow rate by piston area.",
+            "vars": {
+                "v": "piston speed",
+                "Q": "flow rate",
+                "A": "piston area"
+            }
+        },
+        "continuity": {
+            "name": "Continuity (Kontinuitätsgleichung)",
+            "note": "The same volume flows through every cross-section: narrower means faster.",
+            "vars": {
+                "A_1": "cross-section 1",
+                "v_1": "speed 1",
+                "A_2": "cross-section 2",
+                "v_2": "speed 2"
+            }
+        },
+        "hydraulicPower": {
+            "name": "Hydraulic power",
+            "note": "Pressure times flow rate.",
+            "vars": {
+                "P": "power",
+                "p": "pressure",
+                "Q": "flow rate"
+            }
+        },
+        "amount": {
+            "name": "Amount of substance (Stoffmenge)",
+            "note": "Mass by molar mass; the molar mass is in the periodic table (H₂O: 18.02 g/mol).",
+            "vars": {
+                "n": "amount of substance",
+                "m": "mass",
+                "M": "molar mass"
+            }
+        },
+        "particles": {
+            "name": "Number of particles",
+            "note": "Avogadro constant Nₐ = 6.022·10²³ 1/mol.",
+            "vars": {
+                "N": "number of particles",
+                "n": "amount of substance",
+                "N_A": "Avogadro constant"
+            }
+        },
+        "molarVolume": {
+            "name": "Molar volume of gases",
+            "note": "At 0 °C and 1013 hPa (standard conditions) the molar volume is 22.4 l/mol; at 20 °C about 24.0 l/mol.",
+            "vars": {
+                "V": "volume",
+                "n": "amount of substance",
+                "V_m": "molar volume"
+            }
+        },
+        "idealGas": {
+            "name": "Ideal gas law",
+            "note": "Pressure in Pa, volume in m³, temperature in K.",
+            "vars": {
+                "p": "pressure",
+                "V": "volume",
+                "n": "amount of substance",
+                "R": "gas constant",
+                "T": "temperature"
+            }
+        },
+        "concentration": {
+            "name": "Concentration (Stoffmengenkonzentration)",
+            "note": "Amount of substance per volume of solution.",
+            "vars": {
+                "c": "concentration",
+                "n": "amount of substance",
+                "V": "volume of the solution"
+            }
+        },
+        "massFraction": {
+            "name": "Mass fraction (Massenanteil)",
+            "note": "Part of the mass of the mixture, in %.",
+            "vars": {
+                "w": "mass fraction",
+                "m_i": "mass of the part",
+                "m": "mass of the mixture"
+            }
+        },
+        "ph": {
+            "name": "pH value",
+            "note": "Negative decimal logarithm of the H₃O⁺ concentration (in mol/l). At 25 °C: pH 7 neutral, below acidic, above basic; pH + pOH = 14.",
+            "vars": {
+                "pH": "pH value",
+                "c": "H₃O⁺ concentration"
+            }
+        }
+    }
+}

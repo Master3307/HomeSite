@@ -14,3 +14,5 @@ keep that license. Third-party parts keep their own licenses:
 - Emoji: Twemoji (CC-BY 4.0), https://github.com/jdecked/twemoji
 - Material Symbols (Apache 2.0), Google Sans Flex (OFL 1.1), Nunito (OFL 1.1),
   JetBrains Mono Nerd Font (OFL 1.1)
+- Element data: PubChem periodic table (public domain, NIH / NCBI),
+  https://pubchem.ncbi.nlm.nih.gov/periodic-table/
