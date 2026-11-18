@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next'
 
 import TimeZonePicker from '../TimeZonePicker.jsx'
 import { WIDGETS, defaultOptions } from './widgets.jsx'
-import { LinkIcon, dashboardIconUrl, loadIconNames } from './kit.jsx'
+import EmojiIconButton from './EmojiIconButton.jsx'
+import { Glyph, LinkIcon, dashboardIconUrl, loadIconNames, useFloatingPanel } from './kit.jsx'
 import { INTEGRATION_KINDS, integrationById, integrationGet, kindsFor, loadIntegrations, useIntegrations } from '../../lib/dashIntegrations.js'
-import { MAX_ITEMS, WIDGET_LOOK_CHOICES, createId, isColor, moveWidgetToPage, normalizeLink, updateWidget, useDashSettings, visibleProviders } from '../../lib/dashSettings.js'
+import { LOOK_CHOICES, MAX_ITEMS, WIDGET_LOOK_CHOICES, createId, isColor, moveWidgetToPage, normalizeLink, updateWidget, useDashSettings, visibleProviders } from '../../lib/dashSettings.js'
 
 /*
  * Editing one widget: its title, the fields its type asks for (widgets.jsx
@@ -58,6 +59,8 @@ function IconPicker({ value, onPick, onClose }) {
     const onDown = (event) => !ref.current?.contains(event.target) && onClose()
     const onKey = (event) => {
       if (event.key === 'Escape') {
+        // Only the picker closes, not the dialog around it (its Escape is the browser's default action).
+        event.preventDefault()
         event.stopPropagation()
         onClose()
       }
@@ -97,12 +100,16 @@ function IconPicker({ value, onPick, onClose }) {
 function IconInput({ value, onChange, url, label }) {
   const { t } = useTranslation('dash')
   const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  // The picker floats over the dialog instead of being cut off by it.
+  useFloatingPanel(ref, '.dash-iconpicker')
   return (
-    <span className="dash-iconinput">
+    <span ref={ref} className="dash-iconinput">
       <button type="button" className="dash-iconinput__preview" onClick={() => setOpen(!open)} aria-label={t('fields.iconPick')} title={t('fields.iconPick')} aria-expanded={open}>
         <LinkIcon url={url} icon={value} size={20} label={label} />
       </button>
       <input value={value ?? ''} onChange={(event) => onChange(event.target.value.slice(0, 300))} placeholder={t('fields.iconPlaceholder')} aria-label={t('fields.icon')} />
+      <EmojiIconButton onPick={(icon) => onChange(icon)} />
       {open && (
         <IconPicker
           value={value}
@@ -278,7 +285,7 @@ function PlaceField({ options, onChange }) {
 
 /* ---------- integrations ---------- */
 
-function IntegrationField({ field, value, onChange }) {
+function IntegrationField({ field, value, legacy = null, onChange }) {
   const { t } = useTranslation('dash')
   const { items, status } = useIntegrations()
   useEffect(() => {
@@ -289,7 +296,8 @@ function IntegrationField({ field, value, onChange }) {
   const label = field.kind ? t('fields.integrationOf', { kind: INTEGRATION_KINDS[field.kind].name }) : t('fields.integration')
   if (status === 'guest') return <p className="dash-hint">{t('widgets.integration.login')}</p>
   if (field.multi) {
-    const chosen = Array.isArray(value) ? value : []
+    // Older widgets had one `integration`: it counts as chosen until the list is changed.
+    const chosen = [...new Set([...(Array.isArray(value) ? value : []), legacy].filter(Boolean))]
     return (
       <div className="dash-field">
         <span className="dash-field__label">{label}</span>
@@ -431,8 +439,43 @@ function Field({ field, options, setOption, setOptions }) {
           <PlaceField options={options} onChange={setOptions} />
         </div>
       )
+    case 'color':
+      return (
+        <div className="dash-field dash-field--inline">
+          <span className="dash-field__label">{label}</span>
+          <span className="dash-row">
+            <input type="color" value={isColor(value) ? value : '#ffffff'} onChange={(event) => setOption(field.key, event.target.value)} aria-label={label} />
+            {isColor(value) && (
+              <button type="button" className="dash-link-button" onClick={() => setOption(field.key, '')}>
+                {t('fields.colorReset')}
+              </button>
+            )}
+          </span>
+        </div>
+      )
+    case 'searchwidget': {
+      const boxes = settings.widgets.filter((item) => item.type === 'search')
+      return (
+        <label className="dash-field" htmlFor={id}>
+          <span className="dash-field__label">{label}</span>
+          <select id={id} value={value ?? ''} onChange={(event) => setOption(field.key, event.target.value)}>
+            <option value="">{t('fields.searchboxChoose')}</option>
+            {boxes.map((item) => {
+              const provider = settings.providers.find((entry) => entry.id === item.options.providerId)
+              const pageIndex = settings.pages.findIndex((entry) => entry.id === item.page)
+              return (
+                <option key={item.id} value={item.id}>
+                  {item.title || provider?.name || t('widgets.search.name')} · {settings.pages[pageIndex]?.name || t('pages.untitled', { number: pageIndex + 1 })}
+                </option>
+              )
+            })}
+          </select>
+          {!boxes.length && <span className="dash-hint">{t('fields.searchboxNone')}</span>}
+        </label>
+      )
+    }
     case 'integration':
-      return <IntegrationField field={field} value={value} onChange={(next) => setOption(field.key, next)} />
+      return <IntegrationField field={field} value={value} legacy={field.multi ? options.integration : null} onChange={(next) => (field.multi ? setOptions({ [field.key]: next, integration: null }) : setOption(field.key, next))} />
     case 'entities':
       return <EntitiesField value={value} integration={options.integration} onChange={(next) => setOption(field.key, next)} />
     case 'code':
@@ -550,7 +593,39 @@ export default function DashWidgetEditor({ widget, onClose }) {
               </div>
               <Segment label={t('editor.padding')} value={look.padding ?? 'normal'} choices={WIDGET_LOOK_CHOICES.padding} prefix="editor.paddings" onChange={(padding) => setLook({ ...look, padding })} />
               <Toggle label={t('editor.titleIcon')} checked={look.titleIcon !== false} onChange={(titleIcon) => setLook({ ...look, titleIcon })} />
+              {look.titleIcon !== false && (
+                <div className="dash-field dash-field--inline">
+                  <span className="dash-field__label">{t('editor.ownIcon')}</span>
+                  <span className="dash-row">
+                    <span className="dash-glyph-preview">
+                      <Glyph icon={look.icon} fallback={spec.icon} />
+                    </span>
+                    <EmojiIconButton onPick={(icon) => setLook({ ...look, icon })} label={t('editor.ownIconPick')} />
+                    {look.icon && (
+                      <button type="button" className="dash-link-button" onClick={() => setLook({ ...look, icon: '' })}>
+                        {t('editor.ownIconReset')}
+                      </button>
+                    )}
+                  </span>
+                </div>
+              )}
               <Toggle label={t('editor.hideOnPhone')} checked={Boolean(look.hideOnPhone)} onChange={(hideOnPhone) => setLook({ ...look, hideOnPhone })} />
+              <label className="dash-field">
+                <span className="dash-field__label">{t('editor.font')}</span>
+                <select value={look.font ?? 'inherit'} onChange={(event) => setLook({ ...look, font: event.target.value })}>
+                  {['inherit', ...LOOK_CHOICES.font].map((font) => (
+                    <option key={font} value={font}>
+                      {font === 'inherit' ? t('editor.likeTheRest') : t(`settings.choices.${font}`)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Segment label={t('editor.rolling')} value={look.rolling ?? 'inherit'} choices={['inherit', 'on', 'off']} prefix="editor.rollings" onChange={(rolling) => setLook({ ...look, rolling })} />
+              <label className="dash-field">
+                <span className="dash-field__label">{t('editor.css')}</span>
+                <textarea className="dash-code dash-code--small" value={look.css ?? ''} spellCheck={false} maxLength={6000} placeholder={'& { border-color: hotpink; }\n.dash-widget__title { color: gold; }'} onChange={(event) => setLook({ ...look, css: event.target.value })} />
+                <span className="dash-hint">{t('editor.cssHelp')}</span>
+              </label>
               {pages.length > 1 && (
                 <label className="dash-field">
                   <span className="dash-field__label">{t('editor.page')}</span>
@@ -567,14 +642,11 @@ export default function DashWidgetEditor({ widget, onClose }) {
           </div>
           <aside className="dash-editor__preview" aria-label={t('editor.preview')}>
             <p className="dash-field__label">{t('editor.preview')}</p>
-            <div className={`dash-widget dash-widget--${widget.type} dash-widget--style-${preview.look.style ?? 'inherit'}${preview.look.padding === 'none' ? ' dash-widget--flush' : ''}`} style={isColor(preview.look.accent) ? { '--dash-accent': preview.look.accent } : undefined}>
+            {preview.look.css?.trim() && <style>{`.dash-widget.dash-widget[data-widget="preview-${widget.id}"] {\n${String(preview.look.css).replaceAll('</', '<\\/')}\n}`}</style>}
+            <div data-widget={`preview-${widget.id}`} className={`dash-widget dash-widget--${widget.type} dash-widget--style-${preview.look.style ?? 'inherit'}${preview.look.padding === 'none' ? ' dash-widget--flush' : ''}${preview.look.font && preview.look.font !== 'inherit' ? ` dash-widget--font-${preview.look.font}` : ''}`} style={isColor(preview.look.accent) ? { '--dash-accent': preview.look.accent } : undefined}>
               {(title || spec.titled) && (
                 <h2 className="dash-widget__title">
-                  {preview.look.titleIcon !== false && (
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      {spec.icon}
-                    </span>
-                  )}
+                  {preview.look.titleIcon !== false && <Glyph icon={preview.look.icon} fallback={spec.icon} />}
                   {title || t(`widgets.${widget.type}.name`)}
                 </h2>
               )}

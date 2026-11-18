@@ -94,7 +94,8 @@ export default function CultPrivacy() {
               <strong>Your account:</strong> the Discord details above, when you joined and last logged in, and the last time you were seen in the server.
             </li>
             <li>
-              <strong>Your settings:</strong> theme, language, clock, time zone, colour, animations and your own CSS, so they follow you to other devices.
+              <strong>Your settings:</strong> theme, language, clock, time zone, colour, animations, your own CSS and whether pages should open in the
+              app on Android, so they follow you to other devices.
             </li>
             <li>
               <strong>Your profile:</strong> public or private, your bongo avatar, the picture or GIF you upload for it, and your saved looks.
@@ -127,13 +128,16 @@ export default function CultPrivacy() {
               (links, notes, to-dos, places for the weather, feeds and repositories you follow), so it's the same on every device. Feeds are fetched
               for you by our server, because most feeds can't be read straight from a browser; it only sends their address, keeps the answer 10
               minutes in memory (shared by everyone reading the same feed) and never writes down who asked. Weather, prices, Hacker News, releases
-              and favicons are loaded by your browser straight from those services.
+              and favicons are loaded by your browser straight from those services. Your recent searches in the dash's search bar stay in your
+              browser only (never sent to us; turn them off or clear them there). The calculator works in your browser too; if you divide by zero,
+              it opens the Wikipedia page about that kind of mistake (only which kind, never what you typed).
             </li>
             <li>
               <strong>Dash integrations,</strong> only if you add some: the address of each of your services (like your Navidrome, Jellyfin or
               Home Assistant), a name, a user name if it needs one, and its password, token or key. Those secrets are encrypted on our server and never
               sent back to any browser, not even yours; our server uses them to ask your service for what your widgets show, and keeps the answers a
-              few seconds in memory. Removing an integration deletes it right away.
+              few seconds in memory. Files you open or upload in a files widget (WebDAV, Nextcloud, copyparty) pass through our server on their way
+              and are never kept there. Removing an integration deletes it right away.
             </li>
             <li>
               <strong>The setup on /card:</strong> its "Network" page shows you your own IP address and roughly where it is (city,

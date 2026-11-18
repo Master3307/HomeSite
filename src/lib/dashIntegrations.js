@@ -110,3 +110,19 @@ export const integrationPost = (id, action, body) => call(`/dash/integrations/${
 
 /** A cover picture through the account API (the service's login stays on the server). */
 export const integrationImage = (id, item, size = 300) => `${ACCOUNT_API_URL}/dash/integrations/${encodeURIComponent(id)}/image?item=${encodeURIComponent(item)}&size=${size}`
+
+/** A file of a files integration, downloaded through the account API (its login stays on the server). */
+export const integrationFileUrl = (id, path) => `${ACCOUNT_API_URL}/dash/integrations/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`
+
+/** Uploads a file into a folder of a files integration (50 MB at most). */
+export async function uploadToIntegration(id, folder, file) {
+  if (file.size > 50 * 1024 * 1024) throw new Error('too-big')
+  const response = await accountFetch(`/dash/integrations/${encodeURIComponent(id)}/upload?path=${encodeURIComponent(folder)}&name=${encodeURIComponent(file.name)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: file,
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw Object.assign(new Error(data.error || `HTTP ${response.status}`), { status: response.status })
+  return data
+}

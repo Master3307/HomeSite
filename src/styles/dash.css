@@ -55,18 +55,86 @@
   margin-top: 40px;
 }
 
-/* Fonts (the site sets its font on every element, so the choice goes on every element too; icons keep theirs). */
-.dash--font-rounded :not(.material-symbols-outlined),
-.dash--font-rounded {
+/* Oleo Script ships with the site (public/fonts, OFL); only the dash uses it ("display"). */
+@font-face {
+  font-family: "Oleo Script";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OleoScript-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Oleo Script";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/OleoScript-Bold.woff2") format("woff2");
+}
+
+/*
+ * Fonts: the whole dash (.dash--font-*) or one widget (.dash-widget--font-*).
+ * The site sets its font on every element, so the choice goes on every
+ * element too; icons keep theirs.
+ */
+:is(.dash--font-site, .dash-widget--font-site),
+:is(.dash--font-site, .dash-widget--font-site) :not(.material-symbols-outlined) {
+  font-family: "Google Sans Flex", "Google Sans Flex Fallback", "Google Sans Flex Fallback Android", sans-serif;
+  font-stretch: 100%;
+}
+:is(.dash--font-rounded, .dash-widget--font-rounded),
+:is(.dash--font-rounded, .dash-widget--font-rounded) :not(.material-symbols-outlined) {
   font-family: "Nunito", "Google Sans Flex", system-ui, sans-serif;
 }
-.dash--font-mono :not(.material-symbols-outlined),
-.dash--font-mono {
+:is(.dash--font-mono, .dash-widget--font-mono),
+:is(.dash--font-mono, .dash-widget--font-mono) :not(.material-symbols-outlined) {
   font-family: "JetBrainsMono Nerd Font Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
-.dash--font-system :not(.material-symbols-outlined),
-.dash--font-system {
+:is(.dash--font-system, .dash-widget--font-system),
+:is(.dash--font-system, .dash-widget--font-system) :not(.material-symbols-outlined) {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+:is(.dash--font-serif, .dash-widget--font-serif),
+:is(.dash--font-serif, .dash-widget--font-serif) :not(.material-symbols-outlined) {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
+}
+:is(.dash--font-display, .dash-widget--font-display),
+:is(.dash--font-display, .dash-widget--font-display) :not(.material-symbols-outlined) {
+  font-family: "Oleo Script", "Google Sans Flex", cursive;
+}
+/* Google Sans Flex has a width axis: the same font, narrower. */
+:is(.dash--font-condensed, .dash-widget--font-condensed),
+:is(.dash--font-condensed, .dash-widget--font-condensed) :not(.material-symbols-outlined) {
+  font-family: "Google Sans Flex", "Google Sans Flex Fallback", sans-serif;
+  font-stretch: 75%;
+}
+
+/* Digits that roll like an odometer (kit.jsx RollingText). */
+.dash-roll {
+  display: inline-flex;
+  white-space: pre;
+}
+.dash-roll__digit {
+  display: inline-block;
+  height: 1lh;
+  overflow: hidden;
+  vertical-align: top;
+}
+.dash-roll__strip {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(calc(var(--d) * -1lh));
+  transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.dash-roll__strip > span {
+  height: 1lh;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-roll__strip {
+    transition: none;
+  }
+}
+:root.motion-none .dash-roll__strip {
+  transition: none;
 }
 
 /* A colour, gradient or picture behind everything (look settings). */
@@ -634,8 +702,8 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
+  /* At its end (or with nothing to scroll), the wheel and swipes go on to the page. */
   overflow: auto;
-  overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--text-primary) 22%, transparent) transparent;
 }
@@ -655,7 +723,8 @@
 }
 .dash-widget__tools {
   position: absolute;
-  inset: 6px 6px auto;
+  /* Clear of the top edge's resize strip. */
+  inset: 10px 10px auto;
   z-index: 3;
   display: flex;
   align-items: center;
@@ -699,6 +768,10 @@
 .dash-widget__tools .dash-tool .material-symbols-outlined {
   font-size: 1.05rem;
 }
+/* Nothing real to scroll (a few pixels of rounding): not a scroll area at all (kit.jsx useFitScroll). */
+.dash .is-fit {
+  overflow: hidden !important;
+}
 .dash-board.is-editing .dash-widget__body {
   opacity: 0.5;
   pointer-events: none;
@@ -708,74 +781,156 @@
   z-index: 4;
   touch-action: none;
 }
-.dash-resize--x {
-  top: 40px;
-  right: 0;
-  bottom: 16px;
-  width: 10px;
-  cursor: ew-resize;
-}
-.dash-resize--y {
-  right: 16px;
-  bottom: 0;
-  left: 16px;
-  height: 10px;
+/* Edges: thin strips along each side (the top one under the tool bar's corners). */
+.dash-resize--n,
+.dash-resize--s {
+  right: 18px;
+  left: 18px;
+  height: 9px;
   cursor: ns-resize;
 }
-.dash-resize--xy {
-  right: 0;
+.dash-resize--n {
+  top: 0;
+}
+.dash-resize--s {
   bottom: 0;
-  width: 22px;
-  height: 22px;
+}
+.dash-resize--e,
+.dash-resize--w {
+  top: 18px;
+  bottom: 18px;
+  width: 9px;
+  cursor: ew-resize;
+}
+.dash-resize--e {
+  right: 0;
+}
+.dash-resize--w {
+  left: 0;
+}
+/* Corners. */
+.dash-resize--ne,
+.dash-resize--nw,
+.dash-resize--se,
+.dash-resize--sw {
+  width: 18px;
+  height: 18px;
+}
+.dash-resize--ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+.dash-resize--sw {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+.dash-resize--nw {
+  top: 0;
+  left: 0;
   cursor: nwse-resize;
 }
-.dash-resize--xy::after {
+.dash-resize--se {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+}
+/* Small marks show where to grab (all four corners and the middle of each side on hover). */
+.dash-resize--se::after,
+.dash-resize--sw::after,
+.dash-resize--ne::after,
+.dash-resize--nw::after {
   content: "";
   position: absolute;
-  right: 5px;
-  bottom: 5px;
-  width: 9px;
-  height: 9px;
-  border-right: 2.5px solid var(--dash-ink);
-  border-bottom: 2.5px solid var(--dash-ink);
+  width: 8px;
+  height: 8px;
+  border-color: var(--dash-ink);
+  border-style: solid;
+  border-width: 0;
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+.dash-resize--se::after {
+  right: 4px;
+  bottom: 4px;
+  border-right-width: 2.5px;
+  border-bottom-width: 2.5px;
   border-bottom-right-radius: 3px;
 }
-.dash-resize--x::after,
-.dash-resize--y::after {
+.dash-resize--sw::after {
+  bottom: 4px;
+  left: 4px;
+  border-bottom-width: 2.5px;
+  border-left-width: 2.5px;
+  border-bottom-left-radius: 3px;
+}
+.dash-resize--ne::after {
+  top: 4px;
+  right: 4px;
+  border-top-width: 2.5px;
+  border-right-width: 2.5px;
+  border-top-right-radius: 3px;
+}
+.dash-resize--nw::after {
+  top: 4px;
+  left: 4px;
+  border-top-width: 2.5px;
+  border-left-width: 2.5px;
+  border-top-left-radius: 3px;
+}
+.dash-resize--n::after,
+.dash-resize--s::after,
+.dash-resize--e::after,
+.dash-resize--w::after {
   content: "";
   position: absolute;
   border-radius: 2px;
-  background: color-mix(in srgb, var(--dash-a) 70%, transparent);
+  background: color-mix(in srgb, var(--dash-ink) 80%, transparent);
   opacity: 0;
   transition: opacity 0.15s ease;
 }
-.dash-resize--x::after {
-  top: 50%;
-  right: 3px;
-  width: 3px;
-  height: 28px;
-  translate: 0 -50%;
-}
-.dash-resize--y::after {
-  bottom: 3px;
+.dash-resize--n::after,
+.dash-resize--s::after {
   left: 50%;
   width: 28px;
   height: 3px;
   translate: -50% 0;
 }
-.dash-widget:hover .dash-resize::after {
+.dash-resize--n::after {
+  top: 3px;
+}
+.dash-resize--s::after {
+  bottom: 3px;
+}
+.dash-resize--e::after,
+.dash-resize--w::after {
+  top: 50%;
+  width: 3px;
+  height: 28px;
+  translate: 0 -50%;
+}
+.dash-resize--e::after {
+  right: 3px;
+}
+.dash-resize--w::after {
+  left: 3px;
+}
+.dash-widget:hover .dash-resize::after,
+.dash-widget:focus-within .dash-resize::after {
   opacity: 1;
 }
-/* Touch: bigger handles. */
+/* Touch: bigger corners, the marks always shown. */
 @media (pointer: coarse) {
-  .dash-resize--xy {
-    width: 34px;
-    height: 34px;
+  .dash-resize--ne,
+  .dash-resize--nw,
+  .dash-resize--se,
+  .dash-resize--sw {
+    width: 30px;
+    height: 30px;
   }
-  .dash-resize--x,
-  .dash-resize--y::after,
-  .dash-resize--x::after {
-    opacity: 1;
+  .dash-resize::after {
+    opacity: 1 !important;
   }
 }
 
@@ -929,6 +1084,108 @@
   .hub-menu--dash .hub-menu__item kbd {
     display: none;
   }
+}
+
+/* ---------- the lobby cat (an overlay: on a widget's edge, a search box or the main search bar) ---------- */
+.dash-board__lobbycat {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  height: 0;
+  padding-inline: 18px;
+  pointer-events: none;
+}
+.dash-board__lobbycat.is-editing {
+  z-index: 2;
+  opacity: 0.85;
+}
+.dash-board__lobbycat.is-editing * {
+  pointer-events: none !important;
+}
+.dash-lobbycat {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 0;
+  transform: translateY(-100%);
+}
+.dash-lobbycat--left {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+.dash-lobbycat--center {
+  justify-content: center;
+}
+.dash-lobbycat--right {
+  justify-content: flex-end;
+}
+.dash-lobbycat > * {
+  pointer-events: auto;
+}
+.dash-lobbycat .lobby-cat-wrap--free {
+  position: relative;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+.dash-lobbycat .lobby-cat-wrap--free > .cat-hitbox {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: 100%;
+}
+.dash-lobbycat__counters {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-primary) 70%, transparent);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.dash-lobbycat__counters > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.dash-lobbycat__counters .material-symbols-outlined {
+  font-size: 1em;
+  opacity: 0.75;
+}
+/* On the main search bar: in the flow right above it, paws on its top edge (it never covers the buttons). */
+.dash-search-wrap {
+  position: relative;
+}
+.dash-lobbycat.dash-lobbycat--search {
+  position: relative;
+  z-index: 3;
+  margin: 0 22px -1px;
+  transform: none;
+}
+/* The bubble's text for screen readers (LobbyCat.jsx; /cult has this class in its own styles). */
+.dash-lobbycat .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Its cell, while editing. */
+.dash-lobbycat-cell {
+  display: grid;
+  flex: 1;
+  place-content: center;
+  justify-items: center;
+  gap: 4px;
+  color: var(--dash-muted);
+  text-align: center;
 }
 
 /* ---------- shared bits inside widgets ---------- */
@@ -1093,8 +1350,21 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.dash-w-clock {
+  color: var(--dash-clock, inherit);
+}
 .dash-w-clock__time .dash-sec {
+  color: var(--dash-clock-sec, inherit);
   opacity: 0.55;
+}
+.dash-w-clock[style*="--dash-clock-sec"] .dash-sec {
+  opacity: 1;
+}
+.dash-analog__second {
+  stroke: var(--dash-clock-sec, var(--dash-ink)) !important;
+}
+.dash-w-clock[style*="--dash-clock"] :is(.dash-analog__hour, .dash-analog__minute) {
+  stroke: var(--dash-clock);
 }
 .dash-w-clock__date,
 .dash-w-clock__zone {
@@ -1431,11 +1701,41 @@
   cursor: pointer;
 }
 .dash-w-todo__list input {
+  display: grid;
   flex: none;
-  width: 1.05em;
-  height: 1.05em;
-  margin: 0.15em 0 0;
-  accent-color: var(--dash-a);
+  place-content: center;
+  width: 1.15em;
+  height: 1.15em;
+  margin: 0.1em 0 0;
+  border: 2px solid color-mix(in srgb, var(--text-primary) 45%, transparent);
+  border-radius: 50%;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+.dash-w-todo__list input::after {
+  content: "";
+  width: 0.35em;
+  height: 0.6em;
+  margin-top: -0.12em;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.15s ease;
+}
+.dash-w-todo__list input:checked {
+  border-color: var(--dash-a);
+  background: var(--dash-a);
+}
+.dash-w-todo__list input:checked::after {
+  transform: rotate(45deg) scale(1);
+}
+.dash-w-todo__list input:focus-visible {
+  outline: 2px solid var(--dash-a);
+  outline-offset: 2px;
 }
 .dash-w-todo__list span {
   overflow-wrap: anywhere;
@@ -1537,10 +1837,11 @@
 .dash-w-weather__hours li,
 .dash-w-weather__days li {
   display: grid;
-  flex: 1;
+  flex: 1 0 auto;
   justify-items: center;
   gap: 2px;
   min-width: 3.2em;
+  padding-inline: 6px !important;
   padding: 6px 2px;
   border-radius: 10px;
   background: var(--dash-well);
@@ -1550,6 +1851,7 @@
 .dash-w-weather__hours span:first-child,
 .dash-w-weather__days span:first-child {
   color: var(--dash-muted);
+  white-space: nowrap;
 }
 .dash-w-weather__days {
   display: flex;
@@ -1775,6 +2077,18 @@
   padding: 10px;
 }
 .dash-w-links--list a {
+  padding: 6px 8px;
+}
+/* The list, but across: list rows (icon, name, address) flowing into as many columns as fit. */
+.dash-w-links--hlist {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+  align-content: start;
+  gap: 4px 6px;
+}
+.dash-w-links--hlist.dash-w-links--large {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+}
+.dash-w-links--hlist a {
   padding: 6px 8px;
 }
 
@@ -2757,6 +3071,909 @@
   grid-template-columns: auto 1fr auto;
 }
 
+.dash-w-media__times {
+  font-variant-numeric: tabular-nums;
+}
+/* Several integrations in one widget: a section each. */
+.dash-w-several {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+.dash-w-several__one {
+  display: grid;
+  gap: 6px;
+}
+.dash-w-several__head {
+  margin: 0;
+  color: var(--dash-muted);
+  font-size: 0.78em;
+  font-weight: 650;
+}
+
+/* ---------- files ---------- */
+.dash-w-files {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 100%;
+  border-radius: 10px;
+}
+.dash-w-files.is-over {
+  outline: 2px dashed var(--dash-a);
+  outline-offset: -2px;
+}
+.dash-w-files__bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.dash-w-files__crumbs {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  color: var(--dash-muted);
+  font-size: 0.82em;
+}
+.dash-w-files__crumbs .dash-link-button {
+  display: inline-flex;
+  align-items: center;
+  max-width: 12em;
+  overflow: hidden;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-w-files__crumbs .dash-link-button:disabled {
+  color: var(--text-primary);
+  cursor: default;
+}
+.dash-w-files__crumbs .material-symbols-outlined {
+  font-size: 1.15em;
+}
+.dash-w-files__quota {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  font-size: 0.75em;
+}
+.dash-w-files__quota small {
+  color: var(--dash-muted);
+}
+.dash-w-files__list {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dash-w-files__list :is(a, button) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.88em;
+  text-align: left;
+  cursor: pointer;
+}
+.dash-w-files__list :is(a, button):hover {
+  background: var(--dash-hover);
+}
+.dash-w-files__list .material-symbols-outlined {
+  flex: none;
+  color: var(--dash-muted);
+  font-size: 1.15em;
+}
+.dash-w-files__list .material-symbols-outlined.is-dir {
+  color: var(--dash-ink);
+}
+.dash-w-files__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-w-files__list small {
+  flex: none;
+  color: var(--dash-muted);
+  font-size: 0.8em;
+  font-variant-numeric: tabular-nums;
+}
+.dash-w-files__drop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-primary) 70%, transparent);
+  font-weight: 650;
+  pointer-events: none;
+}
+@container (max-width: 260px) {
+  .dash-w-files__date {
+    display: none;
+  }
+}
+.dash-widget--files .dash-widget__body {
+  container-type: inline-size;
+}
+
+/* ---------- photos ---------- */
+.dash-widget--photos .dash-widget__body {
+  overflow: hidden;
+}
+.dash-w-photo {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.dash-w-photo img {
+  width: 100%;
+  height: 100%;
+  border-radius: calc(var(--dash-radius) * 0.6);
+  object-fit: cover;
+  animation: dash-photo-in 0.6s ease both;
+}
+.dash-widget--flush .dash-w-photo img {
+  border-radius: 0;
+}
+@keyframes dash-photo-in {
+  from {
+    opacity: 0;
+  }
+}
+.dash-w-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dash-w-photos img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+/* ---------- messages ---------- */
+.dash-w-msgs {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dash-w-msgs li {
+  display: grid;
+  gap: 2px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: var(--dash-well);
+  font-size: 0.86em;
+}
+.dash-w-msgs li.is-high {
+  box-shadow: inset 3px 0 0 var(--dash-bad);
+}
+.dash-w-msgs span {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.dash-w-msgs small {
+  color: var(--dash-muted);
+  font-size: 0.85em;
+}
+
+/* ---------- timer, calculator, exchange rates, cat ---------- */
+.dash-w-timer {
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  flex: 1;
+}
+.dash-w-timer__time {
+  margin: 0;
+  font-size: 2.4em;
+  font-weight: 750;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.dash-w-timer.is-done .dash-w-timer__time {
+  color: var(--dash-ink);
+}
+.dash-w-timer__bar {
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--dash-well);
+}
+.dash-w-timer__bar span {
+  display: block;
+  height: 100%;
+  background: var(--dash-ink);
+}
+/* Calculator: lines with a typeset preview and results, keypad, graph. Text follows the widget's width (or its size setting). */
+.dash-w-calc {
+  --calc-size: clamp(0.82rem, 0.62rem + 1.6cqi, 1.08rem);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 100%;
+  font-size: var(--calc-size);
+}
+.dash-widget--calculator .dash-widget__body {
+  container-type: inline-size;
+}
+.dash-w-calc--small {
+  --calc-size: 0.8rem;
+}
+.dash-w-calc--medium {
+  --calc-size: 0.95rem;
+}
+.dash-w-calc--large {
+  --calc-size: 1.12rem;
+}
+.dash-w-calc--huge {
+  --calc-size: 1.38rem;
+}
+.dash-w-calc__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dash-w-calc__tabs {
+  flex: 1;
+}
+.dash-w-calc__tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.82rem;
+}
+.dash-w-calc__tabs .material-symbols-outlined {
+  font-size: 1.1em;
+}
+.dash-w-calc__count {
+  min-width: 1.4em;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  font-size: 0.75em;
+  font-variant-numeric: tabular-nums;
+}
+.dash-w-calc__angle {
+  padding: 3px 7px;
+  border-radius: 7px;
+  background: var(--dash-well);
+  color: var(--dash-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.dash-w-calc__lines {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dash-w-calc__work {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  container-type: inline-size;
+}
+/* Lines and graph together: side by side when there's room, the graph on top when it's tall and narrow. */
+.dash-w-calc.is-split {
+  height: 100%;
+}
+.dash-w-calc.is-split .dash-w-calc__work {
+  flex: 1 1 55%;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.dash-w-calc.is-split .dash-w-calc__graph {
+  flex: 1 1 45%;
+  order: -1;
+  min-height: 160px;
+}
+@container (min-width: 540px) {
+  .dash-w-calc.is-split {
+    flex-direction: row;
+  }
+  .dash-w-calc.is-split .dash-w-calc__work {
+    flex: 1 1 50%;
+  }
+  .dash-w-calc.is-split .dash-w-calc__graph {
+    order: 0;
+    flex: 1 1 50%;
+  }
+}
+.dash-w-calc__line {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4px 8px;
+  padding: 6px 30px 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--dash-well);
+  transition: border-color 0.12s ease;
+}
+.dash-w-calc__line:focus-within {
+  border-color: color-mix(in srgb, var(--dash-a) 60%, transparent);
+}
+.dash-w-calc__dot {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  margin-top: 0.35em;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--dash-muted);
+  font: inherit;
+  font-size: 0.72em;
+  font-variant-numeric: tabular-nums;
+}
+.dash-w-calc__dot.is-graph {
+  width: 0.95em;
+  height: 0.95em;
+  margin: 0.62em 0.28em 0;
+  border: 2px solid var(--c);
+  background: var(--c);
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    transform 0.12s ease;
+}
+.dash-w-calc__dot.is-graph:hover {
+  transform: scale(1.2);
+}
+.dash-w-calc__dot.is-off {
+  background: transparent;
+}
+.dash-w-calc__main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.dash-w-calc__main input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.3em 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.dash-w-calc__main input::placeholder {
+  color: var(--dash-muted);
+  opacity: 0.7;
+}
+.dash-w-calc__pretty {
+  justify-self: start;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  font-size: 1.05em;
+  scrollbar-width: none;
+}
+.dash-w-calc__out {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  max-width: 55cqi;
+  padding-top: 0.15em;
+}
+.dash-w-calc__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dash-muted);
+  font: inherit;
+  font-size: 0.78em;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+.dash-w-calc__value.is-main {
+  color: var(--text-primary);
+  font-size: 1.12em;
+  font-weight: 750;
+}
+.dash-w-calc__value:hover:not(:disabled) {
+  background: var(--dash-hover);
+  color: var(--text-primary);
+}
+.dash-w-calc__value:disabled {
+  cursor: default;
+}
+.dash-w-calc__value.is-copied {
+  color: var(--dash-ok);
+}
+.dash-w-calc__value .material-symbols-outlined {
+  font-size: 1em;
+}
+.dash-w-calc__more {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 2px;
+}
+.dash-w-calc__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 0.3em;
+  color: var(--dash-muted);
+  font-size: 0.75em;
+}
+.dash-w-calc__note .material-symbols-outlined {
+  font-size: 1.15em;
+}
+.dash-w-calc__line.is-unknown .dash-w-calc__main input {
+  text-decoration: underline wavy color-mix(in srgb, var(--dash-bad) 55%, transparent) 1px;
+  text-underline-offset: 4px;
+}
+.dash-w-calc__remove {
+  position: absolute;
+  top: 6px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--dash-muted);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.dash-w-calc__remove .material-symbols-outlined {
+  font-size: 15px;
+}
+.dash-w-calc__line:hover .dash-w-calc__remove,
+.dash-w-calc__line:focus-within .dash-w-calc__remove {
+  opacity: 1;
+}
+@media (hover: none) {
+  .dash-w-calc__remove {
+    opacity: 0.8;
+  }
+}
+/* Narrow: the answer goes under the input. */
+@container (max-width: 330px) {
+  .dash-w-calc__line {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .dash-w-calc__out {
+    grid-column: 2;
+    justify-items: start;
+    max-width: none;
+    padding-top: 0;
+  }
+  .dash-w-calc__more {
+    justify-content: flex-start;
+  }
+  .dash-w-calc__value {
+    text-align: left;
+  }
+  .dash-w-calc__value.is-main {
+    margin-left: -6px;
+  }
+}
+.dash-w-calc__add button {
+  font-size: 0.8rem;
+}
+.dash-w-calc__keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+}
+.dash-w-calc__keypad {
+  display: flex;
+  flex: 1 1 220px;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.dash-w-calc__key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.3em;
+  height: 2.1em;
+  padding: 0 0.55em;
+  border: 1px solid var(--dash-line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--dash-well) 60%, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    transform 0.08s ease;
+}
+.dash-w-calc__key:hover {
+  border-color: color-mix(in srgb, var(--dash-a) 55%, transparent);
+  background: var(--dash-hover);
+}
+.dash-w-calc__key:active {
+  transform: scale(0.94);
+}
+.dash-w-calc__key.is-active {
+  border-color: var(--dash-a);
+  background: color-mix(in srgb, var(--dash-a) 22%, transparent);
+}
+.dash-w-calc__key .material-symbols-outlined {
+  font-size: 1.15em;
+}
+.dash-w-calc__style {
+  flex: none;
+  padding: 2px;
+}
+.dash-w-calc__style button {
+  padding: 4px 8px;
+  font-size: 0.72rem;
+}
+.dash-w-calc__symbols {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--dash-line);
+  border-radius: 12px;
+  background: var(--dash-well);
+  animation: dash-calc-in 0.16s ease;
+}
+@keyframes dash-calc-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.dash-w-calc__symbols-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dash-w-calc__symbols-head .material-symbols-outlined {
+  color: var(--dash-muted);
+}
+.dash-w-calc__symbols-head input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--dash-line);
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.86rem;
+}
+.dash-w-calc__symbols-head input:focus {
+  border-bottom-color: var(--dash-a);
+}
+.dash-w-calc__symbols h4 {
+  margin: 0 0 4px;
+  color: var(--dash-muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.dash-w-calc__symbol-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.dash-w-calc__graph {
+  flex: 1 1 auto;
+  min-height: 180px;
+}
+.dash-w-calc.is-split .dash-w-calc__graph {
+  min-height: 200px;
+}
+
+/* Typeset maths (MathView.jsx). */
+.dash-math {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  font-family: 'Cambria Math', 'STIX Two Math', 'Latin Modern Math', 'Times New Roman', serif;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.dash-math * {
+  font-family: inherit;
+}
+.dash-math var,
+.dash-math__var {
+  font-style: italic;
+}
+.dash-math__fn {
+  font-style: normal;
+  margin-right: 0.08em;
+}
+.dash-math__op {
+  margin: 0 0.24em;
+}
+.dash-math__sign {
+  margin-right: 0.06em;
+}
+.dash-math__thin {
+  display: inline-block;
+  width: 0.14em;
+}
+.dash-math__group {
+  display: inline-flex;
+  align-items: center;
+}
+.dash-math__paren,
+.dash-math__bar {
+  display: inline-block;
+  transform-origin: center;
+  font-weight: 300;
+}
+.dash-math__group:has(.dash-math__frac) > .dash-math__paren,
+.dash-math__group:has(.dash-math__frac) > .dash-math__bar {
+  transform: scaleY(1.9);
+}
+.dash-math__frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 0.12em;
+  vertical-align: middle;
+  font-size: 0.92em;
+}
+.dash-math__num-part,
+.dash-math__den {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.18em;
+}
+.dash-math__num-part {
+  padding-bottom: 0.08em;
+  border-bottom: 0.07em solid currentColor;
+}
+.dash-math__den {
+  padding-top: 0.08em;
+}
+.dash-math__sup {
+  align-self: flex-start;
+  margin-left: 0.04em;
+  font-size: 0.68em;
+  line-height: 1;
+}
+.dash-math__sub {
+  align-self: flex-end;
+  font-size: 0.68em;
+  line-height: 1;
+}
+.dash-math__root {
+  display: inline-flex;
+  align-items: stretch;
+  margin: 0 0.06em;
+}
+.dash-math__index {
+  align-self: flex-start;
+  margin-right: -0.42em;
+  font-size: 0.55em;
+}
+.dash-math__radical {
+  display: inline-flex;
+  align-items: flex-end;
+  font-size: 1.12em;
+  line-height: 1;
+}
+.dash-math__radicand {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.12em;
+  padding: 0.06em 0.14em 0 0.08em;
+  border-top: 0.07em solid currentColor;
+}
+
+/* Graphs (MathGraph.jsx). */
+.dash-graph {
+  display: flex;
+  min-height: var(--graph-h, 240px);
+}
+.dash-graph__plot {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: inherit;
+  overflow: hidden;
+  border: 1px solid var(--dash-line, color-mix(in srgb, currentColor 14%, transparent));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-secondary) 55%, transparent);
+  color: var(--text-primary);
+}
+.dash-graph__plot canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  cursor: grab;
+  touch-action: none;
+}
+.dash-graph__plot canvas:active {
+  cursor: grabbing;
+}
+.dash-graph__plot canvas:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--dash-a, var(--accent));
+  border-radius: 12px;
+}
+.dash-graph__tools {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-secondary) 80%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 10%, transparent);
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+.dash-graph__plot:hover .dash-graph__tools,
+.dash-graph__tools:focus-within {
+  opacity: 1;
+}
+.dash-graph__tools .dash-tool {
+  width: 26px;
+  height: 26px;
+}
+.dash-graph__tools .dash-tool:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.dash-graph__tools .material-symbols-outlined {
+  font-size: 17px;
+}
+.dash-graph__tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  gap: 2px;
+  padding: 6px 9px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--bg-secondary) 92%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, currentColor 12%, transparent),
+    0 6px 18px rgba(0, 0, 0, 0.25);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(calc(var(--x) + 14px), calc(var(--y) + 14px));
+}
+.dash-graph__tip.is-left {
+  transform: translate(calc(var(--x) - 100% - 14px), calc(var(--y) + 14px));
+}
+.dash-graph__tip-x {
+  color: var(--dash-muted, inherit);
+}
+.dash-graph__tip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dash-graph__tip i {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+}
+.dash-graph__toast {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 14%, transparent);
+  font-size: 0.75rem;
+  transform: translateX(-50%);
+  animation: dash-calc-in 0.16s ease;
+}
+
+/* The calculator in the search results. */
+.site-search__calc .site-search__group-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.site-search__math {
+  margin-left: auto;
+  color: var(--text-primary);
+  font-size: 1.15rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.site-search__option--calc {
+  flex-wrap: nowrap;
+  padding-right: 44px;
+}
+.site-search__calc-value {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.site-search__calc-hint {
+  flex: none;
+  color: var(--text-secondary, inherit);
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+.site-search__graph {
+  padding: 4px 14px 12px;
+}
+.dash-w-fx > p {
+  margin: 0 0 6px;
+  font-size: 0.8em;
+}
+.dash-w-fx .dash-w-markets li > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+}
+.dash-widget--cat .dash-widget__body {
+  overflow: hidden;
+}
+.dash-w-cat {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--dash-radius) * 0.6);
+  overflow: hidden;
+  background: var(--dash-well);
+  cursor: pointer;
+}
+.dash-w-cat img {
+  width: 100%;
+  height: 100%;
+}
+
 /* ---------- this site: Discord, birthdays, notifications, health ---------- */
 .dash-w-discord {
   display: flex;
@@ -2906,9 +4123,40 @@
   gap: 8px;
 }
 .dash-w-notes__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
   margin: 0;
   font-size: 0.85em;
   font-weight: 650;
+}
+.dash-w-notes li {
+  position: relative;
+}
+.dash-w-notes li > a {
+  padding-right: 64px !important;
+}
+.dash-w-notes__tools {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.dash-w-notes li:is(:hover, :focus-within) .dash-w-notes__tools {
+  opacity: 1;
+}
+@media (hover: none) {
+  .dash-w-notes__tools {
+    opacity: 0.8;
+  }
+}
+.dash-w-notes__tools .dash-tool {
+  width: 26px;
+  height: 26px;
 }
 .dash-w-notes__head a:hover {
   color: var(--dash-a);
@@ -3227,6 +4475,53 @@
   height: 16px;
   margin-top: 3px;
 }
+/* On / off settings are switches, like the site's (members.css .members-switch). */
+.dash-check input[role="switch"] {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  margin: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 22%, transparent);
+  appearance: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.dash-check input[role="switch"]::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  transition: transform 0.15s ease;
+}
+.dash-check input[role="switch"]:checked {
+  background: var(--dash-a);
+}
+.dash-check input[role="switch"]:checked::after {
+  transform: translateX(16px);
+}
+.dash-check input[role="switch"]:focus-visible {
+  outline: 2px solid var(--dash-a);
+  outline-offset: 2px;
+}
+.dash-check input[role="switch"]:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.dash-check:has(input[role="switch"]) {
+  align-items: center;
+}
+.dash-check:has(input[role="switch"]) small {
+  margin-top: 1px;
+}
+.dash-code--small {
+  min-height: 110px;
+}
 .dash-check small {
   display: block;
   color: var(--dash-muted);
@@ -3321,6 +4616,48 @@
   color: var(--dash-muted);
   font-size: 0.9rem;
   text-align: center;
+}
+
+/* Emoji as icons (kit.jsx Glyph) and the emoji picker on the dash (EmojiIconButton.jsx). */
+.dash-glyph {
+  display: inline-block;
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  object-fit: contain;
+  vertical-align: -0.2em;
+}
+.dash-glyph-preview {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--dash-well);
+  font-size: 1.15rem;
+}
+.dash-emoji-button {
+  display: inline-flex;
+  flex: none;
+}
+.dash-emoji-button .emoji-picker__insert {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--dash-line);
+  border-radius: 10px;
+  background: var(--dash-well);
+  color: var(--text-primary);
+}
+.dash-emoji-button .emoji-picker__insert:hover {
+  background: var(--dash-hover);
+}
+.dash-iconrow .dash-emoji-button .emoji-picker__insert {
+  width: 100%;
+  height: 100%;
+  min-height: 36px;
+  border: 0;
+  background: transparent;
 }
 
 /* The tab icon: preview, link, upload, back to the site's */
@@ -3925,4 +5262,64 @@
 }
 :root.motion-none :is(.dash-board.is-animated .dash-widget, .dash-board__ghost, .dash-board.is-animated) {
   transition: none;
+}
+
+/* Dividing by zero (Explosion.jsx): the raw video slapped on top, cheap on purpose. Always there (loaded), only seen while it plays; no transition. */
+.dash-explosion {
+  position: fixed;
+  z-index: 2147483000;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  border: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.dash-explosion.is-playing {
+  visibility: visible;
+}
+
+/* Several statements of a line of notes, typeset one after the other. */
+.dash-math--several {
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  white-space: normal;
+}
+.dash-math__statement {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.dash-math__unit {
+  margin-left: 0.18em;
+  font-style: normal;
+}
+.dash-math__var .dash-math__sub {
+  font-style: normal;
+}
+
+/* LaTeX drawn by KaTeX (TeX.jsx). */
+.dash-tex {
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  vertical-align: middle;
+  scrollbar-width: none;
+}
+.dash-tex .katex {
+  font-size: 1.08em;
+}
+.dash-tex .katex-display {
+  margin: 0.2em 0;
+  text-align: left;
+}
+.dash-tex .katex-display > .katex {
+  text-align: left;
+}
+.site-search__math.dash-tex .katex {
+  font-size: 1em;
 }

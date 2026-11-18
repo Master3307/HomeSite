@@ -2,8 +2,9 @@ import { Component, useCallback, useEffect, useLayoutEffect, useMemo, useRef, us
 import { useTranslation } from 'react-i18next'
 
 import { CATEGORIES, WIDGETS, availableTypes, defaultOptions, useWidgetTitle } from './widgets.jsx'
+import { DashLobbyCat } from './widgetsSite.jsx'
 import DashWidgetEditor from './DashWidgetEditor.jsx'
-import { useSeen } from './kit.jsx'
+import { Glyph, RollingContext, isMaterialIcon, useFitScroll, useSeen } from './kit.jsx'
 import { DashMenu, mergeHandlers, useMenuTrigger } from './menus.jsx'
 import { place } from '../../lib/dashGrid.js'
 import { MAX_ROWS, MAX_WIDGETS, addWidget, duplicateWidget, getDashSettings, isColor, moveWidgetToPage, phoneLayout, removeWidget, scaledSize, setLayout, updateDashSettings, updateWidget, useDashSettings } from '../../lib/dashSettings.js'
@@ -39,6 +40,24 @@ function useWidth(ref) {
   return width
 }
 
+/* The live frame while resizing from `axis` (n / s / e / w and the corners): the opposite sides stay put. */
+function resizeFrame(start, axis, dx, dy, cell, row) {
+  let { left, top, width, height } = start
+  if (axis.includes('e')) width = Math.max(cell, start.width + dx)
+  if (axis.includes('s')) height = Math.max(row, start.height + dy)
+  if (axis.includes('w')) {
+    width = Math.max(cell, start.width - dx)
+    left = Math.max(0, start.left + start.width - width)
+    width = start.left + start.width - left
+  }
+  if (axis.includes('n')) {
+    height = Math.max(row, start.height - dy)
+    top = Math.max(0, start.top + start.height - height)
+    height = start.top + start.height - top
+  }
+  return { left, top, width, height }
+}
+
 /* ---------- one widget ---------- */
 
 class WidgetBoundary extends Component {
@@ -51,6 +70,10 @@ class WidgetBoundary extends Component {
   }
   componentDidCatch(error) {
     console.error('[dash] a widget failed:', error)
+  }
+  // New options after a crash: a fresh try (without remounting a working widget, which would lose focus and state).
+  componentDidUpdate(previous) {
+    if (this.state.failed && previous.resetKey !== this.props.resetKey) this.setState({ failed: false })
   }
   render() {
     return this.state.failed ? this.props.fallback : this.props.children
@@ -67,17 +90,17 @@ function Tool({ icon, label, onClick, danger = false, ...rest }) {
   )
 }
 
-function WidgetBody({ widget, editing }) {
+function WidgetBody({ widget, editing, rolling }) {
   const { t } = useTranslation('dash')
   const ref = useRef(null)
   const seen = useSeen(ref)
+  useFitScroll(ref)
   const View = WIDGETS[widget.type].View
   return (
     <div ref={ref} className="dash-widget__body" inert={editing ? true : undefined}>
       {seen ? (
         <WidgetBoundary
-          // New options: a fresh try.
-          key={JSON.stringify(widget.options)}
+          resetKey={JSON.stringify(widget.options)}
           fallback={
             <div className="dash-empty">
               <span className="material-symbols-outlined" aria-hidden="true">
@@ -87,7 +110,9 @@ function WidgetBody({ widget, editing }) {
             </div>
           }
         >
-          <View widget={widget} editing={editing} />
+          <RollingContext.Provider value={rolling}>
+            <View widget={widget} editing={editing} />
+          </RollingContext.Provider>
         </WidgetBoundary>
       ) : null}
     </div>
@@ -126,7 +151,10 @@ function RenameField({ widget, placeholder, onDone }) {
   )
 }
 
-function Widget({ widget, box, frame, editing, dragging, onPointerDown, onResizeStart, onKey, onEdit, onRemove, onDuplicate, onMenu, renaming, onRenamed, hiddenOnPhone }) {
+/* A widget's own CSS, nested under its card (`&` is the card), strong enough to beat the dash's card styles; `</style` can't end the element early. */
+const widgetCss = (id, css) => `.dash-widget.dash-widget[data-widget="${id}"] {\n${String(css).replaceAll('</', '<\\/')}\n}`
+
+function Widget({ widget, box, frame, editing, dragging, onPointerDown, onResizeStart, onKey, onEdit, onRemove, onDuplicate, onMenu, renaming, onRenamed, hiddenOnPhone, rollingAll }) {
   const { t } = useTranslation('dash')
   const trigger = useMenuTrigger((at) => onMenu(at, widget))
   const spec = WIDGETS[widget.type]
@@ -146,6 +174,7 @@ function Widget({ widget, box, frame, editing, dragging, onPointerDown, onResize
         `dash-widget--${widget.type}`,
         look.style && look.style !== 'inherit' ? `dash-widget--style-${look.style}` : '',
         look.padding === 'none' ? 'dash-widget--flush' : '',
+        look.font && look.font !== 'inherit' ? `dash-widget--font-${look.font}` : '',
         editing ? 'is-editing' : '',
         dragging ? 'is-dragging' : '',
         hiddenOnPhone ? 'is-phone-hidden' : '',
@@ -172,7 +201,7 @@ function Widget({ widget, box, frame, editing, dragging, onPointerDown, onResize
             </small>
           </span>
           <Tool icon="tune" label={t('board.edit')} onClick={() => onEdit(widget.id)} data-no-drag />
-          <Tool icon="content_copy" label={t('board.duplicate')} onClick={() => onDuplicate(widget.id)} data-no-drag />
+          {!spec.single && <Tool icon="content_copy" label={t('board.duplicate')} onClick={() => onDuplicate(widget.id)} data-no-drag />}
           <Tool icon="delete" label={t('board.remove')} danger onClick={() => onRemove(widget.id)} data-no-drag />
         </div>
       )}
@@ -180,20 +209,17 @@ function Widget({ widget, box, frame, editing, dragging, onPointerDown, onResize
         <RenameField widget={widget} placeholder={t(`widgets.${widget.type}.name`)} onDone={onRenamed} />
       ) : title && (
         <h2 className="dash-widget__title">
-          {look.titleIcon !== false && (
-            <span className="material-symbols-outlined" aria-hidden="true">
-              {spec.icon}
-            </span>
-          )}
+          {look.titleIcon !== false && <Glyph icon={look.icon} fallback={spec.icon} />}
           {title}
         </h2>
       )}
-      <WidgetBody widget={widget} editing={editing} />
+      {look.css?.trim() && <style>{widgetCss(widget.id, look.css)}</style>}
+      <WidgetBody widget={widget} editing={editing} rolling={look.rolling === 'on' || (look.rolling !== 'off' && rollingAll)} />
       {editing && (
         <>
-          <span className="dash-resize dash-resize--x" data-no-drag onPointerDown={(event) => onResizeStart(event, 'x')} aria-hidden="true" />
-          <span className="dash-resize dash-resize--y" data-no-drag onPointerDown={(event) => onResizeStart(event, 'y')} aria-hidden="true" />
-          <span className="dash-resize dash-resize--xy" data-no-drag onPointerDown={(event) => onResizeStart(event, 'xy')} aria-hidden="true" />
+          {['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((side) => (
+            <span key={side} className={`dash-resize dash-resize--${side}`} data-no-drag onPointerDown={(event) => onResizeStart(event, side)} aria-hidden="true" />
+          ))}
         </>
       )}
     </section>
@@ -238,15 +264,17 @@ export function AddWidget({ onPick, onClose }) {
       <ul className="dash-picker">
         {types.map((type) => {
           const spec = WIDGETS[type]
+          const taken = spec.single && getDashSettings().widgets.some((widget) => widget.type === type)
           return (
             <li key={type}>
-              <button type="button" onClick={() => onPick(type)}>
+              <button type="button" onClick={() => onPick(type)} disabled={taken} title={taken ? t('board.onlyOnce') : undefined}>
                 <span className="material-symbols-outlined" aria-hidden="true">
                   {spec.icon}
                 </span>
                 <strong>
                   {t(`widgets.${type}.name`)}
                   {spec.needs && <small className="dash-chip">{t(`board.needs.${spec.needs}`)}</small>}
+                  {taken && <small className="dash-chip">{t('board.onlyOnce')}</small>}
                 </strong>
                 <span>{t(`widgets.${type}.text`)}</span>
               </button>
@@ -291,7 +319,9 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
 
   const current = action?.preview ?? visibleLayout
   const rows = current.reduce((max, box) => Math.max(max, box.y + box.h), 0)
-  const height = Math.max(0, rows * (row + gap) - gap) + (editing ? (row + gap) * 2 : 0)
+  // While editing there's room below to drop into, and it grows with whatever is being dragged.
+  const dragBottom = action?.moved ? action.startFrame.top + action.startFrame.height + Math.max(0, action.pointer.y - action.start.y) : 0
+  const height = Math.max(Math.max(0, rows * (row + gap) - gap) + (editing ? (row + gap) * 3 : 0), dragBottom + (row + gap) * 3)
 
   /* Remembered for undo (Ctrl + Z, the Undo button, menus), this visit only: widgets and pages. */
   const remember = useCallback(() => {
@@ -335,7 +365,7 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
         href && '-',
         { label: t('board.edit'), icon: 'tune', hint: editing ? 'Enter' : undefined, onSelect: () => setEditId(widget.id) },
         { label: t('menu.rename'), icon: 'edit', onSelect: () => setRenaming(widget.id) },
-        { label: t('board.duplicate'), icon: 'content_copy', onSelect: () => duplicate(widget.id), disabled: allWidgets.length >= MAX_WIDGETS },
+        { label: t('board.duplicate'), icon: 'content_copy', onSelect: () => duplicate(widget.id), disabled: allWidgets.length >= MAX_WIDGETS || Boolean(WIDGETS[widget.type].single) },
         box && box.y > 0 && { label: t('menu.toTop'), icon: 'vertical_align_top', onSelect: () => commit(place(layout, widget.id, { y: 0 }, columns, false)) },
         {
           label: widget.look?.hideOnPhone ? t('menu.showOnPhone') : t('menu.hideOnPhone'),
@@ -348,7 +378,7 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
         ...(others.length ? ['-'] : []),
         ...others.slice(0, 8).map((entry) => ({
           label: t('menu.moveTo', { page: entry.name || t('pages.untitled', { number: pages.indexOf(entry) + 1 }) }),
-          icon: entry.icon,
+          icon: isMaterialIcon(entry.icon) ? entry.icon : 'tab',
           onSelect: () => {
             remember()
             moveWidgetToPage(widget.id, entry.id)
@@ -410,33 +440,68 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
     event.preventDefault()
     event.stopPropagation()
     event.currentTarget.setPointerCapture?.(event.pointerId)
-    setAction({ id, kind, axis, start: { x: event.clientX, y: event.clientY }, pointer: { x: event.clientX, y: event.clientY }, startBox: box, startFrame: frameOf(box), preview: null, moved: false })
+    // Page coordinates: scrolling while dragging (by hand or near the window's edge) moves the widget along.
+    const at = { x: event.clientX + window.scrollX, y: event.clientY + window.scrollY }
+    setAction({ id, kind, axis, start: at, pointer: at, client: { x: event.clientX, y: event.clientY }, startBox: box, startFrame: frameOf(box), preview: null, moved: false })
   }
+
+  /* The box an action aims at, from how far the pointer has gone (page px). */
+  const targetOf = useCallback(
+    (state, dx, dy) => {
+      const stepX = cell + gap
+      const stepY = row + gap
+      const { startBox: b, startFrame: f } = state
+      if (state.kind === 'move') return { x: Math.round((f.left + dx) / stepX), y: Math.max(0, Math.round((f.top + dy) / stepY)) }
+      const { minW, minH } = limits(state.id)
+      const axis = state.axis
+      let { x, y, w, h } = b
+      if (axis.includes('e')) w = Math.max(minW, Math.min(columns - b.x, Math.round((f.width + dx + gap) / stepX)))
+      if (axis.includes('s')) h = Math.max(minH, Math.min(MAX_ROWS, Math.round((f.height + dy + gap) / stepY)))
+      if (axis.includes('w')) {
+        x = Math.max(0, Math.min(b.x + b.w - minW, Math.round((f.left + dx) / stepX)))
+        w = b.x + b.w - x
+      }
+      if (axis.includes('n')) {
+        y = Math.max(0, Math.max(b.y + b.h - MAX_ROWS, Math.min(b.y + b.h - minH, Math.round((f.top + dy) / stepY))))
+        h = b.y + b.h - y
+      }
+      return { x, y, w, h }
+    },
+    [cell, gap, row, columns, limits],
+  )
 
   useEffect(() => {
     if (!action) return undefined
-    const onMove = (event) => {
+    let scrollTimer = null
+    const update = (client) =>
       setAction((state) => {
         if (!state) return state
-        const dx = event.clientX - state.start.x
-        const dy = event.clientY - state.start.y
+        const pointer = { x: client.x + window.scrollX, y: client.y + window.scrollY }
+        const dx = pointer.x - state.start.x
+        const dy = pointer.y - state.start.y
         const moved = state.moved || Math.abs(dx) + Math.abs(dy) > 4
-        if (!moved) return state
-        const stepX = cell + gap
-        const stepY = row + gap
-        let target
-        if (state.kind === 'move') {
-          target = { x: Math.round((state.startFrame.left + dx) / stepX), y: Math.max(0, Math.round((state.startFrame.top + dy) / stepY)) }
-        } else {
-          const { minW, minH } = limits(state.id)
-          const w = state.axis === 'y' ? state.startBox.w : Math.max(minW, Math.min(columns - state.startBox.x, Math.round((state.startFrame.width + dx + gap) / stepX)))
-          const h = state.axis === 'x' ? state.startBox.h : Math.max(minH, Math.min(MAX_ROWS, Math.round((state.startFrame.height + dy + gap) / stepY)))
-          target = { w, h }
-        }
-        const preview = place(layout, state.id, target, columns, look.gravity)
-        return { ...state, moved: true, pointer: { x: event.clientX, y: event.clientY }, preview }
+        if (!moved) return { ...state, client }
+        const preview = place(layout, state.id, targetOf(state, dx, dy), columns, look.float)
+        return { ...state, moved: true, pointer, client, preview }
       })
+    // Near the window's top or bottom edge the page scrolls (faster the closer), so a widget can go anywhere.
+    const autoScroll = () => {
+      const state = actionRef.current
+      scrollTimer = null
+      if (!state?.client) return
+      const edge = 70
+      const { y } = state.client
+      const speed = y > window.innerHeight - edge ? (y - (window.innerHeight - edge)) / 3 : y < edge ? -(edge - y) / 3 : 0
+      if (!speed) return
+      window.scrollBy(0, Math.round(speed))
+      update(state.client)
+      scrollTimer = requestAnimationFrame(autoScroll)
     }
+    const onMove = (event) => {
+      update({ x: event.clientX, y: event.clientY })
+      if (!scrollTimer) scrollTimer = requestAnimationFrame(autoScroll)
+    }
+    const onScroll = () => actionRef.current?.client && update(actionRef.current.client)
     const onUp = () => {
       const state = actionRef.current
       setAction(null)
@@ -447,15 +512,18 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
     window.addEventListener('pointerup', onUp)
     window.addEventListener('pointercancel', onUp)
     window.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', onScroll, { passive: true })
     return () => {
+      cancelAnimationFrame(scrollTimer)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onUp)
       window.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', onScroll)
     }
     // Only (re)attach when an action starts or ends.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(action), layout, columns, cell, gap, row, look.gravity, commit, limits])
+  }, [Boolean(action), layout, columns, look.float, commit, targetOf])
 
   /* ---------- keyboard ---------- */
 
@@ -479,12 +547,29 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
     event.preventDefault()
     const { minW, minH } = limits(id)
     const target = event.shiftKey ? { w: Math.max(minW, Math.min(columns - box.x, box.w + step[0])), h: Math.max(minH, Math.min(MAX_ROWS, box.h + step[1])) } : { x: Math.max(0, Math.min(columns - box.w, box.x + step[0])), y: Math.max(0, box.y + step[1]) }
-    commit(place(layout, id, target, columns, look.gravity))
+    commit(place(layout, id, target, columns, look.float))
     // Keep the focus on the widget after it moved.
     requestAnimationFrame(() => ref.current?.querySelector(`[data-widget="${id}"]`)?.focus())
   }
 
   const editingWidget = allWidgets.find((widget) => widget.id === editId) ?? null
+
+  /* The lobby cat: sitting on its own cell's bottom edge (on the card below, if wanted) or on a search box widget. */
+  const lobby = allWidgets.find((widget) => widget.type === 'lobbycat' && widget.page === page)
+  let lobbyOverlay = null
+  if (lobby && width > 0 && !(phone && lobby.look?.hideOnPhone && !editing)) {
+    const where = lobby.options.placement ?? 'widget'
+    const anchorBox = where === 'widget' ? current.find((box) => box.id === lobby.id) : where === 'searchbox' ? current.find((box) => box.id === lobby.options.searchbox && widgets.find((item) => item.id === box.id)?.type === 'search') : null
+    if (anchorBox) {
+      const f = frameOf(anchorBox)
+      const bottom = where === 'widget' ? f.top + f.height + (lobby.options.sitOnCard === false ? 0 : gap) : f.top
+      lobbyOverlay = (
+        <div className={`dash-board__lobbycat${editing ? ' is-editing' : ''}`} style={{ left: f.left, width: f.width, top: bottom }}>
+          <DashLobbyCat options={lobby.options} />
+        </div>
+      )
+    }
+  }
   const byId = new Map(widgets.map((widget) => [widget.id, widget]))
   const placeholder = action?.moved && action.preview ? action.preview.find((box) => box.id === action.id) : null
 
@@ -502,15 +587,14 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
           current.map((box) => {
             const widget = byId.get(box.id)
             if (!widget || !WIDGETS[widget.type]) return null
+            // The lobby cat is an overlay (below); its cell only shows while editing.
+            if (widget.type === 'lobbycat' && !editing) return null
             const active = action?.moved && action.id === box.id
             let frame = frameOf(box)
             if (active) {
               const dx = action.pointer.x - action.start.x
               const dy = action.pointer.y - action.start.y
-              frame =
-                action.kind === 'move'
-                  ? { ...action.startFrame, left: action.startFrame.left + dx, top: action.startFrame.top + dy }
-                  : { ...action.startFrame, width: action.axis === 'y' ? action.startFrame.width : Math.max(cell, action.startFrame.width + dx), height: action.axis === 'x' ? action.startFrame.height : Math.max(row, action.startFrame.height + dy) }
+              frame = action.kind === 'move' ? { ...action.startFrame, left: action.startFrame.left + dx, top: action.startFrame.top + dy } : resizeFrame(action.startFrame, action.axis, dx, dy, cell, row)
             }
             return (
               <Widget
@@ -528,11 +612,13 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
                 onRemove={remove}
                 onDuplicate={duplicate}
                 onMenu={widgetMenu}
+                rollingAll={look.rolling}
                 renaming={renaming === widget.id}
                 onRenamed={() => setRenaming(null)}
               />
             )
           })}
+        {lobbyOverlay}
         {!widgets.length && !editing && <p className="dash-board__empty">{t('board.empty')}</p>}
         {!widgets.length && editing && (
           <button type="button" className="dash-board__first" onClick={() => setAdding(true)}>
@@ -553,6 +639,7 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
             remember()
             const widget = addWidget(type, page, defaultOptions(type))
             setAdding(false)
+            if (!widget) return
             // Widgets that need something to show open their editor right away.
             if (WIDGETS[type].fields.some((field) => NEEDS_SETUP.has(field.type) && !field.optional)) setEditId(widget.id)
             requestAnimationFrame(() => ref.current?.querySelector(`[data-widget="${widget.id}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))

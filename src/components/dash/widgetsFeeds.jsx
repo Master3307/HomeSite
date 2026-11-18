@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAccountSettings } from '../../lib/accountSettings.jsx'
 import { integrationById, integrationGet, useIntegrations } from '../../lib/dashIntegrations.js'
 import { siteConfig } from '../../lib/siteConfig.js'
-import { Empty, LoadError, Loading, Sparkline, compactNumber, corsJson, dashboardIconPng, dashboardIconUrl, fetchJson, hostOf, loadFeed, proxyJson, timeAgo, useRemote } from './kit.jsx'
+import { Empty, LoadError, Loading, Num, Sparkline, compactNumber, corsJson, dashboardIconPng, dashboardIconUrl, fetchJson, hostOf, loadFeed, proxyJson, timeAgo, useRemote } from './kit.jsx'
 
 /*
  * Things from elsewhere: releases (GitHub, GitLab, Gitea / Forgejo /
@@ -489,7 +489,7 @@ function MarketsView({ widget }) {
                 </span>
                 {sparkline && <Sparkline values={coin.sparkline_in_7d?.price?.filter((_, index) => index % 4 === 0)} rising={rising} />}
                 <span className="dash-w-markets__price">
-                  {money(coin.current_price)}
+                  <Num>{money(coin.current_price)}</Num>
                   {change && Number.isFinite(delta) && (
                     <small className={rising ? 'is-up' : 'is-down'}>
                       {rising ? '+' : ''}

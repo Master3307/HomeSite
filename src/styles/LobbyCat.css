@@ -496,3 +496,32 @@
     }
   }
 }
+
+/* Options of LobbyCatView (the dash's lobby cat): the bubble on the right or above, no idle bobbing. */
+.cat-speech--right {
+  right: auto;
+  left: calc(100% + 10px);
+  border-radius: 14px 14px 14px 4px;
+  transform-origin: left bottom;
+}
+.cat-speech--right::after {
+  right: auto;
+  left: -6px;
+  border-radius: 0 0 0 3px;
+  transform: rotate(45deg);
+}
+.cat-speech--above {
+  right: 50%;
+  bottom: calc(100% + 10px);
+  border-radius: 14px;
+  translate: 50% 0;
+  transform-origin: center bottom;
+}
+.cat-speech--above::after {
+  right: calc(50% - 6px);
+  bottom: -5px;
+  transform: rotate(45deg);
+}
+.lobby-cat-wrap--still .cat-idle-animation {
+  animation: none;
+}

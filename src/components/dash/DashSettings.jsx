@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
+import { clearSearchHistory } from '../Search.jsx'
 import DashIntegrations from './DashIntegrations.jsx'
-import { clearDashCache } from './kit.jsx'
+import EmojiIconButton from './EmojiIconButton.jsx'
+import { Glyph, clearDashCache, emojiIconUrl } from './kit.jsx'
 import {
   LOOK_CHOICES,
   LOOK_DEFAULTS,
@@ -38,7 +40,7 @@ import {
  * right away (and syncs with the account).
  *   Look          presets, cards (style, fill, blur, corners, shadow,
  *                 border, padding, titles), type and colour, background
- *   Layout        the grid (columns, row height, gap, width, gravity) and
+ *   Layout        the grid (columns, row height, gap, width, float up) and
  *                 the phone layout
  *   Top           title bar, tab title, greeting, the big clock, the search
  *                 bar, the buttons
@@ -169,6 +171,7 @@ function LookSettings() {
         <Segment label={t('settings.look.titles')} value={look.titles} options={LOOK_CHOICES.titles} onChange={(titles) => updateLook({ titles })} />
         <Toggle label={t('settings.look.border')} checked={look.border} onChange={(border) => updateLook({ border })} />
         <Toggle label={t('settings.look.animate')} hint={t('settings.look.animateHint')} checked={look.animate} onChange={(animate) => updateLook({ animate })} />
+        <Toggle label={t('settings.look.rolling')} hint={t('settings.look.rollingHint')} checked={look.rolling} onChange={(rolling) => updateLook({ rolling })} />
       </Section>
 
       <Section title={t('settings.look.type')}>
@@ -222,7 +225,7 @@ function LayoutSettings({ onEditBoard }) {
         <Range label={t('settings.layout.rowHeight')} value={look.rowHeight} min={32} max={200} step={4} unit="px" onChange={(rowHeight) => updateLook({ rowHeight })} />
         <Range label={t('settings.layout.gap')} value={look.gap} min={0} max={40} unit="px" onChange={(gap) => updateLook({ gap })} />
         <Segment label={t('settings.layout.width')} value={look.width} options={LOOK_CHOICES.width} onChange={(width) => updateLook({ width })} />
-        <Toggle label={t('settings.layout.gravity')} hint={t('settings.layout.gravityHint')} checked={look.gravity} onChange={(gravity) => updateLook({ gravity })} />
+        <Toggle label={t('settings.layout.gravity')} hint={t('settings.layout.gravityHint')} checked={look.float} onChange={(float) => updateLook({ float })} />
       </Section>
       <Section title={t('settings.layout.phone')}>
         <Range label={t('settings.layout.phoneColumns')} value={look.phoneColumns} min={2} max={6} onChange={(phoneColumns) => updateLook({ phoneColumns })} />
@@ -245,7 +248,7 @@ function LayoutSettings({ onEditBoard }) {
           {t('settings.layout.editOnPage')}
         </button>
       </Section>
-      <button type="button" className="dash-link-button" onClick={() => updateLook({ columns: LOOK_DEFAULTS.columns, rowHeight: LOOK_DEFAULTS.rowHeight, gap: LOOK_DEFAULTS.gap, width: LOOK_DEFAULTS.width, phoneColumns: LOOK_DEFAULTS.phoneColumns, gravity: LOOK_DEFAULTS.gravity })}>
+      <button type="button" className="dash-link-button" onClick={() => updateLook({ columns: LOOK_DEFAULTS.columns, rowHeight: LOOK_DEFAULTS.rowHeight, gap: LOOK_DEFAULTS.gap, width: LOOK_DEFAULTS.width, phoneColumns: LOOK_DEFAULTS.phoneColumns, float: LOOK_DEFAULTS.float })}>
         {t('settings.resetPart')}
       </button>
     </div>
@@ -254,12 +257,14 @@ function LayoutSettings({ onEditBoard }) {
 
 /* ---------- Top ---------- */
 
-/* A picture file -> a small square PNG (data: URL) for the tab icon; it syncs with the dash. */
-async function iconFromFile(file) {
-  if (!file.type.startsWith('image/') || file.size > 8_000_000) throw new Error('not-an-image')
-  const url = URL.createObjectURL(file)
+/* A picture (file or address) -> a small square PNG (data: URL) for the tab icon; it syncs with the dash. */
+async function iconFromSource(source) {
+  const isFile = typeof source !== 'string'
+  if (isFile && (!source.type.startsWith('image/') || source.size > 8_000_000)) throw new Error('not-an-image')
+  const url = isFile ? URL.createObjectURL(source) : source
   try {
     const image = new Image()
+    image.crossOrigin = 'anonymous' // Discord's emoji CDN allows it; the canvas stays readable
     image.decoding = 'async'
     image.src = url
     await image.decode()
@@ -268,9 +273,10 @@ async function iconFromFile(file) {
       canvas.width = size
       canvas.height = size
       const context = canvas.getContext('2d')
-      const scale = Math.min(size / (image.naturalWidth || size), size / (image.naturalHeight || size))
-      const w = (image.naturalWidth || size) * scale
-      const h = (image.naturalHeight || size) * scale
+      const natural = { w: image.naturalWidth || size, h: image.naturalHeight || size }
+      const scale = Math.min(size / natural.w, size / natural.h)
+      const w = natural.w * scale
+      const h = natural.h * scale
       context.imageSmoothingQuality = 'high'
       context.drawImage(image, (size - w) / 2, (size - h) / 2, w, h)
       const data = canvas.toDataURL('image/png')
@@ -278,7 +284,7 @@ async function iconFromFile(file) {
     }
     throw new Error('too-big')
   } finally {
-    URL.revokeObjectURL(url)
+    if (isFile) URL.revokeObjectURL(url)
   }
 }
 
@@ -310,6 +316,19 @@ function TabIconField({ value }) {
           </span>
           {t('settings.top.tabIconUpload')}
         </button>
+        <EmojiIconButton
+          label={t('settings.top.tabIconEmoji')}
+          onPick={async (icon) => {
+            try {
+              const data = await iconFromSource(emojiIconUrl(icon, 128))
+              setLink('')
+              setError(null)
+              updateTop({ tabIcon: data })
+            } catch {
+              setError(t('settings.top.tabIconFailed'))
+            }
+          }}
+        />
         {value && (
           <button
             type="button"
@@ -335,7 +354,7 @@ function TabIconField({ value }) {
             event.target.value = ''
             if (!file) return
             try {
-              const data = await iconFromFile(file)
+              const data = await iconFromSource(file)
               setLink('')
               setError(null)
               updateTop({ tabIcon: data })
@@ -371,6 +390,13 @@ function TopSettings() {
         <Segment label={t('settings.top.clockShow')} value={top.clock} options={TOP_CHOICES.clock} onChange={(clock) => updateTop({ clock })} />
         {top.clock !== 'off' && <Segment label={t('settings.top.hourFormat')} value={top.hourFormat} options={TOP_CHOICES.hourFormat} prefix="fields.choices" onChange={(hourFormat) => updateTop({ hourFormat })} />}
         <Segment label={t('settings.top.date')} value={top.date} options={TOP_CHOICES.date} onChange={(date) => updateTop({ date })} />
+        {top.clock !== 'off' && (
+          <>
+            <ColorInput label={t('settings.top.clockColor')} value={top.clockColor} fallback="#eeeeee" onChange={(clockColor) => updateTop({ clockColor })} onReset={() => updateTop({ clockColor: '' })} resetLabel={t('fields.colorReset')} />
+            {top.clock === 'seconds' && <ColorInput label={t('settings.top.secondsColor')} value={top.secondsColor} fallback="#a78bfa" onChange={(secondsColor) => updateTop({ secondsColor })} onReset={() => updateTop({ secondsColor: '' })} resetLabel={t('fields.colorReset')} />}
+            <Segment label={t('settings.top.rolling')} value={top.rolling} options={['inherit', 'on', 'off']} prefix="editor.rollings" onChange={(rolling) => updateTop({ rolling })} />
+          </>
+        )}
         <p className="dash-hint">
           {t('settings.top.zoneHint')} <Link to="/cult/settings">{t('settings.top.zoneLink')}</Link>
         </p>
@@ -543,9 +569,29 @@ function SearchSettings({ owner }) {
       <Section title={t('settings.search.behaviour')}>
         <Toggle label={t('settings.search.newTab')} checked={settings.openInNewTab} onChange={(openInNewTab) => updateDashSettings({ openInNewTab })} />
         <Toggle label={t('settings.search.siteResults')} hint={t('settings.search.siteResultsHint')} checked={settings.siteResults} onChange={(siteResults) => updateDashSettings({ siteResults })} />
+        <Toggle
+          label={t('settings.search.history')}
+          hint={t('settings.search.historyHint')}
+          checked={settings.searchHistory}
+          onChange={(searchHistory) => {
+            // Off forgets what was kept.
+            if (!searchHistory) clearSearchHistory('dash')
+            updateDashSettings({ searchHistory })
+          }}
+        />
         {owner && <Toggle label={t('settings.search.discordLookup')} hint={t('settings.search.discordLookupHint')} checked={settings.discordLookup} onChange={(discordLookup) => updateDashSettings({ discordLookup })} />}
         {!visibleProviders(settings).length && <p className="dash-error">{t('settings.search.noneVisible')}</p>}
         <p className="dash-hint">{t('settings.search.keys')}</p>
+      </Section>
+
+      <Section title={t('settings.search.calculator')}>
+        <Toggle label={t('settings.search.calcOn')} hint={t('settings.search.calcOnHint')} checked={settings.calculator} onChange={(calculator) => updateDashSettings({ calculator })} />
+        {settings.calculator && (
+          <>
+            <Segment label={t('settings.search.calcAngle')} value={settings.calcAngle} options={['rad', 'deg']} onChange={(calcAngle) => updateDashSettings({ calcAngle })} />
+            <Segment label={t('settings.search.calcGraph')} value={settings.calcGraph} options={['ask', 'show']} onChange={(calcGraph) => updateDashSettings({ calcGraph })} />
+          </>
+        )}
       </Section>
     </div>
   )
@@ -560,7 +606,7 @@ function PageRow({ page, index, count, active, widgets }) {
   return (
     <li className={active ? 'is-active' : ''}>
       <button type="button" className="dash-tool" onClick={() => setIcons(!icons)} aria-label={t('pages.icon')} title={t('pages.icon')} aria-expanded={icons}>
-        <span className="material-symbols-outlined">{page.icon}</span>
+        <Glyph icon={page.icon} />
       </button>
       <input className="dash-list__input" value={page.name} maxLength={40} placeholder={t('pages.untitled', { number: index + 1 })} aria-label={t('pages.name')} onChange={(event) => updatePage(page.id, { name: event.target.value })} />
       <small className="dash-muted">{t('pages.widgets', { count: widgets })}</small>
@@ -600,6 +646,13 @@ function PageRow({ page, index, count, active, widgets }) {
               </span>
             </button>
           ))}
+          <EmojiIconButton
+            label={t('pages.emoji')}
+            onPick={(icon) => {
+              updatePage(page.id, { icon })
+              setIcons(false)
+            }}
+          />
         </div>
       )}
     </li>

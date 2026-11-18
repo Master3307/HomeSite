@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import twemoji from "@twemoji/api";
 import { getCurrentAccount } from "/src/lib/account";
@@ -70,10 +70,60 @@ const TWEMOJI_OPTIONS = {
 
 const BRAIN_TICK_MS = 5_000;
 
-export default function LobbyCat() {
+/*
+ * Only one lobby cat is ever live on a page (/cult has one, the dash may
+ * place one): the first one mounted shows, taps along and counts; any
+ * other copy stays empty, so a tap or a pet is never counted twice.
+ */
+const liveCats = [];
+const catListeners = new Set();
+const onCatsChange = () => catListeners.forEach((listener) => listener());
+function useOnlyCat() {
+  const id = useRef(null);
+  id.current ??= Symbol("lobby-cat");
+  useEffect(() => {
+    const mine = id.current;
+    liveCats.push(mine);
+    onCatsChange();
+    return () => {
+      liveCats.splice(liveCats.indexOf(mine), 1);
+      onCatsChange();
+    };
+  }, []);
+  return useSyncExternalStore(
+    (listener) => {
+      catListeners.add(listener);
+      return () => catListeners.delete(listener);
+    },
+    () => liveCats[0] === id.current,
+    () => false,
+  );
+}
+
+/** Whether the lobby cat can show at all (Bongo Cat assets imported, a look set). */
+export function useLobbyCatAvailable() {
+  const { catalog, loading, style } = useLobbyLook();
+  return { available: Boolean(catalog && style?.available), loading: loading || (catalog && !style) };
+}
+
+/*
+ * The lobby cat with options (the dash's lobby cat widget):
+ *   width    px of the cat (the /cult default when left out)
+ *   bubble   left | right | above | off: where the speech bubble shows
+ *   talk     false: it doesn't start talking by itself (petting still answers)
+ *   idle     false: no idle bobbing
+ *   tap      false: it doesn't tap along with clicks and keys (and counts none)
+ *   className extra class on the wrapper
+ */
+export function LobbyCatView(props) {
   const { catalog, style } = useLobbyLook();
-  if (!catalog || !style?.available) return null;
-  return <BobbingCatCard catalog={catalog} outfit={style.outfit} />;
+  const live = useOnlyCat();
+  if (!live || !catalog || !style?.available) return null;
+  return <BobbingCatCard catalog={catalog} outfit={style.outfit} {...props} />;
+}
+
+export default function LobbyCat() {
+  return <LobbyCatView />;
 }
 
 const GOODBYE_LINES = [
@@ -82,7 +132,7 @@ const GOODBYE_LINES = [
   "Goodbye, stranger. Take care out there. 🐾",
 ];
 
-function BobbingCatCard({ catalog, outfit }) {
+function BobbingCatCard({ catalog, outfit, width = null, bubble = "left", talk = true, idle = true, tap = true, className = "" }) {
   const { t } = useTranslation("lobby-code");
   const { t: tCat } = useTranslation("lobby-cat");
   const [pose, setPose] = useState("up");
@@ -99,10 +149,11 @@ function BobbingCatCard({ catalog, outfit }) {
     query.addEventListener("change", onChange);
     return () => query.removeEventListener("change", onChange);
   }, []);
-  const catWidth = small ? CAT_WIDTH_SMALL : CAT_WIDTH;
+  const catWidth = width ?? (small ? CAT_WIDTH_SMALL : CAT_WIDTH);
 
   // Tap along with every click / key press on the site.
   useEffect(() => {
+    if (!tap) return undefined;
     let timer = null;
     const onTap = (event) => {
       clearTimeout(timer);
@@ -115,7 +166,7 @@ function BobbingCatCard({ catalog, outfit }) {
       window.removeEventListener(BONGO_TAP_EVENT, onTap);
       clearTimeout(timer);
     };
-  }, []);
+  }, [tap]);
 
   // FDC editors can dress the cat.
   useEffect(() => {
@@ -177,7 +228,7 @@ function BobbingCatCard({ catalog, outfit }) {
     }
     if (goodbye) {
       say(GOODBYE_LINES);
-    } else {
+    } else if (talk) {
       getCurrentAccount()
         .catch(() => null)
         .then((account) => {
@@ -185,7 +236,7 @@ function BobbingCatCard({ catalog, outfit }) {
         });
     }
 
-    const tick = setInterval(() => brain.tick(), BRAIN_TICK_MS);
+    const tick = talk ? setInterval(() => brain.tick(), BRAIN_TICK_MS) : null;
 
     function onSay(event) {
       if (event.detail?.text) say([event.detail.text]);
@@ -205,7 +256,7 @@ function BobbingCatCard({ catalog, outfit }) {
       brain.dispose();
       brainRef.current = null;
     };
-  }, [say, ask, busy]);
+  }, [say, ask, busy, talk]);
 
   // Emoji in the bubble look like the rest of the site.
   const currentId = speech.current?.id;
@@ -331,7 +382,7 @@ function BobbingCatCard({ catalog, outfit }) {
 
   return (
     <div
-      className="lobby-cat-wrap"
+      className={["lobby-cat-wrap", !idle && "lobby-cat-wrap--still", className].filter(Boolean).join(" ")}
       style={{ "--lobby-cat-width": `${catWidth}px`, "--lobby-cat-height": `${aboveLine}px`, width: catWidth, height: aboveLine }}
     >
       <span className="visually-hidden" aria-live="polite">
@@ -339,12 +390,13 @@ function BobbingCatCard({ catalog, outfit }) {
       </span>
 
       {/* Outside the hitbox: answer buttons can't live inside a button. */}
-      {speech.current && (
+      {speech.current && bubble !== "off" && (
         <div
           key={speech.current.id}
           ref={bubbleRef}
           className={[
             "cat-speech",
+            bubble !== "left" && `cat-speech--${bubble}`,
             speech.current.leaving && "cat-speech--leaving",
             speech.current.choices && "cat-speech--ask",
           ]

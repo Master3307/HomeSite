@@ -4,132 +4,626 @@
     "navidrome": {
       "name": "Navidrome",
       "icon": "navidrome",
-      "provides": ["media", "library"],
-      "url": { "required": true, "placeholder": "https://music.example.com" },
+      "provides": [
+        "media",
+        "library",
+        "stats"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://music.example.com"
+      },
       "fields": [
-        { "key": "username", "type": "text", "required": true },
-        { "key": "password", "type": "secret", "required": true }
+        {
+          "key": "username",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "password",
+          "type": "secret",
+          "required": true
+        }
       ],
       "docs": "https://www.navidrome.org/docs/"
     },
     "jellyfin": {
       "name": "Jellyfin / Emby",
       "icon": "jellyfin",
-      "provides": ["media", "library"],
-      "url": { "required": true, "placeholder": "https://jellyfin.example.com" },
-      "fields": [{ "key": "apiKey", "type": "secret", "required": true }],
+      "provides": [
+        "media",
+        "library",
+        "stats"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://jellyfin.example.com"
+      },
+      "fields": [
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
       "docs": "https://jellyfin.org/docs/general/server/api-keys/"
     },
     "github": {
       "name": "GitHub",
       "icon": "github",
-      "provides": ["releases", "repo"],
-      "url": { "required": false, "default": "https://api.github.com", "placeholder": "https://api.github.com" },
-      "fields": [{ "key": "token", "type": "secret", "required": true, "placeholder": "github_pat_…" }],
+      "provides": [
+        "releases",
+        "repo"
+      ],
+      "url": {
+        "required": false,
+        "default": "https://api.github.com",
+        "placeholder": "https://api.github.com"
+      },
+      "fields": [
+        {
+          "key": "token",
+          "type": "secret",
+          "required": true,
+          "placeholder": "github_pat_…"
+        }
+      ],
       "docs": "https://github.com/settings/personal-access-tokens"
     },
     "gitlab": {
       "name": "GitLab",
       "icon": "gitlab",
-      "provides": ["releases", "repo"],
-      "url": { "required": false, "default": "https://gitlab.com", "placeholder": "https://gitlab.com" },
-      "fields": [{ "key": "token", "type": "secret", "required": true, "placeholder": "glpat-…" }],
+      "provides": [
+        "releases",
+        "repo"
+      ],
+      "url": {
+        "required": false,
+        "default": "https://gitlab.com",
+        "placeholder": "https://gitlab.com"
+      },
+      "fields": [
+        {
+          "key": "token",
+          "type": "secret",
+          "required": true,
+          "placeholder": "glpat-…"
+        }
+      ],
       "docs": "https://docs.gitlab.com/user/profile/personal_access_tokens/"
     },
     "gitea": {
       "name": "Gitea / Forgejo / Codeberg",
       "icon": "gitea",
-      "provides": ["releases", "repo"],
-      "url": { "required": true, "default": "https://codeberg.org", "placeholder": "https://codeberg.org" },
-      "fields": [{ "key": "token", "type": "secret", "required": false }],
+      "provides": [
+        "releases",
+        "repo"
+      ],
+      "url": {
+        "required": true,
+        "default": "https://codeberg.org",
+        "placeholder": "https://codeberg.org"
+      },
+      "fields": [
+        {
+          "key": "token",
+          "type": "secret",
+          "required": false
+        }
+      ],
       "docs": "https://docs.gitea.com/development/api-usage"
     },
     "pihole": {
       "name": "Pi-hole",
       "icon": "pi-hole",
-      "provides": ["dns"],
-      "url": { "required": true, "placeholder": "http://pi.hole" },
+      "provides": [
+        "dns"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "http://pi.hole"
+      },
       "fields": [
-        { "key": "version", "type": "select", "choices": ["v6", "v5"], "default": "v6" },
-        { "key": "password", "type": "secret", "required": false }
+        {
+          "key": "version",
+          "type": "select",
+          "choices": [
+            "v6",
+            "v5"
+          ],
+          "default": "v6"
+        },
+        {
+          "key": "password",
+          "type": "secret",
+          "required": false
+        }
       ],
       "docs": "https://docs.pi-hole.net/api/"
     },
     "adguard": {
       "name": "AdGuard Home",
       "icon": "adguard-home",
-      "provides": ["dns"],
-      "url": { "required": true, "placeholder": "https://adguard.example.com" },
+      "provides": [
+        "dns"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://adguard.example.com"
+      },
       "fields": [
-        { "key": "username", "type": "text", "required": true },
-        { "key": "password", "type": "secret", "required": true }
+        {
+          "key": "username",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "password",
+          "type": "secret",
+          "required": true
+        }
       ],
       "docs": "https://github.com/AdguardTeam/AdGuardHome/wiki/Configuration"
     },
     "homeassistant": {
       "name": "Home Assistant",
       "icon": "home-assistant",
-      "provides": ["smarthome"],
-      "url": { "required": true, "placeholder": "https://home.example.com" },
-      "fields": [{ "key": "token", "type": "secret", "required": true }],
+      "provides": [
+        "smarthome"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://home.example.com"
+      },
+      "fields": [
+        {
+          "key": "token",
+          "type": "secret",
+          "required": true
+        }
+      ],
       "docs": "https://developers.home-assistant.io/docs/auth_api/#long-lived-access-token"
     },
     "uptimekuma": {
       "name": "Uptime Kuma",
       "icon": "uptime-kuma",
-      "provides": ["uptime"],
-      "url": { "required": true, "placeholder": "https://status.example.com" },
-      "fields": [{ "key": "slug", "type": "text", "required": true, "placeholder": "default" }],
+      "provides": [
+        "uptime"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://status.example.com"
+      },
+      "fields": [
+        {
+          "key": "slug",
+          "type": "text",
+          "required": true,
+          "placeholder": "default"
+        }
+      ],
       "docs": "https://github.com/louislam/uptime-kuma/wiki/Status-Page"
     },
     "sonarr": {
       "name": "Sonarr",
       "icon": "sonarr",
-      "provides": ["mediacal", "downloads"],
-      "url": { "required": true, "placeholder": "https://sonarr.example.com" },
-      "fields": [{ "key": "apiKey", "type": "secret", "required": true }],
+      "provides": [
+        "mediacal",
+        "downloads"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://sonarr.example.com"
+      },
+      "fields": [
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
       "docs": "https://wiki.servarr.com/sonarr/settings#security"
     },
     "radarr": {
       "name": "Radarr",
       "icon": "radarr",
-      "provides": ["mediacal", "downloads"],
-      "url": { "required": true, "placeholder": "https://radarr.example.com" },
-      "fields": [{ "key": "apiKey", "type": "secret", "required": true }],
+      "provides": [
+        "mediacal",
+        "downloads"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://radarr.example.com"
+      },
+      "fields": [
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
       "docs": "https://wiki.servarr.com/radarr/settings#security"
     },
     "qbittorrent": {
       "name": "qBittorrent",
       "icon": "qbittorrent",
-      "provides": ["downloads"],
-      "url": { "required": true, "placeholder": "https://qbit.example.com" },
+      "provides": [
+        "downloads"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://qbit.example.com"
+      },
       "fields": [
-        { "key": "username", "type": "text", "required": true },
-        { "key": "password", "type": "secret", "required": true }
+        {
+          "key": "username",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "password",
+          "type": "secret",
+          "required": true
+        }
       ],
       "docs": "https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)"
     },
     "glances": {
       "name": "Glances",
       "icon": "glances",
-      "provides": ["system"],
-      "url": { "required": true, "placeholder": "http://server:61208" },
+      "provides": [
+        "system"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "http://server:61208"
+      },
       "fields": [
-        { "key": "username", "type": "text", "required": false },
-        { "key": "password", "type": "secret", "required": false }
+        {
+          "key": "username",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "password",
+          "type": "secret",
+          "required": false
+        }
       ],
       "docs": "https://glances.readthedocs.io/en/latest/api.html"
     },
     "custom": {
       "name": "JSON API",
       "icon": "",
-      "provides": ["api"],
-      "url": { "required": true, "placeholder": "https://api.example.com/" },
+      "provides": [
+        "api"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://api.example.com/"
+      },
       "fields": [
-        { "key": "headerName", "type": "text", "required": false, "placeholder": "Authorization" },
-        { "key": "headerValue", "type": "secret", "required": false, "placeholder": "Bearer …" }
+        {
+          "key": "headerName",
+          "type": "text",
+          "required": false,
+          "placeholder": "Authorization"
+        },
+        {
+          "key": "headerValue",
+          "type": "secret",
+          "required": false,
+          "placeholder": "Bearer …"
+        }
       ],
       "docs": ""
+    },
+    "opensubsonic": {
+      "name": "OpenSubsonic (Gonic, Airsonic, Ampache …)",
+      "icon": "airsonic",
+      "provides": [
+        "media",
+        "library",
+        "stats"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://music.example.com"
+      },
+      "fields": [
+        {
+          "key": "username",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "password",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://opensubsonic.netlify.app/"
+    },
+    "plex": {
+      "name": "Plex",
+      "icon": "plex",
+      "provides": [
+        "media",
+        "library"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://plex.example.com:32400"
+      },
+      "fields": [
+        {
+          "key": "token",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/"
+    },
+    "audiobookshelf": {
+      "name": "Audiobookshelf",
+      "icon": "audiobookshelf",
+      "provides": [
+        "library",
+        "stats"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://abs.example.com"
+      },
+      "fields": [
+        {
+          "key": "token",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://api.audiobookshelf.org/"
+    },
+    "immich": {
+      "name": "Immich",
+      "icon": "immich",
+      "provides": [
+        "photos",
+        "stats"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://photos.example.com"
+      },
+      "fields": [
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://immich.app/docs/features/command-line-interface#obtain-the-api-key"
+    },
+    "webdav": {
+      "name": "WebDAV",
+      "icon": "webdav",
+      "provides": [
+        "files"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://dav.example.com/files/"
+      },
+      "fields": [
+        {
+          "key": "username",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "password",
+          "type": "secret",
+          "required": false
+        }
+      ],
+      "docs": ""
+    },
+    "copyparty": {
+      "name": "copyparty",
+      "icon": "copyparty",
+      "provides": [
+        "files"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://files.example.com"
+      },
+      "fields": [
+        {
+          "key": "password",
+          "type": "secret",
+          "required": false
+        }
+      ],
+      "docs": "https://github.com/9001/copyparty"
+    },
+    "nextcloud": {
+      "name": "Nextcloud",
+      "icon": "nextcloud",
+      "provides": [
+        "files"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://cloud.example.com"
+      },
+      "fields": [
+        {
+          "key": "username",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "password",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://docs.nextcloud.com/server/latest/user_manual/en/session_management.html#managing-devices"
+    },
+    "paperless": {
+      "name": "Paperless-ngx",
+      "icon": "paperless-ngx",
+      "provides": [
+        "files",
+        "stats"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://paperless.example.com"
+      },
+      "fields": [
+        {
+          "key": "token",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://docs.paperless-ngx.com/api/#authorization"
+    },
+    "syncthing": {
+      "name": "Syncthing",
+      "icon": "syncthing",
+      "provides": [
+        "sync"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "http://server:8384"
+      },
+      "fields": [
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://docs.syncthing.net/dev/rest.html"
+    },
+    "portainer": {
+      "name": "Portainer",
+      "icon": "portainer",
+      "provides": [
+        "containers"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://portainer.example.com"
+      },
+      "fields": [
+        {
+          "key": "endpoint",
+          "type": "text",
+          "required": false,
+          "placeholder": "1"
+        },
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://docs.portainer.io/api/access"
+    },
+    "gotify": {
+      "name": "Gotify",
+      "icon": "gotify",
+      "provides": [
+        "messages"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://gotify.example.com"
+      },
+      "fields": [
+        {
+          "key": "token",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://gotify.net/docs/"
+    },
+    "ntfy": {
+      "name": "ntfy",
+      "icon": "ntfy",
+      "provides": [
+        "messages"
+      ],
+      "url": {
+        "required": false,
+        "default": "https://ntfy.sh",
+        "placeholder": "https://ntfy.sh"
+      },
+      "fields": [
+        {
+          "key": "topics",
+          "type": "text",
+          "required": true,
+          "placeholder": "alerts,backups"
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "required": false
+        }
+      ],
+      "docs": "https://docs.ntfy.sh/subscribe/api/"
+    },
+    "proxmox": {
+      "name": "Proxmox VE",
+      "icon": "proxmox",
+      "provides": [
+        "system",
+        "stats"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://pve.example.com:8006"
+      },
+      "fields": [
+        {
+          "key": "tokenId",
+          "type": "text",
+          "required": true,
+          "placeholder": "root@pam!dash"
+        },
+        {
+          "key": "secret",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://pve.proxmox.com/wiki/User_Management#pveum_tokens"
+    },
+    "speedtest": {
+      "name": "Speedtest Tracker",
+      "icon": "speedtest-tracker",
+      "provides": [
+        "stats"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://speed.example.com"
+      },
+      "fields": [
+        {
+          "key": "token",
+          "type": "secret",
+          "required": false
+        }
+      ],
+      "docs": "https://docs.speedtest-tracker.dev/"
     }
   }
 }

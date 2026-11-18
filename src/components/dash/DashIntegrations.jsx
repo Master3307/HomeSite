@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { LinkIcon, dashboardIconUrl } from './kit.jsx'
+import { LinkIcon } from './kit.jsx'
 import { INTEGRATION_KINDS, addIntegration, changeIntegration, loadIntegrations, removeIntegration, testIntegration, useIntegrations } from '../../lib/dashIntegrations.js'
 
 /*
@@ -247,7 +247,7 @@ export default function DashIntegrations({ loggedIn }) {
             {Object.entries(INTEGRATION_KINDS).map(([kind, spec]) => (
               <li key={kind}>
                 <button type="button" onClick={() => setMode({ kind })}>
-                  {spec.icon ? <img src={dashboardIconUrl(spec.icon)} alt="" width={32} height={32} loading="lazy" decoding="async" onError={(event) => (event.currentTarget.style.visibility = 'hidden')} /> : <KindIcon kind={kind} size={32} />}
+                  <KindIcon kind={kind} size={32} />
                   <strong>{spec.name}</strong>
                   <small>{spec.provides.map((use) => t(`integrations.uses.${use}`)).join(', ')}</small>
                 </button>

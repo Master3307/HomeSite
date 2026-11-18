@@ -1,10 +1,26 @@
-import { useCallback, useMemo } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import Search from '../Search.jsx'
 import { hubGet, userPageUrl } from '../../lib/hub.js'
 import { buildSearchUrl, resolveSearch, updateDashSettings, useDashSettings, visibleProviders } from '../../lib/dashSettings.js'
 import { Favicon } from './kit.jsx'
+import MathGraph from './MathGraph.jsx'
+import MathView from './MathView.jsx'
+import TeX, { latexOf } from './TeX.jsx'
+import { analyzeAll } from '../../lib/dashMath.js'
+import { faultSpot, useExplosion } from './Explosion.jsx'
+import { latexCommands, nextSlot } from './mathSymbols.js'
+import { useMathLanguage } from './useMathLanguage.js'
+
+const Reference = lazy(() => import('./science/Reference.jsx'))
+
+/* The typed maths over the calculator's answers: LaTeX as typed (KaTeX), the rest as the calculator read it. */
+function SearchPretty({ trees, source, className }) {
+  const latex = latexOf(source)
+  const fallback = trees?.length ? <MathView trees={trees} className={className} /> : null
+  return latex ? <TeX latex={latex} className={className} fallback={fallback} /> : fallback
+}
 
 /*
  * The /dash search: the site's own search bar (same look as on the home
@@ -50,8 +66,45 @@ export default function DashSearch({ owner }) {
     }))
   }, [t])
 
+  const { i18n } = useTranslation()
+  const { t: te } = useTranslation('elements')
+  const { t: tf } = useTranslation('formulas')
+  // The periodic table, elements and formulas: loaded a moment after the dash, not with it.
+  const [science, setScience] = useState(null)
+  const [reference, setReference] = useState(null)
+  useEffect(() => {
+    let alive = true
+    const load = () => import('./science/search.jsx').then((module) => alive && setScience(module))
+    const timer = window.requestIdleCallback ? window.requestIdleCallback(load, { timeout: 2500 }) : setTimeout(load, 1200)
+    return () => {
+      alive = false
+      if (window.cancelIdleCallback) window.cancelIdleCallback(timer)
+      else clearTimeout(timer)
+    }
+  }, [])
+  const extras = useMemo(() => (science ? (query) => science.suggest(query, { t: te, tf, locale: i18n.language, open: setReference }) : null), [science, te, tf, i18n.language])
+  const explode = useExplosion()
+  const math = useMathLanguage()
+  const calc = useMemo(
+    () =>
+      settings.calculator === false
+        ? null
+        : {
+            analyze: (query) => analyzeAll(query, { angle: settings.calcAngle === 'deg' ? 'deg' : 'rad', locale: i18n.language }),
+            Graph: MathGraph,
+            Pretty: SearchPretty,
+            autoGraph: settings.calcGraph === 'show',
+            explode,
+            faultSpot,
+            latex: (partial) => latexCommands(partial, math.wordsOf),
+            nextSlot,
+          },
+    [settings.calculator, settings.calcAngle, settings.calcGraph, i18n.language, explode, math],
+  )
+
   return (
-    <Search className="dash-search" autoFocus={settings.top.autofocus} sitePages={settings.siteResults} web={web} people={owner && settings.discordLookup ? people : null} placeholder={t('search.placeholder', { provider: active?.name ?? '' })}>
+    <>
+    <Search calc={calc} extras={extras} history={settings.searchHistory ? 'dash' : false} className="dash-search" autoFocus={settings.top.autofocus} sitePages={settings.siteResults} web={web} people={owner && settings.discordLookup ? people : null} placeholder={t('search.placeholder', { provider: active?.name ?? '' })}>
       {settings.top.showEngines && providers.length > 1 && (
         <div className="dash-engines" role="radiogroup" aria-label={t('search.providers')}>
           {providers.map((provider) => (
@@ -63,5 +116,11 @@ export default function DashSearch({ owner }) {
         </div>
       )}
     </Search>
+    {reference && (
+      <Suspense fallback={null}>
+        <Reference start={reference} onClose={() => setReference(null)} />
+      </Suspense>
+    )}
+    </>
   )
 }

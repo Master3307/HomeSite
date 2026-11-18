@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
@@ -6,7 +6,7 @@ import { useAccountSettings } from '../../lib/accountSettings.jsx'
 import { birthdayLabel, daysUntil, loadBirthdays } from '../../lib/birthdays.js'
 import { hubGet } from '../../lib/hub.js'
 import { keyPath } from '../../lib/members.js'
-import { loadNotifications } from '../../lib/moderation.js'
+import { NOTIFICATIONS_EVENT, loadNotifications, markRead, removeNotifications } from '../../lib/moderation.js'
 import { siteConfig } from '../../lib/siteConfig.js'
 import { Empty, LoadError, Loading, timeAgo, useRemote } from './kit.jsx'
 import { SoftImage } from './widgetsFeeds.jsx'
@@ -18,6 +18,45 @@ import { SoftImage } from './widgetsFeeds.jsx'
  */
 
 const DiscordCard = lazy(() => import('../DiscordCard.jsx'))
+const LobbyCatView = lazy(() => import('../cult/LobbyCat.jsx').then((module) => ({ default: module.LobbyCatView })))
+const TapCounter = lazy(() => import('../cult/TapCounter.jsx'))
+
+/* ---------- the lobby cat (only ever one, see LobbyCat.jsx) ---------- */
+
+export const LOBBY_CAT_WIDTH = 132
+
+/**
+ * The cat with the widget's options, plus its counters if wanted. Placed by
+ * the board (on a widget's edge or a search box) or Dash.jsx (the main
+ * search bar), always as an overlay, never inside a card (cards clip).
+ */
+export function DashLobbyCat({ options, className = '' }) {
+  const { size = 100, bubble = 'left', talk = true, idle = true, tap = true, counters = 'off', align = 'right' } = options
+  const width = Math.round((LOBBY_CAT_WIDTH * Math.max(40, Math.min(250, Number(size) || 100))) / 100)
+  return (
+    <Suspense fallback={null}>
+      <div className={`dash-lobbycat dash-lobbycat--${align} ${className}`.trim()}>
+        {counters !== 'off' && <TapCounter variant={counters === 'mine' ? 'mine' : 'compact'} className="dash-lobbycat__counters" />}
+        <LobbyCatView width={width} bubble={bubble} talk={talk} idle={idle} tap={tap} className="lobby-cat-wrap--free" />
+      </div>
+    </Suspense>
+  )
+}
+
+/* In its grid cell the widget only shows while editing (the cat itself is an overlay). */
+function LobbyCatWidgetView({ widget, editing }) {
+  const { t } = useTranslation('dash')
+  if (!editing) return null
+  const where = widget.options.placement ?? 'widget'
+  return (
+    <div className="dash-lobbycat-cell">
+      <span className="material-symbols-outlined" aria-hidden="true">
+        pets
+      </span>
+      <small>{t(`widgets.lobbycat.where_${where}`)}</small>
+    </div>
+  )
+}
 
 const loggedInOf = (account) => Boolean(account && !account.local && !account.isAdminSession)
 
@@ -70,24 +109,55 @@ function NotificationsView({ widget }) {
   const { account } = useAccountSettings()
   const loggedIn = loggedInOf(account)
   const { data, error, reload } = useRemote(loggedIn ? `site:notifications:${account.id ?? ''}` : null, () => loadNotifications(), { refresh: 2 * 60, enabled: loggedIn, private: true })
+  const [changes, setChanges] = useState({ read: new Set(), gone: new Set(), all: false })
+  const [busy, setBusy] = useState(false)
   if (!loggedIn) return <Empty icon="notifications">{t('widgets.notifications.login')}</Empty>
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={3} />
   const count = Math.max(1, Math.min(20, Number(widget.options.count) || 5))
-  const items = (data.items ?? []).filter((item) => !widget.options.unreadOnly || !item.readAt).slice(0, count)
+  // What was just marked or removed shows at once; the next load confirms it.
+  const all = (data.items ?? []).filter((item) => !changes.gone.has(item.id)).map((item) => (changes.all || changes.read.has(item.id) ? { ...item, readAt: item.readAt ?? 'now' } : item))
+  const unread = all.filter((item) => !item.readAt).length
+  const items = all.filter((item) => !widget.options.unreadOnly || !item.readAt).slice(0, count)
+  async function act(run, change) {
+    setBusy(true)
+    setChanges(change)
+    try {
+      const result = await run()
+      if (typeof result?.unread === 'number') window.dispatchEvent(new CustomEvent(NOTIFICATIONS_EVENT, { detail: { unread: result.unread } }))
+    } finally {
+      setBusy(false)
+      reload()
+    }
+  }
   return (
     <div className="dash-w-notes">
       <p className="dash-w-notes__head">
-        <Link to="/cult/notifications">{data.unread ? t('widgets.notifications.unread', { count: data.unread }) : t('widgets.notifications.allRead')}</Link>
+        <Link to="/cult/notifications">{unread ? t('widgets.notifications.unread', { count: unread }) : t('widgets.notifications.allRead')}</Link>
+        {unread > 0 && (
+          <button type="button" className="dash-link-button" disabled={busy} onClick={() => act(() => markRead(), (current) => ({ ...current, all: true }))}>
+            {t('widgets.notifications.readAll')}
+          </button>
+        )}
       </p>
       {items.length ? (
         <ul>
           {items.map((item) => (
             <li key={item.id} className={item.readAt ? undefined : 'is-unread'}>
-              <Link to={item.link && item.link.startsWith('/') ? item.link : '/cult/notifications'}>
+              <Link to={item.link && item.link.startsWith('/') ? item.link : '/cult/notifications'} onClick={() => !item.readAt && markRead([item.id]).catch(() => {})}>
                 <strong>{item.title}</strong>
                 {item.body && <span>{item.body}</span>}
                 <small>{timeAgo(item.createdAt, i18n.language)}</small>
               </Link>
+              <span className="dash-w-notes__tools">
+                {!item.readAt && (
+                  <button type="button" className="dash-tool" disabled={busy} onClick={() => act(() => markRead([item.id]), (current) => ({ ...current, read: new Set([...current.read, item.id]) }))} aria-label={t('widgets.notifications.markRead')} title={t('widgets.notifications.markRead')}>
+                    <span className="material-symbols-outlined">done</span>
+                  </button>
+                )}
+                <button type="button" className="dash-tool dash-tool--danger" disabled={busy} onClick={() => act(() => removeNotifications([item.id]), (current) => ({ ...current, gone: new Set([...current.gone, item.id]) }))} aria-label={t('widgets.notifications.remove')} title={t('widgets.notifications.remove')}>
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </span>
             </li>
           ))}
         </ul>
@@ -155,4 +225,4 @@ function ServerView() {
   )
 }
 
-export const SITE_VIEWS = { DiscordView, BirthdaysView, NotificationsView, ServerView }
+export const SITE_VIEWS = { DiscordView, BirthdaysView, NotificationsView, ServerView, LobbyCatWidgetView }

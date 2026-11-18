@@ -1,4 +1,5 @@
 const crypto = require("node:crypto");
+const express = require("express");
 const rateLimit = require("express-rate-limit");
 
 const { setting, enabled } = require("../config.cjs");
@@ -82,7 +83,7 @@ function contextFor(integration, { allowPrivate }) {
     if (answer.status >= 400) throw httpError(502, `${KINDS[integration.kind].name} answered ${answer.status}.`);
     return answer.json();
   };
-  return { ...integration, request };
+  return { ...integration, allowPrivate, request };
 }
 
 /* Sessions some services need (Pi-hole v6, qBittorrent): kept in memory per integration. */
@@ -123,8 +124,8 @@ async function subsonicCall(ctx, method, params) {
   const { path, query } = subsonic(ctx, method, params);
   const data = await ctx.request(path, { query });
   const body = data?.["subsonic-response"];
-  if (!body) throw httpError(502, "That doesn't look like Navidrome (Subsonic API).");
-  if (body.status !== "ok") throw httpError(400, `Navidrome: ${body.error?.message ?? "error"}`);
+  if (!body) throw httpError(502, `That doesn't look like ${KINDS[ctx.kind]?.name ?? "a Subsonic server"} (Subsonic API).`);
+  if (body.status !== "ok") throw httpError(400, `${KINDS[ctx.kind]?.name ?? "Subsonic"}: ${body.error?.message ?? "error"}`);
   return body;
 }
 const ALBUM_TYPES = { newest: "newest", recent: "recent", frequent: "frequent", random: "random", highest: "highest", starred: "starred" };
@@ -229,11 +230,147 @@ function arrQueue(kind) {
   };
 }
 
+
+/* ---------- files: WebDAV (also Nextcloud) and copyparty ---------- */
+
+const SAFE_PATH = /^\/[^\0\\]*$/;
+/** A path inside the service ("/", "/Music/2024/"); never "..", always starting with "/". */
+function cleanPath(value, { dir = false } = {}) {
+  let path = String(value ?? "/").trim() || "/";
+  if (!path.startsWith("/")) path = `/${path}`;
+  path = path.replace(/\/{2,}/g, "/");
+  if (!SAFE_PATH.test(path) || path.split("/").some((part) => part === ".." || part === ".") || path.length > 1000) throw httpError(400, "That path isn't allowed.");
+  if (dir && !path.endsWith("/")) path += "/";
+  return path;
+}
+const encodePath = (path) => path.split("/").map((part) => encodeURIComponent(part)).join("/");
+const xmlText = (block, tag) => {
+  const match = new RegExp(`<(?:[A-Za-z0-9]+:)?${tag}\\b[^>]*>([\\s\\S]*?)</(?:[A-Za-z0-9]+:)?${tag}>`, "i").exec(block);
+  return match ? match[1].replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim() : "";
+};
+
+/* The WebDAV root of an integration (Nextcloud: the user's files under remote.php). */
+function davRoot(ctx) {
+  if (ctx.kind === "nextcloud") return `${ctx.url.replace(/\/+$/, "")}/remote.php/dav/files/${encodeURIComponent(ctx.config.username ?? "")}`;
+  return ctx.url.replace(/\/+$/, "");
+}
+const davHeaders = (ctx) => (ctx.secrets.password || ctx.config.username ? basicAuth(ctx) : {});
+
+async function davList(ctx, path) {
+  const rootUrl = davRoot(ctx);
+  const target = `${rootUrl}${encodePath(path)}`;
+  const answer = await safeFetch(parseTarget(target, { ports: "service" }), {
+    method: "PROPFIND",
+    headers: { ...davHeaders(ctx), Depth: "1", "Content-Type": "application/xml; charset=utf-8", Accept: "application/xml, text/xml" },
+    body: '<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:getcontentlength/><d:getlastmodified/><d:getcontenttype/><d:quota-used-bytes/><d:quota-available-bytes/></d:prop></d:propfind>',
+    allowPrivate: ctx.allowPrivate,
+    ports: "service",
+  });
+  if (answer.status === 401 || answer.status === 403) throw httpError(400, `${KINDS[ctx.kind].name} didn't accept the login.`);
+  if (answer.status === 404) throw httpError(404, "That folder doesn't exist.");
+  if (answer.status !== 207) throw httpError(502, `${KINDS[ctx.kind].name} answered ${answer.status}.`);
+  const basePath = new URL(rootUrl).pathname.replace(/\/+$/, "");
+  const blocks = answer.text().match(/<(?:[A-Za-z0-9]+:)?response\b[\s\S]*?<\/(?:[A-Za-z0-9]+:)?response>/gi) ?? [];
+  let quota = null;
+  const items = [];
+  for (const block of blocks) {
+    let href = xmlText(block, "href");
+    try {
+      href = decodeURIComponent(new URL(href, rootUrl).pathname);
+    } catch {
+      continue;
+    }
+    const inside = href.startsWith(basePath) ? href.slice(basePath.length) || "/" : href;
+    const dir = /<(?:[A-Za-z0-9]+:)?collection\b/i.test(block);
+    if (inside.replace(/\/+$/, "") === path.replace(/\/+$/, "")) {
+      const used = Number(xmlText(block, "quota-used-bytes"));
+      const free = Number(xmlText(block, "quota-available-bytes"));
+      if (Number.isFinite(used) && used >= 0) quota = { used, free: Number.isFinite(free) && free >= 0 ? free : null };
+      continue;
+    }
+    const name = inside.replace(/\/+$/, "").split("/").pop();
+    if (!name) continue;
+    items.push({ name, path: dir ? `${inside.replace(/\/+$/, "")}/` : inside, dir, size: dir ? null : num(xmlText(block, "getcontentlength")), modified: xmlText(block, "getlastmodified") || null, type: xmlText(block, "getcontenttype") || null });
+  }
+  return { path, items, quota, web: ctx.kind === "nextcloud" ? `${ctx.url.replace(/\/+$/, "")}/apps/files/?dir=${encodeURIComponent(path)}` : `${rootUrl}${encodePath(path)}` };
+}
+
+const copypartyHeaders = (ctx) => (ctx.secrets.password ? { PW: ctx.secrets.password } : {});
+async function copypartyList(ctx, path) {
+  const data = await ctx.request(`${encodePath(path).replace(/^\//, "")}`, { headers: copypartyHeaders(ctx), query: { ls: "" } });
+  const base = ctx.url.replace(/\/+$/, "");
+  const entry = (item, dir) => {
+    const name = decodeURIComponent(String(item.href ?? "")).replace(/\/+$/, "");
+    return { name, path: `${path}${name}${dir ? "/" : ""}`, dir, size: dir ? null : num(item.sz), modified: num(item.ts) ? new Date(item.ts * 1000).toISOString() : null, type: null };
+  };
+  return {
+    path,
+    items: [...(data.dirs ?? []).map((item) => entry(item, true)), ...(data.files ?? []).map((item) => entry(item, false))].filter((item) => item.name),
+    quota: null,
+    web: `${base}${encodePath(path)}`,
+  };
+}
+
+async function paperlessList(ctx, query) {
+  const data = await ctx.request("api/documents/", { headers: { Authorization: `Token ${ctx.secrets.token}` }, query: { ordering: "-created", page_size: clampInt(query.size, 1, 50, 15), ...(query.q ? { query: String(query.q).slice(0, 100) } : {}) } });
+  const base = ctx.url.replace(/\/+$/, "");
+  return {
+    path: "/",
+    items: (data.results ?? []).map((doc) => ({ name: doc.title || doc.original_file_name || `#${doc.id}`, path: `/${doc.id}`, dir: false, size: null, modified: doc.created ?? doc.added ?? null, type: "document", link: `${base}/documents/${doc.id}/details` })),
+    quota: null,
+    web: `${base}/documents`,
+  };
+}
+
+/* A file through the server (download / open), and an upload into a folder. */
+const FILE_LIMIT = 50 * 1024 * 1024;
+async function fileDownload(ctx, path) {
+  const clean = cleanPath(path);
+  if (clean.endsWith("/")) throw httpError(400, "That's a folder.");
+  const target = ctx.kind === "copyparty" ? `${ctx.url.replace(/\/+$/, "")}${encodePath(clean)}` : `${davRoot(ctx)}${encodePath(clean)}`;
+  const headers = ctx.kind === "copyparty" ? copypartyHeaders(ctx) : davHeaders(ctx);
+  const answer = await safeFetch(parseTarget(target, { ports: "service" }), { headers, allowPrivate: ctx.allowPrivate, ports: "service", maxBytes: FILE_LIMIT, timeout: 30_000 });
+  if (answer.status >= 400) throw httpError(answer.status === 404 ? 404 : 502, answer.status === 404 ? "That file doesn't exist." : `It answered ${answer.status}.`);
+  return { name: clean.split("/").pop(), buffer: answer.buffer, type: answer.type };
+}
+async function fileUpload(ctx, folder, name, buffer) {
+  const dir = cleanPath(folder, { dir: true });
+  const file = String(name ?? "").trim();
+  if (!file || file.length > 200 || /[\\/\0]/.test(file) || file === "." || file === "..") throw httpError(400, "That file name isn't allowed.");
+  const target = ctx.kind === "copyparty" ? `${ctx.url.replace(/\/+$/, "")}${encodePath(dir + file)}` : `${davRoot(ctx)}${encodePath(dir + file)}`;
+  const headers = { ...(ctx.kind === "copyparty" ? copypartyHeaders(ctx) : davHeaders(ctx)), "Content-Type": "application/octet-stream" };
+  const answer = await safeFetch(parseTarget(target, { ports: "service" }), { method: "PUT", headers, body: buffer, allowPrivate: ctx.allowPrivate, ports: "service", timeout: 60_000 });
+  if (answer.status === 401 || answer.status === 403) throw httpError(400, "The service didn't allow the upload.");
+  if (answer.status >= 400) throw httpError(502, `The upload failed (${answer.status}).`);
+  return { ok: true, path: dir + file };
+}
+const FILES = { list: null, file: fileDownload, upload: fileUpload };
+
+/* ---------- more services ---------- */
+
+const plexHeaders = (ctx) => ({ "X-Plex-Token": ctx.secrets.token, Accept: "application/json" });
+const absHeaders = (ctx) => ({ Authorization: `Bearer ${ctx.secrets.token}` });
+const immichHeaders = (ctx) => ({ "x-api-key": ctx.secrets.apiKey });
+const portainerHeaders = (ctx) => ({ "X-API-Key": ctx.secrets.apiKey });
+const proxmoxHeaders = (ctx) => ({ Authorization: `PVEAPIToken=${ctx.config.tokenId}=${ctx.secrets.secret}` });
+const percent = (part, whole) => (Number(whole) > 0 ? (Number(part) / Number(whole)) * 100 : null);
+function uptimeText(seconds) {
+  const s = Number(seconds) || 0;
+  const days = Math.floor(s / 86_400);
+  const hours = Math.floor((s % 86_400) / 3600);
+  return days ? `${days} d ${hours} h` : `${hours} h ${Math.floor((s % 3600) / 60)} min`;
+}
+
+async function proxmoxResources(ctx) {
+  const data = await ctx.request("api2/json/cluster/resources", { headers: proxmoxHeaders(ctx) });
+  return Array.isArray(data?.data) ? data.data : [];
+}
+
 const ADAPTERS = {
   navidrome: {
     test: async (ctx) => {
       const body = await subsonicCall(ctx, "ping");
-      return `Navidrome ${body.serverVersion ?? body.version ?? ""}`.trim();
+      return `${body.type ? body.type[0].toUpperCase() + body.type.slice(1) : KINDS[ctx.kind].name} ${body.serverVersion ?? body.version ?? ""}`.trim();
     },
     actions: {
       nowPlaying: async (ctx) => {
@@ -462,6 +599,7 @@ const ADAPTERS = {
       return [system.hostname, system.os_name].filter(Boolean).join(" · ") || "Glances";
     },
     actions: {
+      system: (ctx) => ADAPTERS.glances.actions.stats(ctx),
       stats: async (ctx) => {
         const [quick, fs, uptime, load, system] = await Promise.all([glances(ctx, "quicklook"), glances(ctx, "fs").catch(() => []), glances(ctx, "uptime").catch(() => null), glances(ctx, "load").catch(() => null), glances(ctx, "system").catch(() => ({}))]);
         return {
@@ -474,6 +612,241 @@ const ADAPTERS = {
           cores: num(load?.cpucore),
           uptime: typeof uptime === "string" ? uptime : null,
           disks: (Array.isArray(fs) ? fs : []).slice(0, 12).map((disk) => ({ mount: disk.mnt_point, percent: num(disk.percent), used: num(disk.used), size: num(disk.size) })),
+        };
+      },
+    },
+  },
+
+
+  plex: {
+    test: async (ctx) => {
+      const data = await ctx.request("", { headers: plexHeaders(ctx) });
+      return `${data?.MediaContainer?.friendlyName ?? "Plex"} ${data?.MediaContainer?.version ?? ""}`.trim();
+    },
+    actions: {
+      nowPlaying: async (ctx) => {
+        const data = await ctx.request("status/sessions", { headers: plexHeaders(ctx) });
+        return (data?.MediaContainer?.Metadata ?? []).map((item) => ({
+          id: `${item.sessionKey ?? ""}:${item.ratingKey}`,
+          title: item.title ?? "",
+          artist: item.type === "episode" ? (item.grandparentTitle ?? "") : (item.grandparentTitle ?? item.originalTitle ?? ""),
+          album: item.parentTitle ?? "",
+          cover: String(item.type === "track" ? (item.parentRatingKey ?? item.ratingKey) : item.type === "episode" ? (item.grandparentRatingKey ?? item.ratingKey) : item.ratingKey),
+          user: item.User?.title ?? "",
+          player: [item.Player?.product, item.Player?.title].filter(Boolean).join(" · "),
+          paused: item.Player?.state === "paused",
+          position: num(item.viewOffset) !== null ? item.viewOffset / 1000 : null,
+          duration: num(item.duration) !== null ? item.duration / 1000 : null,
+          type: item.type === "track" ? "music" : "video",
+        }));
+      },
+      library: async (ctx, query) => {
+        const data = await ctx.request("library/recentlyAdded", { headers: plexHeaders(ctx), query: { "X-Plex-Container-Start": 0, "X-Plex-Container-Size": clampInt(query.size, 1, 40, 12) } });
+        return (data?.MediaContainer?.Metadata ?? []).map((item) => ({ id: String(item.ratingKey), title: item.type === "season" ? item.parentTitle : item.title, subtitle: item.type === "album" ? (item.parentTitle ?? "") : item.type === "season" ? (item.title ?? "") : item.year ? String(item.year) : "", year: num(item.year), cover: String(item.ratingKey), type: item.type === "album" ? "album" : "video" }));
+      },
+    },
+    image: async (ctx, item, size) => ctx.request(`photo/:/transcode`, { headers: plexHeaders(ctx), query: { width: size, height: size, minSize: 1, upscale: 1, url: `/library/metadata/${item}/thumb` }, raw: true, accept: RASTER }),
+  },
+
+  audiobookshelf: {
+    test: async (ctx) => `@${(await ctx.request("api/me", { headers: absHeaders(ctx) })).username ?? "?"}`,
+    actions: {
+      library: async (ctx, query) => {
+        const data = await ctx.request("api/me/items-in-progress", { headers: absHeaders(ctx) });
+        return (data?.libraryItems ?? []).slice(0, clampInt(query.size, 1, 40, 12)).map((item) => ({ id: item.id, title: item.media?.metadata?.title ?? "", subtitle: item.media?.metadata?.authorName ?? item.media?.metadata?.author ?? "", year: num(item.media?.metadata?.publishedYear), cover: item.id, type: "album" }));
+      },
+      stats: async (ctx) => {
+        const data = await ctx.request("api/me/listening-stats", { headers: absHeaders(ctx) });
+        return { hoursListened: Math.round((Number(data?.totalTime) || 0) / 360) / 10, minutesToday: Math.round((Number(data?.today) || 0) / 60), books: num(Object.keys(data?.items ?? {}).length) };
+      },
+    },
+    image: async (ctx, item, size) => ctx.request(`api/items/${encodeURIComponent(item)}/cover`, { headers: absHeaders(ctx), query: { width: size, format: "jpeg" }, raw: true, accept: RASTER }),
+  },
+
+  immich: {
+    test: async (ctx) => (await ctx.request("api/users/me", { headers: immichHeaders(ctx) })).name ?? "Immich",
+    actions: {
+      photos: async (ctx, query) => {
+        const size = clampInt(query.size, 1, 30, 6);
+        let assets;
+        if (query.sort === "recent") {
+          const data = await ctx.request("api/search/metadata", { method: "POST", headers: immichHeaders(ctx), json: { size, order: "desc", type: "IMAGE" } });
+          assets = data?.assets?.items ?? [];
+        } else {
+          assets = await ctx.request("api/search/random", { method: "POST", headers: immichHeaders(ctx), json: { size, type: "IMAGE" } }).catch(() => ctx.request("api/assets/random", { headers: immichHeaders(ctx), query: { count: size } }));
+        }
+        const base = ctx.url.replace(/\/+$/, "");
+        return (Array.isArray(assets) ? assets : []).map((asset) => ({ id: asset.id, title: asset.originalFileName ?? "", date: asset.fileCreatedAt ?? asset.localDateTime ?? null, link: `${base}/photos/${asset.id}` }));
+      },
+      stats: async (ctx) => {
+        const data = await ctx.request("api/assets/statistics", { headers: immichHeaders(ctx) });
+        return { photos: num(data?.images), videos: num(data?.videos) };
+      },
+    },
+    image: async (ctx, item) => ctx.request(`api/assets/${encodeURIComponent(item)}/thumbnail`, { headers: immichHeaders(ctx), query: { size: "preview" }, raw: true, accept: RASTER }),
+  },
+
+  webdav: {
+    test: async (ctx) => {
+      const listing = await davList(ctx, "/");
+      return `${listing.items.length} items in /`;
+    },
+    actions: { list: (ctx, query) => davList(ctx, cleanPath(query.path, { dir: true })) },
+    files: FILES,
+  },
+
+  nextcloud: {
+    test: async (ctx) => {
+      const listing = await davList(ctx, "/");
+      return `${listing.items.length} items in your files`;
+    },
+    actions: { list: (ctx, query) => davList(ctx, cleanPath(query.path, { dir: true })) },
+    files: FILES,
+  },
+
+  copyparty: {
+    test: async (ctx) => {
+      const listing = await copypartyList(ctx, "/");
+      return `${listing.items.length} items in /`;
+    },
+    actions: { list: (ctx, query) => copypartyList(ctx, cleanPath(query.path, { dir: true })) },
+    files: FILES,
+  },
+
+  paperless: {
+    test: async (ctx) => {
+      const data = await ctx.request("api/statistics/", { headers: { Authorization: `Token ${ctx.secrets.token}` } });
+      return `${data.documents_total ?? 0} documents`;
+    },
+    actions: {
+      list: (ctx, query) => paperlessList(ctx, query),
+      stats: async (ctx) => {
+        const data = await ctx.request("api/statistics/", { headers: { Authorization: `Token ${ctx.secrets.token}` } });
+        return { documents: num(data.documents_total), inbox: num(data.documents_inbox), characters: num(data.character_count) };
+      },
+    },
+  },
+
+  syncthing: {
+    test: async (ctx) => `Syncthing ${(await ctx.request("rest/system/version", { headers: { "X-API-Key": ctx.secrets.apiKey } })).version ?? ""}`.trim(),
+    actions: {
+      status: async (ctx) => {
+        const headers = { "X-API-Key": ctx.secrets.apiKey };
+        const [folders, connections] = await Promise.all([ctx.request("rest/config/folders", { headers }), ctx.request("rest/system/connections", { headers }).catch(() => null)]);
+        const list = await Promise.all(
+          (Array.isArray(folders) ? folders : []).slice(0, 20).map(async (folder) => {
+            const status = await ctx.request("rest/db/status", { headers, query: { folder: folder.id } }).catch(() => null);
+            const global = Number(status?.globalBytes) || 0;
+            return { id: folder.id, label: folder.label || folder.id, paused: Boolean(folder.paused), state: status?.state ?? "unknown", percent: global ? Math.round(((Number(status?.inSyncBytes) || 0) / global) * 1000) / 10 : 100, needBytes: num(status?.needBytes) };
+          }),
+        );
+        const devices = Object.values(connections?.connections ?? {});
+        return { folders: list, devices: { connected: devices.filter((device) => device.connected).length, total: devices.length } };
+      },
+    },
+  },
+
+  portainer: {
+    test: async (ctx) => `Portainer ${(await ctx.request("api/status", { headers: portainerHeaders(ctx) })).Version ?? ""}`.trim(),
+    actions: {
+      containers: async (ctx, query) => {
+        let endpoint = String(ctx.config.endpoint ?? "").trim();
+        if (!/^\d{1,6}$/.test(endpoint)) {
+          const endpoints = await ctx.request("api/endpoints", { headers: portainerHeaders(ctx) });
+          endpoint = String(endpoints?.[0]?.Id ?? "1");
+        }
+        const list = await ctx.request(`api/endpoints/${endpoint}/docker/containers/json`, { headers: portainerHeaders(ctx), query: { all: query.filter === "running" ? "0" : "1" } });
+        return (Array.isArray(list) ? list : []).slice(0, 80).map((container) => ({ id: String(container.Id).slice(0, 12), name: String(container.Names?.[0] ?? container.Id).replace(/^\//, ""), image: container.Image ?? "", state: container.State ?? "", status: container.Status ?? "" }));
+      },
+    },
+  },
+
+  gotify: {
+    test: async (ctx) => `@${(await ctx.request("current/user", { headers: { "X-Gotify-Key": ctx.secrets.token } })).name ?? "?"}`,
+    actions: {
+      messages: async (ctx, query) => {
+        const headers = { "X-Gotify-Key": ctx.secrets.token };
+        const [data, apps] = await Promise.all([ctx.request("message", { headers, query: { limit: clampInt(query.size, 1, 50, 10) } }), ctx.request("application", { headers }).catch(() => [])]);
+        const names = new Map((Array.isArray(apps) ? apps : []).map((app) => [app.id, app.name]));
+        return (data?.messages ?? []).map((message) => ({ id: `g${message.id}`, title: message.title ?? "", text: String(message.message ?? "").slice(0, 500), source: names.get(message.appid) ?? "", priority: num(message.priority), date: message.date ?? null }));
+      },
+    },
+  },
+
+  ntfy: {
+    test: async (ctx) => ((await ctx.request("v1/health")).healthy ? "ntfy is healthy" : "ntfy"),
+    actions: {
+      messages: async (ctx, query) => {
+        const topics = String(ctx.config.topics ?? "")
+          .split(",")
+          .map((topic) => topic.trim())
+          .filter((topic) => /^[-_A-Za-z0-9]{1,64}$/.test(topic))
+          .slice(0, 10);
+        if (!topics.length) throw httpError(400, "No topics.");
+        const answer = await ctx.request(`${topics.join(",")}/json`, { headers: ctx.secrets.token ? { Authorization: `Bearer ${ctx.secrets.token}` } : {}, query: { poll: 1, since: ["1h", "12h", "24h", "7d"].includes(query.since) ? query.since : "24h" }, raw: true });
+        if (answer.status >= 400) throw httpError(answer.status === 401 || answer.status === 403 ? 400 : 502, `ntfy answered ${answer.status}.`);
+        const lines = answer.text().split("\n").filter(Boolean);
+        const list = [];
+        for (const line of lines) {
+          try {
+            const event = JSON.parse(line);
+            if (event.event === "message") list.push({ id: `n${event.id}`, title: event.title ?? "", text: String(event.message ?? "").slice(0, 500), source: event.topic ?? "", priority: num(event.priority), date: event.time ? new Date(event.time * 1000).toISOString() : null });
+          } catch {
+            // not a JSON line
+          }
+        }
+        return list.reverse().slice(0, clampInt(query.size, 1, 50, 10));
+      },
+    },
+  },
+
+  proxmox: {
+    test: async (ctx) => `Proxmox VE ${(await ctx.request("api2/json/version", { headers: proxmoxHeaders(ctx) }))?.data?.version ?? ""}`.trim(),
+    actions: {
+      stats: async (ctx) => {
+        const resources = await proxmoxResources(ctx);
+        const guests = resources.filter((item) => item.type === "qemu" || item.type === "lxc");
+        return { nodes: resources.filter((item) => item.type === "node").length, vmsRunning: guests.filter((item) => item.type === "qemu" && item.status === "running").length, vms: guests.filter((item) => item.type === "qemu").length, containersRunning: guests.filter((item) => item.type === "lxc" && item.status === "running").length, containers: guests.filter((item) => item.type === "lxc").length };
+      },
+      // The first node in the System widget's shape (like Glances); storages as disks.
+      system: async (ctx) => {
+        const resources = await proxmoxResources(ctx);
+        const node = resources.find((item) => item.type === "node" && item.status === "online") ?? resources.find((item) => item.type === "node");
+        if (!node) throw httpError(404, "No Proxmox node found.");
+        return {
+          host: node.node ?? node.name ?? "",
+          os: "Proxmox VE",
+          cpu: Number.isFinite(Number(node.cpu)) ? Math.round(node.cpu * 1000) / 10 : null,
+          memory: percent(node.mem, node.maxmem),
+          swap: null,
+          load: null,
+          cores: num(node.maxcpu),
+          uptime: node.uptime ? uptimeText(node.uptime) : null,
+          disks: resources.filter((item) => item.type === "storage" && item.node === node.node && Number(item.maxdisk) > 0).slice(0, 10).map((item) => ({ mount: item.storage, percent: percent(item.disk, item.maxdisk), used: num(item.disk), size: num(item.maxdisk) })),
+        };
+      },
+    },
+  },
+
+  speedtest: {
+    test: async (ctx) => {
+      const result = await ADAPTERS.speedtest.actions.stats(ctx);
+      return result.download !== null ? `${result.download} Mbit/s down` : "Speedtest Tracker";
+    },
+    actions: {
+      stats: async (ctx) => {
+        // v1 API (with a token), else the older open endpoint.
+        const data = ctx.secrets.token ? await ctx.request("api/v1/results/latest", { headers: { Authorization: `Bearer ${ctx.secrets.token}` } }) : await ctx.request("api/speedtest/latest");
+        const result = data?.data ?? data ?? {};
+        const mbit = (value, bits) => {
+          const number = Number(value);
+          if (!Number.isFinite(number)) return null;
+          return Math.round((bits ? number / 1e6 : number) * 10) / 10;
+        };
+        return {
+          download: mbit(result.download_bits ?? result.download, result.download_bits !== undefined),
+          upload: mbit(result.upload_bits ?? result.upload, result.upload_bits !== undefined),
+          ping: num(result.ping) !== null ? Math.round(result.ping * 10) / 10 : null,
         };
       },
     },
@@ -494,6 +867,9 @@ const ADAPTERS = {
     },
   },
 };
+
+// Every OpenSubsonic server speaks the same API as Navidrome.
+ADAPTERS.opensubsonic = ADAPTERS.navidrome;
 
 function githubHeaders(ctx) {
   return { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", Authorization: `Bearer ${ctx.secrets.token}` };
@@ -728,6 +1104,45 @@ function registerDashIntegrations(app, { getRequestSession, getDatabase, require
         res.status(error.status ?? 502).json({ error: error.status ? error.message : "No picture." });
       }
     },
+  );
+
+  // A file from a files integration, through the server (its login stays here): always a download, never shown as a page.
+  app.get("/dash/integrations/:id/file", limiter, requireStorage, async (req, res) => {
+    res.set("X-Content-Type-Options", "nosniff");
+    res.set("Content-Security-Policy", "default-src 'none'; sandbox");
+    res.set("Cache-Control", "private, no-store");
+    try {
+      const session = getRequestSession(req);
+      if (!session) throw httpError(401, "Log in first.");
+      const item = one(session, req.params.id);
+      const files = ADAPTERS[item.kind].files;
+      if (!files) throw httpError(404, "No files here.");
+      const file = await files.file(contextFor(item, { allowPrivate: privateAllowed(session) }), req.query.path);
+      res.set("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(file.name || "file")}`);
+      res.type("application/octet-stream").send(file.buffer);
+    } catch (error) {
+      res.status(error.status ?? 502).json({ error: error.status ? error.message : "The file couldn't be loaded." });
+    }
+  });
+
+  // An upload into a folder of a files integration (raw body, 50 MB at most).
+  const uploadLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false });
+  const rawBody = express.raw({ type: () => true, limit: "50mb" });
+  app.post(
+    "/dash/integrations/:id/upload",
+    uploadLimiter,
+    requireStorage,
+    rawBody,
+    route(async (req, _res, session) => {
+      const item = one(session, req.params.id);
+      const files = ADAPTERS[item.kind].files;
+      if (!files) throw httpError(404, "This integration can't take uploads.");
+      if (!Buffer.isBuffer(req.body) || !req.body.length) throw httpError(400, "The file is empty.");
+      const result = await files.upload(contextFor(item, { allowPrivate: privateAllowed(session) }), req.query.path, req.query.name, req.body);
+      forget(item.id);
+      log(session, "dash.integration.change", item);
+      return result;
+    }),
   );
 
   app.get(

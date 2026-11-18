@@ -12,7 +12,7 @@ import { bottom, fit, pack, repair } from './dashGrid.js'
  * injector in Root) in sync, also across browser tabs (`storage` event).
  *
  *   look       the board's grid (columns, row height, gap, width, phone
- *              columns, gravity), the cards (style, opacity, blur, corners,
+ *              columns, float up or stay put), the cards (style, opacity, blur, corners,
  *              shadow, border, titles), type (font, size), accent colour and
  *              the background (site / colour / gradient / picture)
  *   top        what the top shows: site title bar, tab title, greeting (own
@@ -62,7 +62,7 @@ export const LOOK_CHOICES = Object.freeze({
   style: ['glass', 'solid', 'outline', 'bare'],
   shadow: ['none', 'soft', 'strong'],
   titles: ['normal', 'small', 'caps', 'hidden'],
-  font: ['site', 'rounded', 'mono', 'system'],
+  font: ['site', 'rounded', 'mono', 'system', 'serif', 'display', 'condensed'],
   background: ['site', 'color', 'gradient', 'image'],
   backgroundFit: ['cover', 'contain', 'tile'],
 })
@@ -74,7 +74,7 @@ export const LOOK_DEFAULTS = Object.freeze({
   gap: 14, // px between widgets (0-40)
   width: 'normal', // normal | wide | full
   phoneColumns: 4, // cells across on phones (2-6)
-  gravity: true, // widgets float up into free space
+  float: false, // widgets float up into free space (off: they stay exactly where you drop them; `gravity` before, which was on)
   // cards
   style: 'glass', // glass | solid | outline | bare
   opacity: 100, // % of the card's fill (0-100)
@@ -89,6 +89,7 @@ export const LOOK_DEFAULTS = Object.freeze({
   fontScale: 100, // % (80-130)
   accent: '', // #rrggbb, or '' for the site's (your account colour)
   animate: true, // widgets fade in, rearranging glides
+  rolling: false, // numbers roll like an odometer when they change (clocks, counters …); each widget can say otherwise
   // background
   background: 'site', // site | color | gradient | image
   backgroundValue: '', // the colour (#rrggbb) or the picture's address
@@ -120,6 +121,9 @@ export const TOP_DEFAULTS = Object.freeze({
   clock: 'time', // off | time | seconds: the big clock
   hourFormat: 'site', // site (your account setting) | 12 | 24
   date: 'long', // off | short | long
+  clockColor: '', // #rrggbb, '' = the text colour
+  secondsColor: '', // #rrggbb, '' = the clock's colour, faded
+  rolling: 'inherit', // inherit (the look setting) | on | off: the big clock's digits roll
   align: 'left', // left | center
   size: 'large', // small | medium | large
   showSearch: true,
@@ -133,7 +137,11 @@ const WIDGET_LOOK_DEFAULTS = Object.freeze({
   style: 'inherit', // inherit | glass | solid | outline | bare
   accent: '', // #rrggbb
   padding: 'normal', // normal | none
-  titleIcon: true, // the type's icon next to the title
+  titleIcon: true, // an icon next to the title
+  icon: '', // its own title icon (Material Symbol or emoji); '' = the type's
+  font: 'inherit', // inherit | one of LOOK_CHOICES.font
+  rolling: 'inherit', // inherit | on | off
+  css: '', // own CSS for this widget alone (nested under its card; `&` is the card)
   hideOnPhone: false,
 })
 export const WIDGET_LOOK_CHOICES = Object.freeze({ style: ['inherit', ...LOOK_CHOICES.style], padding: ['normal', 'none'] })
@@ -177,7 +185,22 @@ export const WIDGET_SIZES = Object.freeze({
   mediacal: { w: 4, h: 5, minW: 3, minH: 3 },
   downloads: { w: 4, h: 4, minW: 3, minH: 2 },
   system: { w: 4, h: 4, minW: 3, minH: 3 },
+  lobbycat: { w: 3, h: 2, minW: 2, minH: 1 },
+  files: { w: 4, h: 5, minW: 3, minH: 3 },
+  photos: { w: 4, h: 4, minW: 2, minH: 2 },
+  containers: { w: 4, h: 5, minW: 3, minH: 2 },
+  messages: { w: 4, h: 4, minW: 3, minH: 2 },
+  stats: { w: 4, h: 2, minW: 2, minH: 2 },
+  sync: { w: 4, h: 3, minW: 3, minH: 2 },
+  timer: { w: 3, h: 2, minW: 2, minH: 2 },
+  progress: { w: 3, h: 3, minW: 2, minH: 2 },
+  exchange: { w: 3, h: 3, minW: 2, minH: 2 },
+  calculator: { w: 3, h: 3, minW: 2, minH: 2 },
+  cat: { w: 3, h: 4, minW: 2, minH: 2 },
 })
+
+/* Types that can be on the dash only once (the lobby cat counts taps; a second copy must never count them again). */
+export const SINGLE_TYPES = new Set(['lobbycat'])
 const WIDGET_TYPES = Object.keys(WIDGET_SIZES)
 
 /** A size of the 12-column table scaled to `columns`. */
@@ -214,6 +237,10 @@ const DEFAULT_SETTINGS = Object.freeze({
   openInNewTab: false,
   siteResults: true,
   discordLookup: true,
+  calculator: true,
+  searchHistory: true,
+  calcAngle: 'rad',
+  calcGraph: 'ask',
   pages: [DEFAULT_PAGE],
   activePage: DEFAULT_PAGE.id,
   startPage: 'last',
@@ -331,6 +358,10 @@ function normalizeWidgetLook(raw) {
     accent: color(look.accent),
     padding: oneOf(look.padding, WIDGET_LOOK_CHOICES.padding, WIDGET_LOOK_DEFAULTS.padding),
     titleIcon: flag(look.titleIcon, WIDGET_LOOK_DEFAULTS.titleIcon),
+    icon: cleanGlyph(look.icon, ''),
+    font: oneOf(look.font, ['inherit', ...LOOK_CHOICES.font], 'inherit'),
+    rolling: oneOf(look.rolling, ['inherit', 'on', 'off'], 'inherit'),
+    css: text(look.css, 6000),
     hideOnPhone: flag(look.hideOnPhone, WIDGET_LOOK_DEFAULTS.hideOnPhone),
   }
 }
@@ -368,7 +399,7 @@ function normalizeLook(raw) {
     gap: clamp(look.gap, 0, 40, d.gap),
     width: oneOf(look.width, LOOK_CHOICES.width, d.width),
     phoneColumns: clamp(look.phoneColumns, 2, 6, d.phoneColumns),
-    gravity: flag(look.gravity, d.gravity),
+    float: flag(look.float, d.float),
     style: oneOf(look.style, LOOK_CHOICES.style, d.style),
     opacity: clamp(look.opacity, 0, 100, d.opacity),
     blur: clamp(look.blur, 0, 40, d.blur),
@@ -381,6 +412,7 @@ function normalizeLook(raw) {
     fontScale: clamp(look.fontScale, 80, 130, d.fontScale),
     accent: color(look.accent),
     animate: flag(look.animate, d.animate),
+    rolling: flag(look.rolling, d.rolling),
     background: oneOf(look.background, LOOK_CHOICES.background, d.background),
     backgroundValue: text(look.backgroundValue, 2000),
     gradientFrom: color(look.gradientFrom, d.gradientFrom),
@@ -413,6 +445,9 @@ function normalizeTop(raw) {
     clock: oneOf(top.clock, TOP_CHOICES.clock, d.clock),
     hourFormat: oneOf(top.hourFormat, TOP_CHOICES.hourFormat, d.hourFormat),
     date: oneOf(top.date, TOP_CHOICES.date, d.date),
+    clockColor: color(top.clockColor),
+    secondsColor: color(top.secondsColor),
+    rolling: oneOf(top.rolling, ['inherit', 'on', 'off'], d.rolling),
     align: oneOf(top.align, TOP_CHOICES.align, d.align),
     size: oneOf(top.size, TOP_CHOICES.size, d.size),
     showSearch: flag(top.showSearch, d.showSearch),
@@ -423,9 +458,18 @@ function normalizeTop(raw) {
   }
 }
 
+/* An icon: a Material Symbol name, a Unicode emoji ("emoji:🎀") or a Discord emoji ("<:name:id>"). */
+function cleanGlyph(value, fallback) {
+  const icon = String(value ?? '')
+  if (/^[a-z0-9_]{1,40}$/.test(icon)) return icon
+  if (/^emoji:[^\s<>"]{1,40}$/u.test(icon)) return icon
+  if (/^<a?:[A-Za-z0-9_]{2,32}:\d{17,20}>$/.test(icon)) return icon
+  return fallback
+}
+
 function normalizePage(page) {
   if (!page || typeof page !== 'object') return null
-  return { id: text(page.id || createId('page'), 80), name: text(page.name, 40), icon: /^[a-z0-9_]{1,40}$/.test(page.icon ?? '') ? page.icon : 'dashboard' }
+  return { id: text(page.id || createId('page'), 80), name: text(page.name, 40), icon: cleanGlyph(page.icon, 'dashboard') }
 }
 
 /* Version 1 -> 2: bookmarks, clock, quick links and the iframe "widgets" become board widgets. */
@@ -489,9 +533,9 @@ function repairLayouts(widgets, pages, look) {
   for (const page of pages) {
     const onPage = result.filter((widget) => widget.page === page.id)
     if (!onPage.length) continue
-    const lg = repair(onPage.map(({ id, x, y, w, h }) => ({ id, x, y, w, h })), look.columns, look.gravity)
+    const lg = repair(onPage.map(({ id, x, y, w, h }) => ({ id, x, y, w, h })), look.columns, look.float)
     const hasSm = onPage.every((widget) => widget.sm)
-    const sm = hasSm ? repair(onPage.map((widget) => ({ id: widget.id, ...widget.sm })), look.phoneColumns, look.gravity) : null
+    const sm = hasSm ? repair(onPage.map((widget) => ({ id: widget.id, ...widget.sm })), look.phoneColumns, look.float) : null
     for (const widget of onPage) {
       const index = result.indexOf(widget)
       const { x, y, w, h } = lg.find((box) => box.id === widget.id)
@@ -527,6 +571,8 @@ function normalizeDashSettings(raw) {
   const widgets = (Array.isArray(input.widgets) ? input.widgets : [])
     .map((widget) => normalizeWidget(widget, pageIds, look.columns, look.phoneColumns))
     .filter((widget) => widget && !ids.has(widget.id) && ids.add(widget.id))
+    // One of each single type, whatever an import or another device sent.
+    .filter((widget, index, list) => !SINGLE_TYPES.has(widget.type) || list.findIndex((other) => other.type === widget.type) === index)
     .slice(0, MAX_WIDGETS)
 
   return {
@@ -538,6 +584,10 @@ function normalizeDashSettings(raw) {
     openInNewTab: Boolean(input.openInNewTab),
     siteResults: input.siteResults !== false,
     discordLookup: input.discordLookup !== false,
+    calculator: input.calculator !== false,
+    searchHistory: input.searchHistory !== false,
+    calcAngle: input.calcAngle === 'deg' ? 'deg' : 'rad',
+    calcGraph: input.calcGraph === 'show' ? 'show' : 'ask',
     pages,
     activePage: pageIds.includes(input.activePage) ? input.activePage : pageIds[0],
     startPage: oneOf(input.startPage, ['last', 'first'], 'last'),
@@ -628,6 +678,7 @@ export function removeWidget(id) {
 /** A new widget of `type` on `page`, in the first free spot of both layouts. */
 export function addWidget(type, page, options = {}) {
   const current = currentSettings
+  if (SINGLE_TYPES.has(type) && current.widgets.some((widget) => widget.type === type)) return null
   const { look } = current
   const size = scaledSize(type, look.columns)
   const onPage = current.widgets.filter((widget) => widget.page === page)
@@ -655,7 +706,7 @@ function findSpot(boxes, w, h, columns) {
 /** A copy of a widget, right under it. */
 export function duplicateWidget(id) {
   const widget = currentSettings.widgets.find((item) => item.id === id)
-  if (!widget || currentSettings.widgets.length >= MAX_WIDGETS) return null
+  if (!widget || SINGLE_TYPES.has(widget.type) || currentSettings.widgets.length >= MAX_WIDGETS) return null
   const copy = { ...structuredClone(widget), id: createId('widget'), y: widget.y + widget.h, ...(widget.sm ? { sm: { ...widget.sm, y: widget.sm.y + widget.sm.h } } : {}) }
   updateDashSettings((current) => ({ widgets: [...current.widgets, copy] }))
   return copy
@@ -704,7 +755,7 @@ export function phoneLayout(widgets, look) {
 
 export function addPage(name = '', icon = 'dashboard') {
   if (currentSettings.pages.length >= MAX_PAGES) return null
-  const page = { id: createId('page'), name: text(name, 40), icon }
+  const page = { id: createId('page'), name: text(name, 40), icon: cleanGlyph(icon, 'dashboard') }
   updateDashSettings((current) => ({ pages: [...current.pages, page], activePage: page.id }))
   return page
 }
@@ -715,7 +766,7 @@ export function duplicatePage(id, name) {
   const source = current.pages.find((page) => page.id === id)
   if (!source || current.pages.length >= MAX_PAGES) return null
   const copy = { id: createId('page'), name: text(name ?? source.name, 40), icon: source.icon }
-  const widgets = current.widgets.filter((widget) => widget.page === id).map((widget) => ({ ...structuredClone(widget), id: createId('widget'), page: copy.id }))
+  const widgets = current.widgets.filter((widget) => widget.page === id && !SINGLE_TYPES.has(widget.type)).map((widget) => ({ ...structuredClone(widget), id: createId('widget'), page: copy.id }))
   if (current.widgets.length + widgets.length > MAX_WIDGETS) return null
   const pages = [...current.pages]
   pages.splice(pages.indexOf(source) + 1, 0, copy)

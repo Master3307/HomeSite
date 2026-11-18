@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next'
 
 import DashBoard from '../components/dash/DashBoard.jsx'
 import DashSearch from '../components/dash/DashSearch.jsx'
+import { DashLobbyCat } from '../components/dash/widgetsSite.jsx'
 import DashSettings from '../components/dash/DashSettings.jsx'
 import { DashMenu, useMenuTrigger } from '../components/dash/menus.jsx'
-import { clockOptions, formatDate, timeParts, useNow } from '../components/dash/kit.jsx'
+import { Glyph, RollingText, clockOptions, formatDate, timeParts, useNow } from '../components/dash/kit.jsx'
 import { PageTitle } from '../components/SiteLogo.jsx'
 import { useAccountSettings } from '../lib/accountSettings.jsx'
 import { loadIntegrations, resetIntegrations } from '../lib/dashIntegrations.js'
@@ -27,7 +28,7 @@ import '../styles/nerd-font.css'
  * mode, Ctrl + Z undoes while editing, Ctrl + , customizes.
  */
 
-function Greeting({ top, account }) {
+function Greeting({ top, account, rolling }) {
   const { t, i18n } = useTranslation('dash')
   const { prefs } = useAccountSettings()
   const seconds = top.clock === 'seconds'
@@ -43,15 +44,15 @@ function Greeting({ top, account }) {
   return (
     <div className="dash-greeting">
       {top.clock !== 'off' && (
-        <time className="dash-greeting__time" dateTime={now.toISOString()}>
+        <time className="dash-greeting__time" dateTime={now.toISOString()} style={top.clockColor ? { color: top.clockColor } : undefined}>
           {timeParts(now, i18n.language, options).map((piece, index) =>
             piece.type === 'dayPeriod' ? (
               <small key={index} className="dash-ampm">
                 {piece.value}
               </small>
             ) : (
-              <span key={index} className={piece.type === 'second' ? 'dash-sec' : undefined}>
-                {piece.value}
+              <span key={index} className={piece.type === 'second' ? 'dash-sec' : undefined} style={piece.type === 'second' && top.secondsColor ? { color: top.secondsColor, opacity: 1 } : undefined}>
+                {rolling && /[0-9]/.test(piece.value) ? <RollingText text={piece.value} /> : piece.value}
               </span>
             ),
           )}
@@ -80,9 +81,7 @@ function PageTab({ page, index, count, active, widgets, onMenu, renaming, onRena
   if (renaming)
     return (
       <span className="dash-pages__rename">
-        <span className="material-symbols-outlined" aria-hidden="true">
-          {page.icon}
-        </span>
+        <Glyph icon={page.icon} />
         <input
           autoFocus
           defaultValue={page.name}
@@ -117,9 +116,7 @@ function PageTab({ page, index, count, active, widgets, onMenu, renaming, onRena
       aria-label={count > 1 ? `${name}, ${t('pages.widgets', { count: widgets })}` : undefined}
       {...trigger}
     >
-      <span className="material-symbols-outlined" aria-hidden="true">
-        {page.icon}
-      </span>
+      <Glyph icon={page.icon} />
       {name}
     </button>
   )
@@ -271,6 +268,7 @@ export default function Dash() {
   const owner = loggedIn && Boolean(siteConfig.ownerDiscordId && account.discordUserId === siteConfig.ownerDiscordId)
   const activePage = pages.some((page) => page.id === settings.activePage) ? settings.activePage : pages[0].id
   useTabIcon(top.tabIcon)
+  const searchCat = settings.widgets.find((widget) => widget.type === 'lobbycat' && widget.options.placement === 'search') ?? null
 
   useEffect(() => {
     setDashSyncAccount(account)
@@ -364,7 +362,7 @@ export default function Dash() {
       <main className={classes.filter(Boolean).join(' ')} style={vars}>
         <TopArea top={top} editing={editing} setEditing={setEditing} openSettings={setSettingsOpen}>
         <div className="dash-top">
-          <Greeting top={top} account={account} />
+          <Greeting top={top} account={account} rolling={top.rolling === 'on' || (top.rolling === 'inherit' && look.rolling)} />
           <div className="dash-top__actions">
             <button type="button" className={`dash-button dash-button--quiet${editing ? ' is-active' : ''}`} aria-pressed={editing} onClick={() => setEditing(!editing)} title={`${t('dash:board.editBoard')} (E)`}>
               <span className="material-symbols-outlined" aria-hidden="true">
@@ -381,7 +379,13 @@ export default function Dash() {
           </div>
         </div>
 
-        {top.showSearch && <DashSearch owner={owner} />}
+        {top.showSearch && (
+          <div className="dash-search-wrap">
+            {/* The lobby cat on the main search bar (its widget's placement). */}
+            {searchCat && <DashLobbyCat options={searchCat.options} className="dash-lobbycat--search" />}
+            <DashSearch owner={owner} />
+          </div>
+        )}
         </TopArea>
 
         {editing && (

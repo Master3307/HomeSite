@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useAccountSettings } from '../../lib/accountSettings.jsx'
-import { buildSearchUrl, createId, updateWidgetOptions, useDashSettings, visibleProviders, withScheme } from '../../lib/dashSettings.js'
+import { buildSearchUrl, createId, isColor, updateWidgetOptions, useDashSettings, visibleProviders, withScheme } from '../../lib/dashSettings.js'
 import { integrationGet } from '../../lib/dashIntegrations.js'
-import { Empty, Favicon, LoadError, Loading, clockOptions, fetchJson, formatDate, hostOf, isTimeZone, timeParts, useNow, useRemote } from './kit.jsx'
+import { Empty, Favicon, LoadError, Loading, Num, clockOptions, fetchJson, formatDate, hostOf, isTimeZone, timeParts, useNow, useRemote } from './kit.jsx'
 
 /*
  * Everyday widgets: clock, world clocks, calendar, countdown, note, to-do,
@@ -26,7 +26,7 @@ function Time({ date, language, options, className = '' }) {
           </small>
         ) : (
           <span key={index} className={part.type === 'second' ? 'dash-sec' : undefined}>
-            {part.value}
+            {/[0-9]/.test(part.value) ? <Num>{part.value}</Num> : part.value}
           </span>
         ),
       )}
@@ -76,7 +76,8 @@ function AnalogClock({ date, timeZone, seconds, numbers }) {
 function ClockView({ widget }) {
   const { i18n } = useTranslation('dash')
   const { prefs } = useAccountSettings()
-  const { seconds = false, style = 'digital', hourFormat = 'site', date = 'long', label = '', showZone = true, numbers = false } = widget.options
+  const { seconds = false, style = 'digital', hourFormat = 'site', date = 'long', label = '', showZone = true, numbers = false, color = '', secondsColor = '' } = widget.options
+  const colors = { ...(isColor(color) ? { '--dash-clock': color } : {}), ...(isColor(secondsColor) ? { '--dash-clock-sec': secondsColor } : {}) }
   const zone = widget.options.timeZone && widget.options.timeZone !== 'auto' && isTimeZone(widget.options.timeZone) ? widget.options.timeZone : ''
   const now = useNow(seconds || style === 'analog' ? 1000 : 60_000)
   const options = clockOptions(prefs, { hourFormat, timeZone: zone, seconds })
@@ -84,7 +85,7 @@ function ClockView({ widget }) {
   const dateText = formatDate(now, i18n.language, date, options.timeZone)
   if (style === 'analog')
     return (
-      <div className="dash-w-clock dash-w-clock--analog">
+      <div className="dash-w-clock dash-w-clock--analog" style={colors}>
         <AnalogClock date={now} timeZone={options.timeZone} seconds={seconds} numbers={numbers} />
         {(caption || dateText) && (
           <div className="dash-w-clock__side">
@@ -96,7 +97,7 @@ function ClockView({ widget }) {
       </div>
     )
   return (
-    <div className="dash-w-clock">
+    <div className="dash-w-clock" style={colors}>
       <time className="dash-w-clock__time" dateTime={now.toISOString()}>
         <Time date={now} language={i18n.language} options={options} />
       </time>
@@ -261,7 +262,9 @@ function CountdownView({ widget }) {
       <p className="dash-w-count__value">
         {shown.map(([unit, value]) => (
           <span key={unit}>
-            <strong>{String(value).padStart(unit === 'days' ? 1 : 2, '0')}</strong>
+            <strong>
+              <Num>{String(value).padStart(unit === 'days' ? 1 : 2, '0')}</Num>
+            </strong>
             <small>{t(`widgets.countdown.${unit}`, { count: value })}</small>
           </span>
         ))}
@@ -597,7 +600,7 @@ function ApiView({ widget }) {
           {field.label && <dt>{field.label}</dt>}
           <dd>
             {field.prefix}
-            {formatValue(pickPath(data, field.path), field.format || format, i18n.language).slice(0, 200)}
+            <Num>{formatValue(pickPath(data, field.path), field.format || format, i18n.language).slice(0, 200)}</Num>
             {field.suffix}
           </dd>
         </div>

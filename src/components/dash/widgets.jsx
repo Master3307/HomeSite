@@ -6,6 +6,8 @@ import { FEED_VIEWS as F, RELEASE_SOURCES } from './widgetsFeeds.jsx'
 import { INTEGRATION_VIEWS as I } from './widgetsIntegrations.jsx'
 import { LINK_VIEWS as L } from './widgetsLinks.jsx'
 import { SITE_VIEWS as S } from './widgetsSite.jsx'
+import { SERVICE_VIEWS as V } from './widgetsServices.jsx'
+import { EXTRA_VIEWS as X } from './widgetsExtra.jsx'
 import { siteConfig } from '../../lib/siteConfig.js'
 
 /*
@@ -18,6 +20,7 @@ import { siteConfig } from '../../lib/siteConfig.js'
  *   needs      'login' | 'owner' | 'feeds' (the picker says so; the widget
  *              itself explains what's missing)
  *   titled     shows its name as a heading when it has no own title
+ *   single     only once on the whole dash (lib/dashSettings.js SINGLE_TYPES)
  * Sizes are in lib/dashSettings.js (WIDGET_SIZES), so the store can repair
  * layouts without this file.
  */
@@ -49,6 +52,8 @@ export const WIDGETS = {
       { key: 'showZone', type: 'toggle', default: true, when: (options) => options.timeZone && options.timeZone !== 'auto' },
       { key: 'numbers', type: 'toggle', default: false, when: (options) => options.style === 'analog' },
       { key: 'label', type: 'text' },
+      { key: 'color', type: 'color' },
+      { key: 'secondsColor', type: 'color', when: (options) => Boolean(options.seconds) },
     ],
   },
   worldclock: {
@@ -127,11 +132,11 @@ export const WIDGETS = {
     View: L.BookmarksView,
     fields: [
       { key: 'items', type: 'rows', max: 100, link: true, columns: [{ key: 'title', type: 'text' }, { key: 'url', type: 'url' }, { key: 'icon', type: 'icon' }, { key: 'description', type: 'text' }] },
-      { key: 'layout', type: 'select', choices: ['grid', 'tiles', 'list', 'icons'], default: 'grid' },
+      { key: 'layout', type: 'select', choices: ['grid', 'tiles', 'list', 'hlist', 'icons'], default: 'grid' },
       { key: 'iconSize', type: 'select', choices: ['small', 'medium', 'large'], default: 'medium' },
       { key: 'iconSource', type: 'select', choices: ['site', 'duckduckgo', 'none'], default: 'site' },
       { key: 'showStatus', type: 'toggle', default: false },
-      { key: 'showUrl', type: 'toggle', default: false, when: (options) => options.layout === 'list' },
+      { key: 'showUrl', type: 'toggle', default: false, when: (options) => options.layout === 'list' || options.layout === 'hlist' },
       NEW_TAB,
     ],
   },
@@ -243,7 +248,20 @@ export const WIDGETS = {
   },
 
   /* ---------- integrations (Customize → Integrations) ---------- */
-  media: { icon: 'music_note', category: 'integrations', titled: true, needs: 'login', View: I.MediaView, fields: [{ key: 'integration', type: 'integration', use: 'media' }, { key: 'covers', type: 'toggle', default: true }, { key: 'user', type: 'toggle', default: true }] },
+  media: {
+    icon: 'music_note',
+    category: 'integrations',
+    titled: true,
+    needs: 'login',
+    View: I.MediaView,
+    fields: [
+      { key: 'integrations', type: 'integration', use: 'media', multi: true },
+      { key: 'covers', type: 'toggle', default: true },
+      { key: 'user', type: 'toggle', default: true },
+      { key: 'progress', type: 'toggle', default: true },
+      { key: 'times', type: 'toggle', default: false, when: (options) => options.progress !== false },
+    ],
+  },
   library: {
     icon: 'library_music',
     category: 'integrations',
@@ -251,9 +269,9 @@ export const WIDGETS = {
     needs: 'login',
     View: I.LibraryView,
     fields: [
-      { key: 'integration', type: 'integration', use: 'library' },
+      { key: 'integrations', type: 'integration', use: 'library', multi: true },
       { key: 'sort', type: 'select', choices: ['newest', 'recent', 'frequent', 'random'], default: 'newest' },
-      { key: 'media', type: 'select', choices: ['all', 'music', 'movies', 'shows'], default: 'all', when: (options, integration) => integration?.kind === 'jellyfin' },
+      { key: 'media', type: 'select', choices: ['all', 'music', 'movies', 'shows'], default: 'all' },
       { key: 'size', type: 'number', min: 1, max: 40, default: 12 },
       { key: 'layout', type: 'select', choices: ['grid', 'list'], default: 'grid' },
       { key: 'stats', type: 'toggle', default: true },
@@ -272,7 +290,7 @@ export const WIDGETS = {
       { key: 'layout', type: 'select', choices: ['tiles', 'list'], default: 'tiles' },
     ],
   },
-  uptime: { icon: 'monitor_heart', category: 'integrations', titled: true, needs: 'login', View: I.UptimeView, fields: [{ key: 'integration', type: 'integration', use: 'uptime' }, { key: 'history', type: 'toggle', default: true }, { key: 'downFirst', type: 'toggle', default: true }] },
+  uptime: { icon: 'monitor_heart', category: 'integrations', titled: true, needs: 'login', View: I.UptimeView, fields: [{ key: 'integrations', type: 'integration', use: 'uptime', multi: true }, { key: 'history', type: 'toggle', default: true }, { key: 'downFirst', type: 'toggle', default: true }] },
   mediacal: {
     icon: 'event_upcoming',
     category: 'integrations',
@@ -293,12 +311,133 @@ export const WIDGETS = {
     needs: 'login',
     View: I.DownloadsView,
     fields: [
-      { key: 'integration', type: 'integration', use: 'downloads' },
-      { key: 'filter', type: 'select', choices: ['active', 'all'], default: 'active', when: (options, integration) => integration?.kind === 'qbittorrent' },
+      { key: 'integrations', type: 'integration', use: 'downloads', multi: true },
+      { key: 'filter', type: 'select', choices: ['active', 'all'], default: 'active' },
       { key: 'size', type: 'number', min: 1, max: 40, default: 10 },
     ],
   },
-  system: { icon: 'memory', category: 'integrations', titled: true, needs: 'login', View: I.SystemView, fields: [{ key: 'integration', type: 'integration', use: 'system' }, { key: 'disks', type: 'toggle', default: true }] },
+  files: {
+    icon: 'folder_open',
+    category: 'integrations',
+    titled: true,
+    needs: 'login',
+    View: V.FilesView,
+    fields: [
+      { key: 'integrations', type: 'integration', use: 'files', multi: true },
+      { key: 'path', type: 'text', placeholder: '/' },
+      { key: 'browse', type: 'toggle', default: true },
+      { key: 'upload', type: 'toggle', default: true },
+      { key: 'sort', type: 'select', choices: ['name', 'modified', 'size'], default: 'name' },
+      { key: 'foldersFirst', type: 'toggle', default: true },
+      { key: 'sizes', type: 'toggle', default: true },
+      { key: 'dates', type: 'toggle', default: true },
+      { key: 'quota', type: 'toggle', default: true },
+      { key: 'count', type: 'number', min: 5, max: 200, default: 50 },
+    ],
+  },
+  photos: {
+    icon: 'photo_library',
+    category: 'integrations',
+    needs: 'login',
+    View: V.PhotosView,
+    fields: [
+      { key: 'integrations', type: 'integration', use: 'photos', multi: true },
+      { key: 'sort', type: 'select', choices: ['random', 'recent'], default: 'random' },
+      { key: 'layout', type: 'select', choices: ['single', 'grid'], default: 'single' },
+      { key: 'interval', type: 'number', min: 4, max: 600, default: 12, when: (options) => (options.layout ?? 'single') === 'single' },
+      { key: 'count', type: 'number', min: 2, max: 30, default: 6, when: (options) => options.layout === 'grid' },
+      { key: 'refresh', type: 'number', min: 1, max: 1440, default: 30 },
+    ],
+  },
+  containers: {
+    icon: 'deployed_code',
+    category: 'integrations',
+    titled: true,
+    needs: 'login',
+    View: V.ContainersView,
+    fields: [
+      { key: 'integrations', type: 'integration', use: 'containers', multi: true },
+      { key: 'filter', type: 'select', choices: ['all', 'running'], default: 'all' },
+      { key: 'image', type: 'toggle', default: false },
+    ],
+  },
+  messages: {
+    icon: 'forum',
+    category: 'integrations',
+    titled: true,
+    needs: 'login',
+    View: V.MessagesView,
+    fields: [
+      { key: 'integrations', type: 'integration', use: 'messages', multi: true },
+      { key: 'count', type: 'number', min: 1, max: 50, default: 10 },
+      { key: 'since', type: 'select', choices: ['1h', '12h', '24h', '7d'], default: '24h' },
+    ],
+  },
+  stats: { icon: 'query_stats', category: 'integrations', titled: true, needs: 'login', View: V.StatsView, fields: [{ key: 'integrations', type: 'integration', use: 'stats', multi: true }] },
+  sync: { icon: 'sync', category: 'integrations', titled: true, needs: 'login', View: V.SyncView, fields: [{ key: 'integrations', type: 'integration', use: 'sync', multi: true }] },
+  system: { icon: 'memory', category: 'integrations', titled: true, needs: 'login', View: I.SystemView, fields: [{ key: 'integrations', type: 'integration', use: 'system', multi: true }, { key: 'disks', type: 'toggle', default: true }] },
+
+  timer: {
+    icon: 'timer',
+    category: 'essentials',
+    View: X.TimerView,
+    fields: [
+      { key: 'mode', type: 'select', choices: ['timer', 'stopwatch'], default: 'timer' },
+      { key: 'minutes', type: 'number', min: 1, max: 1440, default: 25, when: (options) => (options.mode ?? 'timer') === 'timer' },
+      { key: 'sound', type: 'toggle', default: true, when: (options) => (options.mode ?? 'timer') === 'timer' },
+    ],
+  },
+  progress: {
+    icon: 'hourglass_bottom',
+    category: 'essentials',
+    titled: true,
+    View: X.ProgressView,
+    fields: [
+      { key: 'day', type: 'toggle', default: true },
+      { key: 'week', type: 'toggle', default: true },
+      { key: 'month', type: 'toggle', default: true },
+      { key: 'year', type: 'toggle', default: true },
+      { key: 'weekStart', type: 'select', choices: ['monday', 'sunday'], default: 'monday' },
+      { key: 'decimals', type: 'number', min: 0, max: 2, default: 0 },
+    ],
+  },
+  calculator: {
+    icon: 'calculate',
+    category: 'essentials',
+    View: X.CalculatorView,
+    fields: [
+      { key: 'layout', type: 'select', choices: ['auto', 'tabs', 'split', 'calc'], default: 'auto' },
+      { key: 'input', type: 'select', choices: ['plain', 'latex', 'unicode'], default: 'plain' },
+      { key: 'angle', type: 'select', choices: ['rad', 'deg'], default: 'rad' },
+      { key: 'digits', type: 'number', min: 3, max: 15, default: 10 },
+      { key: 'size', type: 'select', choices: ['auto', 'small', 'medium', 'large', 'huge'], default: 'auto' },
+      { key: 'preview', type: 'select', choices: ['auto', 'always', 'off'], default: 'auto' },
+      { key: 'keypad', type: 'toggle', default: true },
+      { key: 'alternatives', type: 'toggle', default: true },
+      { key: 'marks', type: 'toggle', default: true },
+    ],
+  },
+  exchange: {
+    icon: 'currency_exchange',
+    category: 'info',
+    titled: true,
+    View: X.ExchangeView,
+    fields: [
+      { key: 'base', type: 'choice', choices: ['EUR', 'USD', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD', 'PLN', 'SEK', 'NOK', 'DKK', 'CZK', 'HUF', 'TRY'], default: 'EUR' },
+      { key: 'targets', type: 'rows', max: 20, columns: [{ key: 'code', type: 'text', placeholder: 'USD' }] },
+      { key: 'amount', type: 'number', min: 0, max: 1000000, default: 1 },
+    ],
+  },
+  cat: {
+    icon: 'pets',
+    category: 'info',
+    View: X.CatView,
+    fields: [
+      { key: 'source', type: 'select', choices: ['thecatapi', 'cataas'], default: 'thecatapi' },
+      { key: 'fit', type: 'select', choices: ['cover', 'contain'], default: 'cover' },
+      { key: 'refresh', type: 'number', min: 1, max: 1440, default: 60 },
+    ],
+  },
 
   /* ---------- this site ---------- */
   discord: { icon: 'id_card', category: 'site', View: S.DiscordView, fields: [] },
@@ -315,6 +454,24 @@ export const WIDGETS = {
     ],
   },
   server: { icon: 'dns', category: 'site', titled: true, needs: 'owner', View: S.ServerView, fields: [] },
+  lobbycat: {
+    icon: 'pets',
+    category: 'site',
+    single: true,
+    View: S.LobbyCatWidgetView,
+    fields: [
+      { key: 'placement', type: 'select', choices: ['widget', 'search', 'searchbox'], default: 'widget' },
+      { key: 'searchbox', type: 'searchwidget', when: (options) => options.placement === 'searchbox' },
+      { key: 'sitOnCard', type: 'toggle', default: true, when: (options) => (options.placement ?? 'widget') === 'widget' },
+      { key: 'align', type: 'select', choices: ['left', 'center', 'right'], default: 'right' },
+      { key: 'size', type: 'number', min: 40, max: 250, default: 100 },
+      { key: 'bubble', type: 'select', choices: ['left', 'right', 'above', 'off'], default: 'left' },
+      { key: 'counters', type: 'select', choices: ['off', 'compact', 'mine'], default: 'off' },
+      { key: 'talk', type: 'toggle', default: true },
+      { key: 'tap', type: 'toggle', default: true },
+      { key: 'idle', type: 'toggle', default: true },
+    ],
+  },
 
   /* ---------- advanced ---------- */
   image: {

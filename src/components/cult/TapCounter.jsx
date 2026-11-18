@@ -29,7 +29,8 @@ function reduce(state, action) {
   return { server, extra, shown }
 }
 
-export default function TapCounter() {
+/** `variant`: full (/cult) | compact (one short line, the dash) | mine (only your own, when logged in). */
+export default function TapCounter({ variant = 'full', className = '' }) {
   const { t } = useTranslation('cult')
   const [{ server, shown }, dispatch] = useReducer(reduce, { server: null, extra: { ...unconfirmed }, shown: {} })
 
@@ -82,6 +83,26 @@ export default function TapCounter() {
       )}
     </p>
   )
+
+  if (variant !== 'full') {
+    const showMine = variant === 'mine' && loggedIn
+    return (
+      <p className={`tap-counter tap-counter--compact ${className}`.trim()} aria-label={t('taps.label')}>
+        <span title={t('taps.taps')}>
+          <span className="material-symbols-outlined" aria-hidden="true">
+            touch_app
+          </span>
+          <RollingNumber value={showMine ? myTaps : taps} />
+        </span>
+        <span title={t('taps.pets')}>
+          <span className="material-symbols-outlined" aria-hidden="true">
+            pets
+          </span>
+          <RollingNumber value={showMine ? myPets : petsTotal} />
+        </span>
+      </p>
+    )
+  }
 
   // Sits under the lobby cat, on the line it stands on (cult.css).
   return (

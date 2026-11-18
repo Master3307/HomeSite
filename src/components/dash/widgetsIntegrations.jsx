@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useAccountSettings } from '../../lib/accountSettings.jsx'
 import { INTEGRATION_KINDS, integrationGet, integrationImage, integrationPost, kindsFor, loadIntegrations, useIntegrations } from '../../lib/dashIntegrations.js'
-import { Empty, LinkIcon, LoadError, Loading, compactNumber, useNow, useRemote } from './kit.jsx'
+import { Empty, LinkIcon, LoadError, Loading, Num, compactNumber, useNow, useRemote } from './kit.jsx'
 import { SoftImage } from './widgetsFeeds.jsx'
 
 /*
@@ -20,7 +20,8 @@ function useWidgetIntegrations(widget, use, { multi = false } = {}) {
   const { account } = useAccountSettings()
   const integrations = useIntegrations()
   const loggedIn = account && !account.local && !account.isAdminSession
-  const wanted = multi ? (Array.isArray(widget.options.integrations) ? widget.options.integrations : []) : [widget.options.integration].filter(Boolean)
+  // Several (`integrations`) or one (`integration`, older widgets and single-use ones); both are read.
+  const wanted = [...new Set([...(multi && Array.isArray(widget.options.integrations) ? widget.options.integrations : []), widget.options.integration].filter(Boolean))]
   const kinds = kindsFor(use)
   const picked = integrations.items.filter((item) => wanted.includes(item.id) && kinds.includes(item.kind))
   let empty = null
@@ -55,6 +56,23 @@ function IntegrationBadge({ item }) {
   )
 }
 
+/* One section per integration; labelled when there are several. */
+function Several({ picked, render }) {
+  if (picked.length === 1) return render(picked[0])
+  return (
+    <div className="dash-w-several">
+      {picked.map((item) => (
+        <section key={item.id} className="dash-w-several__one">
+          <p className="dash-w-several__head">
+            <IntegrationBadge item={item} />
+          </p>
+          {render(item)}
+        </section>
+      ))}
+    </div>
+  )
+}
+
 const duration = (seconds) => {
   if (!Number.isFinite(seconds)) return ''
   const total = Math.max(0, Math.round(seconds))
@@ -73,12 +91,15 @@ const bytesPerSecond = (value, language) => {
 /* ---------- now playing ---------- */
 
 function MediaView({ widget }) {
+  const { picked, empty } = useWidgetIntegrations(widget, 'media', { multi: true })
+  if (empty) return empty
+  return <Several picked={picked} render={(item) => <MediaOne key={item.id} item={item} widget={widget} />} />
+}
+
+function MediaOne({ item, widget }) {
   const { t } = useTranslation('dash')
-  const { picked, empty } = useWidgetIntegrations(widget, 'media')
-  const item = picked[0]
   const { data, error, reload, at } = useRemote(item ? `int:${item.id}:nowPlaying` : null, (signal) => integrationGet(item.id, 'nowPlaying', {}, signal), { refresh: 10, enabled: Boolean(item), private: true })
   const now = useNow(1000) // the progress bar moves between refreshes
-  if (empty) return empty
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={2} />
   if (!data.length)
     return (
@@ -111,10 +132,15 @@ function MediaView({ widget }) {
                   {Number.isFinite(entry.minutesAgo) && entry.minutesAgo > 0 && ` · ${t('widgets.media.minutesAgo', { count: entry.minutesAgo })}`}
                 </small>
               )}
-              {Number.isFinite(position) && Number.isFinite(entry.duration) && entry.duration > 0 && (
+              {widget.options.progress !== false && Number.isFinite(position) && Number.isFinite(entry.duration) && entry.duration > 0 && (
                 <span className="dash-w-media__progress" role="progressbar" aria-valuemin={0} aria-valuemax={Math.round(entry.duration)} aria-valuenow={Math.round(position)} aria-label={`${duration(position)} / ${duration(entry.duration)}`}>
                   <span style={{ width: `${Math.min(100, (position / entry.duration) * 100)}%` }} />
                 </span>
+              )}
+              {widget.options.progress !== false && widget.options.times && Number.isFinite(position) && Number.isFinite(entry.duration) && entry.duration > 0 && (
+                <small className="dash-w-media__times">
+                  {duration(position)} / {duration(entry.duration)}
+                </small>
               )}
             </span>
           </li>
@@ -127,14 +153,17 @@ function MediaView({ widget }) {
 /* ---------- library (recent albums, latest items, counts) ---------- */
 
 function LibraryView({ widget }) {
+  const { picked, empty } = useWidgetIntegrations(widget, 'library', { multi: true })
+  if (empty) return empty
+  return <Several picked={picked} render={(item) => <LibraryOne key={item.id} item={item} widget={widget} />} />
+}
+
+function LibraryOne({ item, widget }) {
   const { t, i18n } = useTranslation('dash')
-  const { picked, empty } = useWidgetIntegrations(widget, 'library')
-  const item = picked[0]
   const { sort = 'newest', size = 12, media = 'all', stats = true, layout = 'grid' } = widget.options
   const count = Math.max(1, Math.min(40, Number(size) || 12))
   const list = useRemote(item ? `int:${item.id}:library:${sort}:${count}:${media}` : null, (signal) => integrationGet(item.id, 'library', { sort, size: count, media }, signal), { refresh: sort === 'random' ? 30 * 60 : 10 * 60, enabled: Boolean(item), private: true })
   const counts = useRemote(item && stats ? `int:${item.id}:stats` : null, (signal) => integrationGet(item.id, 'stats', {}, signal), { refresh: 30 * 60, enabled: Boolean(item && stats), private: true })
-  if (empty) return empty
   if (!list.data) return list.error ? <LoadError error={list.error} onRetry={list.reload} /> : <Loading lines={3} />
   const numbers = counts.data ? Object.entries(counts.data).filter(([key, value]) => Number.isFinite(value) && value > 0 && key !== 'lastScan') : []
   return (
@@ -143,7 +172,10 @@ function LibraryView({ widget }) {
         <ul className="dash-w-lib__stats">
           {numbers.map(([key, value]) => (
             <li key={key}>
-              <strong>{compactNumber(value, i18n.language)}</strong> {t(`widgets.library.counts.${key}`, { count: value, defaultValue: key })}
+              <strong>
+                <Num>{compactNumber(value, i18n.language)}</Num>
+              </strong>{' '}
+              {t(`widgets.library.counts.${key}`, { count: value, defaultValue: key })}
             </li>
           ))}
         </ul>
@@ -212,7 +244,9 @@ function DnsOne({ item, language, t, showName }) {
             <span className="material-symbols-outlined" aria-hidden="true">
               {icon}
             </span>
-            <strong>{value}</strong>
+            <strong>
+              <Num>{value}</Num>
+            </strong>
             <small>{label}</small>
           </li>
         ))}
@@ -292,11 +326,14 @@ function SmartHomeView({ widget }) {
 /* ---------- uptime (Uptime Kuma status page) ---------- */
 
 function UptimeView({ widget }) {
-  const { t, i18n } = useTranslation('dash')
-  const { picked, empty } = useWidgetIntegrations(widget, 'uptime')
-  const item = picked[0]
-  const { data, error, reload } = useRemote(item ? `int:${item.id}:status` : null, (signal) => integrationGet(item.id, 'status', {}, signal), { refresh: 60, enabled: Boolean(item), private: true })
+  const { picked, empty } = useWidgetIntegrations(widget, 'uptime', { multi: true })
   if (empty) return empty
+  return <Several picked={picked} render={(item) => <UptimeOne key={item.id} item={item} widget={widget} />} />
+}
+
+function UptimeOne({ item, widget }) {
+  const { t, i18n } = useTranslation('dash')
+  const { data, error, reload } = useRemote(item ? `int:${item.id}:status` : null, (signal) => integrationGet(item.id, 'status', {}, signal), { refresh: 60, enabled: Boolean(item), private: true })
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={4} />
   const { history = true, downFirst = true } = widget.options
   const monitors = downFirst ? [...data.monitors].sort((a, b) => (a.status === 0 ? -1 : 0) - (b.status === 0 ? -1 : 0)) : data.monitors
@@ -399,13 +436,16 @@ function MediaCalendarList({ integrations, days, widget, t, language }) {
 /* ---------- downloads (qBittorrent, Sonarr / Radarr queues) ---------- */
 
 function DownloadsView({ widget }) {
+  const { picked, empty } = useWidgetIntegrations(widget, 'downloads', { multi: true })
+  if (empty) return empty
+  return <Several picked={picked} render={(item) => <DownloadsOne key={item.id} item={item} widget={widget} />} />
+}
+
+function DownloadsOne({ item, widget }) {
   const { t, i18n } = useTranslation('dash')
-  const { picked, empty } = useWidgetIntegrations(widget, 'downloads')
-  const item = picked[0]
   const action = 'queue'
   const size = Math.max(1, Math.min(40, Number(widget.options.size) || 10))
   const { data, error, reload } = useRemote(item ? `int:${item.id}:${action}:${size}:${widget.options.filter ?? 'active'}` : null, (signal) => integrationGet(item.id, action, { size, filter: widget.options.filter ?? 'active' }, signal), { refresh: 10, enabled: Boolean(item), private: true })
-  if (empty) return empty
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={3} />
   const items = Array.isArray(data) ? data : (data.items ?? [])
   return (
@@ -467,17 +507,22 @@ function Meter({ label, value, icon }) {
       <span className="dash-meter__bar" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percent)} aria-label={label}>
         <span style={{ width: `${percent}%` }} />
       </span>
-      <strong>{Math.round(percent)}%</strong>
+      <strong>
+        <Num>{`${Math.round(percent)}%`}</Num>
+      </strong>
     </li>
   )
 }
 
 function SystemView({ widget }) {
-  const { t, i18n } = useTranslation('dash')
-  const { picked, empty } = useWidgetIntegrations(widget, 'system')
-  const item = picked[0]
-  const { data, error, reload } = useRemote(item ? `int:${item.id}:stats` : null, (signal) => integrationGet(item.id, 'stats', {}, signal), { refresh: 15, enabled: Boolean(item), private: true })
+  const { picked, empty } = useWidgetIntegrations(widget, 'system', { multi: true })
   if (empty) return empty
+  return <Several picked={picked} render={(item) => <SystemOne key={item.id} item={item} widget={widget} />} />
+}
+
+function SystemOne({ item, widget }) {
+  const { t, i18n } = useTranslation('dash')
+  const { data, error, reload } = useRemote(item ? `int:${item.id}:system` : null, (signal) => integrationGet(item.id, 'system', {}, signal), { refresh: 15, enabled: Boolean(item), private: true })
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={4} />
   return (
     <div className="dash-w-sys">
@@ -498,3 +543,5 @@ function SystemView({ widget }) {
 }
 
 export const INTEGRATION_VIEWS = { MediaView, LibraryView, DnsView, SmartHomeView, UptimeView, MediaCalendarView, DownloadsView, SystemView }
+
+export { useWidgetIntegrations, Several, IntegrationBadge }

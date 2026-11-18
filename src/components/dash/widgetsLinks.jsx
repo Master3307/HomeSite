@@ -76,7 +76,7 @@ function BookmarksView({ widget }) {
   const tileSize = { small: 28, medium: 40, large: 56 }[iconSize] ?? 40
   const target = (newTab ?? openInNewTab) ? '_blank' : undefined
   return (
-    <ul className={`dash-w-links dash-w-links--${['grid', 'list', 'tiles', 'icons'].includes(layout) ? layout : 'grid'} dash-w-links--${iconSize}`}>
+    <ul className={`dash-w-links dash-w-links--${['grid', 'list', 'hlist', 'tiles', 'icons'].includes(layout) ? layout : 'grid'} dash-w-links--${iconSize}`}>
       {items.map((item) => {
         const label = item.title || hostOf(item.url)
         const state = showStatus ? stateOf(pings[item.url]) : null
@@ -90,7 +90,7 @@ function BookmarksView({ widget }) {
               {layout !== 'icons' ? (
                 <span className="dash-w-links__text">
                   <span className="dash-w-links__name">{label}</span>
-                  {(item.description || (showUrl && layout === 'list')) && <small>{item.description || hostOf(item.url)}</small>}
+                  {(item.description || (showUrl && (layout === 'list' || layout === 'hlist'))) && <small>{item.description || hostOf(item.url)}</small>}
                 </span>
               ) : (
                 <span className="sr-only">{label}</span>

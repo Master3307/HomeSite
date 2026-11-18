@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { accountFetch } from '../../lib/account.js'
+import { customEmojiUrl, parseCustomEmoji, twemojiUrl } from '../../lib/emoji.js'
 import { timeOptions } from '../../lib/prefs.js'
 
 /*
@@ -9,6 +10,51 @@ import { timeOptions } from '../../lib/prefs.js'
  * when it's needed (on screen, tab visible) and is kept between visits,
  * icons, time formatting and the feed reader.
  */
+
+/* ---------- rolling numbers ---------- */
+
+/** Whether numbers in this widget roll (look.rolling, or the widget's own choice); DashBoard provides it. */
+export const RollingContext = createContext(false)
+
+/**
+ * Text whose digits roll like an odometer when they change ("07:05" keeps
+ * its zeros, unlike the cult's RollingNumber for whole numbers). Other
+ * characters stay as they are. Screen readers get the plain text.
+ */
+export function RollingText({ text, className = '' }) {
+  const value = String(text ?? '')
+  const characters = [...value]
+  return (
+    <span className={`dash-roll ${className}`.trim()} aria-label={value} role="text">
+      {characters.map((character, index) => {
+        // Keyed from the right, so the ones stay the ones when a digit is added in front.
+        const key = characters.length - index
+        if (!/[0-9]/.test(character))
+          return (
+            <span key={`s${key}`} className="dash-roll__char" aria-hidden="true">
+              {character}
+            </span>
+          )
+        return (
+          <span key={`d${key}`} className="dash-roll__digit" aria-hidden="true">
+            <span className="dash-roll__strip" style={{ '--d': Number(character) }}>
+              {'0123456789'.split('').map((digit) => (
+                <span key={digit}>{digit}</span>
+              ))}
+            </span>
+          </span>
+        )
+      })}
+    </span>
+  )
+}
+
+/** A number (or any text with digits) that rolls when the widget wants rolling numbers. */
+export function Num({ children, className = '' }) {
+  const rolling = useContext(RollingContext)
+  if (!rolling || children === null || children === undefined) return className ? <span className={className}>{children}</span> : children
+  return <RollingText text={children} className={className} />
+}
 
 /* ---------- time ---------- */
 
@@ -96,6 +142,58 @@ export function timeAgo(value, language) {
 
 /** 1234567 -> "1.2M" in the page's language. */
 export const compactNumber = (value, language) => new Intl.NumberFormat(language, { notation: 'compact', maximumFractionDigits: 1 }).format(Number(value) || 0)
+
+/* ---------- scrolling only when there's something to scroll ---------- */
+
+/**
+ * Marks `ref` and the scroll areas inside it `is-fit` (no scrolling, see
+ * dash.css) while their content overflows by no more than a few pixels of
+ * rounding, so the wheel and swipes go straight to the page. Checked again
+ * whenever sizes or the content change.
+ */
+export function useFitScroll(ref, slack = 3) {
+  useLayoutEffect(() => {
+    const root = ref.current
+    if (!root || typeof ResizeObserver === 'undefined') return undefined
+    let frame = 0
+    const areas = () => [root, ...root.querySelectorAll('*')].filter((element) => {
+      if (element === root) return true
+      // Text fields scroll on their own as you type (no size or DOM change to notice).
+      if (element.matches('textarea, input, select, iframe')) return false
+      const style = getComputedStyle(element)
+      return /(auto|scroll)/.test(`${style.overflowX} ${style.overflowY}`) || element.classList.contains('is-fit')
+    })
+    const measure = () => {
+      frame = 0
+      for (const element of areas()) {
+        element.classList.remove('is-fit')
+        const extra = Math.max(element.scrollHeight - element.clientHeight, element.scrollWidth - element.clientWidth)
+        if (extra <= slack) element.classList.add('is-fit')
+      }
+    }
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure)
+    }
+    measure()
+    const resize = new ResizeObserver(schedule)
+    resize.observe(root)
+    // The content's own size (fonts, wrapping) can change while the widget's doesn't.
+    const watchContent = () => [...root.children].forEach((child) => resize.observe(child))
+    watchContent()
+    const mutation = new MutationObserver(() => {
+      watchContent()
+      schedule()
+    })
+    mutation.observe(root, { childList: true, subtree: true, characterData: true })
+    root.addEventListener('load', schedule, true) // pictures arriving
+    return () => {
+      cancelAnimationFrame(frame)
+      resize.disconnect()
+      mutation.disconnect()
+      root.removeEventListener('load', schedule, true)
+    }
+  }, [ref, slack])
+}
 
 /* ---------- loading only what's needed ---------- */
 
@@ -329,7 +427,9 @@ const ICON_NAME = /^[a-z0-9][a-z0-9-]{0,60}$/i
 export function iconSources(icon, url, source = 'site') {
   const value = String(icon ?? '').trim()
   const list = []
-  if (/^https?:\/\//i.test(value)) list.push(value)
+  const emoji = emojiIconUrl(value)
+  if (emoji) list.push(emoji)
+  else if (/^https?:\/\//i.test(value)) list.push(value)
   else if (/^si:[a-z0-9]{1,60}$/i.test(value)) list.push(`${SIMPLE_ICONS}/${value.slice(3).toLowerCase()}.svg`)
   else if (ICON_NAME.test(value)) list.push(`${DASHBOARD_ICONS}/svg/${value.toLowerCase()}.svg`, `${DASHBOARD_ICONS}/png/${value.toLowerCase()}.png`)
   const host = hostOf(url)
@@ -343,6 +443,78 @@ export function iconSources(icon, url, source = 'site') {
       }
   }
   return list
+}
+
+/*
+ * Emoji as icons (links, pages, widget titles, the tab): the cult's emoji
+ * picker gives a Unicode emoji (stored as "emoji:🎀", drawn with the
+ * self-hosted Twemoji) or a Discord emoji ("<:name:id>", from Discord's CDN).
+ */
+export const toEmojiIcon = (picked) => (parseCustomEmoji(picked) ? picked : picked ? `emoji:${picked}` : '')
+export function emojiIconUrl(icon, size = 64) {
+  const value = String(icon ?? '')
+  if (value.startsWith('emoji:') && value.length > 6) return twemojiUrl(value.slice(6))
+  const custom = parseCustomEmoji(value)
+  return custom ? customEmojiUrl(custom, size) : null
+}
+export const isMaterialIcon = (icon) => /^[a-z0-9_]{1,40}$/.test(String(icon ?? ''))
+
+/** A Material Symbol by name, or an emoji icon; `fallback` when it's neither. */
+export function Glyph({ icon, fallback = 'dashboard', className = '' }) {
+  const url = emojiIconUrl(icon)
+  if (url) return <img className={`dash-glyph ${className}`} src={url} alt="" draggable={false} loading="lazy" decoding="async" />
+  return (
+    <span className={`material-symbols-outlined ${className}`} aria-hidden="true">
+      {isMaterialIcon(icon) ? icon : fallback}
+    </span>
+  )
+}
+
+/**
+ * Lifts a panel that opens inside `rootRef` (matched by `selector`) out of
+ * any scrolling / clipping box: position: fixed next to the root, flipped
+ * above it when there's no room below, always inside the window.
+ */
+export function useFloatingPanel(rootRef, selector) {
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return undefined
+    let frame = 0
+    const placeAll = () => {
+      frame = 0
+      const anchor = root.getBoundingClientRect()
+      for (const panel of root.querySelectorAll(selector)) {
+        panel.style.position = 'fixed'
+        panel.style.right = 'auto'
+        panel.style.bottom = 'auto'
+        panel.style.margin = '0'
+        panel.style.zIndex = '400'
+        const room = window.innerHeight - 16
+        panel.style.maxHeight = `${room}px`
+        panel.style.maxWidth = `${window.innerWidth - 16}px` // never wider than a phone's screen
+        const box = panel.getBoundingClientRect()
+        const left = Math.max(8, Math.min(anchor.left, window.innerWidth - box.width - 8))
+        let top = anchor.bottom + 6
+        if (top + box.height > window.innerHeight - 8) top = anchor.top - box.height - 6 >= 8 ? anchor.top - box.height - 6 : Math.max(8, window.innerHeight - box.height - 8)
+        panel.style.left = `${left}px`
+        panel.style.top = `${top}px`
+      }
+    }
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(placeAll)
+    }
+    const observer = new MutationObserver(schedule)
+    observer.observe(root, { childList: true, subtree: true })
+    window.addEventListener('resize', schedule)
+    document.addEventListener('scroll', schedule, true)
+    schedule()
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      window.removeEventListener('resize', schedule)
+      document.removeEventListener('scroll', schedule, true)
+    }
+  }, [rootRef, selector])
 }
 
 export const isSimpleIcon = (icon) => /^si:/i.test(String(icon ?? ''))

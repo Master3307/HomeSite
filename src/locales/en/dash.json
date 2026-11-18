@@ -62,7 +62,14 @@
             "medium": "Medium",
             "large": "Large",
             "always": "Always",
-            "hover": "On hover"
+            "hover": "On hover",
+            "serif": "Serif",
+            "display": "Display",
+            "condensed": "Narrow",
+            "rad": "Radians",
+            "deg": "Degrees",
+            "ask": "On Enter or click",
+            "show": "Always draw"
         },
         "look": {
             "presets": {
@@ -102,7 +109,9 @@
             "imageHint": "Loaded straight from that address.",
             "fit": "Fit",
             "dim": "Darken the picture",
-            "backgroundBlur": "Blur the picture"
+            "backgroundBlur": "Blur the picture",
+            "rolling": "Rolling numbers",
+            "rollingHint": "Numbers roll like an odometer when they change: clocks, countdowns, counters. Each widget can say otherwise."
         },
         "layout": {
             "grid": "Grid",
@@ -112,7 +121,7 @@
             "gap": "Gap",
             "width": "Width",
             "gravity": "Widgets float up",
-            "gravityHint": "Free space above a widget closes up. Off: widgets stay exactly where you drop them.",
+            "gravityHint": "On: free space above a widget closes up by itself. Off: widgets stay exactly where you drop them, gaps and all.",
             "phone": "Phones",
             "phoneColumns": "Columns on phones",
             "phoneAuto": "The phone layout is made from the desktop one. Press Edit on a phone to arrange it yourself.",
@@ -155,7 +164,11 @@
             "searchSize": "Size",
             "showEngines": "Engine buttons under it",
             "autofocus": "Ready to type when the page opens",
-            "autofocusHint": "Good for a new tab page; on phones the keyboard may pop up."
+            "autofocusHint": "Good for a new tab page; on phones the keyboard may pop up.",
+            "tabIconEmoji": "Use an emoji",
+            "clockColor": "Clock colour",
+            "secondsColor": "Seconds colour",
+            "rolling": "Rolling digits"
         },
         "search": {
             "providers": "Search engines",
@@ -179,7 +192,14 @@
             "discordLookup": "Look up people on Discord",
             "discordLookupHint": "Only for you: uses the hub's member search (the hub has to be unlocked).",
             "noneVisible": "Show at least one engine.",
-            "keys": "Keys: / or Ctrl + K to search, Alt + 1–9 for pages, E to edit, Ctrl + , to customize."
+            "keys": "Keys: / or Ctrl + K to search, Alt + 1–9 for pages, E to edit, Ctrl + , to customize.",
+            "calculator": "Calculator",
+            "calcOn": "Calculator in the search",
+            "calcOnHint": "Sums, equations, unit conversions (1m, 5 ft to cm, 20 °C in F) and graphs right in the results. Enter copies the top answer.",
+            "calcAngle": "Angles in",
+            "calcGraph": "Graphs",
+            "history": "Remember recent searches",
+            "historyHint": "Kept only in this browser, shown when you click into the empty search bar and among the suggestions. Turning this off forgets them."
         },
         "backup": {
             "sync": "Sync",
@@ -246,7 +266,8 @@
         "startChoices": {
             "last": "The last page you had open",
             "first": "Always the first page"
-        }
+        },
+        "emoji": "Use an emoji"
     },
     "integrations": {
         "login": "Log in to connect your services. Integrations are saved on your account.",
@@ -279,7 +300,13 @@
             "mediacal": "Media calendar",
             "downloads": "Downloads",
             "system": "System",
-            "api": "Custom JSON"
+            "api": "Custom JSON",
+            "files": "Files",
+            "photos": "Photos",
+            "containers": "Containers",
+            "messages": "Messages",
+            "stats": "Service stats",
+            "sync": "Syncthing"
         },
         "kinds": {
             "navidrome": "Your music server: what's playing, new and random albums, library size.",
@@ -295,7 +322,21 @@
             "radarr": "Upcoming movies and the download queue.",
             "qbittorrent": "Speeds and active torrents.",
             "glances": "CPU, memory, disks and load of a server running Glances.",
-            "custom": "Any JSON API, with a secret header (API key) kept on the server."
+            "custom": "Any JSON API, with a secret header (API key) kept on the server.",
+            "opensubsonic": "Any OpenSubsonic music server (Gonic, Airsonic, Ampache, LMS, Supysonic …): what's playing, albums, library size.",
+            "plex": "What's playing on Plex, and what was added lately.",
+            "audiobookshelf": "Books you're listening to, and how long you've listened.",
+            "immich": "Your photos as a slideshow or grid, and how many there are.",
+            "webdav": "Any WebDAV share: browse, download and upload files.",
+            "copyparty": "Your copyparty: browse, download and upload files.",
+            "nextcloud": "Your Nextcloud files: browse, download, upload, space used.",
+            "paperless": "Your newest documents and how many there are.",
+            "syncthing": "Folders and devices of your Syncthing.",
+            "portainer": "Your Docker containers and their state.",
+            "gotify": "The latest Gotify messages.",
+            "ntfy": "The latest messages of ntfy topics (ntfy.sh or your own).",
+            "proxmox": "Nodes, VMs and containers of your Proxmox; CPU, memory and storage of a node.",
+            "speedtest": "The latest result of your Speedtest Tracker."
         },
         "fields": {
             "username": "User name",
@@ -305,7 +346,11 @@
             "version": "Version",
             "slug": "Status page (its slug)",
             "headerName": "Header name",
-            "headerValue": "Header value"
+            "headerValue": "Header value",
+            "tokenId": "API token ID",
+            "secret": "Token secret",
+            "endpoint": "Environment ID",
+            "topics": "Topics (comma-separated)"
         },
         "help": {
             "intro": "Integrations connect the dash to your services, like in Homarr. Add one here, then pick it in a widget's settings; one integration can feed several widgets.",
@@ -320,7 +365,21 @@
             "sonarr": "Settings → General → API key.",
             "radarr": "Settings → General → API key.",
             "glances": "Run Glances in web server mode (glances -w); a login only if you set one.",
-            "custom": "Widgets then ask for paths under this address (e.g. v1/stats)."
+            "custom": "Widgets then ask for paths under this address (e.g. v1/stats).",
+            "opensubsonic": "Your login for that server.",
+            "plex": "Your X-Plex-Token (Plex: open an item's XML and copy the token from the address).",
+            "audiobookshelf": "Settings → Users → your user → API token.",
+            "immich": "Account settings → API keys → New API key.",
+            "webdav": "The address of the share; a user name and password only if it needs one.",
+            "copyparty": "Only the password (copyparty logins have no user name).",
+            "nextcloud": "Use an app password (Settings → Security → Devices & sessions).",
+            "paperless": "Your profile → API auth token.",
+            "syncthing": "Actions → Settings → General → API key.",
+            "portainer": "Your user → Access tokens. Leave the environment empty for the first one.",
+            "gotify": "A client token (Clients → Create client), not an app token.",
+            "ntfy": "Topics are read with your token, if your server needs one.",
+            "proxmox": "Datacenter → Permissions → API tokens (read-only is enough). The server needs a trusted certificate.",
+            "speedtest": "An API token from your profile (newer versions); without one the open endpoint is tried."
         }
     },
     "errors": {
@@ -357,7 +416,7 @@
         "editBoard": "Edit",
         "done": "Done",
         "editing": "Editing the board",
-        "editHelp": "Drag to move, drag an edge to resize. Arrow keys move a focused widget, Shift + arrows resize it.",
+        "editHelp": "Drag to move anywhere (the page scrolls at the window's edge), drag any edge or corner to resize. Arrow keys move a focused widget, Shift + arrows resize it.",
         "undo": "Undo",
         "grid": "Grid",
         "edit": "Settings",
@@ -385,7 +444,8 @@
             "feeds": "Log in"
         },
         "empty": "Nothing on this page. Press Edit to add widgets.",
-        "phoneLayout": "You're arranging the phone layout; the desktop layout stays as it is."
+        "phoneLayout": "You're arranging the phone layout; the desktop layout stays as it is.",
+        "onlyOnce": "Already on your dash"
     },
     "editor": {
         "look": "Look of this widget",
@@ -407,7 +467,20 @@
         "titleIcon": "Icon next to the title",
         "hideOnPhone": "Hide on phones",
         "page": "Page",
-        "preview": "Preview"
+        "preview": "Preview",
+        "ownIcon": "Icon",
+        "ownIconPick": "Use an emoji",
+        "ownIconReset": "Use the widget's",
+        "font": "Font",
+        "likeTheRest": "Like the rest",
+        "rolling": "Rolling numbers",
+        "rollings": {
+            "inherit": "Like the rest",
+            "on": "On",
+            "off": "Off"
+        },
+        "css": "Own CSS",
+        "cssHelp": "Only for this widget: plain selectors reach inside it, & is the card itself. Saved and synced with the widget."
     },
     "widgets": {
         "loading": "Loading…",
@@ -686,7 +759,10 @@
             "unread_one": "{{count}} unread",
             "unread_other": "{{count}} unread",
             "allRead": "All read",
-            "none": "No notifications."
+            "none": "No notifications.",
+            "readAll": "Mark all read",
+            "markRead": "Mark as read",
+            "remove": "Remove"
         },
         "server": {
             "name": "Site health",
@@ -724,6 +800,148 @@
             "name": "Your HTML",
             "text": "Your own HTML, CSS and JavaScript, sandboxed.",
             "empty": "Edit the widget and add some HTML."
+        },
+        "lobbycat": {
+            "name": "Lobby cat",
+            "text": "The cult's lobby cat: taps along with your clicks, can be petted and talks. Sits on a widget, a search box or the search bar.",
+            "where_widget": "The lobby cat sits here",
+            "where_search": "The lobby cat sits on the search bar at the top",
+            "where_searchbox": "The lobby cat sits on a search box"
+        },
+        "files": {
+            "name": "Files",
+            "text": "Browse, download and upload files on WebDAV, Nextcloud or copyparty, or your latest Paperless documents.",
+            "where": "Folder",
+            "top": "Top folder",
+            "upload": "Upload files (or drop them here)",
+            "openThere": "Open in the service",
+            "quota": "{{used}} used, {{free}} free",
+            "uploaded_one": "Uploaded.",
+            "uploaded_other": "{{count}} files uploaded.",
+            "tooBig": "Files can be 50 MB at most here.",
+            "emptyFolder": "Nothing in this folder.",
+            "drop": "Drop to upload here"
+        },
+        "photos": {
+            "name": "Photos",
+            "text": "Random or recent photos from Immich, as a slideshow or a grid.",
+            "none": "No photos."
+        },
+        "containers": {
+            "name": "Containers",
+            "text": "Your Docker containers through Portainer: what runs, what doesn't.",
+            "running_one": "{{count}} of {{total}} running",
+            "running_other": "{{count}} of {{total}} running"
+        },
+        "messages": {
+            "name": "Messages",
+            "text": "The latest messages from Gotify or ntfy topics.",
+            "none": "No messages."
+        },
+        "stats": {
+            "name": "Service stats",
+            "text": "The numbers of your services: songs, photos, documents, speed tests, virtual machines …",
+            "keys": {
+                "songs": "Songs",
+                "artists": "Artists",
+                "albums": "Albums",
+                "movies": "Movies",
+                "series": "Series",
+                "episodes": "Episodes",
+                "photos": "Photos",
+                "videos": "Videos",
+                "documents": "Documents",
+                "inbox": "In the inbox",
+                "characters": "Characters",
+                "download": "Mbit/s down",
+                "upload": "Mbit/s up",
+                "ping": "ms ping",
+                "hoursListened": "Hours listened",
+                "minutesToday": "Minutes today",
+                "books": "Books",
+                "nodes": "Nodes",
+                "vms": "VMs",
+                "vmsRunning": "VMs running",
+                "containers": "Containers",
+                "containersRunning": "Containers running"
+            }
+        },
+        "sync": {
+            "name": "Syncthing",
+            "text": "Your Syncthing folders and how far they are in sync.",
+            "devices": "{{connected}} of {{total}} devices connected",
+            "states": {
+                "idle": "In sync",
+                "scanning": "Scanning",
+                "syncing": "Syncing",
+                "error": "Error",
+                "paused": "Paused",
+                "unknown": "Unknown",
+                "sync-preparing": "Preparing",
+                "cleaning": "Cleaning"
+            }
+        },
+        "timer": {
+            "name": "Timer",
+            "text": "A countdown timer (with a soft chime) or a stopwatch. It keeps running across reloads.",
+            "start": "Start",
+            "pause": "Pause",
+            "reset": "Reset"
+        },
+        "progress": {
+            "name": "Progress",
+            "text": "How much of the day, week, month and year has passed.",
+            "day": "Today",
+            "week": "This week",
+            "month": "This month",
+            "year": "This year",
+            "none": "Turn on at least one."
+        },
+        "calculator": {
+            "name": "Calculator",
+            "text": "Lines of maths with a typeset preview: sums, equations, units and graphs. Plain, LaTeX or Unicode input; a = 5 keeps a value for later lines, ans is the last result.",
+            "calc": "Calc",
+            "graph": "Graph",
+            "view": "View",
+            "placeholder": {
+                "plain": "(12 + 30) / 2, x^2 = 2, 5 ft to cm",
+                "latex": "\\frac{1}{2} + \\sqrt{9}",
+                "unicode": "½ + √9 · π"
+            },
+            "line": "Line {{n}}",
+            "addLine": "Add a line",
+            "remove": "Remove this line",
+            "toggleLine": "Show or hide on the graph",
+            "copy": "Copy {{value}}",
+            "onGraph": "On the graph",
+            "noGraph": "Write a function such as sin x, x^2 - 3 or y = 2x + 1 to see it here.",
+            "keypad": "Insert",
+            "symbols": "Symbols and functions",
+            "symbolSearch": "Search symbols: root, fraction, pi…",
+            "noSymbols": "Nothing found.",
+            "groups": {
+                "structure": "Building blocks",
+                "operators": "Operators",
+                "constants": "Constants and letters",
+                "functions": "Functions"
+            },
+            "styleHint": {
+                "plain": "Inserts what you'd type: (a)/(b), sqrt(x), pi",
+                "latex": "Inserts LaTeX: \\frac{a}{b}, \\sqrt{x}, \\pi",
+                "unicode": "Inserts Unicode: ½, √, π, ×, ²"
+            }
+        },
+        "exchange": {
+            "name": "Exchange rates",
+            "text": "Today's rates from the European Central Bank (frankfurter.dev).",
+            "empty": "Edit the widget and add currencies (USD, GBP …).",
+            "of": "{{amount}} · {{date}}"
+        },
+        "cat": {
+            "name": "Random cat",
+            "text": "A new cat picture now and then. Click it for another one.",
+            "another": "Another cat",
+            "alt": "A random cat"
         }
     },
     "fields": {
@@ -750,7 +968,7 @@
         "hourly": "The next hours",
         "days": "Days ahead (0–7)",
         "font": "Font",
-        "size": "How many",
+        "size": "Size (%)",
         "spellcheck": "Check spelling",
         "hideDone": "Hide done tasks",
         "strike": "Strike through done tasks",
@@ -762,7 +980,7 @@
         "iconSource": "Icons without their own",
         "showStatus": "Up / down dots",
         "showUrl": "Show the address",
-        "interval": "Check every (seconds)",
+        "interval": "Next photo after (seconds)",
         "slowMs": "Slow from (ms)",
         "showMs": "Response times",
         "showHistory": "Recent history",
@@ -770,7 +988,7 @@
         "limit": "Items",
         "images": "Pictures",
         "summary": "Summaries",
-        "source": "Feed names",
+        "source": "Pictures from",
         "refresh": "Refresh every",
         "repos": "Repositories and packages",
         "perRepo": "Versions per entry",
@@ -813,7 +1031,7 @@
         "entities": "Entities",
         "entitySearch": "Find an entity",
         "entityList": "Pick from Home Assistant",
-        "history": "Recent history",
+        "history": "Results to keep",
         "downFirst": "Problems first",
         "posters": "Posters",
         "downloaded": "Include downloaded ones",
@@ -824,7 +1042,7 @@
         "caption": "Caption",
         "alt": "Description (for screen readers)",
         "url": "Address",
-        "path": "Path under the integration's address",
+        "path": "Folder",
         "zoom": "Zoom (%)",
         "popups": "Let it open new tabs",
         "fields": "Values",
@@ -837,7 +1055,7 @@
         "iconSearch": "Find an icon (jellyfin, github …)",
         "iconNone": "No icon with that name.",
         "iconPlaceholder": "Name, si:brand or picture address",
-        "iconHelp": "From dashboard-icons (over jsDelivr). “si:github” uses Simple Icons; a picture address works too. Empty: the site's own icon.",
+        "iconHelp": "From dashboard-icons (over jsDelivr). “si:github” uses Simple Icons; a picture address works too, or pick an emoji (also the server's own). Empty: the site's own icon.",
         "placeSearch": "City or town",
         "find": "Find",
         "locate": "Use my location",
@@ -854,7 +1072,11 @@
             "feeds": "Feed addresses, or a site's address (its feed is found). YouTube: https://www.youtube.com/feeds/videos.xml?channel_id=…",
             "coins": "CoinGecko ids: bitcoin, ethereum, solana …",
             "refresh": "minutes",
-            "zones": "Pick a zone, give it a name if you like."
+            "zones": "Pick a zone, give it a name if you like.",
+            "size": "100 is its size on /cult.",
+            "tap": "Taps are counted once, however often the cat is on screen.",
+            "input": "What the keypad and the symbol search insert. Everything is read either way.",
+            "preview": "Auto shows stacked fractions, roots and powers when a line has them."
         },
         "columns": {
             "title": "Name",
@@ -869,7 +1091,8 @@
             "path": "Path in the JSON",
             "prefix": "Before",
             "suffix": "After",
-            "format": "As"
+            "format": "As",
+            "code": "Currency"
         },
         "add": {
             "items": "Add a link",
@@ -878,7 +1101,8 @@
             "repos": "Add a repository or package",
             "coins": "Add a coin",
             "fields": "Add a value",
-            "entities": "Add an entity"
+            "entities": "Add an entity",
+            "targets": "Add a currency"
         },
         "choices": {
             "digital": "Digital",
@@ -933,7 +1157,7 @@
             "java": "Java",
             "bedrock": "Bedrock",
             "newest": "Newest",
-            "recent": "Recently played",
+            "recent": "Recent",
             "frequent": "Most played",
             "random": "Random",
             "all": "All",
@@ -945,8 +1169,82 @@
             "contain": "Fit",
             "number": "Number",
             "bytes": "Bytes",
-            "percent": "Percent"
-        }
+            "percent": "Percent",
+            "hlist": "Horizontal list",
+            "widget": "Own place",
+            "search": "Search bar",
+            "searchbox": "A search box",
+            "left": "Left",
+            "right": "Right",
+            "center": "Centre",
+            "above": "Above",
+            "mine": "Only mine",
+            "name": "Name",
+            "modified": "Newest",
+            "size": "Size",
+            "single": "Slideshow",
+            "1h": "1 hour",
+            "12h": "12 hours",
+            "24h": "24 hours",
+            "7d": "7 days",
+            "timer": "Timer",
+            "stopwatch": "Stopwatch",
+            "running": "Running",
+            "thecatapi": "TheCatAPI",
+            "cataas": "Cataas",
+            "rad": "Radians",
+            "deg": "Degrees",
+            "plain": "Plain",
+            "latex": "LaTeX",
+            "unicode": "Unicode",
+            "tabs": "Tabs",
+            "split": "Lines and graph",
+            "calc": "Lines only",
+            "always": "Always",
+            "huge": "Huge"
+        },
+        "emojiPick": "Use an emoji",
+        "placement": "Where it sits",
+        "searchbox": "Which search box",
+        "sitOnCard": "Sit on the widget below (its paws on the card)",
+        "align": "Side",
+        "bubble": "Speech bubble",
+        "counters": "Counters",
+        "talk": "Talks by itself",
+        "tap": "Taps along with clicks and keys",
+        "idle": "Breathes (idle bobbing)",
+        "searchboxChoose": "Choose a search box…",
+        "searchboxNone": "There's no search box widget yet: add one first.",
+        "color": "Colour",
+        "secondsColor": "Seconds colour",
+        "colorReset": "Default",
+        "progress": "Progress bar",
+        "times": "Times (1:20 / 4:03)",
+        "browse": "Open folders inside the widget",
+        "upload": "Uploads",
+        "foldersFirst": "Folders first",
+        "sizes": "Sizes",
+        "quota": "Space used",
+        "image": "Image names",
+        "since": "From the last",
+        "mode": "Kind",
+        "minutes": "Minutes",
+        "sound": "Chime at the end",
+        "day": "The day",
+        "week": "The week",
+        "month": "The month",
+        "year": "The year",
+        "decimals": "Decimals",
+        "base": "From",
+        "targets": "Currencies",
+        "amount": "Amount",
+        "angle": "Angles in",
+        "digits": "Significant digits",
+        "input": "Input style",
+        "preview": "Typeset preview",
+        "keypad": "Keypad",
+        "alternatives": "Other forms (fraction, scientific, more answers)",
+        "marks": "Mark zeros and solutions on the graph"
     },
     "menu": {
         "widget": "Widget",
@@ -974,5 +1272,14 @@
         "clock_seconds": "Clock with seconds",
         "alignLeft": "Align left",
         "alignCenter": "Centre"
+    },
+    "graph": {
+        "label": "Graph of {{what}}",
+        "zoomIn": "Zoom in",
+        "zoomOut": "Zoom out",
+        "fit": "Fit (double click, 0)",
+        "copy": "Copy as a picture",
+        "copied": "Copied as a picture",
+        "saved": "Saved as graph.png"
     }
 }
