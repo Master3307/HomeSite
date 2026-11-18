@@ -39,7 +39,7 @@ const appId = (brandMeta?.dataset.id || '').toLowerCase()
 const SHARED_PAGES = ['/cult/settings', '/cult/notifications', '/cult/privacy', '/license', '/error']
 
 /** Which app a page of the site belongs to: 'home' | 'cult' | 'both'. Keep in step with app/android/app/src/<flavor>/AndroidManifest.xml. */
-function pageOwner(pathname) {
+export function pageOwner(pathname) {
   if (SHARED_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`))) return 'both'
   return pathname === '/cult' || pathname.startsWith('/cult/') ? 'cult' : 'home'
 }

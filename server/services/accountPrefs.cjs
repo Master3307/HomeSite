@@ -12,6 +12,8 @@
  *   customCss         the user's own CSS (max 20 000 characters)
  *   customCssEnabled  boolean
  *   blockInsights     boolean: stop Cloudflare's page analytics from sending anything
+ *   loudSounds        boolean: false keeps loud sounds (the calculator's explosion) muted
+ *   openApp           boolean: on Android, pages opened in the browser jump into the installed app (src/lib/openApp.js)
  *   notify            { [category]: { site: boolean, email: boolean, push: boolean } }
  *   dash              the /dash start page: look, pages, widgets, search engines (src/lib/dashSettings.js), plain JSON up to 130 KB (no limit for the site owner)
  *   _at               when the settings were last changed (ms, by the browser): the
@@ -77,6 +79,8 @@ function cleanSetting(key, value, languages, { dashLimit = Infinity } = {}) {
       return typeof value === "string" && value.length <= MAX_CSS ? { ok: true, value } : { ok: false };
     case "customCssEnabled":
     case "blockInsights":
+    case "loudSounds":
+    case "openApp":
       return typeof value === "boolean" ? { ok: true, value } : { ok: false };
     case "_at":
       return Number.isFinite(Number(value)) && Number(value) > 0 ? { ok: true, value: Math.min(Number(value), Date.now() + 60_000) } : { ok: false };
@@ -103,7 +107,7 @@ function cleanSetting(key, value, languages, { dashLimit = Infinity } = {}) {
   }
 }
 
-const KEYS = ["theme", "language", "clock", "timeZone", "accent", "motion", "customCss", "customCssEnabled", "blockInsights", "notify", "dash", "_at"];
+const KEYS = ["theme", "language", "clock", "timeZone", "accent", "motion", "customCss", "customCssEnabled", "blockInsights", "loudSounds", "openApp", "notify", "dash", "_at"];
 
 /** Stored JSON -> the valid settings in it. */
 function parseSettings(json, languages) {

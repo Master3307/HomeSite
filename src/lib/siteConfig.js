@@ -21,6 +21,9 @@ export const siteConfig = Object.freeze({
   translateUrl: config.TRANSLATE_URL || "",
   searchEngineUrl: config.SEARCH_ENGINE_URL || "",
   searchEngineName: config.SEARCH_ENGINE_NAME || "My search",
+  // Android package names of the apps (public on the store anyway): the "open the app" preference uses them.
+  appId: config.APP_ID || "",
+  cultAppId: config.CULT_APP_ID || "",
   dashFeeds: !/^(off|false|0|no)$/i.test(String(config.DASH_FEEDS ?? "on")),
   privacyName: config.PRIVACY_CONTACT_NAME || "",
   privacyEmail: config.PRIVACY_CONTACT_EMAIL || "",

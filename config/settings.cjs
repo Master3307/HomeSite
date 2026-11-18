@@ -1115,6 +1115,7 @@ const SETTINGS = [
         return "";
       }
     },
+    public: true,
     applies: ["accounts", "site"],
   },
   {
@@ -1148,6 +1149,7 @@ const SETTINGS = [
         return "";
       }
     },
+    public: true,
     applies: ["accounts", "site"],
   },
   {

@@ -10,6 +10,7 @@ import { AccountSettingsProvider } from './lib/accountSettings.jsx'
 import Root from './Root.jsx'
 import { preloadPage } from './App.jsx'
 import { initNativeApp } from './lib/native.js'
+import { openInAppIfWanted } from './lib/openApp.js'
 
 /*
  * After a new build, an already-open page may ask for a code chunk that no
@@ -41,6 +42,8 @@ window.addEventListener('load', () => {
 
 // Inside the Android / iOS app only (pnpm app:build); nothing happens on the web.
 initNativeApp()
+// On Android in the browser, with "Open the app version" on: the page goes to the app (lib/openApp.js).
+openInAppIfWanted()
 
 // This page's own code starts loading now, alongside the language, not after it.
 preloadPage(window.location.pathname)

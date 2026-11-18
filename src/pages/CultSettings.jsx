@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 
 import LanguageSwitch from '/src/components/LanguageSwitch'
 import TimeZonePicker from '/src/components/TimeZonePicker'
+import { isNativeApp } from '/src/lib/native'
 
 import CultShell from '/src/components/cult/CultShell'
 import { DISCORD_LOGIN_URL } from '/src/lib/account'
@@ -204,6 +205,13 @@ export default function CultSettings() {
             ]}
           />
           <p className="members-hint settings-hint">{t(`look.motionHint.${prefs.motion}`)}</p>
+          <label className="members-switch">
+            <input type="checkbox" checked={prefs.loudSounds !== false} onChange={(event) => setPrefs({ loudSounds: event.target.checked })} />
+            <span>
+              <strong>{t('look.loudSounds')}</strong>
+              <small>{t('look.loudSoundsText')}</small>
+            </span>
+          </label>
         </Section>
 
         <Section icon="translate" title={t('time.title')}>
@@ -226,6 +234,18 @@ export default function CultSettings() {
             <TimeZonePicker value={prefs.timeZone ?? 'auto'} onChange={(timeZone) => setPrefs({ timeZone })} />
           </div>
         </Section>
+
+        {!isNativeApp && (
+          <Section icon="install_mobile" title={t('appOpen.title')} text={t('appOpen.text')}>
+            <label className="members-switch">
+              <input type="checkbox" checked={prefs.openApp === true} onChange={(event) => setPrefs({ openApp: event.target.checked })} />
+              <span>
+                <strong>{t('appOpen.open')}</strong>
+                <small>{t('appOpen.openText')}</small>
+              </span>
+            </label>
+          </Section>
+        )}
 
         <Section icon="visibility_off" title={t('analytics.title')} text={t('analytics.text')}>
           <label className="members-switch">

@@ -20,7 +20,9 @@
             "full": "Everything moves as intended.",
             "reduce": "Only small, quick animations. Nothing loops or bounces.",
             "none": "No animations at all: every change happens at once."
-        }
+        },
+        "loudSounds": "Loud sounds",
+        "loudSoundsText": "Sudden loud sounds, like the explosion when you divide by zero in the dash's calculator. Off: they play silently."
     },
     "time": {
         "title": "Language & time",
@@ -119,5 +121,11 @@
         "keep": "Keep my account",
         "deleting": "Deleting…",
         "confirm": "Delete everything"
+    },
+    "appOpen": {
+        "title": "The apps",
+        "text": "HomeSite and the cult also come as Android apps.",
+        "open": "Open pages in the app",
+        "openText": "On an Android phone with the HomeSite or CultSite app installed, pages you open in the browser go to the app. Off: they stay in the browser."
     }
 }

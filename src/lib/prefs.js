@@ -7,14 +7,16 @@
  *   accent    #rrggbb | null       tints the site in your colour (kept moody)
  *   motion    full | reduce | none all animations, fewer (small ones stay) or none at all
  *   blockInsights  true: Cloudflare's page analytics send nothing (index.html, early script)
+ *   loudSounds false: loud sounds (the calculator's explosion) stay muted; on by default
+ *   openApp   true: on Android, pages open in the installed HomeSite / CultSite app (lib/openApp.js); off by default
  *   notify    { moderation | reports: { site, email } } (server/services/moderation.cjs)
  *
  * The theme (dark / light) and language have their own keys (accountSettings).
  */
 
 const KEY = 'homesite:prefs'
-export const PREF_KEYS = ['clock', 'timeZone', 'accent', 'motion', 'blockInsights', 'notify']
-const DEFAULT_PREFS = { clock: 'auto', timeZone: 'auto', accent: null, motion: 'full', blockInsights: false, notify: {} }
+export const PREF_KEYS = ['clock', 'timeZone', 'accent', 'motion', 'loudSounds', 'blockInsights', 'openApp', 'notify']
+const DEFAULT_PREFS = { clock: 'auto', timeZone: 'auto', accent: null, motion: 'full', loudSounds: true, blockInsights: false, openApp: false, notify: {} }
 const MOTIONS = ['full', 'reduce', 'none']
 
 /* Old values and broken ones become defaults ("auto" was "like my device"). */
