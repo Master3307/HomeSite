@@ -15,5 +15,19 @@
     "hint": "↑ ↓ to navigate · Enter to open · Esc to close",
     "web": "Web",
     "discord": "Discord",
-    "onlyYou": "only you"
+    "onlyYou": "only you",
+    "calc": {
+        "title": "Calculator",
+        "copied": "Copied",
+        "graph": "Graph",
+        "drawGraph": "Draw the graph of {{what}}",
+        "copyGraph": "Copy the graph as a picture"
+    },
+    "recent": "Recent searches",
+    "recentBadge": "Recent",
+    "removeRecent": "Remove “{{text}}” from your recent searches",
+    "clearRecent": "Clear",
+    "latex": "LaTeX",
+    "latexHint": "Tab to insert",
+    "latexAlias": "You typed {{alias}}: this is the real command"
 }

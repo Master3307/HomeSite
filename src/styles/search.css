@@ -342,3 +342,88 @@
 .site-search__option--web .site-search__title {
   font-weight: 600;
 }
+
+/* Recent searches (only kept in this browser). */
+.site-search__recent-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.site-search__recent-clear {
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--search-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+.site-search__recent-clear:hover {
+  background: var(--search-active);
+  color: var(--text-primary);
+}
+.site-search__option--recent {
+  flex-wrap: nowrap;
+}
+.site-search__option--recent .site-search__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.site-search__badge--recent {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--search-muted);
+}
+.site-search__forget {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--search-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.12s ease,
+    background-color 0.12s ease;
+}
+.site-search__forget .material-symbols-outlined {
+  font-size: 17px;
+}
+.site-search__option--recent:hover .site-search__forget,
+.site-search__option--recent[aria-selected='true'] .site-search__forget,
+.site-search__forget:focus-visible {
+  opacity: 1;
+}
+.site-search__forget:hover {
+  background: var(--search-active);
+  color: var(--text-primary);
+}
+@media (hover: none) {
+  .site-search__forget {
+    opacity: 0.7;
+  }
+}
+
+/* LaTeX autocomplete. */
+.site-search__option--latex {
+  flex-wrap: nowrap;
+}
+.site-search__latex-glyph {
+  font-family: 'Cambria Math', 'STIX Two Math', 'Times New Roman', serif;
+  font-size: 1.05rem;
+}
+.site-search__latex {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.9em;
+}

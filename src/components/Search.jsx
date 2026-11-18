@@ -13,6 +13,30 @@ import '../styles/search.css'
 
 const HIGHLIGHT_NAME = 'search-result'
 
+/* Recent searches: only in this browser (localStorage), never sent anywhere. */
+const HISTORY_LIMIT = 20
+const historyStorage = (name) => `homesite:search-history:${name}`
+function readHistory(name) {
+  if (!name) return []
+  try {
+    const list = JSON.parse(localStorage.getItem(historyStorage(name)))
+    return Array.isArray(list) ? list.filter((entry) => typeof entry === 'string' && entry.trim()).slice(0, HISTORY_LIMIT) : []
+  } catch {
+    return []
+  }
+}
+function writeHistory(name, list) {
+  try {
+    if (list.length) localStorage.setItem(historyStorage(name), JSON.stringify(list))
+    else localStorage.removeItem(historyStorage(name))
+  } catch {
+    // storage blocked: this visit only
+  }
+}
+export function clearSearchHistory(name) {
+  writeHistory(name, [])
+}
+
 function Highlighted({ text, tokens }) {
   return highlightParts(text, tokens).map((part, index) =>
     part.match ? <mark key={index}>{part.text}</mark> : part.text,
@@ -30,9 +54,22 @@ function Highlighted({ text, tokens }) {
  *   `people`   `async (query, signal) -> [{ id, name, handle, avatarUrl, open() }]`:
  *              a Discord lookup group (the site owner's)
  *   `sitePages` false: no page results (web only)
+ *   `calc`     { analyze, Graph, Pretty, autoGraph } (/dash): sums, equations,
+ *              conversions and graphs on top. Enter / click copies a result;
+ *              on a graph Enter draws it, Enter again copies it as a picture;
+ *              impossible maths (÷ 0) calls `explode(spot, { url, onStart })`
+ *              `latex(partial)` suggests LaTeX commands while one is typed ("\\fr")
+ *   `extras`   (query) => [{ key, group: 'top' | 'after', icon | visual, title,
+ *              subtitle, hint, math, open() | copy }]: more suggestions (the
+ *              dash's periodic table, elements, formulas); 'top' ones come
+ *              before the web search, 'after' ones after it
+ *   `history`  where recent searches are kept ('site', 'dash'; false: none). They
+ *              open on an empty bar the person clicked into (not on autofocus,
+ *              until it's clicked or typed in), and matching ones join the
+ *              suggestions, marked as recent
  *   `placeholder`, `children` (rendered under the bar, e.g. engine chips)
  */
-export default function Search({ className = '', autoFocus = false, web = null, people = null, placeholder = null, sitePages = true, children = null }) {
+export default function Search({ className = '', autoFocus = false, web = null, people = null, placeholder = null, sitePages = true, calc = null, extras = null, history = 'site', children = null }) {
   const { t, i18n } = useTranslation('search')
   const navigate = useNavigate()
   const listId = useId()
@@ -48,6 +85,82 @@ export default function Search({ className = '', autoFocus = false, web = null, 
   const [peopleResult, setPeopleResult] = useState({ phrase: '', people: [], error: null })
 
   const deferredQuery = useDeferredValue(query)
+  const [recent, setRecent] = useState(() => readHistory(history))
+  // Autofocus alone doesn't open the history; a click into the bar or typing does.
+  const [historyArmed, setHistoryArmed] = useState(!autoFocus)
+  const [caret, setCaret] = useState(0)
+  const pendingCaret = useRef(null)
+  const remember = (text) => {
+    const entry = String(text ?? '').trim().slice(0, 200)
+    if (!history || !entry) return
+    const next = [entry, ...readHistory(history).filter((item) => item.toLocaleLowerCase() !== entry.toLocaleLowerCase())].slice(0, HISTORY_LIMIT)
+    writeHistory(history, next)
+    setRecent(next)
+  }
+  const forget = (text) => {
+    const next = readHistory(history).filter((item) => item !== text)
+    writeHistory(history, next)
+    setRecent(next)
+    inputRef.current?.focus()
+  }
+  const forgetAll = () => {
+    writeHistory(history, [])
+    setRecent([])
+    inputRef.current?.focus()
+  }
+  useEffect(() => setRecent(readHistory(history)), [history])
+  // After a LaTeX command was put in: the cursor into its first slot.
+  useEffect(() => {
+    if (pendingCaret.current === null || !inputRef.current) return
+    inputRef.current.setSelectionRange(pendingCaret.current, pendingCaret.current)
+    setCaret(pendingCaret.current)
+    pendingCaret.current = null
+  })
+  const latexPartial = calc?.latex ? (/\\[a-zA-Z]*$/.exec(query.slice(0, caret))?.[0] ?? null) : null
+  const latexSuggestions = useMemo(() => (latexPartial ? calc.latex(latexPartial).filter((entry) => entry.command !== latexPartial || entry.template.includes('§')) : []), [calc, latexPartial])
+  const recentShown = useMemo(() => {
+    if (!history) return []
+    const typed = query.trim().toLocaleLowerCase()
+    if (!typed) return recent.slice(0, 8)
+    return recent.filter((item) => item.toLocaleLowerCase() !== typed && item.toLocaleLowerCase().includes(typed)).slice(0, 3)
+  }, [history, recent, query])
+  const graphRef = useRef(null)
+  const [graphFor, setGraphFor] = useState('')
+  const [copiedKey, setCopiedKey] = useState('')
+  const calcResult = useMemo(() => {
+    if (!calc || !deferredQuery.trim()) return null
+    try {
+      return calc.analyze(deferredQuery)
+    } catch {
+      return null
+    }
+  }, [calc, deferredQuery])
+  // Impossible maths (÷ 0): it blows up right away, centred on what broke; the box is cleared once the video plays.
+  const boom = () => {
+    const input = inputRef.current
+    const clear = () => {
+      setQuery('')
+      setOpen(false)
+    }
+    if (calc?.explode && input) calc.explode(calc.faultSpot(input, calcResult?.error?.kind), { url: calcResult?.error?.url, onStart: clear })
+    else clear()
+  }
+  const boomRef = useRef(boom)
+  boomRef.current = boom
+  useEffect(() => {
+    if (calcResult?.illegal && query === deferredQuery) boomRef.current()
+  }, [calcResult, query, deferredQuery])
+  const extraItems = useMemo(() => {
+    if (!extras || !deferredQuery.trim()) return []
+    try {
+      return extras(deferredQuery) ?? []
+    } catch {
+      return []
+    }
+  }, [extras, deferredQuery])
+  const extrasTop = extraItems.filter((item) => item.group !== 'after')
+  const extrasAfter = extraItems.filter((item) => item.group === 'after')
+  const graphShown = Boolean(calcResult?.graph) && (calc?.autoGraph || graphFor === deferredQuery)
   const parsed = useMemo(() => parseQuery(deferredQuery), [deferredQuery])
   const hasQuery = parsed.tokens.length > 0
 
@@ -112,7 +225,19 @@ export default function Search({ className = '', autoFocus = false, web = null, 
   // One flat list of everything selectable, for keyboard navigation.
   const options = useMemo(() => {
     const list = []
+    for (const entry of latexSuggestions) list.push({ key: `latex:${entry.template}`, kind: 'latex', entry })
+    if (!query.trim()) {
+      for (const text of recentShown) list.push({ key: `recent:${text}`, kind: 'recent', text })
+      return list
+    }
+    if (calcResult) {
+      for (const row of calcResult.rows.slice(0, 8)) list.push({ key: `calc:${row.id}`, kind: 'calc', row })
+      if (calcResult.graph) list.push({ key: 'calc:graph', kind: 'graph' })
+    }
+    for (const item of extrasTop) list.push({ key: item.key, kind: 'extra', item })
     if (web && query.trim()) list.push({ key: '__web', kind: 'web' })
+    for (const item of extrasAfter) list.push({ key: item.key, kind: 'extra', item })
+    for (const text of recentShown) list.push({ key: `recent:${text}`, kind: 'recent', text })
     for (const page of pages) {
       list.push({ key: page.id, kind: 'page', page })
       for (const match of page.matches) {
@@ -122,7 +247,7 @@ export default function Search({ className = '', autoFocus = false, web = null, 
     for (const profile of profiles) list.push({ key: profile.id, kind: 'profile', profile })
     for (const person of found.people) list.push({ key: `person:${person.id}`, kind: 'person', person })
     return list
-  }, [web, query, pages, profiles, found.people])
+  }, [latexSuggestions, recentShown, calcResult, extrasTop, extrasAfter, web, query, pages, profiles, found.people])
 
   const optionIndex = useMemo(
     () => new Map(options.map((option, position) => [option.key, position])),
@@ -130,7 +255,8 @@ export default function Search({ className = '', autoFocus = false, web = null, 
   )
 
   const clampedActive = Math.min(activeIndex, Math.max(options.length - 1, 0))
-  const showPanel = open && query.trim().length > 0
+  const showHistory = open && !query.trim() && historyArmed && recentShown.length > 0
+  const showPanel = open && (query.trim().length > 0 || showHistory)
 
   // Ctrl/Cmd + K focuses the search from anywhere.
   useEffect(() => {
@@ -161,8 +287,69 @@ export default function Search({ className = '', autoFocus = false, web = null, 
     document.getElementById(`${listId}-${clampedActive}`)?.scrollIntoView({ block: 'nearest' })
   }, [clampedActive, showPanel, listId])
 
+  const flash = (key) => {
+    setCopiedKey(key)
+    setTimeout(() => setCopiedKey((current) => (current === key ? '' : current)), 1500)
+  }
+  const putLatex = (entry) => {
+    const start = caret - latexPartial.length
+    const at = entry.template.indexOf('§')
+    const piece = entry.template.replace('§', '')
+    setQuery(query.slice(0, start) + piece + query.slice(caret))
+    pendingCaret.current = start + (at === -1 ? piece.length : at)
+    setActiveIndex(0)
+    inputRef.current?.focus()
+  }
   const openOption = (option) => {
     if (!option) return
+    if (option.kind === 'latex') {
+      putLatex(option.entry)
+      return
+    }
+    if (option.kind === 'recent') {
+      setQuery(option.text)
+      setActiveIndex(0)
+      setCaret(option.text.length)
+      // Maths (from before this rule) just shows its answer again; only real searches go to the search engine.
+      let maths = false
+      try {
+        maths = Boolean(calc?.analyze(option.text))
+      } catch {
+        maths = false
+      }
+      if (web && !maths) {
+        remember(option.text)
+        web.run(option.text)
+      } else inputRef.current?.focus()
+      return
+    }
+    // Calculations, graphs and LaTeX aren't searches: they stay out of the history.
+    if (!['calc', 'graph', 'latex'].includes(option.kind) && !(option.kind === 'extra' && option.item?.copy)) remember(query)
+    if (option.kind === 'calc') {
+      if (!option.row.copy) return
+      navigator.clipboard
+        ?.writeText(option.row.copy)
+        .then(() => flash(option.key))
+        .catch(() => {})
+      return
+    }
+    if (option.kind === 'extra') {
+      if (option.item.copy) {
+        navigator.clipboard
+          ?.writeText(option.item.copy)
+          .then(() => flash(option.key))
+          .catch(() => {})
+      } else {
+        setOpen(false)
+        option.item.open?.()
+      }
+      return
+    }
+    if (option.kind === 'graph') {
+      if (!graphShown) setGraphFor(deferredQuery)
+      else graphRef.current?.copy().then((done) => done && flash(option.key))
+      return
+    }
     if (option.kind === 'web') {
       web.run(query.trim())
       return
@@ -193,9 +380,24 @@ export default function Search({ className = '', autoFocus = false, web = null, 
       if (!options.length) return
       const step = event.key === 'ArrowDown' ? 1 : -1
       setActiveIndex((clampedActive + step + options.length) % options.length)
+    } else if (event.key === 'Tab' && !event.shiftKey && latexSuggestions.length) {
+      // Tab takes the highlighted (or first) LaTeX command.
+      event.preventDefault()
+      const active = options[clampedActive]
+      putLatex(active?.kind === 'latex' ? active.entry : latexSuggestions[0])
+    } else if (event.key === 'Tab' && !event.shiftKey && calc?.nextSlot) {
+      // Tab jumps into the next empty {} / () of a fraction, root or power.
+      const input = event.currentTarget
+      const slot = calc.nextSlot(input.value, input.selectionEnd ?? 0)
+      if (slot !== null) {
+        event.preventDefault()
+        input.setSelectionRange(slot, slot)
+        setCaret(slot)
+      }
     } else if (event.key === 'Enter') {
       event.preventDefault()
-      openOption(options[clampedActive])
+      if (calcResult?.illegal && calc?.analyze(query)?.illegal) boom()
+      else openOption(options[clampedActive])
     } else if (event.key === 'Escape') {
       if (showPanel) setOpen(false)
       else setQuery('')
@@ -241,12 +443,19 @@ export default function Search({ className = '', autoFocus = false, web = null, 
             ensureIndex()
             setOpen(true)
           }}
+          onPointerDown={() => {
+            setHistoryArmed(true)
+            setOpen(true)
+          }}
           onChange={(event) => {
             ensureIndex()
             setQuery(event.target.value)
+            setCaret(event.target.selectionEnd ?? event.target.value.length)
+            setHistoryArmed(true)
             setActiveIndex(0)
             setOpen(true)
           }}
+          onSelect={(event) => setCaret(event.currentTarget.selectionEnd ?? 0)}
           onKeyDown={onKeyDown}
         />
         {query ? (
@@ -278,6 +487,88 @@ export default function Search({ className = '', autoFocus = false, web = null, 
           )}
 
           <div id={listId} role="listbox" aria-label={t('label')} className="site-search__results">
+            {latexSuggestions.length > 0 && (
+              <div role="group" aria-label={t('latex')} className="site-search__group">
+                <p className="site-search__group-title" aria-hidden="true">
+                  {t('latex')}
+                  <span className="site-search__badge">{t('latexHint')}</span>
+                </p>
+                {latexSuggestions.map((entry) => (
+                  <div key={entry.template} className="site-search__option site-search__option--latex" {...optionProps({ key: `latex:${entry.template}`, kind: 'latex', entry })}>
+                    <span className="site-search__avatar site-search__latex-glyph" aria-hidden="true">
+                      {entry.show}
+                    </span>
+                    <div className="site-search__option-main">
+                      <span className="site-search__title">
+                        <code className="site-search__latex">{entry.template.replace('§', '…')}</code>
+                      </span>
+                      {entry.alias ? <p className="site-search__description">{t('latexAlias', { alias: `\\${entry.alias}` })}</p> : entry.words && <p className="site-search__description">{entry.words.split(',').slice(0, 4).join(',')}</p>}
+                    </div>
+                    <kbd className="site-search__kbd" aria-hidden="true">
+                      Tab
+                    </kbd>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!query.trim() && recentShown.length > 0 && (
+              <div role="group" aria-label={t('recent')} className="site-search__group">
+                <p className="site-search__group-title site-search__recent-title">
+                  <span aria-hidden="true">{t('recent')}</span>
+                  <button type="button" className="site-search__recent-clear" onMouseDown={(event) => event.preventDefault()} onClick={forgetAll}>
+                    {t('clearRecent')}
+                  </button>
+                </p>
+                {recentShown.map((text) => (
+                  <RecentOption key={text} text={text} t={t} onForget={forget} {...optionProps({ key: `recent:${text}`, kind: 'recent', text })} />
+                ))}
+              </div>
+            )}
+            {calcResult && (
+              <div role="group" aria-label={t('calc.title')} className="site-search__group site-search__calc">
+                <p className="site-search__group-title" aria-hidden="true">
+                  {t('calc.title')}
+                  {calc.Pretty && calcResult.trees?.length > 0 && /[/^\\√∛⁄½²³$]|sqrt|root|frac/.test(deferredQuery) && <calc.Pretty trees={calcResult.trees} source={deferredQuery} className="site-search__math" />}
+                </p>
+                {calcResult.rows.slice(0, 8).map((row) => {
+                  const key = `calc:${row.id}`
+                  return (
+                    <div key={key} className="site-search__option site-search__option--calc" {...optionProps({ key, kind: 'calc', row })}>
+                      <span className="material-symbols-outlined site-search__avatar" aria-hidden="true">
+                        {row.kind === 'convert' ? 'swap_horiz' : row.kind === 'solve' ? 'function' : 'calculate'}
+                      </span>
+                      <div className="site-search__option-main">
+                        <span className="site-search__title site-search__calc-value">{row.text}</span>
+                      </div>
+                      <span className="site-search__calc-hint">{copiedKey === key ? t('calc.copied') : row.hint}</span>
+                      <span className="material-symbols-outlined site-search__chevron" aria-hidden="true">
+                        {copiedKey === key ? 'check' : 'content_copy'}
+                      </span>
+                    </div>
+                  )
+                })}
+                {calcResult.graph && (
+                  <div className="site-search__option site-search__option--calc" {...optionProps({ key: 'calc:graph', kind: 'graph' })}>
+                    <span className="material-symbols-outlined site-search__avatar" aria-hidden="true">
+                      show_chart
+                    </span>
+                    <div className="site-search__option-main">
+                      <span className="site-search__title">{graphShown ? t('calc.copyGraph') : t('calc.drawGraph', { what: calcResult.graph.map((line) => line.label).join(' = ') })}</span>
+                    </div>
+                    <span className="site-search__calc-hint">{copiedKey === 'calc:graph' ? t('calc.copied') : t('calc.graph')}</span>
+                    <span className="material-symbols-outlined site-search__chevron" aria-hidden="true">
+                      {copiedKey === 'calc:graph' ? 'check' : graphShown ? 'image' : 'add_chart'}
+                    </span>
+                  </div>
+                )}
+                {graphShown && calc.Graph && (
+                  <div className="site-search__graph" onMouseDown={(event) => event.stopPropagation()}>
+                    <calc.Graph ref={graphRef} lines={calcResult.graph} points={calcResult.points ?? []} height={260} />
+                  </div>
+                )}
+              </div>
+            )}
+            {extrasTop.length > 0 && <ExtraGroup items={extrasTop} optionProps={optionProps} copiedKey={copiedKey} t={t} />}
             {web && query.trim() && (
               <div role="group" aria-label={t('web')} className="site-search__group">
                 <div className="site-search__option site-search__option--web" {...optionProps({ key: '__web', kind: 'web' })}>
@@ -291,6 +582,14 @@ export default function Search({ className = '', autoFocus = false, web = null, 
                     ↵
                   </kbd>
                 </div>
+              </div>
+            )}
+            {extrasAfter.length > 0 && <ExtraGroup items={extrasAfter} optionProps={optionProps} copiedKey={copiedKey} t={t} />}
+            {query.trim() && recentShown.length > 0 && (
+              <div role="group" aria-label={t('recent')} className="site-search__group">
+                {recentShown.map((text) => (
+                  <RecentOption key={text} text={text} t={t} onForget={forget} {...optionProps({ key: `recent:${text}`, kind: 'recent', text })} />
+                ))}
               </div>
             )}
             {pages.length > 0 && (
@@ -398,6 +697,68 @@ export default function Search({ className = '', autoFocus = false, web = null, 
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+/* More suggestions from the page using the search (the dash's science reference). */
+function ExtraGroup({ items, optionProps, copiedKey, t }) {
+  return (
+    <div role="group" className="site-search__group">
+      {items.map((item) => (
+        <div key={item.key} className={`site-search__option site-search__option--extra${item.visual ? ' has-visual' : ''}`} {...optionProps({ key: item.key, kind: 'extra', item })}>
+          {item.visual ? (
+            <span className="site-search__visual" aria-hidden="true">
+              {item.visual}
+            </span>
+          ) : (
+            <span className="material-symbols-outlined site-search__avatar" aria-hidden="true">
+              {item.icon ?? 'science'}
+            </span>
+          )}
+          <div className="site-search__option-main">
+            <span className="site-search__title">
+              {item.title}
+              {item.math}
+            </span>
+            {item.subtitle && <p className="site-search__description">{item.subtitle}</p>}
+          </div>
+          <span className="site-search__calc-hint">{copiedKey === item.key ? t('calc.copied') : item.hint}</span>
+          <span className="material-symbols-outlined site-search__chevron" aria-hidden="true">
+            {copiedKey === item.key ? 'check' : item.copy ? 'content_copy' : 'open_in_full'}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* One recent search: a clock, the text, a "Recent" mark and a button to forget it. */
+function RecentOption({ text, t, onForget, ...props }) {
+  return (
+    <div className="site-search__option site-search__option--recent" {...props}>
+      <span className="material-symbols-outlined site-search__avatar" aria-hidden="true">
+        history
+      </span>
+      <div className="site-search__option-main">
+        <span className="site-search__title">{text}</span>
+      </div>
+      <span className="site-search__badge site-search__badge--recent">{t('recentBadge')}</span>
+      <button
+        type="button"
+        className="site-search__forget"
+        aria-label={t('removeRecent', { text })}
+        title={t('removeRecent', { text })}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={(event) => {
+          event.stopPropagation()
+          onForget(text)
+        }}
+      >
+        <span className="material-symbols-outlined" aria-hidden="true">
+          close
+        </span>
+      </button>
     </div>
   )
 }
