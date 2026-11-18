@@ -1422,6 +1422,22 @@ select.members-input option {
   color: inherit;
   font-weight: 650;
 }
+.notify-list li > div {
+  flex: 1;
+  min-width: 0;
+}
+.notify-list__tools {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 2px;
+}
+.notify-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
 .notify-prefs {
   display: grid;
   gap: 8px;

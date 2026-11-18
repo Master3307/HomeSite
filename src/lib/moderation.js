@@ -15,6 +15,8 @@ async function call(path, { method = 'GET', body } = {}) {
 
 export const loadNotifications = () => call('/notifications')
 export const markRead = (ids) => call('/notifications/read', { method: 'POST', body: ids ? { ids } : { all: true } })
+/** Removes notifications: `ids`, or 'read' (the read ones) / 'all'. Answers `{ removed, unread }`. */
+export const removeNotifications = (which) => call('/notifications/remove', { method: 'POST', body: Array.isArray(which) ? { ids: which } : which === 'read' ? { read: true } : { all: true } })
 export const loadStaff = () => call('/mod/me').catch(() => ({ staff: false, owner: false }))
 export const loadReports = (status = 'open') => call(`/mod/reports?status=${status}`)
 export const reviewReport = (id, status, note = '') => call(`/mod/reports/${encodeURIComponent(id)}`, { method: 'POST', body: { status, note } })

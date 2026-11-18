@@ -210,7 +210,25 @@ function registerModeration(app, { requireStorage, getRequestSession, getDatabas
       if (!session) throw httpError(401, "Log in first.");
       if (req.body?.all === true) db().prepare("UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL").run(nowIso(), session.user_id);
       else for (const entry of (Array.isArray(req.body?.ids) ? req.body.ids : []).slice(0, 100)) db().prepare("UPDATE notifications SET read_at = ? WHERE user_id = ? AND id = ?").run(nowIso(), session.user_id, String(entry));
-      return { ok: true };
+      const unread = db().prepare("SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND read_at IS NULL").get(session.user_id).count;
+      return { ok: true, unread };
+    }),
+  );
+
+  // Removing: some ({ ids }), the read ones ({ read: true }) or all ({ all: true }) of your own.
+  app.post(
+    "/notifications/remove",
+    writeLimiter,
+    requireStorage,
+    route(async (req) => {
+      const session = getRequestSession(req);
+      if (!session) throw httpError(401, "Log in first.");
+      let removed = 0;
+      if (req.body?.all === true) removed = db().prepare("DELETE FROM notifications WHERE user_id = ?").run(session.user_id).changes;
+      else if (req.body?.read === true) removed = db().prepare("DELETE FROM notifications WHERE user_id = ? AND read_at IS NOT NULL").run(session.user_id).changes;
+      else for (const entry of (Array.isArray(req.body?.ids) ? req.body.ids : []).slice(0, 100)) removed += db().prepare("DELETE FROM notifications WHERE user_id = ? AND id = ?").run(session.user_id, String(entry)).changes;
+      const unread = db().prepare("SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND read_at IS NULL").get(session.user_id).count;
+      return { ok: true, removed, unread };
     }),
   );
 
