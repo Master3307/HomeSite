@@ -335,8 +335,8 @@ importers:
         specifier: ^14.2.8
         version: 14.2.8(supports-color@7.2.0)
       unicode-emoji-json:
-        specifier: 0.8.0
-        version: 0.8.0
+        specifier: 0.9.0
+        version: 0.9.0
       vite:
         specifier: ^8.3.8
         version: 8.3.8(@types/node@26.6.6)
@@ -2270,8 +2270,8 @@ packages:
     resolution: {integrity: sha512-EvRlUt/QqAEvXdQeRMYUfwOQsfzpDztykrG2owGEE/rBOBoYv9uF39ZzsNDh4lTFHhTr2XOZjKkYgueD12ZmGA==}
     engines: {node: '>=18.17'}
 
-  unicode-emoji-json@0.8.0:
-    resolution: {integrity: sha512-3wDXXvp6YGoKGhS2O2H7+V+bYduOBydN1lnI0uVfr1cIdY02uFFiEH1i3kE5CCE4l6UqbLKVmEFW9USxTAMD1g==}
+  unicode-emoji-json@0.9.0:
+    resolution: {integrity: sha512-HdrQW/7SdbXUsTd8uTATv7LvQJkCSgbAgRCDCtOhQ6xn3EAx+xZHQtRniOXWJK3ywIqPegkNhP4U4EbuFsiQng==}
 
   universalify@0.1.2:
     resolution: {integrity: sha512-rBJeI5CXAlmy1pV+617WB9J63U6XcazHHF2f2dbJix4XzpUF0RS3Zbj0FGIOCAva5P/d/GBOYaACQ1w+0azUkg==}
@@ -4358,7 +4358,7 @@ snapshots:
 
   undici@6.29.1: {}
 
-  unicode-emoji-json@0.8.0: {}
+  unicode-emoji-json@0.9.0: {}
 
   universalify@0.1.2: {}
 
