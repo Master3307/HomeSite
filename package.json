@@ -95,7 +95,7 @@
     "@vitejs/plugin-react": "^6.3.0",
     "oxlint": "^1.94.0",
     "serve": "^14.2.8",
-    "unicode-emoji-json": "0.8.0",
+    "unicode-emoji-json": "0.9.0",
     "vite": "^8.3.8"
   },
   "license": "Apache-2.0"
