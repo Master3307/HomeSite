@@ -34,7 +34,7 @@
     "push:setup": "node scripts/push-setup.cjs",
     "app:build": "node scripts/app-build.mjs"
   },
-  "packageManager": "pnpm@12.18.0",
+  "packageManager": "pnpm@12.21.0",
   "engines": {
     "pnpm": ">=10.0.0"
   },
