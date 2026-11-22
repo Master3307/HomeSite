@@ -97,10 +97,18 @@ const APP_KEPT = /^app\/(keys\/|google-services\.json$)/;
 
 function isExcluded(rel) {
   if (rel.startsWith("app/") && !APP_KEPT.test(rel)) return true;
-  if (rel.endsWith(".tmp") || /\.tmp$|\.[0-9a-f-]{36}\.tmp$/.test(rel)) return true;
+  if (rel.endsWith(".tmp") || /\.tmp$|\.[0-9a-f-]{36}\.tmp$/.test(rel))
+    return true;
   // Bongo Cat imports in progress (uploads, the next version, the one being replaced).
-  if (/^server\/services\/db\/bongo-cat\/\.(uploads|next-[^/]+|old-[^/]+)\//.test(rel)) return true;
-  return EXCLUDED.some((entry) => (entry.endsWith("/") ? rel.startsWith(entry) : rel === entry));
+  if (
+    /^server\/services\/db\/bongo-cat\/\.(uploads|next-[^/]+|old-[^/]+)\//.test(
+      rel,
+    )
+  )
+    return true;
+  return EXCLUDED.some((entry) =>
+    entry.endsWith("/") ? rel.startsWith(entry) : rel === entry,
+  );
 }
 
 /* A path inside the repository (no "..", no absolute paths). */
@@ -114,8 +122,11 @@ function safeJoin(rel) {
 
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    execFile(command, args, { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024, ...options }, (error, stdout) =>
-      error ? reject(error) : resolve(stdout),
+    execFile(
+      command,
+      args,
+      { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024, ...options },
+      (error, stdout) => (error ? reject(error) : resolve(stdout)),
     );
   });
 }
@@ -127,7 +138,8 @@ async function walk(rel) {
   if (stat.isFile()) return [rel];
   if (!stat.isDirectory()) return [];
   const out = [];
-  for (const entry of await fs.readdir(absolute)) out.push(...(await walk(path.posix.join(rel, entry))));
+  for (const entry of await fs.readdir(absolute))
+    out.push(...(await walk(path.posix.join(rel, entry))));
   return out;
 }
 
@@ -135,8 +147,19 @@ async function walk(rel) {
 async function listFiles() {
   let paths = [];
   try {
-    const untracked = await run("git", ["ls-files", "--others", "--exclude-standard", "-z"]);
-    const ignored = await run("git", ["ls-files", "--others", "--ignored", "--exclude-standard", "-z"]);
+    const untracked = await run("git", [
+      "ls-files",
+      "--others",
+      "--exclude-standard",
+      "-z",
+    ]);
+    const ignored = await run("git", [
+      "ls-files",
+      "--others",
+      "--ignored",
+      "--exclude-standard",
+      "-z",
+    ]);
     paths = `${untracked}${ignored}`.split("\0").filter(Boolean);
   } catch {
     for (const entry of FALLBACK_PATHS) paths.push(...(await walk(entry)));
@@ -154,7 +177,9 @@ async function listFiles() {
 /** Paths git tracks: a backup never overwrites those (they come from the repository). */
 async function trackedSet() {
   try {
-    return new Set((await run("git", ["ls-files", "-z"])).split("\0").filter(Boolean));
+    return new Set(
+      (await run("git", ["ls-files", "-z"])).split("\0").filter(Boolean),
+    );
   } catch {
     return new Set();
   }
@@ -181,7 +206,9 @@ async function writeFileSafely(file, text, mode) {
   // An existing file keeps its permissions (other services may read it).
   const existing = await fs.stat(file).catch(() => null);
   const temporary = `${file}.${process.pid}.${Date.now()}.tmp`;
-  await fs.writeFile(temporary, text, { mode: existing ? existing.mode & 0o777 : mode });
+  await fs.writeFile(temporary, text, {
+    mode: existing ? existing.mode & 0o777 : mode,
+  });
   if (existing) await fs.chmod(temporary, existing.mode & 0o777);
   await fs.rename(temporary, file);
 }
@@ -189,7 +216,9 @@ async function writeFileSafely(file, text, mode) {
 async function writeJson(file, value) {
   await fs.mkdir(path.dirname(file), { recursive: true });
   const temporary = `${file}.${crypto.randomUUID()}.tmp`;
-  await fs.writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
+  await fs.writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, {
+    mode: 0o600,
+  });
   await fs.rename(temporary, file);
 }
 
@@ -197,7 +226,9 @@ async function writeJson(file, value) {
 
 async function loadTimes() {
   const index = await readJson(TIMES_INDEX, null);
-  return index?.files && typeof index.files === "object" ? index : { version: 1, files: {} };
+  return index?.files && typeof index.files === "object"
+    ? index
+    : { version: 1, files: {} };
 }
 
 /**
@@ -225,7 +256,13 @@ async function describeFiles(files) {
       }
     }
 
-    described.push({ path: rel, size: stat.size, sha256, createdAt, modifiedAt: Math.round(stat.mtimeMs) });
+    described.push({
+      path: rel,
+      size: stat.size,
+      sha256,
+      createdAt,
+      modifiedAt: Math.round(stat.mtimeMs),
+    });
   }
 
   return { described, differences };
@@ -234,17 +271,33 @@ async function describeFiles(files) {
 async function saveTimes(described, extra = {}) {
   const index = await loadTimes();
   // Paths no longer backed up (e.g. the apps' build output) leave the index.
-  for (const rel of Object.keys(index.files)) if (isExcluded(rel)) delete index.files[rel];
+  for (const rel of Object.keys(index.files))
+    if (isExcluded(rel)) delete index.files[rel];
   for (const file of described) {
-    index.files[file.path] = { sha256: file.sha256, size: file.size, createdAt: file.createdAt };
+    index.files[file.path] = {
+      sha256: file.sha256,
+      size: file.size,
+      createdAt: file.createdAt,
+    };
   }
-  await writeJson(TIMES_INDEX, { ...index, ...extra, version: 1, updatedAt: new Date().toISOString() });
+  await writeJson(TIMES_INDEX, {
+    ...index,
+    ...extra,
+    version: 1,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 /* ---------- encryption (OpenSSL compatible) ---------- */
 
 function deriveKey(password, salt) {
-  const material = crypto.pbkdf2Sync(Buffer.from(password, "utf8"), salt, PBKDF2_ITERATIONS, 48, "sha256");
+  const material = crypto.pbkdf2Sync(
+    Buffer.from(password, "utf8"),
+    salt,
+    PBKDF2_ITERATIONS,
+    48,
+    "sha256",
+  );
   return { key: material.subarray(0, 32), iv: material.subarray(32, 48) };
 }
 
@@ -256,7 +309,11 @@ async function encryptFile(source, destination, password) {
   const { key, iv } = deriveKey(password, salt);
   const output = fsSync.createWriteStream(destination, { mode: 0o600 });
   output.write(Buffer.concat([MAGIC, salt]));
-  await pipeline(fsSync.createReadStream(source), crypto.createCipheriv("aes-256-cbc", key, iv), output);
+  await pipeline(
+    fsSync.createReadStream(source),
+    crypto.createCipheriv("aes-256-cbc", key, iv),
+    output,
+  );
 }
 
 async function decryptFile(source, destination, password) {
@@ -264,7 +321,8 @@ async function decryptFile(source, destination, password) {
   const header = Buffer.alloc(16);
   await handle.read(header, 0, 16, 0);
   await handle.close();
-  if (!header.subarray(0, 8).equals(MAGIC)) throw httpError(400, "This is not a HomeSite backup file.");
+  if (!header.subarray(0, 8).equals(MAGIC))
+    throw httpError(400, "This is not a HomeSite backup file.");
 
   const { key, iv } = deriveKey(password, header.subarray(8, 16));
   try {
@@ -274,7 +332,10 @@ async function decryptFile(source, destination, password) {
       fsSync.createWriteStream(destination, { mode: 0o600 }),
     );
   } catch {
-    throw httpError(400, "Wrong admin key for this backup, or the file is damaged.");
+    throw httpError(
+      400,
+      "Wrong admin key for this backup, or the file is damaged.",
+    );
   }
 }
 
@@ -284,7 +345,11 @@ function tar(args) {
     let stderr = "";
     child.stderr.on("data", (chunk) => (stderr += chunk));
     child.on("error", reject);
-    child.on("close", (code) => (code === 0 ? resolve() : reject(new Error(stderr || `tar exited with ${code}`))));
+    child.on("close", (code) =>
+      code === 0
+        ? resolve()
+        : reject(new Error(stderr || `tar exited with ${code}`)),
+    );
   });
 }
 
@@ -296,7 +361,9 @@ async function workDir(prefix) {
 /* ---------- export ---------- */
 
 async function gitCommit() {
-  return (await run("git", ["rev-parse", "HEAD"]).catch(() => "")).trim() || null;
+  return (
+    (await run("git", ["rev-parse", "HEAD"]).catch(() => "")).trim() || null
+  );
 }
 
 /**
@@ -304,7 +371,13 @@ async function gitCommit() {
  * consistently with SQLite's backup API). Returns { file, name, manifest,
  * differences }; the caller streams `file` and removes it.
  */
-async function createBackup({ adminKey, db = null, reason = "export", into = null, onProgress = () => {} }) {
+async function createBackup({
+  adminKey,
+  db = null,
+  reason = "export",
+  into = null,
+  onProgress = () => {},
+}) {
   const stage = await workDir("export");
   try {
     const files = await listFiles();
@@ -315,7 +388,12 @@ async function createBackup({ adminKey, db = null, reason = "export", into = nul
     onProgress({ step: "Collecting files", done: 0, total: described.length });
     for (const file of described) {
       copied += 1;
-      if (copied % 25 === 0) onProgress({ step: "Collecting files", done: copied, total: described.length });
+      if (copied % 25 === 0)
+        onProgress({
+          step: "Collecting files",
+          done: copied,
+          total: described.length,
+        });
       const target = path.join(stage, "files", file.path);
       await fs.mkdir(path.dirname(target), { recursive: true });
       if (file.path === ACCOUNTS_DB && db) {
@@ -340,16 +418,32 @@ async function createBackup({ adminKey, db = null, reason = "export", into = nul
       reason,
       host: os.hostname(),
       commit: await gitCommit(),
-      encryption: { cipher: "aes-256-cbc", kdf: "pbkdf2-sha256", iterations: PBKDF2_ITERATIONS, user: "admin" },
+      encryption: {
+        cipher: "aes-256-cbc",
+        kdf: "pbkdf2-sha256",
+        iterations: PBKDF2_ITERATIONS,
+        user: "admin",
+      },
       files: described,
     };
     await writeJson(path.join(stage, "manifest.json"), manifest);
 
     const plain = path.join(stage, "backup.tar.gz");
     onProgress({ step: "Compressing", done: 0, total: 0 });
-    await tar(["-czf", plain, "-C", stage, "manifest.json", "file-times.json", "files"]);
+    await tar([
+      "-czf",
+      plain,
+      "-C",
+      stage,
+      "manifest.json",
+      "file-times.json",
+      "files",
+    ]);
 
-    const stamp = new Date(exportedAt).toISOString().replace(/[:]/g, "-").replace(/\..+/, "");
+    const stamp = new Date(exportedAt)
+      .toISOString()
+      .replace(/[:]/g, "-")
+      .replace(/\..+/, "");
     const name = `homesite-backup-${stamp}.tar.gz.enc`;
     await fs.mkdir(into ?? WORK_DIR, { recursive: true, mode: 0o700 });
     const output = path.join(into ?? WORK_DIR, name);
@@ -374,13 +468,19 @@ async function overview() {
     groups[group].bytes += file.size;
   }
   const index = await loadTimes();
-  return { groups, totalFiles: described.length, differences, lastExportAt: index.lastExportAt ?? null };
+  return {
+    groups,
+    totalFiles: described.length,
+    differences,
+    lastExportAt: index.lastExportAt ?? null,
+  };
 }
 
 function categoryOf(rel) {
   if (rel === ".env") return "env";
   if (rel === ACCOUNTS_DB) return "accounts";
-  if (rel.startsWith("server/services/db/fdc-polls/recycling-bin/")) return "recycling";
+  if (rel.startsWith("server/services/db/fdc-polls/recycling-bin/"))
+    return "recycling";
   if (rel.startsWith("server/services/db/fdc-polls/")) return "fdc";
   if (rel.startsWith("server/services/avatars/")) return "avatars";
   if (rel === ACTIVITY_LOG || rel.startsWith(".logs/")) return "logs";
@@ -397,7 +497,11 @@ function parseEnvValue(raw) {
   const value = raw.trim();
   if (value.startsWith('"')) {
     const end = value.lastIndexOf('"');
-    return value.slice(1, end > 0 ? end : undefined).replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+    return value
+      .slice(1, end > 0 ? end : undefined)
+      .replace(/\\n/g, "\n")
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, "\\");
   }
   if (value.startsWith("'")) {
     const end = value.lastIndexOf("'");
@@ -439,7 +543,8 @@ function setEnvValues(text, changes, note) {
   while (out.length && out.at(-1) === "") out.pop();
   if (pending.size) {
     out.push("", `# ${note}`);
-    for (const [key, value] of pending) out.push(`${key}=${formatEnvValue(value)}`);
+    for (const [key, value] of pending)
+      out.push(`${key}=${formatEnvValue(value)}`);
   }
   return `${out.join("\n")}\n`;
 }
@@ -449,7 +554,11 @@ async function envCatalog() {
   return Object.fromEntries(
     settingsSchema.SETTINGS.map((setting) => [
       setting.key,
-      { label: setting.label, description: setting.description, importance: setting.importance },
+      {
+        label: setting.label,
+        description: setting.description,
+        importance: setting.importance,
+      },
     ]),
   );
 }
@@ -483,7 +592,10 @@ function parseCsv(text) {
   return rows;
 }
 
-const csvCell = (value) => (/[",\n]/.test(String(value)) ? `"${String(value).replace(/"/g, '""')}"` : String(value));
+const csvCell = (value) =>
+  /[",\n]/.test(String(value))
+    ? `"${String(value).replace(/"/g, '""')}"`
+    : String(value);
 
 /*
  * Merges a per-user CSV (header + one row per user in the first column):
@@ -493,10 +605,15 @@ const csvCell = (value) => (/[",\n]/.test(String(value)) ? `"${String(value).rep
 function mergeUserCsv(localText, backupText, { maxColumns, newerBy }) {
   const [localHeader, ...localRows] = parseCsv(localText);
   const [backupHeader, ...backupRows] = parseCsv(backupText);
-  const header = [...new Set([...(localHeader ?? []), ...(backupHeader ?? [])])];
-  const toObject = (head, row) => Object.fromEntries(head.map((name, index) => [name, row[index] ?? ""]));
+  const header = [
+    ...new Set([...(localHeader ?? []), ...(backupHeader ?? [])]),
+  ];
+  const toObject = (head, row) =>
+    Object.fromEntries(head.map((name, index) => [name, row[index] ?? ""]));
 
-  const merged = new Map(localRows.map((row) => [row[0], toObject(localHeader, row)]));
+  const merged = new Map(
+    localRows.map((row) => [row[0], toObject(localHeader, row)]),
+  );
   for (const row of backupRows) {
     const other = toObject(backupHeader, row);
     const mine = merged.get(row[0]);
@@ -507,7 +624,10 @@ function mergeUserCsv(localText, backupText, { maxColumns, newerBy }) {
     const otherNewer = Number(other[newerBy] ?? 0) > Number(mine[newerBy] ?? 0);
     const base = otherNewer ? { ...mine, ...other } : { ...other, ...mine };
     for (const column of maxColumns) {
-      if (column in mine || column in other) base[column] = String(Math.max(Number(mine[column]) || 0, Number(other[column]) || 0));
+      if (column in mine || column in other)
+        base[column] = String(
+          Math.max(Number(mine[column]) || 0, Number(other[column]) || 0),
+        );
     }
     merged.set(row[0], base);
   }
@@ -524,36 +644,58 @@ const MERGERS = {
     const points = header.indexOf("points");
     for (const row of backupRows) {
       const mine = byUser.get(row[0]);
-      if (!mine || Number(row[points]) > Number(mine[points])) byUser.set(row[0], row);
+      if (!mine || Number(row[points]) > Number(mine[points]))
+        byUser.set(row[0], row);
     }
     return `${[header, ...byUser.values()].map((row) => row.map(csvCell).join(",")).join("\n")}\n`;
   },
   "server/services/db/petting.csv": (local, backup) =>
     mergeUserCsv(local, backup, {
-      maxColumns: ["totalGiven", "totalReceived", "uniquePeoplePetted", "uniquePeoplePettingYou", "comboStarts", "bestCombo"],
+      maxColumns: [
+        "totalGiven",
+        "totalReceived",
+        "uniquePeoplePetted",
+        "uniquePeoplePettingYou",
+        "comboStarts",
+        "bestCombo",
+      ],
       newerBy: "updatedAt",
     }),
   "server/services/db/achievements.json": (local, backup) => {
     const a = JSON.parse(local || "{}");
     const b = JSON.parse(backup || "{}");
-    for (const [user, list] of Object.entries(b)) a[user] = [...new Set([...(a[user] ?? []), ...list])];
+    for (const [user, list] of Object.entries(b))
+      a[user] = [...new Set([...(a[user] ?? []), ...list])];
     return `${JSON.stringify(a, null, 2)}\n`;
   },
   "server/services/db/pets.json": (local, backup) => {
     const key = (pet) => `${pet.petterId}:${pet.targetId}:${pet.sentAt}`;
     const all = new Map();
-    for (const pet of [...JSON.parse(local || "[]"), ...JSON.parse(backup || "[]")]) all.set(key(pet), pet);
-    return `${JSON.stringify([...all.values()].sort((x, y) => x.sentAt - y.sentAt), null, 2)}\n`;
+    for (const pet of [
+      ...JSON.parse(local || "[]"),
+      ...JSON.parse(backup || "[]"),
+    ])
+      all.set(key(pet), pet);
+    return `${JSON.stringify(
+      [...all.values()].sort((x, y) => x.sentAt - y.sentAt),
+      null,
+      2,
+    )}\n`;
   },
   /*
    * Birthdays ({ userId: { day, month, year } }): everyone from both sides.
    * Same day: a known birth year fills a missing one. Different day: the
    * newer file's entry (the person changed it there).
    */
-  "server/services/db/birthdays.json": (local, backup, { backupNewer } = {}) => {
+  "server/services/db/birthdays.json": (
+    local,
+    backup,
+    { backupNewer } = {},
+  ) => {
     const a = JSON.parse(local || "{}");
     const b = JSON.parse(backup || "{}");
-    if (Array.isArray(a) || Array.isArray(b)) throw new Error("Unexpected birthdays format.");
+    if (Array.isArray(a) || Array.isArray(b))
+      throw new Error("Unexpected birthdays format.");
     const merged = { ...a };
     for (const [user, entry] of Object.entries(b)) {
       const mine = merged[user];
@@ -561,8 +703,18 @@ const MERGERS = {
         merged[user] = entry;
       } else if (mine.day === entry.day && mine.month === entry.month) {
         // The earliest "first saved" keeps its priority; a dress code from either side stays.
-        const setAt = [mine.setAt, entry.setAt].filter((value) => typeof value === "string").sort()[0];
-        merged[user] = { ...entry, ...mine, year: mine.year ?? entry.year ?? null, ...(setAt ? { setAt } : {}), ...(mine.dressCode || entry.dressCode ? { dressCode: mine.dressCode ?? entry.dressCode } : {}) };
+        const setAt = [mine.setAt, entry.setAt]
+          .filter((value) => typeof value === "string")
+          .sort()[0];
+        merged[user] = {
+          ...entry,
+          ...mine,
+          year: mine.year ?? entry.year ?? null,
+          ...(setAt ? { setAt } : {}),
+          ...(mine.dressCode || entry.dressCode
+            ? { dressCode: mine.dressCode ?? entry.dressCode }
+            : {}),
+        };
       } else if (backupNewer) {
         merged[user] = entry;
       }
@@ -575,7 +727,11 @@ const MERGERS = {
     const b = JSON.parse(backup || "{}");
     const merged = { ...a };
     for (const [user, entry] of Object.entries(b)) {
-      if (!merged[user] || String(entry.updatedAt ?? "") > String(merged[user].updatedAt ?? "")) merged[user] = entry;
+      if (
+        !merged[user] ||
+        String(entry.updatedAt ?? "") > String(merged[user].updatedAt ?? "")
+      )
+        merged[user] = entry;
     }
     return `${JSON.stringify(merged)}\n`;
   },
@@ -586,9 +742,14 @@ const MERGERS = {
     const a = JSON.parse(local || "{}");
     const b = JSON.parse(backup || "{}");
     const hidden = { ...(b.hidden ?? {}) };
-    for (const [id, until] of Object.entries(a.hidden ?? {})) if (!hidden[id] || until > hidden[id]) hidden[id] = until;
+    for (const [id, until] of Object.entries(a.hidden ?? {}))
+      if (!hidden[id] || until > hidden[id]) hidden[id] = until;
     return `${JSON.stringify({
-      private: Array.isArray(a.private) ? a.private : Array.isArray(b.private) ? b.private : [],
+      private: Array.isArray(a.private)
+        ? a.private
+        : Array.isArray(b.private)
+          ? b.private
+          : [],
       hidden,
       forgotten: [...new Set([...(a.forgotten ?? []), ...(b.forgotten ?? [])])],
     })}\n`;
@@ -601,8 +762,14 @@ const MERGERS = {
       if (!Array.isArray(words)) continue;
       const mine = Array.isArray(a[id]) ? a[id] : [];
       // "-word" hides a built-in word; where the two sides disagree about a word, this server's choice stays.
-      const opposite = (word) => (word.startsWith("-") ? word.slice(1) : `-${word}`);
-      merged[id] = [...new Set([...mine, ...words.filter((word) => !mine.includes(opposite(word)))])];
+      const opposite = (word) =>
+        word.startsWith("-") ? word.slice(1) : `-${word}`;
+      merged[id] = [
+        ...new Set([
+          ...mine,
+          ...words.filter((word) => !mine.includes(opposite(word))),
+        ]),
+      ];
     }
     return `${JSON.stringify(merged)}\n`;
   },
@@ -611,11 +778,19 @@ const MERGERS = {
     const b = JSON.parse(backup || "{}");
     const newer = String(b.updatedAt ?? "") > String(a.updatedAt ?? "") ? b : a;
     const older = newer === a ? b : a;
-    const lists = new Map((newer.lists ?? []).map((list) => [list.id, { ...list, outfits: [...list.outfits] }]));
+    const lists = new Map(
+      (newer.lists ?? []).map((list) => [
+        list.id,
+        { ...list, outfits: [...list.outfits] },
+      ]),
+    );
     for (const list of older.lists ?? []) {
       const mine = lists.get(list.id);
       if (!mine) lists.set(list.id, list);
-      else for (const outfit of list.outfits) if (!mine.outfits.some((entry) => entry.id === outfit.id)) mine.outfits.push(outfit);
+      else
+        for (const outfit of list.outfits)
+          if (!mine.outfits.some((entry) => entry.id === outfit.id))
+            mine.outfits.push(outfit);
     }
     return `${JSON.stringify({ ...newer, lists: [...lists.values()] }, null, 2)}\n`;
   },
@@ -625,7 +800,13 @@ const MERGERS = {
     const a = JSON.parse(local || "{}");
     const b = JSON.parse(backup || "{}");
     const reminders = { ...(b.reminders ?? {}) };
-    for (const [subscriber, targets] of Object.entries(a.reminders ?? {})) reminders[subscriber] = [...new Set([...(reminders[subscriber] ?? []), ...(Array.isArray(targets) ? targets : [])])];
+    for (const [subscriber, targets] of Object.entries(a.reminders ?? {}))
+      reminders[subscriber] = [
+        ...new Set([
+          ...(reminders[subscriber] ?? []),
+          ...(Array.isArray(targets) ? targets : []),
+        ]),
+      ];
     return `${JSON.stringify({ version: 1, reminders, sent: { ...(b.sent ?? {}), ...(a.sent ?? {}) } }, null, 2)}\n`;
   },
 
@@ -635,7 +816,9 @@ const MERGERS = {
     const merged = { ...b, ...a, birthdays: { ...(b.birthdays ?? {}) } };
     for (const [key, entry] of Object.entries(a.birthdays ?? {})) {
       const other = merged.birthdays[key];
-      merged.birthdays[key] = other ? { ...other, ...entry, wished: Boolean(entry.wished || other.wished) } : entry;
+      merged.birthdays[key] = other
+        ? { ...other, ...entry, wished: Boolean(entry.wished || other.wished) }
+        : entry;
     }
     return `${JSON.stringify(merged, null, 2)}\n`;
   },
@@ -645,11 +828,15 @@ const MERGERS = {
 
 /* Units that are taken or kept as a whole (an FDC folder must stay consistent). */
 function unitOf(rel) {
-  const poll = rel.match(/^(server\/services\/db\/fdc-polls\/\d{4}-\d{2}-\d{2})\//);
+  const poll = rel.match(
+    /^(server\/services\/db\/fdc-polls\/\d{4}-\d{2}-\d{2})\//,
+  );
   if (poll) return poll[1];
-  if (rel.startsWith("server/services/db/fdc-polls/recycling-bin/")) return "server/services/db/fdc-polls/recycling-bin";
+  if (rel.startsWith("server/services/db/fdc-polls/recycling-bin/"))
+    return "server/services/db/fdc-polls/recycling-bin";
   // The Bongo Cat assets: textures and catalog only work together.
-  if (rel.startsWith("server/services/db/bongo-cat/")) return "server/services/db/bongo-cat";
+  if (rel.startsWith("server/services/db/bongo-cat/"))
+    return "server/services/db/bongo-cat";
   return rel;
 }
 
@@ -660,9 +847,20 @@ async function extract(archive, password) {
   const out = path.join(stage, "content");
   await fs.mkdir(out);
   try {
-    await tar(["-xzf", plain, "-C", out, "--no-same-owner", "--no-same-permissions", "--no-overwrite-dir"]);
+    await tar([
+      "-xzf",
+      plain,
+      "-C",
+      out,
+      "--no-same-owner",
+      "--no-same-permissions",
+      "--no-overwrite-dir",
+    ]);
   } catch {
-    throw httpError(400, "Wrong admin key for this backup, or the file is damaged.");
+    throw httpError(
+      400,
+      "Wrong admin key for this backup, or the file is damaged.",
+    );
   }
   await fs.rm(plain, { force: true });
 
@@ -670,7 +868,11 @@ async function extract(archive, password) {
   const check = async (dir) => {
     for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
-      if (entry.isSymbolicLink()) throw httpError(400, "The backup contains links; refusing to import it.");
+      if (entry.isSymbolicLink())
+        throw httpError(
+          400,
+          "The backup contains links; refusing to import it.",
+        );
       if (entry.isDirectory()) await check(full);
     }
   };
@@ -680,7 +882,8 @@ async function extract(archive, password) {
 
 async function readManifest(content) {
   const manifest = await readJson(path.join(content, "manifest.json"), null);
-  if (manifest && manifest.format !== FORMAT) throw httpError(400, "This is not a HomeSite backup.");
+  if (manifest && manifest.format !== FORMAT)
+    throw httpError(400, "This is not a HomeSite backup.");
   if (manifest?.version > FORMAT_VERSION) {
     // Newer format: still readable as long as the file list is there.
     manifest.newerFormat = true;
@@ -691,27 +894,53 @@ async function readManifest(content) {
   const files = [];
   const base = path.join(content, "files");
   const visit = async (dir) => {
-    for (const entry of await fs.readdir(dir, { withFileTypes: true }).catch(() => [])) {
+    for (const entry of await fs
+      .readdir(dir, { withFileTypes: true })
+      .catch(() => [])) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) await visit(full);
       else if (entry.isFile()) {
         const stat = await fs.stat(full);
-        files.push({ path: toPosix(path.relative(base, full)), size: stat.size, sha256: await sha256File(full), createdAt: createdTime(stat) });
+        files.push({
+          path: toPosix(path.relative(base, full)),
+          size: stat.size,
+          sha256: await sha256File(full),
+          createdAt: createdTime(stat),
+        });
       }
     }
   };
   await visit(base);
-  return { format: FORMAT, version: 0, exportedAt: null, files, generated: true };
+  return {
+    format: FORMAT,
+    version: 0,
+    exportedAt: null,
+    files,
+    generated: true,
+  };
 }
 
 function usersOf(dbPath) {
   const Database = require("better-sqlite3");
   const db = new Database(dbPath, { readonly: true, fileMustExist: true });
   try {
-    const hasUsers = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'users'").get();
+    const hasUsers = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'users'",
+      )
+      .get();
     const users = hasUsers ? db.prepare("SELECT * FROM users").all() : [];
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all();
-    const counts = Object.fromEntries(tables.map(({ name }) => [name, db.prepare(`SELECT COUNT(*) AS c FROM "${name}"`).get().c]));
+    const tables = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+      )
+      .all();
+    const counts = Object.fromEntries(
+      tables.map(({ name }) => [
+        name,
+        db.prepare(`SELECT COUNT(*) AS c FROM "${name}"`).get().c,
+      ]),
+    );
     return { users, counts };
   } finally {
     db.close();
@@ -735,7 +964,10 @@ async function analyzeImport({ archive, password, localDb }) {
       if (!sha || sha !== file.sha256) damaged.push(file.path);
     }
     if (damaged.length) {
-      throw httpError(400, `The backup is damaged (${damaged.length} file(s) don't match their checksum).`);
+      throw httpError(
+        400,
+        `The backup is damaged (${damaged.length} file(s) don't match their checksum).`,
+      );
     }
 
     const tracked = await trackedSet();
@@ -769,20 +1001,36 @@ async function analyzeImport({ archive, password, localDb }) {
         }
         const sha = await sha256File(local);
         const known = localTimes.files[file.path];
-        const time = known?.sha256 === sha && known.createdAt ? known.createdAt : createdTime(stat);
+        const time =
+          known?.sha256 === sha && known.createdAt
+            ? known.createdAt
+            : createdTime(stat);
         localTime = Math.max(localTime, time);
         if (sha === file.sha256) identical += 1;
       }
 
-      const status = identical === files.length ? "identical" : missing === files.length ? "new" : "differs";
+      const status =
+        identical === files.length
+          ? "identical"
+          : missing === files.length
+            ? "new"
+            : "differs";
       if (status === "identical") {
-        fileUnits.push({ id, status, files: files.length, category: categoryOf(files[0].path) });
+        fileUnits.push({
+          id,
+          status,
+          files: files.length,
+          category: categoryOf(files[0].path),
+        });
         continue;
       }
 
-      const newest = status === "new" || backupTime > localTime ? "backup" : "local";
-      const sinceExport = status === "new" ? "backup" : exportedAt && localTime > exportedAt ? "local" : "backup";
-      const mergeable = status === "differs" && files.length === 1 && Boolean(MERGERS[files[0].path]);
+      const newest = "backup";
+      const sinceExport = "backup";
+      const mergeable =
+        status === "differs" &&
+        files.length === 1 &&
+        Boolean(MERGERS[files[0].path]);
       fileUnits.push({
         mergeable,
         id,
@@ -791,9 +1039,13 @@ async function analyzeImport({ archive, password, localDb }) {
         bytes: files.reduce((sum, file) => sum + file.size, 0),
         category: categoryOf(files[0].path),
         backupTime,
-        localTime: localTime || null,
-        // merge: combine known files, otherwise newest/sinceExport; restore: the backup.
-        defaults: { newest: mergeable ? "merge" : newest, sinceExport: mergeable ? "merge" : sinceExport, restore: "backup" },
+        localTime: 0,
+        // merge: combine known files, otherwise backup; restore: the backup.
+        defaults: {
+          newest: mergeable ? "merge" : newest,
+          sinceExport: mergeable ? "merge" : sinceExport,
+          restore: "backup",
+        },
       });
     }
 
@@ -805,14 +1057,21 @@ async function analyzeImport({ archive, password, localDb }) {
       const localUsers = localDb
         ? localDb.prepare("SELECT * FROM users").all()
         : [];
-      const byDiscord = new Map(localUsers.map((user) => [user.discord_user_id, user]));
+      const byDiscord = new Map(
+        localUsers.map((user) => [user.discord_user_id, user]),
+      );
       accounts = {
         localExists: Boolean(localDb),
         tables: backup.counts,
         users: backup.users.map((user) => {
           const local = byDiscord.get(user.discord_user_id);
           const same =
-            local && Object.keys(user).every((key) => key === "last_login_at" || String(user[key]) === String(local[key]));
+            local &&
+            Object.keys(user).every(
+              (key) =>
+                key === "last_login_at" ||
+                String(user[key]) === String(local[key]),
+            );
           return {
             id: user.id,
             discordUserId: user.discord_user_id,
@@ -822,12 +1081,25 @@ async function analyzeImport({ archive, password, localDb }) {
             createdAt: user.created_at,
             lastLoginAt: user.last_login_at,
             status: !local ? "new" : same ? "same" : "merge",
-            keepsId: !local ? user.id : user.created_at < local.created_at ? user.id : local.id,
+            keepsId: !local
+              ? user.id
+              : user.created_at < local.created_at
+                ? user.id
+                : local.id,
           };
         }),
         localOnly: localUsers
-          .filter((user) => !backup.users.some((other) => other.discord_user_id === user.discord_user_id))
-          .map((user) => ({ discordUserId: user.discord_user_id, displayName: user.display_name, username: user.username })),
+          .filter(
+            (user) =>
+              !backup.users.some(
+                (other) => other.discord_user_id === user.discord_user_id,
+              ),
+          )
+          .map((user) => ({
+            discordUserId: user.discord_user_id,
+            displayName: user.display_name,
+            username: user.username,
+          })),
       };
     }
 
@@ -836,12 +1108,22 @@ async function analyzeImport({ archive, password, localDb }) {
     const backupEnvFile = path.join(content, "files", ".env");
     if (fsSync.existsSync(backupEnvFile)) {
       const backupValues = parseEnv(await fs.readFile(backupEnvFile, "utf8"));
-      const localValues = parseEnv(await fs.readFile(path.join(REPO_ROOT, ".env"), "utf8").catch(() => ""));
+      const localValues = parseEnv(
+        await fs.readFile(path.join(REPO_ROOT, ".env"), "utf8").catch(() => ""),
+      );
       const catalog = await envCatalog();
-      const keys = [...new Set([...Object.keys(backupValues), ...Object.keys(localValues)])].sort();
+      const keys = [
+        ...new Set([...Object.keys(backupValues), ...Object.keys(localValues)]),
+      ].sort();
       env = keys.map((key) => ({
         key,
-        status: !(key in localValues) ? "backup-only" : !(key in backupValues) ? "local-only" : backupValues[key] === localValues[key] ? "same" : "differs",
+        status: !(key in localValues)
+          ? "backup-only"
+          : !(key in backupValues)
+            ? "local-only"
+            : backupValues[key] === localValues[key]
+              ? "same"
+              : "differs",
         backup: backupValues[key] ?? null,
         local: localValues[key] ?? null,
         description: catalog[key]?.description ?? "",
@@ -853,10 +1135,21 @@ async function analyzeImport({ archive, password, localDb }) {
     let activity = null;
     const backupLog = path.join(content, "files", ACTIVITY_LOG);
     if (fsSync.existsSync(backupLog)) {
-      const local = await fs.readFile(safeJoin(ACTIVITY_LOG), "utf8").catch(() => "");
+      const local = await fs
+        .readFile(safeJoin(ACTIVITY_LOG), "utf8")
+        .catch(() => "");
       const remote = await fs.readFile(backupLog, "utf8");
       activity = {
-        status: local === remote ? "identical" : !local ? "new" : remote.startsWith(local) ? "backup-longer" : local.startsWith(remote) ? "local-longer" : "different",
+        status:
+          local === remote
+            ? "identical"
+            : !local
+              ? "new"
+              : remote.startsWith(local)
+                ? "backup-longer"
+                : local.startsWith(remote)
+                  ? "local-longer"
+                  : "different",
         backupEntries: remote.split("\n").filter(Boolean).length,
         localEntries: local.split("\n").filter(Boolean).length,
       };
@@ -890,7 +1183,10 @@ async function analyzeImport({ archive, password, localDb }) {
 /* ---------- import: apply ---------- */
 
 function columnsOf(db, table) {
-  return db.prepare(`PRAGMA table_info("${table}")`).all().map((column) => column.name);
+  return db
+    .prepare(`PRAGMA table_info("${table}")`)
+    .all()
+    .map((column) => column.name);
 }
 
 /**
@@ -902,53 +1198,101 @@ function columnsOf(db, table) {
  *  - only columns both versions have (old and new formats mix fine),
  *  - sessions are not imported (everyone just logs in again).
  */
-function mergeAccounts(localDb, backupPath, selected, report, strategy = "merge") {
+function mergeAccounts(
+  localDb,
+  backupPath,
+  selected,
+  report,
+  strategy = "merge",
+) {
   const restore = strategy === "restore";
+  const treatLocalAsOld = strategy === "merge";
   const Database = require("better-sqlite3");
-  const backup = new Database(backupPath, { readonly: true, fileMustExist: true });
+  const backup = new Database(backupPath, {
+    readonly: true,
+    fileMustExist: true,
+  });
   const remap = new Map();
 
   try {
     const backupTables = backup
-      .prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+      .prepare(
+        "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+      )
       .all();
     const localTables = new Set(
-      localDb.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((row) => row.name),
+      localDb
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+        .all()
+        .map((row) => row.name),
     );
 
     localDb.pragma("foreign_keys = OFF");
     const merge = localDb.transaction(() => {
-      const userTables = [...localTables].filter((table) => table !== "users" && columnsOf(localDb, table).includes("user_id"));
+      const userTables = [...localTables].filter(
+        (table) =>
+          table !== "users" && columnsOf(localDb, table).includes("user_id"),
+      );
 
       const renameUser = (from, to) => {
         localDb.prepare("UPDATE users SET id = ? WHERE id = ?").run(to, from);
-        for (const table of userTables) localDb.prepare(`UPDATE "${table}" SET user_id = ? WHERE user_id = ?`).run(to, from);
-        const user = localDb.prepare("SELECT avatar_path FROM users WHERE id = ?").get(to);
+        for (const table of userTables)
+          localDb
+            .prepare(`UPDATE "${table}" SET user_id = ? WHERE user_id = ?`)
+            .run(to, from);
+        const user = localDb
+          .prepare("SELECT avatar_path FROM users WHERE id = ?")
+          .get(to);
         if (user?.avatar_path?.includes(from)) {
           const next = user.avatar_path.replace(from, to);
-          localDb.prepare("UPDATE users SET avatar_path = ? WHERE id = ?").run(next, to);
+          localDb
+            .prepare("UPDATE users SET avatar_path = ? WHERE id = ?")
+            .run(next, to);
           report.avatarRenames.push({ from: user.avatar_path, to: next });
         }
       };
 
       // ---- users ----
-      if (backupTables.some((table) => table.name === "users") && localTables.has("users")) {
+      if (
+        backupTables.some((table) => table.name === "users") &&
+        localTables.has("users")
+      ) {
         const localColumns = columnsOf(localDb, "users");
         for (const user of backup.prepare("SELECT * FROM users").all()) {
           // Deleted accounts never come back from an older backup (privacy page).
-          if (!selected.has(user.discord_user_id) || privacy.isForgotten(user.discord_user_id)) {
+          if (
+            !selected.has(user.discord_user_id) ||
+            privacy.isForgotten(user.discord_user_id)
+          ) {
             report.usersSkipped += 1;
             continue;
           }
-          const local = localDb.prepare("SELECT * FROM users WHERE discord_user_id = ?").get(user.discord_user_id);
-          const columns = Object.keys(user).filter((column) => localColumns.includes(column));
+          const local = localDb
+            .prepare("SELECT * FROM users WHERE discord_user_id = ?")
+            .get(user.discord_user_id);
+          const columns = Object.keys(user).filter((column) =>
+            localColumns.includes(column),
+          );
 
           if (!local) {
             let id = user.id;
-            if (localDb.prepare("SELECT 1 FROM users WHERE id = ?").get(id)) id = crypto.randomUUID();
-            if (user.email && localDb.prepare("SELECT 1 FROM users WHERE email = ?").get(user.email)) user.email = null;
-            const values = columns.map((column) => (column === "id" ? id : user[column]));
-            localDb.prepare(`INSERT INTO users (${columns.map((c) => `"${c}"`).join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`).run(...values);
+            if (localDb.prepare("SELECT 1 FROM users WHERE id = ?").get(id))
+              id = crypto.randomUUID();
+            if (
+              user.email &&
+              localDb
+                .prepare("SELECT 1 FROM users WHERE email = ?")
+                .get(user.email)
+            )
+              user.email = null;
+            const values = columns.map((column) =>
+              column === "id" ? id : user[column],
+            );
+            localDb
+              .prepare(
+                `INSERT INTO users (${columns.map((c) => `"${c}"`).join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
+              )
+              .run(...values);
             remap.set(user.id, id);
             report.usersAdded += 1;
             continue;
@@ -956,35 +1300,61 @@ function mergeAccounts(localDb, backupPath, selected, report, strategy = "merge"
 
           // Same Discord user: one account, the oldest id.
           let id = local.id;
-          if (user.created_at && local.created_at && user.created_at < local.created_at && user.id !== local.id) {
-            if (!localDb.prepare("SELECT 1 FROM users WHERE id = ?").get(user.id)) {
+          if (
+            user.created_at &&
+            local.created_at &&
+            user.created_at < local.created_at &&
+            user.id !== local.id
+          ) {
+            if (
+              !localDb.prepare("SELECT 1 FROM users WHERE id = ?").get(user.id)
+            ) {
               renameUser(local.id, user.id);
               id = user.id;
             }
           }
           remap.set(user.id, id);
 
-          // Newer profile wins; gaps are filled; the earliest creation date stays.
-          const current = localDb.prepare("SELECT * FROM users WHERE id = ?").get(id);
-          const backupNewer = String(user.updated_at ?? "") > String(current.updated_at ?? "");
+          // Treat local profile state as old on merge; gaps are filled; earliest creation date stays.
+          const current = localDb
+            .prepare("SELECT * FROM users WHERE id = ?")
+            .get(id);
+          const backupNewer =
+            treatLocalAsOld ||
+            String(user.updated_at ?? "") > String(current.updated_at ?? "");
           const updates = {};
           for (const column of columns) {
-            if (["id", "discord_user_id", "avatar_path"].includes(column)) continue;
+            if (["id", "discord_user_id", "avatar_path"].includes(column))
+              continue;
             if (column === "created_at") {
-              if (user.created_at && user.created_at < current.created_at) updates.created_at = user.created_at;
+              if (user.created_at && user.created_at < current.created_at)
+                updates.created_at = user.created_at;
             } else if (column === "taps") {
-              if (Number(user.taps) > Number(current.taps ?? 0)) updates.taps = user.taps;
+              if (Number(user.taps) > Number(current.taps ?? 0))
+                updates.taps = user.taps;
             } else if (column === "last_login_at") {
-              if (String(user.last_login_at) > String(current.last_login_at)) updates.last_login_at = user.last_login_at;
-            } else if ((current[column] === null || current[column] === "") && user[column] !== null) {
+              if (String(user.last_login_at) > String(current.last_login_at))
+                updates.last_login_at = user.last_login_at;
+            } else if (
+              (current[column] === null || current[column] === "") &&
+              user[column] !== null
+            ) {
               updates[column] = user[column];
-            } else if ((backupNewer || restore) && user[column] !== null && column !== "email") {
+            } else if (
+              (backupNewer || restore) &&
+              user[column] !== null &&
+              column !== "email"
+            ) {
               updates[column] = user[column];
             }
           }
           const keys = Object.keys(updates);
           if (keys.length) {
-            localDb.prepare(`UPDATE users SET ${keys.map((key) => `"${key}" = ?`).join(", ")} WHERE id = ?`).run(...keys.map((key) => updates[key]), id);
+            localDb
+              .prepare(
+                `UPDATE users SET ${keys.map((key) => `"${key}" = ?`).join(", ")} WHERE id = ?`,
+              )
+              .run(...keys.map((key) => updates[key]), id);
           }
           report.usersMerged += 1;
         }
@@ -995,7 +1365,10 @@ function mergeAccounts(localDb, backupPath, selected, report, strategy = "merge"
       // ---- other tables ----
       for (const { name, sql } of backupTables) {
         if (name === "users" || name === "sessions") {
-          if (name === "sessions") report.sessionsSkipped = backup.prepare("SELECT COUNT(*) AS c FROM sessions").get().c;
+          if (name === "sessions")
+            report.sessionsSkipped = backup
+              .prepare("SELECT COUNT(*) AS c FROM sessions")
+              .get().c;
           continue;
         }
         if (!localTables.has(name)) {
@@ -1014,11 +1387,17 @@ function mergeAccounts(localDb, backupPath, selected, report, strategy = "merge"
             if (!mapped) continue; // user not imported
             row.user_id = mapped;
           }
-          const columns = Object.keys(row).filter((column) => localColumns.includes(column));
+          const columns = Object.keys(row).filter((column) =>
+            localColumns.includes(column),
+          );
 
           // Counters (taps, …): the higher value.
           if (name === "site_counters") {
-            localDb.prepare("INSERT INTO site_counters (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = MAX(value, excluded.value)").run(row.key, row.value ?? 0);
+            localDb
+              .prepare(
+                "INSERT INTO site_counters (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = MAX(value, excluded.value)",
+              )
+              .run(row.key, row.value ?? 0);
             report.rowsMerged += 1;
             continue;
           }
@@ -1026,42 +1405,74 @@ function mergeAccounts(localDb, backupPath, selected, report, strategy = "merge"
           // Lobby cat taps / pets per member and day (Stats page): the higher count of each.
           if (name === "lobby_daily" && !restore) {
             localDb
-              .prepare("INSERT INTO lobby_daily (user_id, day, taps, pets) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, day) DO UPDATE SET taps = MAX(taps, excluded.taps), pets = MAX(pets, excluded.pets)")
+              .prepare(
+                "INSERT INTO lobby_daily (user_id, day, taps, pets) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, day) DO UPDATE SET taps = MAX(taps, excluded.taps), pets = MAX(pets, excluded.pets)",
+              )
               .run(row.user_id, row.day, row.taps ?? 0, row.pets ?? 0);
             report.rowsMerged += 1;
             continue;
           }
 
           if (name === "lobby_cat") {
-            const local = localDb.prepare("SELECT * FROM lobby_cat WHERE user_id = ?").get(row.user_id);
+            const local = localDb
+              .prepare("SELECT * FROM lobby_cat WHERE user_id = ?")
+              .get(row.user_id);
             if (local && restore) {
               // Restore: the backup's points, level and milestones exactly.
               const keys = columns.filter((column) => column !== "user_id");
-              localDb.prepare(`UPDATE lobby_cat SET ${keys.map((key) => `"${key}" = ?`).join(", ")} WHERE user_id = ?`).run(...keys.map((key) => row[key]), row.user_id);
+              localDb
+                .prepare(
+                  `UPDATE lobby_cat SET ${keys.map((key) => `"${key}" = ?`).join(", ")} WHERE user_id = ?`,
+                )
+                .run(...keys.map((key) => row[key]), row.user_id);
               report.rowsRestored += 1;
               continue;
             }
             if (local) {
-              const newer = String(row.updated_at ?? "") > String(local.updated_at ?? "") ? row : local;
-              const milestones = { ...JSON.parse(local.milestones_json || "{}"), ...JSON.parse(row.milestones_json || "{}") };
+              const newer =
+                treatLocalAsOld ||
+                String(row.updated_at ?? "") > String(local.updated_at ?? "")
+                  ? row
+                  : local;
+              const milestones = {
+                ...JSON.parse(local.milestones_json || "{}"),
+                ...JSON.parse(row.milestones_json || "{}"),
+              };
               const merged = {
                 ...newer,
                 points: Math.max(local.points ?? 0, row.points ?? 0),
                 level: Math.max(local.level ?? 0, row.level ?? 0),
-                total_pets: Math.max(local.total_pets ?? 0, row.total_pets ?? 0),
-                best_streak: Math.max(local.best_streak ?? 0, row.best_streak ?? 0),
+                total_pets: Math.max(
+                  local.total_pets ?? 0,
+                  row.total_pets ?? 0,
+                ),
+                best_streak: Math.max(
+                  local.best_streak ?? 0,
+                  row.best_streak ?? 0,
+                ),
                 milestones_json: JSON.stringify(milestones),
-                created_at: [local.created_at, row.created_at].filter(Boolean).sort()[0] ?? local.created_at,
+                created_at:
+                  [local.created_at, row.created_at]
+                    .filter(Boolean)
+                    .sort()[0] ?? local.created_at,
               };
-              const keys = columns.filter((column) => column !== "user_id" && column in merged);
-              localDb.prepare(`UPDATE lobby_cat SET ${keys.map((key) => `"${key}" = ?`).join(", ")} WHERE user_id = ?`).run(...keys.map((key) => merged[key]), row.user_id);
+              const keys = columns.filter(
+                (column) => column !== "user_id" && column in merged,
+              );
+              localDb
+                .prepare(
+                  `UPDATE lobby_cat SET ${keys.map((key) => `"${key}" = ?`).join(", ")} WHERE user_id = ?`,
+                )
+                .run(...keys.map((key) => merged[key]), row.user_id);
               report.rowsMerged += 1;
               continue;
             }
           }
 
           const result = localDb
-            .prepare(`INSERT ${restore ? "OR REPLACE" : "OR IGNORE"} INTO "${name}" (${columns.map((c) => `"${c}"`).join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`)
+            .prepare(
+              `INSERT ${restore ? "OR REPLACE" : "OR IGNORE"} INTO "${name}" (${columns.map((c) => `"${c}"`).join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
+            )
             .run(...columns.map((column) => row[column]));
           report.rowsAdded += result.changes;
         }
@@ -1076,20 +1487,33 @@ function mergeAccounts(localDb, backupPath, selected, report, strategy = "merge"
 }
 
 async function readPlan(planId) {
-  if (!/^import-[A-Za-z0-9]+$/.test(String(planId))) throw httpError(400, "Unknown import.");
+  if (!/^import-[A-Za-z0-9]+$/.test(String(planId)))
+    throw httpError(400, "Unknown import.");
   const stage = path.join(WORK_DIR, planId);
   const plan = await readJson(path.join(stage, "plan.json"), null);
-  if (!plan) throw httpError(410, "This import has expired. Please check the backup again.");
+  if (!plan)
+    throw httpError(
+      410,
+      "This import has expired. Please check the backup again.",
+    );
   if (Date.now() - plan.createdAt > STAGING_TTL_MS) {
     await fs.rm(stage, { recursive: true, force: true });
-    throw httpError(410, "This import has expired. Please check the backup again.");
+    throw httpError(
+      410,
+      "This import has expired. Please check the backup again.",
+    );
   }
   return { plan, stage, content: path.join(stage, "content") };
 }
 
 async function pruneSafetyBackups() {
-  const entries = (await fs.readdir(BACKUP_DIR).catch(() => [])).filter((name) => name.endsWith(".tar.gz.enc")).sort();
-  for (const name of entries.slice(0, Math.max(0, entries.length - KEEP_SAFETY_BACKUPS))) {
+  const entries = (await fs.readdir(BACKUP_DIR).catch(() => []))
+    .filter((name) => name.endsWith(".tar.gz.enc"))
+    .sort();
+  for (const name of entries.slice(
+    0,
+    Math.max(0, entries.length - KEEP_SAFETY_BACKUPS),
+  )) {
     await fs.rm(path.join(BACKUP_DIR, name), { force: true });
   }
 }
@@ -1123,7 +1547,12 @@ async function applyImport({ planId, adminKey, localDb, choices, activity }) {
   };
 
   // 1. Safety first: everything as it is right now.
-  const safety = await createBackup({ adminKey, db: localDb, reason: "before-import", into: BACKUP_DIR });
+  const safety = await createBackup({
+    adminKey,
+    db: localDb,
+    reason: "before-import",
+    into: BACKUP_DIR,
+  });
   report.safetyBackup = path.relative(REPO_ROOT, safety.file);
   await pruneSafetyBackups();
 
@@ -1137,22 +1566,39 @@ async function applyImport({ planId, adminKey, localDb, choices, activity }) {
 
   // 2. Files, unit by unit.
   const written = [];
-  // strategy "merge" (another machine) uses mode newest | sinceExport; "restore" takes the backup.
+  // strategy "merge" treats current local state as old so backup items win; "restore" takes the backup.
   const strategy = choices?.strategy === "restore" ? "restore" : "merge";
-  const mode = strategy === "restore" ? "restore" : choices?.mode === "sinceExport" ? "sinceExport" : "newest";
+  const treatLocalAsOld = strategy === "merge";
+  const mode =
+    strategy === "restore"
+      ? "restore"
+      : choices?.mode === "sinceExport"
+        ? "sinceExport"
+        : "newest";
   report.strategy = strategy;
   for (const unit of plan.units) {
     if (unit.status === "identical") continue;
-    const decision = choices?.units?.[unit.id] ?? unit.defaults?.[mode] ?? "local";
+    const defaultDecision = treatLocalAsOld
+      ? unit.mergeable
+        ? "merge"
+        : "backup"
+      : (unit.defaults?.[mode] ?? "local");
+    const decision = choices?.units?.[unit.id] ?? defaultDecision;
     const files = byUnit.get(unit.id) ?? [];
     if (decision === "merge" && files.length === 1 && MERGERS[files[0].path]) {
       const target = safeJoin(files[0].path);
       const local = await fs.readFile(target, "utf8").catch(() => "");
-      const backup = await fs.readFile(path.join(content, "files", files[0].path), "utf8");
+      const backup = await fs.readFile(
+        path.join(content, "files", files[0].path),
+        "utf8",
+      );
       try {
         await fs.writeFile(
           target,
-          MERGERS[files[0].path](local, backup, { backupNewer: (unit.backupTime ?? 0) > (unit.localTime ?? 0) }),
+          MERGERS[files[0].path](local, backup, {
+            backupNewer:
+              treatLocalAsOld || (unit.backupTime ?? 0) > (unit.localTime ?? 0),
+          }),
         );
         report.filesMerged.push(files[0].path);
       } catch {
@@ -1168,14 +1614,21 @@ async function applyImport({ planId, adminKey, localDb, choices, activity }) {
     if (files.length > 1 || unit.id !== files[0]?.path) {
       const folder = safeJoin(unit.id);
       const keep = new Set(files.map((file) => file.path));
-      for (const existing of await walk(unit.id)) if (!keep.has(existing)) await fs.rm(safeJoin(existing), { force: true });
+      for (const existing of await walk(unit.id))
+        if (!keep.has(existing))
+          await fs.rm(safeJoin(existing), { force: true });
       await fs.mkdir(folder, { recursive: true });
     }
     for (const file of files) {
       const target = safeJoin(file.path);
       await fs.mkdir(path.dirname(target), { recursive: true });
       await fs.copyFile(path.join(content, "files", file.path), target);
-      written.push({ path: file.path, size: file.size, sha256: file.sha256, createdAt: file.createdAt });
+      written.push({
+        path: file.path,
+        size: file.size,
+        sha256: file.sha256,
+        createdAt: file.createdAt,
+      });
       report.filesWritten += 1;
     }
     report.unitsTaken.push(unit.id);
@@ -1184,7 +1637,11 @@ async function applyImport({ planId, adminKey, localDb, choices, activity }) {
   // 3. Accounts database.
   const backupDb = path.join(content, "files", ACCOUNTS_DB);
   if (plan.accounts && fsSync.existsSync(backupDb)) {
-    const selected = new Set(Array.isArray(choices?.users) ? choices.users.map(String) : plan.accounts.users.map((user) => user.discordUserId));
+    const selected = new Set(
+      Array.isArray(choices?.users)
+        ? choices.users.map(String)
+        : plan.accounts.users.map((user) => user.discordUserId),
+    );
     if (localDb) {
       mergeAccounts(localDb, backupDb, selected, report, strategy);
       for (const rename of report.avatarRenames) {
@@ -1199,14 +1656,26 @@ async function applyImport({ planId, adminKey, localDb, choices, activity }) {
   }
 
   // 3b. Deleted accounts stay deleted: their IDs leave the files this import wrote.
-  for (const rel of [...written.map((file) => file.path), ...report.filesMerged]) {
-    if (!rel.startsWith("server/services/db/") || /\.sqlite/.test(rel) || rel.endsWith("/privacy.json")) continue;
+  for (const rel of [
+    ...written.map((file) => file.path),
+    ...report.filesMerged,
+  ]) {
+    if (
+      !rel.startsWith("server/services/db/") ||
+      /\.sqlite/.test(rel) ||
+      rel.endsWith("/privacy.json")
+    )
+      continue;
     const target = safeJoin(rel);
     const text = await fs.readFile(target, "utf8").catch(() => null);
     if (!text) continue;
     const ids = privacy.forgottenIn(text);
     if (!ids.length) continue;
-    const next = privacy.scrubText(rel.slice("server/services/db/".length), text, ids);
+    const next = privacy.scrubText(
+      rel.slice("server/services/db/".length),
+      text,
+      ids,
+    );
     if (next !== null && next !== text) {
       await fs.writeFile(target, next);
       report.deletedAccountsRemoved = (report.deletedAccountsRemoved ?? 0) + 1;
@@ -1219,13 +1688,30 @@ async function applyImport({ planId, adminKey, localDb, choices, activity }) {
     for (const entry of plan.env) {
       const choice =
         choices?.env?.[entry.key] ??
-        (entry.status === "backup-only" || (strategy === "restore" && entry.status === "differs") ? "backup" : "local");
-      if (choice === "backup" && entry.backup !== null && entry.backup !== entry.local) changes[entry.key] = entry.backup;
+        (entry.status === "backup-only" ||
+        ((strategy === "restore" || treatLocalAsOld) &&
+          entry.status === "differs")
+          ? "backup"
+          : "local");
+      if (
+        choice === "backup" &&
+        entry.backup !== null &&
+        entry.backup !== entry.local
+      )
+        changes[entry.key] = entry.backup;
     }
     if (Object.keys(changes).length) {
       const envPath = path.join(REPO_ROOT, ".env");
       const current = await fs.readFile(envPath, "utf8").catch(() => "");
-      await writeFileSafely(envPath, setEnvValues(current, changes, `Imported from the backup of ${new Date(plan.manifest.exportedAt ?? Date.now()).toISOString()}`), 0o600);
+      await writeFileSafely(
+        envPath,
+        setEnvValues(
+          current,
+          changes,
+          `Imported from the backup of ${new Date(plan.manifest.exportedAt ?? Date.now()).toISOString()}`,
+        ),
+        0o600,
+      );
       report.envChanged = Object.keys(changes);
     }
   }
@@ -1234,14 +1720,30 @@ async function applyImport({ planId, adminKey, localDb, choices, activity }) {
   const backupLog = path.join(content, "files", ACTIVITY_LOG);
   if (plan.activity && fsSync.existsSync(backupLog)) {
     const status = plan.activity.status;
-    if (status === "new" || status === "backup-longer" || (strategy === "restore" && status !== "identical" && status !== "local-longer")) {
+    if (
+      status === "new" ||
+      status === "backup-longer" ||
+      (strategy === "restore" &&
+        status !== "identical" &&
+        status !== "local-longer")
+    ) {
       if (status === "different") {
         // Restore: the current log is kept next to it, never lost.
-        await fs.copyFile(safeJoin(ACTIVITY_LOG), safeJoin(`server/services/db/activity-log.before-restore-${Date.now()}.jsonl`)).catch(() => {});
+        await fs
+          .copyFile(
+            safeJoin(ACTIVITY_LOG),
+            safeJoin(
+              `server/services/db/activity-log.before-restore-${Date.now()}.jsonl`,
+            ),
+          )
+          .catch(() => {});
       }
       await fs.copyFile(backupLog, safeJoin(ACTIVITY_LOG));
       activity?.reset?.();
-      report.activityLog = status === "new" ? "imported" : "extended with the backup's newer entries";
+      report.activityLog =
+        status === "new"
+          ? "imported"
+          : "extended with the backup's newer entries";
     } else if (status === "different") {
       const name = `server/services/db/activity-log.imported-${new Date(plan.manifest.exportedAt ?? Date.now()).toISOString().slice(0, 10)}.jsonl`;
       await fs.copyFile(backupLog, safeJoin(name));
@@ -1263,7 +1765,8 @@ async function cleanupStaging() {
   for (const name of await fs.readdir(WORK_DIR).catch(() => [])) {
     const full = path.join(WORK_DIR, name);
     const stat = await fs.stat(full).catch(() => null);
-    if (stat && Date.now() - stat.mtimeMs > STAGING_TTL_MS) await fs.rm(full, { recursive: true, force: true });
+    if (stat && Date.now() - stat.mtimeMs > STAGING_TTL_MS)
+      await fs.rm(full, { recursive: true, force: true });
   }
 }
 
@@ -1275,7 +1778,9 @@ async function cleanupStaging() {
  * custom entries never are, those need revealEnv (2FA) one at a time.
  */
 async function envOverview() {
-  const values = parseEnv(await fs.readFile(path.join(REPO_ROOT, ".env"), "utf8").catch(() => ""));
+  const values = parseEnv(
+    await fs.readFile(path.join(REPO_ROOT, ".env"), "utf8").catch(() => ""),
+  );
   const { sections, features, settings } = settingsSchema.describe();
   const suggestions = settingsSchema.suggestions(values);
 
@@ -1309,7 +1814,10 @@ async function envOverview() {
 
   return {
     sections,
-    features: features.map((feature) => ({ ...feature, ...settingsSchema.featureStatus(values, feature.id) })),
+    features: features.map((feature) => ({
+      ...feature,
+      ...settingsSchema.featureStatus(values, feature.id),
+    })),
     keys: [...known, ...custom],
   };
 }
@@ -1317,17 +1825,33 @@ async function envOverview() {
 /** Which services need a restart / the site a rebuild after these keys change. */
 function restartsFor(keys) {
   const applies = new Set();
-  for (const key of keys) for (const target of settingsSchema.BY_KEY.get(key)?.applies ?? ["bot", "accounts", "profile"]) applies.add(target);
+  for (const key of keys)
+    for (const target of settingsSchema.BY_KEY.get(key)?.applies ?? [
+      "bot",
+      "accounts",
+      "profile",
+    ])
+      applies.add(target);
   return [...applies];
 }
 
 /** Throws a 400 for the first invalid value (before any 2FA code is used up). */
 function validateEnv(changes) {
   for (const [key, value] of Object.entries(changes ?? {})) {
-    if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(key)) throw httpError(400, `Invalid name: ${key}`);
-    if (typeof value !== "string" || value.length > 4096 || /[\r\0]/.test(value)) throw httpError(400, `Invalid value for ${key}.`);
+    if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(key))
+      throw httpError(400, `Invalid name: ${key}`);
+    if (
+      typeof value !== "string" ||
+      value.length > 4096 ||
+      /[\r\0]/.test(value)
+    )
+      throw httpError(400, `Invalid value for ${key}.`);
     const problem = settingsSchema.validate(key, value);
-    if (problem) throw httpError(400, `${settingsSchema.BY_KEY.get(key)?.label ?? key}: ${problem}`);
+    if (problem)
+      throw httpError(
+        400,
+        `${settingsSchema.BY_KEY.get(key)?.label ?? key}: ${problem}`,
+      );
   }
 }
 
@@ -1335,10 +1859,20 @@ async function setEnv(changes) {
   validateEnv(changes);
   const clean = {};
   for (const [key, value] of Object.entries(changes ?? {})) {
-    if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(key)) throw httpError(400, `Invalid name: ${key}`);
-    if (typeof value !== "string" || value.length > 4096 || /[\r\0]/.test(value)) throw httpError(400, `Invalid value for ${key}.`);
+    if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(key))
+      throw httpError(400, `Invalid name: ${key}`);
+    if (
+      typeof value !== "string" ||
+      value.length > 4096 ||
+      /[\r\0]/.test(value)
+    )
+      throw httpError(400, `Invalid value for ${key}.`);
     const problem = settingsSchema.validate(key, value);
-    if (problem) throw httpError(400, `${settingsSchema.BY_KEY.get(key)?.label ?? key}: ${problem}`);
+    if (problem)
+      throw httpError(
+        400,
+        `${settingsSchema.BY_KEY.get(key)?.label ?? key}: ${problem}`,
+      );
     clean[key] = value;
   }
   if (!Object.keys(clean).length) return [];
@@ -1346,8 +1880,18 @@ async function setEnv(changes) {
   const current = await fs.readFile(envPath, "utf8").catch(() => "");
   // Previous version kept (it is in the next backup too).
   await fs.mkdir(BACKUP_DIR, { recursive: true, mode: 0o700 });
-  await fs.writeFile(path.join(BACKUP_DIR, `env-${Date.now()}.bak`), current, { mode: 0o600 });
-  await writeFileSafely(envPath, setEnvValues(current, clean, `Added on the website ${new Date().toISOString()}`), 0o600);
+  await fs.writeFile(path.join(BACKUP_DIR, `env-${Date.now()}.bak`), current, {
+    mode: 0o600,
+  });
+  await writeFileSafely(
+    envPath,
+    setEnvValues(
+      current,
+      clean,
+      `Added on the website ${new Date().toISOString()}`,
+    ),
+    0o600,
+  );
   return Object.keys(clean);
 }
 
@@ -1356,24 +1900,36 @@ async function setEnv(changes) {
  * custom entries are gone completely. The old file is kept in db/backups.
  */
 async function removeEnv(names) {
-  const remove = new Set((Array.isArray(names) ? names : []).filter((name) => /^[A-Z][A-Z0-9_]{0,63}$/.test(name)));
+  const remove = new Set(
+    (Array.isArray(names) ? names : []).filter((name) =>
+      /^[A-Z][A-Z0-9_]{0,63}$/.test(name),
+    ),
+  );
   if (!remove.size) throw httpError(400, "Nothing to remove.");
   const envPath = path.join(REPO_ROOT, ".env");
   const current = await fs.readFile(envPath, "utf8").catch(() => "");
   await fs.mkdir(BACKUP_DIR, { recursive: true, mode: 0o700 });
-  await fs.writeFile(path.join(BACKUP_DIR, `env-${Date.now()}.bak`), current, { mode: 0o600 });
+  await fs.writeFile(path.join(BACKUP_DIR, `env-${Date.now()}.bak`), current, {
+    mode: 0o600,
+  });
   const kept = current.split(/\r?\n/).filter((line) => {
     if (/^\s*#/.test(line)) return true;
     const match = line.match(ENV_LINE);
     return !(match && remove.has(match[1]));
   });
-  await writeFileSafely(envPath, `${kept.join("\n").replace(/\n+$/, "")}\n`, 0o600);
+  await writeFileSafely(
+    envPath,
+    `${kept.join("\n").replace(/\n+$/, "")}\n`,
+    0o600,
+  );
   return [...remove];
 }
 
 /** One current value (only with 2FA, see adminBackup.cjs). */
 async function revealEnv(name) {
-  const values = parseEnv(await fs.readFile(path.join(REPO_ROOT, ".env"), "utf8").catch(() => ""));
+  const values = parseEnv(
+    await fs.readFile(path.join(REPO_ROOT, ".env"), "utf8").catch(() => ""),
+  );
   if (!(name in values)) throw httpError(404, `${name} is not set.`);
   return values[name];
 }
