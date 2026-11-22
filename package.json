@@ -75,7 +75,7 @@
     "gifenc": "^1.0.3",
     "i18next": "^26.7.2",
     "jsqr": "^1.4.0",
-    "katex": "0.16.22",
+    "katex": "0.18.2",
     "leaflet": "1.9.4",
     "music-metadata": "^12.7.0",
     "nodemailer": "10.5.0",
