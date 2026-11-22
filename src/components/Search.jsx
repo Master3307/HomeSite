@@ -63,13 +63,16 @@ function Highlighted({ text, tokens }) {
  *              subtitle, hint, math, open() | copy }]: more suggestions (the
  *              dash's periodic table, elements, formulas); 'top' ones come
  *              before the web search, 'after' ones after it
+ *   `voice`    a microphone button for speaking the search (the browser's speech
+ *              recognition, only shown where it exists)
+ *   `onImage`  (file) => …: images pasted, dropped or taken with the camera button
  *   `history`  where recent searches are kept ('site', 'dash'; false: none). They
  *              open on an empty bar the person clicked into (not on autofocus,
  *              until it's clicked or typed in), and matching ones join the
  *              suggestions, marked as recent
  *   `placeholder`, `children` (rendered under the bar, e.g. engine chips)
  */
-export default function Search({ className = '', autoFocus = false, web = null, people = null, placeholder = null, sitePages = true, calc = null, extras = null, history = 'site', children = null }) {
+export default function Search({ className = '', autoFocus = false, web = null, people = null, placeholder = null, sitePages = true, calc = null, extras = null, history = 'site', voice = false, onImage = null, imageButton = true, children = null }) {
   const { t, i18n } = useTranslation('search')
   const navigate = useNavigate()
   const listId = useId()
@@ -85,6 +88,47 @@ export default function Search({ className = '', autoFocus = false, web = null, 
   const [peopleResult, setPeopleResult] = useState({ phrase: '', people: [], error: null })
 
   const deferredQuery = useDeferredValue(query)
+  // Speaking the search (Web Speech API; Chrome / Edge send the audio to their speech service).
+  const [listening, setListening] = useState(false)
+  const recognition = useRef(null)
+  const Recognition = typeof window !== 'undefined' ? (window.SpeechRecognition ?? window.webkitSpeechRecognition) : null
+  const dictate = () => {
+    if (listening) {
+      recognition.current?.stop()
+      return
+    }
+    if (!Recognition) return
+    const listener = new Recognition()
+    listener.lang = i18n.language
+    listener.interimResults = true
+    listener.continuous = false
+    const before = query.trim()
+    listener.onresult = (event) => {
+      const spoken = [...event.results].map((result) => result[0].transcript).join('')
+      setQuery(before ? `${before} ${spoken}` : spoken)
+      setActiveIndex(0)
+      setOpen(true)
+      setHistoryArmed(true)
+    }
+    listener.onend = () => {
+      setListening(false)
+      recognition.current = null
+      inputRef.current?.focus()
+    }
+    listener.onerror = () => setListening(false)
+    recognition.current = listener
+    setListening(true)
+    listener.start()
+  }
+  useEffect(() => () => recognition.current?.abort(), [])
+  // With the calculator the box takes several lines (Shift + Enter, or pasted).
+  const multiline = Boolean(calc)
+  useEffect(() => {
+    const field = inputRef.current
+    if (!multiline || !field) return
+    field.style.height = 'auto'
+    field.style.height = `${Math.min(field.scrollHeight, 260)}px`
+  }, [query, multiline])
   const [recent, setRecent] = useState(() => readHistory(history))
   // Autofocus alone doesn't open the history; a click into the bar or typing does.
   const [historyArmed, setHistoryArmed] = useState(!autoFocus)
@@ -351,7 +395,7 @@ export default function Search({ className = '', autoFocus = false, web = null, 
       return
     }
     if (option.kind === 'web') {
-      web.run(query.trim())
+      web.run(query.trim().replace(/\s*\n\s*/g, ' '))
       return
     }
     if (option.kind === 'person') {
@@ -374,6 +418,14 @@ export default function Search({ className = '', autoFocus = false, web = null, 
   }
 
   const onKeyDown = (event) => {
+    // Several lines (the calculator): ↑ / ↓ move between them, and only leave the text at its first / last line.
+    const field = event.currentTarget
+    const moveInText =
+      (event.key === 'ArrowUp' || event.key === 'ArrowDown') &&
+      field.value.includes('\n') &&
+      (event.key === 'ArrowUp' ? field.value.slice(0, field.selectionStart).includes('\n') : field.value.slice(field.selectionEnd).includes('\n'))
+    if (moveInText) return
+    if (event.key === 'Enter' && event.shiftKey && multiline) return
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       setOpen(true)
@@ -421,12 +473,33 @@ export default function Search({ className = '', autoFocus = false, web = null, 
 
   return (
     <div ref={rootRef} className={`site-search ${className}`.trim()}>
-      <form className="site-search__form" role="search" onSubmit={(event) => event.preventDefault()}>
+      <form
+        className="site-search__form"
+        role="search"
+        onSubmit={(event) => event.preventDefault()}
+        onPaste={(event) => {
+          const image = onImage && [...(event.clipboardData?.files ?? [])].find((entry) => entry.type.startsWith('image/'))
+          if (image) {
+            event.preventDefault()
+            onImage(image)
+          }
+        }}
+        onDragOver={(event) => {
+          if (onImage && [...(event.dataTransfer?.items ?? [])].some((item) => item.type.startsWith('image/'))) event.preventDefault()
+        }}
+        onDrop={(event) => {
+          const image = onImage && [...(event.dataTransfer?.files ?? [])].find((entry) => entry.type.startsWith('image/'))
+          if (image) {
+            event.preventDefault()
+            onImage(image)
+          }
+        }}
+      >
         <span className="material-symbols-outlined site-search__icon" aria-hidden="true">search</span>
-        <input
+        <Field
+          multiline={multiline}
           ref={inputRef}
-          className="site-search__input"
-          type="search"
+          className={`site-search__input${query.includes('\n') ? ' is-lines' : ''}`}
           role="combobox"
           aria-label={t('label')}
           aria-expanded={showPanel}
@@ -458,6 +531,30 @@ export default function Search({ className = '', autoFocus = false, web = null, 
           onSelect={(event) => setCaret(event.currentTarget.selectionEnd ?? 0)}
           onKeyDown={onKeyDown}
         />
+        {onImage && imageButton && (
+          <label className="site-search__clear site-search__camera" title={t('image')} aria-label={t('image')}>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(event) => {
+                const image = event.target.files?.[0]
+                if (image) onImage(image)
+                event.target.value = ''
+              }}
+            />
+            <span className="material-symbols-outlined" aria-hidden="true">
+              photo_camera
+            </span>
+          </label>
+        )}
+        {voice && Recognition && (
+          <button type="button" className={`site-search__clear site-search__voice${listening ? ' is-listening' : ''}`} aria-label={listening ? t('voiceStop') : t('voice')} title={listening ? t('voiceStop') : t('voice')} aria-pressed={listening} onClick={dictate}>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              {listening ? 'graphic_eq' : 'mic'}
+            </span>
+          </button>
+        )}
         {query ? (
           <button
             type="button"
@@ -528,14 +625,25 @@ export default function Search({ className = '', autoFocus = false, web = null, 
               <div role="group" aria-label={t('calc.title')} className="site-search__group site-search__calc">
                 <p className="site-search__group-title" aria-hidden="true">
                   {t('calc.title')}
-                  {calc.Pretty && calcResult.trees?.length > 0 && /[/^\\√∛⁄½²³$]|sqrt|root|frac/.test(deferredQuery) && <calc.Pretty trees={calcResult.trees} source={deferredQuery} className="site-search__math" />}
+                  {calc.Pretty && calcResult.trees?.length > 0 && /[/^\\√∛⁄½²³$]|sqrt|root|frac/.test(deferredQuery) && <calc.Pretty trees={calcResult.trees} source={deferredQuery} className={`site-search__math${deferredQuery.includes('\n') ? ' is-lines' : ''}`} />}
                 </p>
+                {calc.Visual && (calcResult.clock || calcResult.color) && (
+                  <div className="site-search__visual-row" onMouseDown={(event) => event.target.closest('input, button') || event.preventDefault()}>
+                    <calc.Visual
+                      result={calcResult}
+                      onQuery={(text) => {
+                        setQuery(text)
+                        setActiveIndex(0)
+                      }}
+                    />
+                  </div>
+                )}
                 {calcResult.rows.slice(0, 8).map((row) => {
                   const key = `calc:${row.id}`
                   return (
                     <div key={key} className="site-search__option site-search__option--calc" {...optionProps({ key, kind: 'calc', row })}>
                       <span className="material-symbols-outlined site-search__avatar" aria-hidden="true">
-                        {row.kind === 'convert' ? 'swap_horiz' : row.kind === 'solve' ? 'function' : 'calculate'}
+                        {{ convert: 'swap_horiz', solve: 'function', time: 'schedule', color: 'palette', point: 'scatter_plot' }[row.kind] ?? 'calculate'}
                       </span>
                       <div className="site-search__option-main">
                         <span className="site-search__title site-search__calc-value">{row.text}</span>
@@ -553,7 +661,7 @@ export default function Search({ className = '', autoFocus = false, web = null, 
                       show_chart
                     </span>
                     <div className="site-search__option-main">
-                      <span className="site-search__title">{graphShown ? t('calc.copyGraph') : t('calc.drawGraph', { what: calcResult.graph.map((line) => line.label).join(' = ') })}</span>
+                      <span className="site-search__title">{graphShown ? t('calc.copyGraph') : t('calc.drawGraph', { what: calcResult.graph.map((line) => line.label).join(calcResult.trees?.length > 1 ? ', ' : ' = ') })}</span>
                     </div>
                     <span className="site-search__calc-hint">{copiedKey === 'calc:graph' ? t('calc.copied') : t('calc.graph')}</span>
                     <span className="material-symbols-outlined site-search__chevron" aria-hidden="true">
@@ -699,6 +807,12 @@ export default function Search({ className = '', autoFocus = false, web = null, 
       )}
     </div>
   )
+}
+
+/* The search field: an input, or a growing text area when it takes several lines. */
+function Field({ multiline, ref, ...props }) {
+  if (!multiline) return <input ref={ref} type="search" {...props} />
+  return <textarea ref={ref} rows={1} {...props} />
 }
 
 /* More suggestions from the page using the search (the dash's science reference). */

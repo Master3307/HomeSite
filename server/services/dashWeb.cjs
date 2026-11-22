@@ -4,6 +4,8 @@ const { enabled } = require("../config.cjs");
 const { httpError } = require("./http.cjs");
 const { safeFetch, parseTarget } = require("./safeFetch.cjs");
 const { registerDashIntegrations } = require("./dashIntegrations.cjs");
+const { registerTranslate } = require("./dashTranslate.cjs");
+const { registerMusic } = require("./dashMusic.cjs");
 
 /*
  * /dash on the account API.
@@ -77,7 +79,9 @@ function registerDashWeb(app, deps) {
     }
   });
 
-  registerDashIntegrations(app, { ...deps, limiter: perPerson });
+  const integrations = registerDashIntegrations(app, { ...deps, limiter: perPerson });
+  registerTranslate(app, { ...deps, limiter: perPerson });
+  registerMusic(app, { ...deps, limiter: perPerson, integrations });
 }
 
 module.exports = { registerDashWeb };

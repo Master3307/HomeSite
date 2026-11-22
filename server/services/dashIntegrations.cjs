@@ -324,6 +324,13 @@ async function paperlessList(ctx, query) {
 
 /* A file through the server (download / open), and an upload into a folder. */
 const FILE_LIMIT = 50 * 1024 * 1024;
+/* Where a file of a WebDAV / Nextcloud / copyparty integration is, and how to ask for it. */
+function fileTarget(ctx, path) {
+  const clean = cleanPath(path);
+  if (clean.endsWith("/")) throw httpError(400, "That's a folder.");
+  const target = ctx.kind === "copyparty" ? `${ctx.url.replace(/\/+$/, "")}${encodePath(clean)}` : `${davRoot(ctx)}${encodePath(clean)}`;
+  return { target, headers: ctx.kind === "copyparty" ? copypartyHeaders(ctx) : davHeaders(ctx) };
+}
 async function fileDownload(ctx, path) {
   const clean = cleanPath(path);
   if (clean.endsWith("/")) throw httpError(400, "That's a folder.");
@@ -1177,6 +1184,9 @@ function registerDashIntegrations(app, { getRequestSession, getDatabase, require
       return value;
     }),
   );
+
+  // For other parts of /dash (the music library): an integration of this person, ready to call.
+  return { connection: (session, id) => contextFor(one(session, id), { allowPrivate: privateAllowed(session) }), isOwner };
 }
 
-module.exports = { registerDashIntegrations, ADAPTERS };
+module.exports = { registerDashIntegrations, ADAPTERS, davList, copypartyList, fileDownload, fileTarget, subsonic, subsonicCall, cleanPath };

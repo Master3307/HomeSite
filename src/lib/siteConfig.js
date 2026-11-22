@@ -25,6 +25,7 @@ export const siteConfig = Object.freeze({
   appId: config.APP_ID || "",
   cultAppId: config.CULT_APP_ID || "",
   dashFeeds: !/^(off|false|0|no)$/i.test(String(config.DASH_FEEDS ?? "on")),
+  dashMusic: !/^(off|false|0|no)$/i.test(String(config.DASH_MUSIC ?? "on")),
   privacyName: config.PRIVACY_CONTACT_NAME || "",
   privacyEmail: config.PRIVACY_CONTACT_EMAIL || "",
   inactiveDays: Number(config.ACCOUNT_INACTIVE_DAYS ?? 730) || 0,

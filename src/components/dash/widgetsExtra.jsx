@@ -173,7 +173,7 @@ function ExchangeView({ widget }) {
   const amount = Number(widget.options.amount) > 0 ? Number(widget.options.amount) : 1
   const key = targets.join(',')
   const { data, error, reload } = useRemote(targets.length ? `fx:${base}:${key}` : null, (signal) => fetchJson(`https://api.frankfurter.dev/v1/latest?base=${base}&symbols=${key}`, { signal }), { refresh: 6 * 60 * 60, enabled: targets.length > 0 })
-  if (!targets.length) return <Empty icon="currency_exchange">{t('widgets.exchange.empty')}</Empty>
+  if (!targets.length) return <Empty icon="currency_exchange" setup>{t('widgets.exchange.empty')}</Empty>
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={targets.length} />
   const money = (value, currency) => {
     try {

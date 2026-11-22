@@ -427,3 +427,61 @@
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 0.9em;
 }
+
+/* The calculator's search field: grows with its lines (Shift + Enter, pasted). */
+textarea.site-search__input {
+  display: block;
+  max-height: 260px;
+  overflow-y: auto;
+  line-height: 1.4;
+  resize: none;
+  scrollbar-width: thin;
+}
+textarea.site-search__input:not(.is-lines) {
+  overflow: hidden;
+  white-space: nowrap;
+}
+.site-search__form:has(textarea.is-lines) {
+  align-items: flex-start;
+}
+.site-search__form:has(textarea.is-lines) .site-search__icon {
+  margin-top: 12px;
+}
+
+.site-search__mc-head {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  image-rendering: pixelated;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+
+.site-search__voice.is-listening {
+  color: #e5484d;
+  animation: search-listening 1.2s ease-in-out infinite;
+}
+@keyframes search-listening {
+  50% {
+    background: color-mix(in srgb, #e5484d 18%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-search__voice.is-listening {
+    animation: none;
+  }
+}
+
+.site-search__camera {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.site-search__camera input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}

@@ -125,7 +125,7 @@ function WorldClockView({ widget }) {
   const { seconds = false, hourFormat = 'site', showOffset = true } = widget.options
   const zones = (widget.options.zones ?? []).filter((row) => isTimeZone(row?.zone))
   const now = useNow(seconds ? 1000 : 60_000)
-  if (!zones.length) return <Empty icon="public">{t('widgets.worldclock.empty')}</Empty>
+  if (!zones.length) return <Empty icon="public" setup>{t('widgets.worldclock.empty')}</Empty>
   return (
     <ul className="dash-w-world">
       {zones.map((row, index) => {
@@ -243,7 +243,7 @@ function CountdownView({ widget }) {
   const { seconds = false, yearly = false, label = '' } = widget.options
   const now = useNow(seconds ? 1000 : 60_000)
   const raw = new Date(widget.options.date ?? '')
-  if (Number.isNaN(raw.getTime())) return <Empty icon="hourglass_top">{t('widgets.countdown.empty')}</Empty>
+  if (Number.isNaN(raw.getTime())) return <Empty icon="hourglass_top" setup>{t('widgets.countdown.empty')}</Empty>
   const target = yearly ? nextYearly(raw, now) : raw
   const ms = target - now
   const total = Math.abs(ms)
@@ -411,7 +411,7 @@ function WeatherView({ widget }) {
     },
     { refresh: 15 * 60, enabled: has },
   )
-  if (!has) return <Empty icon="partly_cloudy_day">{t('widgets.weather.empty')}</Empty>
+  if (!has) return <Empty icon="partly_cloudy_day" setup>{t('widgets.weather.empty')}</Empty>
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={3} />
   const current = data.current ?? {}
   const now = weatherOf(current.weather_code, current.is_day !== 0)
@@ -512,7 +512,7 @@ function ImageView({ widget }) {
     const timer = setInterval(() => document.visibilityState === 'visible' && setTick((value) => value + 1), Math.max(5, refresh) * 1000)
     return () => clearInterval(timer)
   }, [refresh])
-  if (!url) return <Empty icon="image">{t('widgets.image.empty')}</Empty>
+  if (!url) return <Empty icon="image" setup>{t('widgets.image.empty')}</Empty>
   const src = refresh ? `${url}${url.includes('?') ? '&' : '?'}_=${tick}` : url
   const picture = <img className={`dash-w-image dash-w-image--${['contain', 'cover'].includes(widget.options.fit) ? widget.options.fit : 'cover'}`} src={src} alt={widget.options.alt || widget.title || ''} loading="lazy" decoding="async" referrerPolicy="no-referrer" />
   return (
@@ -534,7 +534,7 @@ function ImageView({ widget }) {
 function IframeView({ widget }) {
   const { t } = useTranslation('dash')
   const url = withScheme(widget.options.url)
-  if (!url) return <Empty icon="web">{t('widgets.iframe.empty')}</Empty>
+  if (!url) return <Empty icon="web" setup>{t('widgets.iframe.empty')}</Empty>
   const zoom = Math.max(30, Math.min(200, Number(widget.options.zoom) || 100)) / 100
   return (
     <iframe
@@ -590,7 +590,7 @@ function ApiView({ widget }) {
     (signal) => (integration ? integrationGet(integration, 'get', { path }, signal) : fetchJson(url, { signal, headers: headerName && /^[A-Za-z0-9-]{1,60}$/.test(headerName) ? { [headerName]: String(headerValue ?? '') } : {} })),
     { refresh: Math.max(10, Number(refresh) || 60), enabled: ready, private: Boolean(integration || headerValue) },
   )
-  if (!ready) return <Empty icon="api">{t('widgets.api.empty')}</Empty>
+  if (!ready) return <Empty icon="api" setup>{t('widgets.api.empty')}</Empty>
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={2} />
   const shown = fields.length ? fields : [{ label: '', path: '' }]
   return (
@@ -615,7 +615,7 @@ function ApiView({ widget }) {
 function HtmlView({ widget }) {
   const { t } = useTranslation('dash')
   const code = String(widget.options.code ?? '')
-  if (!code.trim()) return <Empty icon="code">{t('widgets.html.empty')}</Empty>
+  if (!code.trim()) return <Empty icon="code" setup>{t('widgets.html.empty')}</Empty>
   // No allow-same-origin: the code runs in its own opaque origin, it can't read this site or your login.
   return <iframe className="dash-w-frame" title={widget.title || t('widgets.html.name')} sandbox="allow-scripts allow-popups" srcDoc={code} loading="lazy" />
 }

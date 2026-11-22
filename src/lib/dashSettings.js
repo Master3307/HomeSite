@@ -2,6 +2,7 @@ import { siteConfig } from './siteConfig'
 import { updateAccountSettings } from './account'
 import { useSyncExternalStore } from 'react'
 import { bottom, fit, pack, repair } from './dashGrid.js'
+import { PROVIDER_CATALOG } from '../data/searchProviders.js'
 
 /*
  * Dash settings store (/dash, a start page / new tab page in the spirit of
@@ -47,14 +48,12 @@ export const MAX_PAGES = 12
 export const MAX_ROWS = 40
 
 // SEARCH_ENGINE_URL / SEARCH_ENGINE_NAME in .env add the site's own engine first.
+// The site's own engine (from .env) and the catalog's starters (data/searchProviders.js). Removed ones go back to the list.
 const BUILTIN_PROVIDERS = [
   ...(siteConfig.searchEngineUrl ? [{ id: 'searxng', name: siteConfig.searchEngineName, url: siteConfig.searchEngineUrl, keyword: 'sx', builtin: true }] : []),
-  { id: 'duckduckgo', name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=%s', keyword: 'ddg', builtin: true },
-  { id: 'startpage', name: 'Startpage', url: 'https://www.startpage.com/do/search?q=%s', keyword: 'sp', builtin: true, hidden: true },
-  { id: 'wikipedia', name: 'Wikipedia', url: 'https://en.wikipedia.org/w/index.php?search=%s', keyword: 'w', builtin: true, hidden: true },
-  { id: 'youtube', name: 'YouTube', url: 'https://www.youtube.com/results?search_query=%s', keyword: 'yt', builtin: true, hidden: true },
-  { id: 'github', name: 'GitHub', url: 'https://github.com/search?q=%s', keyword: 'gh', builtin: true, hidden: true },
+  ...PROVIDER_CATALOG.filter((entry) => entry.start).map(({ id, name, url, keyword, hidden, minecraft }) => ({ id, name, url, keyword, builtin: true, ...(hidden ? { hidden: true } : {}), ...(minecraft ? { minecraft } : {}) })),
 ]
+export const MAX_PROVIDERS = 80
 
 /* Every choice the look settings offer (DashSettings.jsx reads these too). */
 export const LOOK_CHOICES = Object.freeze({
@@ -155,7 +154,7 @@ export const WIDGET_SIZES = Object.freeze({
   clock: { w: 3, h: 2, minW: 2, minH: 1 },
   worldclock: { w: 3, h: 3, minW: 2, minH: 2 },
   bookmarks: { w: 6, h: 3, minW: 2, minH: 1 },
-  site: { w: 4, h: 3, minW: 2, minH: 2 },
+  site: { w: 4, h: 4, minW: 2, minH: 2 },
   search: { w: 6, h: 1, minW: 3, minH: 1 },
   iframe: { w: 6, h: 6, minW: 2, minH: 2 },
   note: { w: 3, h: 4, minW: 2, minH: 2 },
@@ -173,7 +172,7 @@ export const WIDGET_SIZES = Object.freeze({
   hackernews: { w: 4, h: 6, minW: 3, minH: 2 },
   markets: { w: 4, h: 4, minW: 2, minH: 2 },
   minecraft: { w: 4, h: 2, minW: 3, minH: 2 },
-  discord: { w: 6, h: 3, minW: 4, minH: 2 },
+  discord: { w: 6, h: 4, minW: 4, minH: 3 },
   birthdays: { w: 3, h: 4, minW: 2, minH: 2 },
   notifications: { w: 4, h: 4, minW: 3, minH: 2 },
   server: { w: 4, h: 4, minW: 3, minH: 2 },
@@ -196,6 +195,7 @@ export const WIDGET_SIZES = Object.freeze({
   progress: { w: 3, h: 3, minW: 2, minH: 2 },
   exchange: { w: 3, h: 3, minW: 2, minH: 2 },
   calculator: { w: 3, h: 3, minW: 2, minH: 2 },
+  music: { w: 5, h: 6, minW: 3, minH: 4 },
   cat: { w: 3, h: 4, minW: 2, minH: 2 },
 })
 
@@ -239,11 +239,16 @@ const DEFAULT_SETTINGS = Object.freeze({
   discordLookup: true,
   calculator: true,
   searchHistory: true,
+  voiceSearch: true,
+  imageButton: true,
+  music: { background: true, resume: false, fade: true, fadeMs: 600, chip: true },
   calcAngle: 'rad',
   calcGraph: 'ask',
   pages: [DEFAULT_PAGE],
   activePage: DEFAULT_PAGE.id,
   startPage: 'last',
+  shortcuts: true, // E (edit), / (search), Alt + 1-9 (pages), Ctrl + , (customize)
+  refresh: 'normal', // normal | slow (a third as often) | open (only when the page opens or you press refresh)
   widgets: DEFAULT_WIDGETS,
   customCss: '',
   customCssEnabled: true,
@@ -315,6 +320,9 @@ function normalizeProvider(provider) {
     keyword: normalizeKeyword(provider.keyword),
     ...(provider.builtin ? { builtin: true } : {}),
     ...(provider.hidden ? { hidden: true } : {}),
+    // Added from the catalog (its id), and the profile address for Minecraft players.
+    ...(typeof provider.catalog === 'string' ? { catalog: text(provider.catalog, 40) } : {}),
+    ...(typeof provider.minecraft === 'string' && /^https:\/\/[^\s]+%s/.test(provider.minecraft) ? { minecraft: text(provider.minecraft, 300) } : {}),
   }
 }
 
@@ -386,8 +394,16 @@ function normalizeWidget(widget, pageIds, columns, phoneColumns) {
     ...(sm ? { sm } : {}),
     title: text(widget.title, 60),
     look: normalizeWidgetLook(widget.look),
-    options: plainOptions(widget.options) ?? {},
+    options: migrateOptions(widget.type, plainOptions(widget.options) ?? {}),
   }
+}
+
+/* Older option shapes, read into the current one. */
+function migrateOptions(type, options) {
+  // Crypto: the coin used to be stored as the row's `id` (which is also the row's key while editing).
+  if (type === 'markets' && Array.isArray(options.coins))
+    options.coins = options.coins.map((row) => (row && typeof row === 'object' && !row.coin && typeof row.id === 'string' && !/^row-/.test(row.id) ? { ...row, id: createId('row'), coin: row.id } : row))
+  return options
 }
 
 function normalizeLook(raw) {
@@ -556,9 +572,12 @@ function normalizeDashSettings(raw) {
   if (input.version < 3) input = migrateV2(input)
 
   // The site's engines stay in the list (a new one from .env shows up), the user's order and changes win.
-  const given = (Array.isArray(input.providers) ? input.providers : []).map(normalizeProvider).filter(Boolean).slice(0, 40)
+  const given = (Array.isArray(input.providers) ? input.providers : []).map(normalizeProvider).filter(Boolean).slice(0, MAX_PROVIDERS)
   const known = new Set(given.map((provider) => provider.id))
-  const providers = [...given, ...BUILTIN_PROVIDERS.filter((provider) => !known.has(provider.id)).map((provider) => ({ ...provider, hidden: true }))]
+  // Built-ins someone removed stay removed (they're back in "Add from list"); new ones show up hidden.
+  const removedProviders = [...new Set((Array.isArray(input.removedProviders) ? input.removedProviders : []).filter((id) => typeof id === 'string').map((id) => id.slice(0, 40)))].slice(0, 200)
+  // (No list yet, a new dash: the starters as they are.)
+  const providers = Array.isArray(input.providers) ? [...given, ...BUILTIN_PROVIDERS.filter((provider) => !known.has(provider.id) && !removedProviders.includes(provider.id)).map((provider) => ({ ...provider, hidden: true }))] : BUILTIN_PROVIDERS.filter((provider) => !removedProviders.includes(provider.id)).map((provider) => ({ ...provider }))
   const visible = providers.filter((provider) => !provider.hidden)
   const active = visible.find((provider) => provider.id === input.activeProviderId) ?? visible[0] ?? providers[0]
 
@@ -580,17 +599,31 @@ function normalizeDashSettings(raw) {
     look,
     top: normalizeTop(input.top),
     providers,
+    removedProviders,
+    minecraftProvider: typeof input.minecraftProvider === 'string' ? input.minecraftProvider.slice(0, 40) : 'namemc',
     activeProviderId: active?.id ?? null,
     openInNewTab: Boolean(input.openInNewTab),
     siteResults: input.siteResults !== false,
     discordLookup: input.discordLookup !== false,
     calculator: input.calculator !== false,
     searchHistory: input.searchHistory !== false,
+    voiceSearch: input.voiceSearch !== false,
+    imageButton: input.imageButton !== false,
+    // Background music (Customize → Music): play on in a hidden tab, go on when the dash opens (only if it was playing), fades, the "now playing" button.
+    music: {
+      background: input.music?.background !== false,
+      resume: input.music?.resume === true,
+      fade: input.music?.fade !== false,
+      fadeMs: Math.min(3000, Math.max(100, Math.round(Number(input.music?.fadeMs) || 600))),
+      chip: input.music?.chip !== false,
+    },
     calcAngle: input.calcAngle === 'deg' ? 'deg' : 'rad',
     calcGraph: input.calcGraph === 'show' ? 'show' : 'ask',
     pages,
     activePage: pageIds.includes(input.activePage) ? input.activePage : pageIds[0],
     startPage: oneOf(input.startPage, ['last', 'first'], 'last'),
+    shortcuts: input.shortcuts !== false,
+    refresh: oneOf(input.refresh, ['normal', 'slow', 'open'], 'normal'),
     widgets: repairLayouts(widgets, pages, look),
     customCss: typeof input.customCss === 'string' ? input.customCss : '',
     customCssEnabled: input.customCssEnabled !== false,

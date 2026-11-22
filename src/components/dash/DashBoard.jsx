@@ -4,9 +4,13 @@ import { useTranslation } from 'react-i18next'
 import { CATEGORIES, WIDGETS, availableTypes, defaultOptions, useWidgetTitle } from './widgets.jsx'
 import { DashLobbyCat } from './widgetsSite.jsx'
 import DashWidgetEditor from './DashWidgetEditor.jsx'
-import { Glyph, RollingContext, isMaterialIcon, useFitScroll, useSeen } from './kit.jsx'
+import { Glyph, RefreshContext, RollingContext, WidgetSetupContext, isMaterialIcon, useFitScroll, useSeen } from './kit.jsx'
 import { DashMenu, mergeHandlers, useMenuTrigger } from './menus.jsx'
 import { place } from '../../lib/dashGrid.js'
+
+// Room a drag or resize may use below the lowest widget (the next drag gets more), and the board's limit.
+const DRAG_ROOM = 6
+const MAX_BOARD_ROWS = 400
 import { MAX_ROWS, MAX_WIDGETS, addWidget, duplicateWidget, getDashSettings, isColor, moveWidgetToPage, phoneLayout, removeWidget, scaledSize, setLayout, updateDashSettings, updateWidget, useDashSettings } from '../../lib/dashSettings.js'
 
 /*
@@ -92,6 +96,13 @@ function Tool({ icon, label, onClick, danger = false, ...rest }) {
 
 function WidgetBody({ widget, editing, rolling }) {
   const { t } = useTranslation('dash')
+  const setup = useCallback(() => window.dispatchEvent(new CustomEvent('dash:edit-widget', { detail: widget.id })), [widget.id])
+  const [refreshed, setRefreshed] = useState(0)
+  useEffect(() => {
+    const refresh = (event) => event.detail === widget.id && setRefreshed((value) => value + 1)
+    window.addEventListener('dash:refresh-widget', refresh)
+    return () => window.removeEventListener('dash:refresh-widget', refresh)
+  }, [widget.id])
   const ref = useRef(null)
   const seen = useSeen(ref)
   useFitScroll(ref)
@@ -111,7 +122,11 @@ function WidgetBody({ widget, editing, rolling }) {
           }
         >
           <RollingContext.Provider value={rolling}>
-            <View widget={widget} editing={editing} />
+            <WidgetSetupContext.Provider value={setup}>
+              <RefreshContext.Provider value={refreshed}>
+                <View widget={widget} editing={editing} />
+              </RefreshContext.Provider>
+            </WidgetSetupContext.Provider>
           </RollingContext.Provider>
         </WidgetBoundary>
       ) : null}
@@ -297,6 +312,12 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
   const ref = useRef(null)
   const width = useWidth(ref)
   const [editId, setEditId] = useState(null)
+  // "Set up" on an empty widget opens its editor.
+  useEffect(() => {
+    const open = (event) => typeof event.detail === 'string' && setEditId(event.detail)
+    window.addEventListener('dash:edit-widget', open)
+    return () => window.removeEventListener('dash:edit-widget', open)
+  }, [])
   const [action, setAction] = useState(null) // { id, kind: 'move' | 'resize', axis, start, preview, pointer, startFrame }
   const actionRef = useRef(null)
   useEffect(() => {
@@ -319,9 +340,10 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
 
   const current = action?.preview ?? visibleLayout
   const rows = current.reduce((max, box) => Math.max(max, box.y + box.h), 0)
-  // While editing there's room below to drop into, and it grows with whatever is being dragged.
-  const dragBottom = action?.moved ? action.startFrame.top + action.startFrame.height + Math.max(0, action.pointer.y - action.start.y) : 0
-  const height = Math.max(Math.max(0, rows * (row + gap) - gap) + (editing ? (row + gap) * 3 : 0), dragBottom + (row + gap) * 3)
+  // While editing there's room below to drop into. A drag or resize gets a fixed room (DRAG_ROOM rows under the
+  // lowest widget when it starts): the board doesn't grow while dragging, or scrolling near the edge would move the
+  // widget down, grow the board, scroll again … and never let go. The next drag gets more room.
+  const height = action ? (action.limitRows + 3) * (row + gap) : Math.max(0, rows * (row + gap) - gap) + (editing ? (row + gap) * 3 : 0)
 
   /* Remembered for undo (Ctrl + Z, the Undo button, menus), this visit only: widgets and pages. */
   const remember = useCallback(() => {
@@ -364,6 +386,7 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
         href && { label: t('menu.copyLink'), icon: 'link', onSelect: () => navigator.clipboard?.writeText(href) },
         href && '-',
         { label: t('board.edit'), icon: 'tune', hint: editing ? 'Enter' : undefined, onSelect: () => setEditId(widget.id) },
+        { label: t('menu.refresh'), icon: 'refresh', onSelect: () => window.dispatchEvent(new CustomEvent('dash:refresh-widget', { detail: widget.id })) },
         { label: t('menu.rename'), icon: 'edit', onSelect: () => setRenaming(widget.id) },
         { label: t('board.duplicate'), icon: 'content_copy', onSelect: () => duplicate(widget.id), disabled: allWidgets.length >= MAX_WIDGETS || Boolean(WIDGETS[widget.type].single) },
         box && box.y > 0 && { label: t('menu.toTop'), icon: 'vertical_align_top', onSelect: () => commit(place(layout, widget.id, { y: 0 }, columns, false)) },
@@ -442,7 +465,8 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
     event.currentTarget.setPointerCapture?.(event.pointerId)
     // Page coordinates: scrolling while dragging (by hand or near the window's edge) moves the widget along.
     const at = { x: event.clientX + window.scrollX, y: event.clientY + window.scrollY }
-    setAction({ id, kind, axis, start: at, pointer: at, client: { x: event.clientX, y: event.clientY }, startBox: box, startFrame: frameOf(box), preview: null, moved: false })
+    const limitRows = Math.min(MAX_BOARD_ROWS, layout.reduce((max, item) => Math.max(max, item.y + item.h), 0) + DRAG_ROOM)
+    setAction({ id, kind, axis, start: at, pointer: at, client: { x: event.clientX, y: event.clientY }, startBox: box, startFrame: frameOf(box), preview: null, moved: false, limitRows })
   }
 
   /* The box an action aims at, from how far the pointer has gone (page px). */
@@ -451,12 +475,12 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
       const stepX = cell + gap
       const stepY = row + gap
       const { startBox: b, startFrame: f } = state
-      if (state.kind === 'move') return { x: Math.round((f.left + dx) / stepX), y: Math.max(0, Math.round((f.top + dy) / stepY)) }
+      if (state.kind === 'move') return { x: Math.round((f.left + dx) / stepX), y: Math.max(0, Math.min(state.limitRows - b.h, Math.round((f.top + dy) / stepY))) }
       const { minW, minH } = limits(state.id)
       const axis = state.axis
       let { x, y, w, h } = b
       if (axis.includes('e')) w = Math.max(minW, Math.min(columns - b.x, Math.round((f.width + dx + gap) / stepX)))
-      if (axis.includes('s')) h = Math.max(minH, Math.min(MAX_ROWS, Math.round((f.height + dy + gap) / stepY)))
+      if (axis.includes('s')) h = Math.max(minH, Math.min(MAX_ROWS, state.limitRows - b.y, Math.round((f.height + dy + gap) / stepY)))
       if (axis.includes('w')) {
         x = Math.max(0, Math.min(b.x + b.w - minW, Math.round((f.left + dx) / stepX)))
         w = b.x + b.w - x
@@ -491,9 +515,13 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
       if (!state?.client) return
       const edge = 70
       const { y } = state.client
-      const speed = y > window.innerHeight - edge ? (y - (window.innerHeight - edge)) / 3 : y < edge ? -(edge - y) / 3 : 0
+      const depth = y > window.innerHeight - edge ? y - (window.innerHeight - edge) : y < edge ? -(edge - y) : 0
+      // Capped speed; and it stops by itself where the page (with the drag's fixed room) ends.
+      const speed = Math.sign(depth) * Math.min(18, Math.abs(depth) / 3)
       if (!speed) return
-      window.scrollBy(0, Math.round(speed))
+      const before = window.scrollY
+      window.scrollBy(0, Math.round(speed) || Math.sign(speed))
+      if (window.scrollY === before) return
       update(state.client)
       scrollTimer = requestAnimationFrame(autoScroll)
     }
@@ -504,6 +532,9 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
     const onScroll = () => actionRef.current?.client && update(actionRef.current.client)
     const onUp = () => {
       const state = actionRef.current
+      cancelAnimationFrame(scrollTimer)
+      scrollTimer = null
+      actionRef.current = null
       setAction(null)
       if (state?.moved && state.preview) commit(state.preview)
     }
@@ -595,6 +626,9 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
               const dx = action.pointer.x - action.start.x
               const dy = action.pointer.y - action.start.y
               frame = action.kind === 'move' ? { ...action.startFrame, left: action.startFrame.left + dx, top: action.startFrame.top + dy } : resizeFrame(action.startFrame, action.axis, dx, dy, cell, row)
+              // Kept inside the drag's room: drawn beyond it, the page would grow and the edge scrolling never stop.
+              const roomBottom = action.limitRows * (row + gap) - gap
+              if (frame.top + frame.height > roomBottom) frame = action.kind === 'move' ? { ...frame, top: Math.max(0, roomBottom - frame.height) } : { ...frame, height: Math.max(row, roomBottom - frame.top) }
             }
             return (
               <Widget

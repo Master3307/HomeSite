@@ -4,7 +4,15 @@
         "placeholder": "Search with {{provider}}…",
         "providers": "Search engine",
         "webOption": "Search {{provider}} for “{{query}}”",
-        "hubLocked": "Unlock the hub to look up people on Discord."
+        "hubLocked": "Unlock the hub to look up people on Discord.",
+        "mc": {
+            "copyUuid": "Copy the UUID",
+            "looking": "Looking up {{name}} on Minecraft…",
+            "missing": "No Minecraft player is called {{name}}",
+            "error": "Minecraft players can't be looked up right now"
+        },
+        "translation": "Translation",
+        "translating": "Translating to {{language}}…"
     },
     "settings": {
         "title": "Customize",
@@ -24,7 +32,8 @@
             "search": "Search",
             "pages": "Pages",
             "integrations": "Integrations",
-            "backup": "Sync & backup"
+            "backup": "Sync & backup",
+            "music": "Music"
         },
         "choices": {
             "normal": "Normal",
@@ -130,7 +139,19 @@
             "board": "The board",
             "boardHelp_one": "{{count}} widget on {{pages}} page(s). Press Edit on the page to move, resize and add widgets.",
             "boardHelp_other": "{{count}} widgets on {{pages}} page(s). Press Edit on the page to move, resize and add widgets.",
-            "editOnPage": "Edit the board"
+            "editOnPage": "Edit the board",
+            "behaviour": "Behaviour",
+            "refresh": "Refresh data",
+            "refreshChoices": {
+                "normal": "Normal",
+                "slow": "Less often",
+                "open": "When I open it"
+            },
+            "refreshHint_normal": "Widgets fetch new data on their own schedule (weather every 30 min, prices every 5 min, …) while the tab is visible.",
+            "refreshHint_slow": "A third as often: less traffic, for slow connections or rate-limited services.",
+            "refreshHint_open": "Only when the page opens (if the last data is old) or when you refresh a widget yourself.",
+            "shortcuts": "Keyboard shortcuts",
+            "shortcutsHint": "E: edit the board · /: search · Alt + 1–9: pages · Ctrl + ,: Customize. Turn them off if they get in the way."
         },
         "top": {
             "page": "Page",
@@ -199,7 +220,40 @@
             "calcAngle": "Angles in",
             "calcGraph": "Graphs",
             "history": "Remember recent searches",
-            "historyHint": "Kept only in this browser, shown when you click into the empty search bar and among the suggestions. Turning this off forgets them."
+            "historyHint": "Kept only in this browser, shown when you click into the empty search bar and among the suggestions. Turning this off forgets them.",
+            "fromList": "Add from list",
+            "catalogSearch": "Search engines: video, Arch, Minecraft…",
+            "catalogEmpty": "Nothing (more) to add here.",
+            "category": "Category",
+            "fromCatalog": "from the list",
+            "custom": "your own",
+            "hiddenNote": "Hidden from the chips, still works with its !keyword",
+            "removeToList": "Remove (back into the list)",
+            "minecraft": "Minecraft players",
+            "minecraftOpen": "Open players on",
+            "minecraftHint": "Type “minecraft Notch” (or “minecraft user …”) in the search: the player with their head, a click opens their profile there.",
+            "categories": {
+                "all": "All",
+                "web": "Web",
+                "knowledge": "Knowledge",
+                "ai": "AI",
+                "dev": "Development",
+                "linux": "Linux",
+                "media": "Video & films",
+                "music": "Music",
+                "shopping": "Shopping",
+                "maps": "Maps",
+                "language": "Language",
+                "social": "Social",
+                "games": "Games",
+                "minecraft": "Minecraft",
+                "images": "Images"
+            },
+            "hiddenShort": "hidden",
+            "voice": "Speak your search",
+            "voiceHint": "A microphone in the search bar, where the browser can recognise speech. Chrome and Edge send the audio to their speech service (Google, Microsoft) for that.",
+            "camera": "Camera button in the search bar",
+            "cameraHint": "To search with a picture. Off hides the button; pasting or dropping a picture into the search still works."
         },
         "backup": {
             "sync": "Sync",
@@ -445,7 +499,8 @@
         },
         "empty": "Nothing on this page. Press Edit to add widgets.",
         "phoneLayout": "You're arranging the phone layout; the desktop layout stays as it is.",
-        "onlyOnce": "Already on your dash"
+        "onlyOnce": "Already on your dash",
+        "setUp": "Set up"
     },
     "editor": {
         "look": "Look of this widget",
@@ -644,7 +699,7 @@
         "markets": {
             "name": "Crypto prices",
             "text": "Prices, 24 h change and a 7-day line, from CoinGecko.",
-            "empty": "Edit the widget and add coins (their CoinGecko id, e.g. bitcoin)."
+            "empty": "Edit the widget and add the coins you want to follow."
         },
         "minecraft": {
             "name": "Minecraft server",
@@ -740,7 +795,11 @@
         "discord": {
             "name": "Discord status",
             "text": "The site owner's live Discord card: status, games and music.",
-            "off": "No Discord profile is set up on this site."
+            "off": "No Discord profile is set up on this site.",
+            "login": "Log in with Discord to show your own status here.",
+            "join": "Join the Discord server to show your status and what you’re doing: the bot only sees people on the server.",
+            "joinButton": "Join the server",
+            "unavailable": "Your Discord profile can’t be loaded right now."
         },
         "birthdays": {
             "name": "Birthdays",
@@ -942,6 +1001,10 @@
             "text": "A new cat picture now and then. Click it for another one.",
             "another": "Another cat",
             "alt": "A random cat"
+        },
+        "music": {
+            "name": "Music",
+            "text": "A player for your background music. The library, playlists and adding music are in Customize → Music."
         }
     },
     "fields": {
@@ -1070,7 +1133,7 @@
         "hints": {
             "repos": "owner/repo for GitHub, GitLab and Gitea; the package name for npm, PyPI, Docker Hub (e.g. library/nginx) and crates.io.",
             "feeds": "Feed addresses, or a site's address (its feed is found). YouTube: https://www.youtube.com/feeds/videos.xml?channel_id=…",
-            "coins": "CoinGecko ids: bitcoin, ethereum, solana …",
+            "coins": "Search by name or symbol (Bitcoin, ETH, …), then pick it from the list.",
             "refresh": "minutes",
             "zones": "Pick a zone, give it a name if you like.",
             "size": "100 is its size on /cult.",
@@ -1092,7 +1155,8 @@
             "prefix": "Before",
             "suffix": "After",
             "format": "As",
-            "code": "Currency"
+            "code": "Currency",
+            "coin": "Coin"
         },
         "add": {
             "items": "Add a link",
@@ -1178,7 +1242,7 @@
             "right": "Right",
             "center": "Centre",
             "above": "Above",
-            "mine": "Only mine",
+            "mine": "Mine",
             "name": "Name",
             "modified": "Newest",
             "size": "Size",
@@ -1201,7 +1265,12 @@
             "split": "Lines and graph",
             "calc": "Lines only",
             "always": "Always",
-            "huge": "Huge"
+            "huge": "Huge",
+            "library": "Library",
+            "queue": "Queue",
+            "playlists": "Playlists",
+            "add": "Add music",
+            "siteOwner": "The site owner"
         },
         "emojiPick": "Use an emoji",
         "placement": "Where it sits",
@@ -1244,7 +1313,18 @@
         "preview": "Typeset preview",
         "keypad": "Keypad",
         "alternatives": "Other forms (fraction, scientific, more answers)",
-        "marks": "Mark zeros and solutions on the graph"
+        "marks": "Mark zeros and solutions on the graph",
+        "backdrop": "Blurred cover behind the player",
+        "upNext": "Show what plays next",
+        "coin": {
+            "search": "Search coins: name or symbol",
+            "change": "Change",
+            "none": "No coin found.",
+            "searching": "Searching…",
+            "failed": "CoinGecko didn’t answer. Try again in a moment.",
+            "rank": "#{{rank}}"
+        },
+        "who": "Whose status"
     },
     "menu": {
         "widget": "Widget",
@@ -1271,7 +1351,8 @@
         "clock_time": "Clock",
         "clock_seconds": "Clock with seconds",
         "alignLeft": "Align left",
-        "alignCenter": "Centre"
+        "alignCenter": "Centre",
+        "refresh": "Refresh"
     },
     "graph": {
         "label": "Graph of {{what}}",
@@ -1281,5 +1362,195 @@
         "copy": "Copy as a picture",
         "copied": "Copied as a picture",
         "saved": "Saved as graph.png"
+    },
+    "image": {
+        "title": "Image",
+        "alt": "The image you added",
+        "close": "Remove the image",
+        "pasted": "Pasted image",
+        "reverse": "Search with this image",
+        "codes": "QR codes and barcodes",
+        "noDetector": "This browser can't read codes (Chrome, Edge and Android can).",
+        "looking": "Looking for codes…",
+        "noCodes": "No QR code or barcode found.",
+        "openLink": "Open",
+        "copy": "Copy",
+        "copied": "Copied",
+        "search": "Use",
+        "colors": "Colours",
+        "pick": "Click to pick this colour",
+        "pickHint": "Click anywhere in the image to pick that colour.",
+        "save": "Save as",
+        "text": "Text in the picture",
+        "loadingReader": "Loading the text reader (only the first time takes a moment)…",
+        "reading": "Reading the text… {{percent}} %",
+        "readError": "The text couldn't be read.",
+        "noText": "No text found.",
+        "translateTo": "Translate to",
+        "translate": "Translate",
+        "translated": "Translation"
+    },
+    "music": {
+        "nothing": "Nothing playing",
+        "seek": "Position",
+        "play": "Play",
+        "pause": "Pause",
+        "next": "Next",
+        "previous": "Previous",
+        "shuffle": "Shuffle",
+        "shufflePlay": "Shuffle",
+        "volume": "Volume",
+        "repeat": {
+            "off": "Repeat: off",
+            "all": "Repeat: all",
+            "one": "Repeat: this one"
+        },
+        "elsewhereTab": "Playing in another tab",
+        "elsewhereDevice": "Playing on another device",
+        "continueHere": "Continue here",
+        "blocked": "Press play to start the music here (the browser waits for a click).",
+        "tabs": {
+            "queue": "Queue",
+            "library": "Library",
+            "playlists": "Playlists",
+            "add": "Add"
+        },
+        "queueEmpty": "Nothing in the queue. Play something from the library.",
+        "dequeue": "Remove from the queue",
+        "libraryEmpty": "Your library is empty. Add music under “Add”.",
+        "searchLibrary": "Search title, artist, album…",
+        "group": "Group by",
+        "sort": "Sort by",
+        "groups": {
+            "none": "No groups",
+            "artist": "Artist",
+            "album": "Album",
+            "source": "Source"
+        },
+        "sorts": {
+            "added": "Newest",
+            "title": "Title",
+            "artist": "Artist",
+            "album": "Album",
+            "duration": "Length"
+        },
+        "selectAll": "Select all",
+        "selected": "{{count}} selected",
+        "select": "Select {{title}}",
+        "enqueue": "To the queue",
+        "addToPlaylist": "Add to playlist…",
+        "playNext": "Play next",
+        "edit": "Edit",
+        "remove": "Remove from the library",
+        "unknown": "Unknown",
+        "fields": {
+            "title": "Title",
+            "artist": "Artist",
+            "album": "Album",
+            "year": "Year",
+            "genre": "Genre"
+        },
+        "newPlaylist": "New playlist name",
+        "fromQueue": "From the queue ({{count}})",
+        "create": "Create",
+        "playlistsEmpty": "No playlists yet.",
+        "rename": "Rename",
+        "removePlaylist": "Delete the playlist",
+        "fromPlaylist": "Remove from the playlist",
+        "tracks": "{{count}} tracks",
+        "upload": "Upload",
+        "dropFiles": "Drop audio files here or click to choose",
+        "quota": "{{used}} of {{limit}} MB used ({{left}} MB left)",
+        "quotaOwner": "{{used}} MB used (no limit for you)",
+        "link": "Link or YouTube",
+        "linkPlaceholder": "https://… audio file, YouTube video or playlist",
+        "added": "Added “{{title}}”",
+        "folder": "A folder from your files",
+        "noFolders": "Add a WebDAV, Nextcloud or copyparty integration (Customize → Integrations) to add folders from it.",
+        "path": "Folder",
+        "folderAdded": "{{added}} songs added ({{skipped}} were in the library already).",
+        "noNavidrome": "Add a Navidrome / OpenSubsonic integration (Customize → Integrations) to add music from it.",
+        "albumSearch": "Search albums",
+        "findAlbums": "Find",
+        "songsAdded": "{{count}} songs added.",
+        "login": "Log in to keep a music library.",
+        "sources": {
+            "upload": "Uploaded",
+            "builtin": "Built in",
+            "link": "Link",
+            "youtube": "YouTube",
+            "webdav": "Your files",
+            "navidrome": "Navidrome"
+        },
+        "sections": {
+            "library": "Library",
+            "queue": "Queue",
+            "playlists": "Playlists",
+            "add": "Add music",
+            "playback": "Playback"
+        },
+        "views": {
+            "songs": "Songs",
+            "albums": "Albums",
+            "artists": "Artists",
+            "sources": "Sources"
+        },
+        "view": "View",
+        "settings": {
+            "background": "Keep playing when the dash tab is in the background",
+            "backgroundHint": "Off: hiding the tab pauses the music, coming back plays on.",
+            "resume": "Continue when the dash opens",
+            "resumeHint": "Only if music was still playing when you left; a pause stays a pause. Starts with your first click or key (browsers allow sound only then).",
+            "fade": "Fade in and out",
+            "fadeHint": "On play, pause and when another tab takes over.",
+            "fadeMs": "Fade length",
+            "chip": "“Now playing” button at the top",
+            "chipHint": "While music plays and the page has no music widget: a small button next to Edit and Customize.",
+            "oneDevice": "Music plays on one of your devices at a time: starting it somewhere pauses it everywhere else."
+        },
+        "loading": "Loading your library…",
+        "noMatch": "Nothing matches.",
+        "unknownArtist": "Unknown artist",
+        "playFromHere": "Play from here",
+        "more": "More for {{title}}",
+        "moreShort": "More",
+        "addTo": "Add to “{{name}}”",
+        "newPlaylistFrom": "New playlist with this",
+        "newPlaylistName": "New playlist",
+        "removeSeveral": "Remove {{count}} from the library",
+        "editTitle": "Edit the details",
+        "mute": "Mute",
+        "unmute": "Unmute",
+        "playGroup": "Play {{name}}",
+        "back": "Back",
+        "toPlaylist": "New playlist",
+        "clearSelection": "Clear the selection",
+        "selectHint": "{{count}} songs · {{length}}",
+        "playlistEmpty": "Empty. Add songs from the library (⋯ → Add to …).",
+        "confirmDelete": "Delete the playlist “{{name}}”? The songs stay in your library.",
+        "uploadText": "Your own files, kept on this site for your account.",
+        "formats": "mp3, m4a, aac, ogg, opus, flac, wav, webm · up to 60 MB each",
+        "noAudio": "Those aren't audio files.",
+        "linkText": "An audio file on the web, a YouTube video or a whole YouTube playlist. Played from there, nothing is copied.",
+        "folderText": "Every song in a folder (and its subfolders) of your WebDAV, Nextcloud or copyparty.",
+        "folderFrom": "From",
+        "navidromeText": "Whole albums, or every song in your Navidrome / OpenSubsonic. Already added songs are skipped.",
+        "newestAlbums": "Newest albums",
+        "moreInQueue": "and {{count}} more",
+        "clearQueue": "Empty the queue",
+        "upNext": "Up next",
+        "choose": "Choose music",
+        "chooseText": "Choose something to play.",
+        "emptyTitle": "No music yet",
+        "emptyText": "Add songs in Customize → Music.",
+        "addMusic": "Add music",
+        "manage": "Manage",
+        "shuffleAll": "Shuffle everything",
+        "addAll": "Add all songs",
+        "addingAll": "Adding everything…",
+        "libraryFull": "Your library is full ({{limit}} songs); the rest weren’t added.",
+        "formatsOwner": "mp3, m4a, aac, ogg, opus, flac, wav, webm · any size, as many as you like",
+        "folderMore": "That’s the most one import takes (500); add the subfolders one by one for more.",
+        "showMore": "Show {{count}} more"
     }
 }

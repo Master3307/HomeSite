@@ -1,7 +1,6 @@
 allowBuilds:
   better-sqlite3: true
   canvas: true
-
 overrides:
   undici: "^6.28.0"
   qs: "^6.16.1"
@@ -10,3 +9,5 @@ overrides:
 permissions:
   dotenv:
     skills: false
+  tesseract.js:
+    build: false

@@ -126,6 +126,100 @@ function IconInput({ value, onChange, url, label }) {
 
 /* ---------- rows (links, feeds, repos, zones, values …) ---------- */
 
+/*
+ * A coin for the crypto widget: search CoinGecko by name or symbol and pick
+ * one (stored as its id plus name / symbol / picture for showing it here).
+ */
+function CoinPicker({ row, onPick }) {
+  const { t } = useTranslation('dash')
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(!row.coin)
+  const [state, setState] = useState({ status: 'idle', coins: [] })
+  const input = useRef(null)
+  useEffect(() => {
+    const words = query.trim()
+    if (!open || words.length < 2) return setState({ status: 'idle', coins: [] })
+    const controller = new AbortController()
+    setState((current) => ({ ...current, status: 'loading' }))
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(words)}`, { signal: controller.signal })
+        if (!response.ok) throw new Error(String(response.status))
+        const data = await response.json()
+        setState({ status: 'ready', coins: (data.coins ?? []).slice(0, 8) })
+      } catch (error) {
+        if (error.name !== 'AbortError') setState({ status: 'error', coins: [] })
+      }
+    }, 300)
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [query, open])
+  if (!open && row.coin)
+    return (
+      <span className="dash-coin">
+        {row.thumb && /^https:\/\//.test(row.thumb) ? <img src={row.thumb} width="20" height="20" alt="" /> : <span className="material-symbols-outlined" aria-hidden="true">toll</span>}
+        <strong>{row.name || row.coin}</strong>
+        {row.symbol && <small>{String(row.symbol).toUpperCase()}</small>}
+        <button
+          type="button"
+          className="dash-link-button"
+          onClick={() => {
+            setOpen(true)
+            requestAnimationFrame(() => input.current?.focus())
+          }}
+        >
+          {t('fields.coin.change')}
+        </button>
+      </span>
+    )
+  return (
+    <span className="dash-coin-search">
+      <input ref={input} value={query} onChange={(event) => setQuery(event.target.value.slice(0, 60))} placeholder={t('fields.coin.search')} aria-label={t('fields.coin.search')} onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          if (state.coins[0]) {
+            onPick(state.coins[0])
+            setOpen(false)
+            setQuery('')
+          }
+        }
+        if (event.key === 'Escape' && row.coin) {
+          event.preventDefault()
+          event.stopPropagation()
+          setOpen(false)
+        }
+      }} />
+      {state.status === 'loading' && <small className="dash-hint">{t('fields.coin.searching')}</small>}
+      {state.status === 'error' && <small className="dash-error">{t('fields.coin.failed')}</small>}
+      {state.status === 'ready' && !state.coins.length && <small className="dash-hint">{t('fields.coin.none')}</small>}
+      {state.coins.length > 0 && (
+        <span className="dash-coin-list" role="listbox" aria-label={t('fields.coin.search')}>
+          {state.coins.map((coin) => (
+            <button
+              key={coin.id}
+              type="button"
+              role="option"
+              aria-selected={coin.id === row.coin}
+              onClick={() => {
+                onPick(coin)
+                setOpen(false)
+                setQuery('')
+              }}
+            >
+              {coin.thumb ? <img src={coin.thumb} width="20" height="20" alt="" loading="lazy" /> : <span className="material-symbols-outlined" aria-hidden="true">toll</span>}
+              <strong>{coin.name}</strong>
+              <small>{String(coin.symbol ?? '').toUpperCase()}</small>
+              {coin.market_cap_rank && <small className="dash-coin-list__rank">{t('fields.coin.rank', { rank: coin.market_cap_rank })}</small>}
+            </button>
+          ))}
+        </span>
+      )}
+    </span>
+  )
+}
+
 function RowsField({ field, value, onChange }) {
   const { t } = useTranslation('dash')
   const rows = Array.isArray(value) ? value : []
@@ -133,6 +227,7 @@ function RowsField({ field, value, onChange }) {
   const max = Math.min(MAX_ITEMS, field.max ?? MAX_ITEMS)
   const blank = () => Object.fromEntries(field.columns.map((column) => [column.key, column.default ?? (column.type === 'zone' ? '' : '')]))
   const set = (index, key, text) => onChange(rows.map((row, at) => (at === index ? { ...row, [key]: text } : row)))
+  const patch = (index, values) => onChange(rows.map((row, at) => (at === index ? { ...row, ...values } : row)))
   const move = (index, offset) => {
     const target = index + offset
     if (target < 0 || target >= rows.length) return
@@ -144,6 +239,8 @@ function RowsField({ field, value, onChange }) {
     const label = t(`fields.columns.${column.key}`, { defaultValue: column.key })
     const common = { 'aria-label': label, placeholder: column.placeholder ?? label }
     switch (column.type) {
+      case 'coin':
+        return <CoinPicker key={column.key} row={row} onPick={(coin) => patch(index, { coin: coin.id, name: String(coin.name ?? '').slice(0, 80), symbol: String(coin.symbol ?? '').slice(0, 20), thumb: /^https:\/\//.test(coin.thumb ?? '') ? coin.thumb.slice(0, 500) : '' })} />
       case 'zone':
         return <TimeZonePicker key={column.key} value={row[column.key] || 'auto'} onChange={(zone) => set(index, column.key, zone === 'auto' ? '' : zone)} />
       case 'icon':

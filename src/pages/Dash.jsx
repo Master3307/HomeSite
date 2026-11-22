@@ -12,6 +12,8 @@ import { useAccountSettings } from '../lib/accountSettings.jsx'
 import { loadIntegrations, resetIntegrations } from '../lib/dashIntegrations.js'
 import { MAX_PAGES, addPage, duplicatePage, isColor, mergeDashSettingsFromAccount, movePage, removePage, setDashSyncAccount, showPage, updatePage, updateTop, useDashSettings, withScheme } from '../lib/dashSettings.js'
 import { siteConfig } from '../lib/siteConfig.js'
+import * as music from '../lib/music.js'
+import { Cover } from '../components/dash/music/parts.jsx'
 import '../styles/dash.css'
 import '../styles/nunito.css'
 import '../styles/nerd-font.css'
@@ -253,13 +255,52 @@ function useTabIcon(icon) {
   }, [icon])
 }
 
+/*
+ * While music plays and the page has no music widget: a quiet button with the
+ * cover next to Edit / Customize (click pauses / plays, right click or long
+ * press: next, previous, Customize → Music).
+ */
+function NowPlayingChip({ page, widgets, openSettings }) {
+  const { t } = useTranslation('dash')
+  const state = music.useMusic()
+  const track = music.currentTrack()
+  const [menu, setMenu] = useState(null)
+  const trigger = useMenuTrigger(({ x, y }) =>
+    setMenu({
+      x,
+      y,
+      label: track?.title ?? t('music.nothing'),
+      items: [
+        { label: state.playing ? t('music.pause') : t('music.play'), icon: state.playing ? 'pause' : 'play_arrow', onSelect: () => music.toggle() },
+        { label: t('music.next'), icon: 'skip_next', onSelect: () => music.next() },
+        { label: t('music.previous'), icon: 'skip_previous', onSelect: () => music.previous() },
+        '-',
+        { label: t('music.manage'), icon: 'library_music', onSelect: () => openSettings('music') },
+      ],
+    }),
+  )
+  if (!track || (!state.playing && state.intent !== 'play') || widgets.some((widget) => widget.page === page && widget.type === 'music')) return null
+  return (
+    <>
+      <button type="button" className={`dash-button dash-button--quiet dash-now-chip${state.playing ? ' is-playing' : ''}`} onClick={() => music.toggle()} title={`${track.title}${track.artist ? ` · ${track.artist}` : ''}`} aria-label={`${state.playing ? t('music.pause') : t('music.play')}: ${track.title}`} {...trigger}>
+        <Cover track={track} size={22} />
+        <span className="material-symbols-outlined" aria-hidden="true">
+          {state.playing ? 'pause' : 'play_arrow'}
+        </span>
+        <span className="dash-top__label">{track.title}</span>
+      </button>
+      <DashMenu menu={menu} onClose={() => setMenu(null)} />
+    </>
+  )
+}
+
 const isTyping = (target) => target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
 
 export default function Dash() {
   const { t } = useTranslation(['title', 'dash'])
   const { account } = useAccountSettings()
   const settings = useDashSettings()
-  const { look, top, pages } = settings
+  const { look, top, pages, shortcuts } = settings
   const [settingsOpen, setSettingsOpen] = useState(null) // null | tab id
   const [editing, setEditing] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -289,11 +330,38 @@ export default function Dash() {
     else resetIntegrations()
   }, [accountId])
 
+  // Music: how it plays, going on where it was (only if it was playing: a pause stays a pause), Customize → Music from the widget.
+  const musicOptions = settings.music
+  useEffect(() => {
+    music.setMusicOptions({ background: musicOptions.background, fade: musicOptions.fade, fadeMs: musicOptions.fadeMs })
+  }, [musicOptions.background, musicOptions.fade, musicOptions.fadeMs])
+  useEffect(() => {
+    if (!siteConfig.dashMusic || !loggedIn) return undefined
+    music.startMusic()
+    music.loadLibrary().catch(() => {})
+    if (!musicOptions.resume || !music.shouldResume()) return undefined
+    // Browsers only allow sound after a click or key: then it goes on.
+    const go = () => music.shouldResume() && music.play()
+    window.addEventListener('pointerdown', go, { once: true, capture: true })
+    window.addEventListener('keydown', go, { once: true, capture: true })
+    return () => {
+      window.removeEventListener('pointerdown', go, { capture: true })
+      window.removeEventListener('keydown', go, { capture: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- when the dash opens (and on login)
+  }, [loggedIn])
+  useEffect(() => {
+    const open = (event) => setSettingsOpen(typeof event.detail === 'string' ? event.detail : 'look')
+    window.addEventListener('dash:settings', open)
+    return () => window.removeEventListener('dash:settings', open)
+  }, [])
+
   // Keys.
   useEffect(() => {
     const onKey = (event) => {
       if (document.querySelector('dialog[open]')) return
       if (event.key === 'Escape' && editing) return setEditing(false)
+      if (!shortcuts) return
       if ((event.ctrlKey || event.metaKey) && event.key === ',') {
         event.preventDefault()
         return setSettingsOpen('look')
@@ -321,7 +389,7 @@ export default function Dash() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [editing, pages])
+  }, [editing, pages, shortcuts])
 
   const image = look.background === 'image' ? withScheme(look.backgroundValue) : ''
   const dim = `rgb(0 0 0 / ${look.dim / 100})`
@@ -364,17 +432,18 @@ export default function Dash() {
         <div className="dash-top">
           <Greeting top={top} account={account} rolling={top.rolling === 'on' || (top.rolling === 'inherit' && look.rolling)} />
           <div className="dash-top__actions">
+            {siteConfig.dashMusic && musicOptions.chip && <NowPlayingChip page={activePage} widgets={settings.widgets} openSettings={setSettingsOpen} />}
             <button type="button" className={`dash-button dash-button--quiet${editing ? ' is-active' : ''}`} aria-pressed={editing} onClick={() => setEditing(!editing)} title={`${t('dash:board.editBoard')} (E)`}>
               <span className="material-symbols-outlined" aria-hidden="true">
                 {editing ? 'check' : 'edit'}
               </span>
-              {editing ? t('dash:board.done') : t('dash:board.editBoard')}
+              <span className="dash-top__label">{editing ? t('dash:board.done') : t('dash:board.editBoard')}</span>
             </button>
             <button type="button" className="dash-button dash-button--quiet" onClick={() => setSettingsOpen('look')} title={`${t('dash:settings.title')} (Ctrl + ,)`}>
               <span className="material-symbols-outlined" aria-hidden="true">
                 tune
               </span>
-              {t('dash:settings.title')}
+              <span className="dash-top__label">{t('dash:settings.title')}</span>
             </button>
           </div>
         </div>

@@ -71,7 +71,7 @@ function BookmarksView({ widget }) {
     60,
     showStatus,
   )
-  if (!items.length) return <Empty icon="bookmarks">{t('widgets.bookmarks.empty')}</Empty>
+  if (!items.length) return <Empty icon="bookmarks" setup>{t('widgets.bookmarks.empty')}</Empty>
   const size = { small: 18, medium: 24, large: 36 }[iconSize] ?? 24
   const tileSize = { small: 28, medium: 40, large: 56 }[iconSize] ?? 40
   const target = (newTab ?? openInNewTab) ? '_blank' : undefined
@@ -113,7 +113,7 @@ function StatusView({ widget }) {
     items.map((item) => item.url),
     Math.max(30, Number(widget.options.interval) || 60),
   )
-  if (!items.length) return <Empty icon="monitor_heart">{t('widgets.status.empty')}</Empty>
+  if (!items.length) return <Empty icon="monitor_heart" setup>{t('widgets.status.empty')}</Empty>
   const up = items.filter((item) => stateOf(pings[item.url]) === 'up').length
   const checked = items.filter((item) => stateOf(pings[item.url]) !== 'wait').length
   return (

@@ -20,6 +20,23 @@
  * rows[0] is the most exact answer.
  */
 
+import { analyzeColor } from './dashColor.js'
+import { analyzeTime } from './dashTime.js'
+
+/* CSS colour names (red, rebeccapurple), resolved by the browser. */
+let colorCanvas = null
+function namedColor(name) {
+  if (typeof document === 'undefined' || !globalThis.CSS?.supports?.('color', name)) return null
+  colorCanvas ??= document.createElement('canvas').getContext('2d')
+  colorCanvas.fillStyle = '#000'
+  colorCanvas.fillStyle = name
+  const value = colorCanvas.fillStyle
+  const hex = /^#([0-9a-f]{6})$/i.exec(value)
+  if (hex) return { r: parseInt(hex[1].slice(0, 2), 16), g: parseInt(hex[1].slice(2, 4), 16), b: parseInt(hex[1].slice(4, 6), 16), a: 1 }
+  const rgba = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/.exec(value)
+  return rgba ? { r: Number(rgba[1]), g: Number(rgba[2]), b: Number(rgba[3]), a: rgba[4] === undefined ? 1 : Number(rgba[4]) } : null
+}
+
 /* ---------- numbers ---------- */
 
 export function formatNumber(value, { digits = 12, locale = undefined, plain = false } = {}) {
@@ -106,7 +123,7 @@ const listOf = (value) =>
     .map((word) => word.trim().toLocaleLowerCase())
     .filter(Boolean)
 
-let LANGUAGE = { words: [], percentOf: null, and: [], convert: [], labels: {}, dimensions: {} }
+let LANGUAGE = { words: [], percentOf: null, and: [], convert: [], labels: {}, dimensions: {}, zones: {}, phrases: { ask: [], convert: [], howMany: [], color: [] } }
 
 /*
  * Other names for LaTeX commands ("\squareroot", "\fraction"), from the
@@ -121,7 +138,7 @@ export function setLatexAliases(map) {
 
 /** Packs: the calc.json of each language to read (English first, then the visitor's). */
 export function setMathLanguage(...packs) {
-  const merged = { units: {}, words: {}, convert: [], and: [], labels: {}, dimensions: {} }
+  const merged = { units: {}, words: {}, convert: [], and: [], labels: {}, dimensions: {}, zones: {}, phrases: { ask: [], convert: [], howMany: [], color: [] } }
   for (const pack of packs.filter(Boolean)) {
     for (const [dimension, ids] of Object.entries(pack.units ?? {})) {
       merged.units[dimension] ??= {}
@@ -133,6 +150,8 @@ export function setMathLanguage(...packs) {
     // Labels: the visitor's language wins.
     Object.assign(merged.labels, pack.labels ?? {})
     Object.assign(merged.dimensions, pack.dimensions ?? {})
+    Object.assign(merged.zones, pack.zones ?? {})
+    for (const key of Object.keys(merged.phrases)) merged.phrases[key].push(...listOf(pack.phrases?.[key]))
   }
   indexUnits(merged.units)
   LANGUAGE = {
@@ -144,6 +163,8 @@ export function setMathLanguage(...packs) {
     convert: merged.convert,
     labels: merged.labels,
     dimensions: merged.dimensions,
+    zones: merged.zones,
+    phrases: merged.phrases,
   }
   CONVERT_WORDS = convertPattern(merged.convert)
 }
@@ -484,7 +505,9 @@ function parse(tokens, { names = [], functions = [], words = false } = {}) {
       // Implicit multiplication binds like *.
       if (startsFactor(token) && !isOp(token, '|')) {
         if (20 < min) break
-        left = { type: 'mul', left, right: expression(21) }
+        // (Brackets remembered for showing it: g(x), 2(3 + 4).)
+        const bracket = token.type === '('
+        left = { type: 'mul', left, right: expression(21), ...(bracket ? { bracket: true } : {}) }
         continue
       }
       const op = token.type === 'op' ? token.value : token.type === 'id' && token.value.toLowerCase() === 'mod' ? 'mod' : null
@@ -1040,13 +1063,13 @@ function unitsFor(raw) {
   const push = (unit) => unit && !found.includes(unit) && found.push(unit)
   if (AMBIGUOUS[lower] && !(lower === 'mb' && name === 'MB') && !(lower === 'b' && name === 'B') && !(lower === 'gb' && name === 'GB') && !(lower === 'kb' && (name === 'kB' || name === 'KB'))) for (const alias of AMBIGUOUS[lower]) push(EXACT.get(alias) ?? LOWER.get(alias))
   push(EXACT.get(name))
-  push(LOWER.get(lower))
+  // Written exactly (KB, MB, Pa): that unit, not others that only match without case (kbit).
+  if (!found.length) push(LOWER.get(lower))
   // "degrees celsius", "2 kilometers" plural / spelling slips: drop a final s.
   if (!found.length && lower.endsWith('s')) push(LOWER.get(lower.slice(0, -1)))
   return found
 }
 
-const toBase = (value, unit) => (unit.dimension === 'temperature' ? (value + (unit.symbol === 'k' ? 0 : unit.symbol === '°c' ? 273.15 : 0)) * 1 : value * unit.factor)
 function convert(value, from, to) {
   if (from.dimension === 'temperature') {
     const kelvin = from.symbol === '°c' ? value + 273.15 : from.symbol === '°f' ? ((value - 32) * 5) / 9 + 273.15 : value
@@ -1603,10 +1626,28 @@ function functionHead(node, known) {
   return null
 }
 const freeOf = (node, known) => [...freeVariables(node)].filter((name) => !(name in known))
-const leadName = (node, known) => node.type === 'var' && !(node.name in known) && !(node.name in CONSTANTS)
+
+/*
+ * How people ask: "convert 4:50pm to 24h", "what is 2+2", "how many seconds in a day"
+ * (words from the language packs: phrases.ask, phrases.convert, phrases.howMany).
+ */
+function plainQuestion(text) {
+  // ("10!" is a factorial: only a ! after a word is punctuation.)
+  let out = String(text ?? '').trim().replace(/\?+$/, '').replace(/(?<=[A-Za-z\s])!+$/, '').trim()
+  const ask = wordPattern(LANGUAGE.phrases.ask, 'iu')
+  if (ask) out = out.replace(new RegExp(`^(?:${ask.source})\\s+`, 'iu'), '')
+  const convert = wordPattern(LANGUAGE.phrases.convert, 'iu')
+  if (convert) out = out.replace(new RegExp(`^(?:${convert.source})\\s+(?:from\\s+)?`, 'iu'), '')
+  const many = wordPattern(LANGUAGE.phrases.howMany, 'iu')
+  if (many) {
+    const match = new RegExp(`^(?:${many.source})\\s+(.+?)\\s+(?:are\\s+|is\\s+)?(?:in|per)\\s+(?:an?\\s+|one\\s+)?(.+)$`, 'iu').exec(out)
+    if (match) out = `1 ${match[2]} in ${match[1]}`
+  }
+  return out
+}
 
 export function analyze(input, { angle = 'rad', locale = undefined, digits = 12, vars = null, functions = null, soft = [], names = [], assign = false, graphAny = false, decimalComma = false } = {}) {
-  const raw = String(input ?? '').trim()
+  const raw = plainQuestion(input)
   if (!raw || raw.length > 600) return null
   const fns = functions ?? {}
   const options = { angle, locale, functions: Object.fromEntries(Object.entries(fns).map(([name, entry]) => [name, entry.fn])) }
@@ -1623,6 +1664,17 @@ export function analyze(input, { angle = 'rad', locale = undefined, digits = 12,
   // ÷ 0, √ of a negative, log 0, asin 2, (−1)!: maths that can't be done (∞ typed on purpose is fine).
   const impossible = (number) => !Number.isFinite(number) && !/inf|∞/i.test(raw)
 
+  // Colours: #8b7bff, rgb(…), hsl(…), "teal color", "red to hex" (lib/dashColor.js).
+  const colored = analyzeColor(raw, { label, named: namedColor, colorWords: LANGUAGE.phrases.color })
+  if (colored) return colored
+  // Times, dates, time zones, timestamps, timecodes (lib/dashTime.js).
+  if (!Object.keys(known).length || !/[A-Za-z]/.test(raw.replace(/\b(?:am|pm|in|to|h|min|s|utc|gmt)\b/gi, ''))) {
+    const timed = analyzeTime(raw, { fmt, plain, locale, label, countries: LANGUAGE.zones })
+    if (timed) return timed
+  }
+  // "km in m", "km/h to m/s", "°C in °F": the general rule, no number needed.
+  const rule = unitRule(raw, { fmt, plain })
+  if (rule) return rule
   // "v in km/h", "Δs/Δt to km/h", "300 m / 12 s in km/h": maths with units, then converted.
   const converted = convertExpression(raw, { known, fns, options, fmt, plain, decimalComma })
   if (converted) return converted
@@ -1799,6 +1851,68 @@ export function analyze(input, { angle = 'rad', locale = undefined, digits = 12,
   if (!rows.length && !graph && !illegal) return null
   const error = illegal ? errorOf(tree, options, known, tree.type === 'eq' || tree.type === 'chain' ? NaN : (() => { try { return compile(tree, options)(known) } catch { return NaN } })()) : null
   return { rows, graph, points, define, defineFunctions, tree, illegal, error }
+}
+
+/* Temperatures have an offset, so their rule is a formula, not a factor. */
+const TEMPERATURE_RULES = {
+  '°c>°f': '°F = °C · 9/5 + 32',
+  '°f>°c': '°C = (°F − 32) · 5/9',
+  '°c>k': 'K = °C + 273.15',
+  'k>°c': '°C = K − 273.15',
+  '°f>k': 'K = (°F − 32) · 5/9 + 273.15',
+  'k>°f': '°F = (K − 273.15) · 9/5 + 32',
+}
+
+/* A unit as written (km, km/h, m/s^2, kilometres): what it can mean, as { factor, dims, label, unit? }. */
+function unitReadings(text) {
+  const name = String(text ?? '').trim()
+  if (!name || /\d/.test(name.replace(/\^\s*-?\d+|[²³]/g, ''))) return []
+  const readings = unitsFor(name)
+    .filter((unit) => DIMENSION_VECTORS[unit.dimension])
+    .map((unit) => ({ factor: unit.factor, dims: DIMENSION_VECTORS[unit.dimension], label: symbolOf(unit), unit }))
+  const composite = /[/*·^²³]/.test(name) ? unitExpression(name) : null
+  if (composite) readings.push(composite)
+  return readings
+}
+
+/* "km in m": 1 km = 1 000 m, × 1 000, and the other way round. */
+function unitRule(raw, { fmt, plain }) {
+  const splits = [...raw.matchAll(CONVERT_WORDS)]
+  for (let index = splits.length - 1; index >= 0; index--) {
+    const from = unitReadings(raw.slice(0, splits[index].index))
+    const to = unitReadings(raw.slice(splits[index].index + splits[index][0].length))
+    for (const a of from) {
+      for (const b of to) {
+        if (!sameDims(a.dims, b.dims) || a.label === b.label) continue
+        const hint = label('rule')
+        if (a.unit?.dimension === 'temperature' || b.unit?.dimension === 'temperature') {
+          const formula = TEMPERATURE_RULES[`${a.unit?.symbol}>${b.unit?.symbol}`]
+          if (!formula) continue
+          return { rows: [{ id: 'rule', kind: 'convert', text: formula, copy: formula, hint }], graph: null, points: [], define: null, defineFunctions: [], tree: null, illegal: false, error: null }
+        }
+        const factor = a.factor / b.factor
+        const inverse = 1 / factor
+        // "÷ 3.6" reads better than "× 0.2777…"; "× 1000" better than "÷ 0.001".
+        const nice = (value) => Math.abs(value - Math.round(value * 1000) / 1000) < 1e-9 * Math.max(1, value)
+        const step = factor < 1 && nice(inverse) ? `÷ ${fmt(inverse)}` : `× ${fmt(factor)}`
+        return {
+          rows: [
+            { id: 'rule', kind: 'convert', text: `1 ${a.label} = ${fmt(factor)} ${b.label}`, copy: plain(factor), hint },
+            { id: 'step', kind: 'convert', text: `${a.label} → ${b.label}: ${step}`, copy: step, hint },
+            { id: 'back', kind: 'convert', text: `1 ${b.label} = ${fmt(inverse)} ${a.label}`, copy: plain(inverse), hint: label('ruleBack') },
+          ],
+          graph: null,
+          points: [],
+          define: null,
+          defineFunctions: [],
+          tree: null,
+          illegal: false,
+          error: null,
+        }
+      }
+    }
+  }
+  return null
 }
 
 /* A quantity worked out (with the values known so far) and shown in the units asked for. */

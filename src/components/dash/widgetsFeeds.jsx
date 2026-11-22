@@ -178,7 +178,7 @@ function ReleasesView({ widget }) {
   const rows = (widget.options.repos ?? []).filter(validRow)
   const [dates, setDates] = useState({})
   const recordDate = useCallback((name, date) => setDates((current) => (current[name] === date ? current : { ...current, [name]: date })), [])
-  if (!rows.length) return <Empty icon="new_releases">{t('widgets.releases.empty')}</Empty>
+  if (!rows.length) return <Empty icon="new_releases" setup>{t('widgets.releases.empty')}</Empty>
   // Newest release first (once known), else the order you gave.
   const ordered = widget.options.sort === 'order' ? rows : [...rows].sort((a, b) => (new Date(dates[b.repo] ?? 0) - new Date(dates[a.repo] ?? 0)) || 0)
   return (
@@ -266,7 +266,7 @@ function RepoView({ widget }) {
   const commits = Math.max(0, Math.min(10, Number(widget.options.commits ?? 3)))
   const pulls = Math.max(0, Math.min(10, Number(widget.options.pulls ?? 0)))
   const { data, error, reload } = useRemote(valid ? `repo:${source}:${name}:${integration?.id ?? ''}:${commits}:${pulls}` : null, (signal) => loadRepo(source, name, integration, { commits, pulls }, signal), { refresh: integration ? 10 * 60 : 30 * 60, enabled: valid, private: Boolean(integration) })
-  if (!valid) return <Empty icon="folder_code">{t('widgets.repo.empty')}</Empty>
+  if (!valid) return <Empty icon="folder_code" setup>{t('widgets.repo.empty')}</Empty>
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={4} />
   const stats = [
     ['star', data.stars, t('widgets.repo.stars')],
@@ -360,7 +360,7 @@ function FeedView({ widget }) {
 
   if (!siteConfig.dashFeeds) return <Empty icon="rss_feed">{t('widgets.feed.off')}</Empty>
   if (!loggedInOf(account)) return <Empty icon="rss_feed">{t('widgets.feed.login')}</Empty>
-  if (!rows.length) return <Empty icon="rss_feed">{t('widgets.feed.empty')}</Empty>
+  if (!rows.length) return <Empty icon="rss_feed" setup>{t('widgets.feed.empty')}</Empty>
 
   const settled = rows.filter((row) => results[row.url] && (results[row.url].data || results[row.url].error))
   const errors = rows.filter((row) => results[row.url]?.error && !results[row.url]?.data)
@@ -453,7 +453,7 @@ function MarketsView({ widget }) {
   const { t, i18n } = useTranslation('dash')
   const { currency = 'usd', sparkline = true, change = true } = widget.options
   const ids = (widget.options.coins ?? [])
-    .map((row) => String(row?.id ?? '').trim().toLowerCase())
+    .map((row) => String(row?.coin ?? '').trim().toLowerCase())
     .filter((id) => /^[a-z0-9-]{1,60}$/.test(id))
     .slice(0, 25)
   const key = ids.join(',')
@@ -462,7 +462,7 @@ function MarketsView({ widget }) {
     (signal) => fetchJson(`https://api.coingecko.com/api/v3/coins/markets?${new URLSearchParams({ vs_currency: currency, ids: key, sparkline: 'true', price_change_percentage: '24h' })}`, { signal }),
     { refresh: 5 * 60, enabled: ids.length > 0 },
   )
-  if (!ids.length) return <Empty icon="monitoring">{t('widgets.markets.empty')}</Empty>
+  if (!ids.length) return <Empty icon="monitoring" setup>{t('widgets.markets.empty')}</Empty>
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={ids.length} />
   const order = new Map(ids.map((id, index) => [id, index]))
   const money = (value) => {
@@ -515,7 +515,7 @@ function MinecraftView({ widget }) {
   const valid = /^[A-Za-z0-9.-]{1,253}(:\d{1,5})?$/.test(address)
   const { players = true, motd = true } = widget.options
   const { data, error, reload } = useRemote(valid ? `mc:${edition}:${address}` : null, (signal) => fetchJson(`https://api.mcstatus.io/v2/status/${edition}/${encodeURIComponent(address)}`, { signal }), { refresh: 60, enabled: valid })
-  if (!valid) return <Empty icon="dns">{t('widgets.minecraft.empty')}</Empty>
+  if (!valid) return <Empty icon="dns" setup>{t('widgets.minecraft.empty')}</Empty>
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={2} />
   const list = data.players?.list ?? []
   return (

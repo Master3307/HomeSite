@@ -222,6 +222,75 @@ const SETTINGS = [
     applies: ["accounts"],
   },
 
+  {
+    key: "LIBRETRANSLATE_URL",
+    section: "site",
+    label: "Translation service (LibreTranslate)",
+    description:
+      'Where your own LibreTranslate runs (offline translation on the server, `pnpm translate` starts it). The dash search translates with it ("house in German", OCR text from pictures); the text goes from the account API to this address only. Empty switches translation off.',
+    type: "url",
+    importance: "optional",
+    default: "http://127.0.0.1:5000",
+    applies: ["accounts"],
+    help: [{ label: "LibreTranslate", url: "https://github.com/LibreTranslate/LibreTranslate" }],
+  },
+
+  {
+    key: "LIBRETRANSLATE_API_KEY",
+    section: "site",
+    label: "LibreTranslate API key",
+    description: "Only if your LibreTranslate asks for one (started with --api-keys). Empty for none.",
+    type: "secret",
+    importance: "optional",
+    default: "",
+    applies: ["accounts"],
+  },
+
+  {
+    key: "DASH_MUSIC",
+    section: "site",
+    label: "Background music on the dashboard",
+    description: "Lets logged-in people keep a music library on /dash (uploads, links, YouTube, their Navidrome / WebDAV) and play it in the background. Off hides the music widget.",
+    type: "toggle",
+    importance: "optional",
+    default: "on",
+    public: true,
+    applies: ["site", "accounts"],
+  },
+
+  {
+    key: "MUSIC_DIR",
+    section: "site",
+    label: "Built-in music folder",
+    description: "A folder on the server with music everyone logged in can play (title, artist, album and cover are read from the files). Empty for none.",
+    type: "text",
+    importance: "optional",
+    default: "",
+    example: "/srv/music",
+    applies: ["accounts"],
+  },
+
+  {
+    key: "MUSIC_UPLOAD_MB",
+    section: "site",
+    label: "Music upload space per person (MB)",
+    description: "How much music each logged-in person may upload to their library. The site owner has no limit.",
+    type: "number",
+    importance: "optional",
+    default: "130",
+    applies: ["accounts"],
+  },
+  {
+    key: "MUSIC_MAX_TRACKS",
+    section: "site",
+    label: "Songs per music library",
+    description: "How many songs (uploads, links, folder and Navidrome entries together) each logged-in person's library may hold. The site owner has no limit.",
+    type: "number",
+    importance: "optional",
+    default: "5000",
+    applies: ["accounts"],
+  },
+
   /* ---------- Discord app & bot ---------- */
   {
     key: "DISCORD_CLIENT_ID",

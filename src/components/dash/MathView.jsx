@@ -85,6 +85,16 @@ function render(node, parent = 0) {
       )
       break
     case 'mul':
+      // Written with brackets: f(x), 2(3 + 4).
+      if (node.bracket) {
+        out = (
+          <>
+            {wrap(node.left, 2)}
+            <Paren>{render(node.right)}</Paren>
+          </>
+        )
+        break
+      }
       out = juxtaposes(node.left, node.right) ? (
         <>
           {wrap(node.left, 2)}

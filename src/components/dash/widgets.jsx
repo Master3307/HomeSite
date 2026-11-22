@@ -8,6 +8,7 @@ import { LINK_VIEWS as L } from './widgetsLinks.jsx'
 import { SITE_VIEWS as S } from './widgetsSite.jsx'
 import { SERVICE_VIEWS as V } from './widgetsServices.jsx'
 import { EXTRA_VIEWS as X } from './widgetsExtra.jsx'
+import { MUSIC_VIEWS as MU } from './widgetsMusic.jsx'
 import { siteConfig } from '../../lib/siteConfig.js'
 
 /*
@@ -228,7 +229,7 @@ export const WIDGETS = {
     titled: true,
     View: F.MarketsView,
     fields: [
-      { key: 'coins', type: 'rows', max: 25, columns: [{ key: 'id', type: 'text', placeholder: 'bitcoin' }] },
+      { key: 'coins', type: 'rows', max: 25, columns: [{ key: 'coin', type: 'coin' }] },
       { key: 'currency', type: 'choice', choices: ['usd', 'eur', 'gbp', 'chf', 'jpy', 'cad', 'aud', 'btc'], default: 'usd' },
       { key: 'sparkline', type: 'toggle', default: true },
       { key: 'change', type: 'toggle', default: true },
@@ -387,6 +388,17 @@ export const WIDGETS = {
       { key: 'sound', type: 'toggle', default: true, when: (options) => (options.mode ?? 'timer') === 'timer' },
     ],
   },
+  music: {
+    icon: 'library_music',
+    category: 'essentials',
+    titled: true,
+    needs: 'login',
+    View: MU.MusicView,
+    fields: [
+      { key: 'backdrop', type: 'toggle', default: true },
+      { key: 'upNext', type: 'toggle', default: true },
+    ],
+  },
   progress: {
     icon: 'hourglass_bottom',
     category: 'essentials',
@@ -440,7 +452,7 @@ export const WIDGETS = {
   },
 
   /* ---------- this site ---------- */
-  discord: { icon: 'id_card', category: 'site', View: S.DiscordView, fields: [] },
+  discord: { icon: 'id_card', category: 'site', View: S.DiscordView, fields: [{ key: 'who', type: 'choice', choices: ['siteOwner', 'mine'], default: 'siteOwner' }] },
   birthdays: { icon: 'cake', category: 'site', titled: true, needs: 'login', View: S.BirthdaysView, fields: [{ key: 'count', type: 'number', min: 1, max: 20, default: 5 }] },
   notifications: {
     icon: 'notifications',
@@ -516,7 +528,7 @@ export const WIDGETS = {
 }
 
 /** Types the picker offers on this site (feeds only when DASH_FEEDS is on). */
-export const availableTypes = () => Object.keys(WIDGETS).filter((type) => type !== 'feed' || siteConfig.dashFeeds)
+export const availableTypes = () => Object.keys(WIDGETS).filter((type) => (type !== 'feed' || siteConfig.dashFeeds) && (type !== 'music' || siteConfig.dashMusic))
 
 /** Default options of a type (from its fields). */
 export function defaultOptions(type) {

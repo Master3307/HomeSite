@@ -29,5 +29,8 @@
     "clearRecent": "Clear",
     "latex": "LaTeX",
     "latexHint": "Tab to insert",
-    "latexAlias": "You typed {{alias}}: this is the real command"
+    "latexAlias": "You typed {{alias}}: this is the real command",
+    "voice": "Speak your search",
+    "voiceStop": "Stop listening",
+    "image": "Search with a picture (or paste / drop one)"
 }

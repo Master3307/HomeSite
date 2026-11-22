@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState
 import { useTranslation } from 'react-i18next'
 
 import { accountFetch } from '../../lib/account.js'
+import { useDashSettings } from '../../lib/dashSettings.js'
 import { customEmojiUrl, parseCustomEmoji, twemojiUrl } from '../../lib/emoji.js'
 import { timeOptions } from '../../lib/prefs.js'
 
@@ -279,7 +280,13 @@ export function clearDashCache() {
  *   - `private`: kept for this tab session only (personal data).
  * `{ data, error, loading, at, reload }`.
  */
-export function useRemote(key, load, { refresh = 600, enabled = true, private: isPrivate = false } = {}) {
+export function useRemote(key, load, { refresh: every = 600, enabled = true, private: isPrivate = false } = {}) {
+  // Customize → Layout → "Refresh data": a third as often, or only when the page opens (still fetched then if it's older than usual).
+  const mode = useDashSettings().refresh
+  const refresh = every > 0 && mode === 'slow' ? every * 3 : every
+  const timed = mode !== 'open'
+  const forced = useContext(RefreshContext)
+  const handled = useRef(forced)
   const cached = enabled && key ? readCache(key, isPrivate) : null
   const [state, setState] = useState(() => ({ data: cached?.data ?? null, at: cached?.at ?? 0, error: null, loading: !cached }))
   const [nonce, setNonce] = useState(0)
@@ -314,15 +321,17 @@ export function useRemote(key, load, { refresh = 600, enabled = true, private: i
         .finally(() => {
           if (!alive) return
           clearTimeout(timer)
-          if (refresh > 0) timer = setTimeout(run, refresh * 1000)
+          if (refresh > 0 && timed) timer = setTimeout(run, refresh * 1000)
         })
     }
     const age = current ? (Date.now() - current.at) / 1000 : Infinity
-    if (nonce || age >= refresh || refresh <= 0) run()
-    else if (refresh > 0) timer = setTimeout(run, (refresh - age) * 1000)
+    const force = nonce || forced !== handled.current
+    handled.current = forced
+    if (force || age >= refresh || refresh <= 0) run()
+    else if (refresh > 0 && timed) timer = setTimeout(run, (refresh - age) * 1000)
 
     const onVisible = () => {
-      if (document.visibilityState !== 'visible') return
+      if (document.visibilityState !== 'visible' || !timed) return
       const latest = readCache(key, isPrivate)
       if (!latest || (Date.now() - latest.at) / 1000 >= refresh) run()
     }
@@ -333,7 +342,7 @@ export function useRemote(key, load, { refresh = 600, enabled = true, private: i
       controller?.abort()
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [key, refresh, enabled, nonce, isPrivate])
+  }, [key, refresh, timed, enabled, nonce, isPrivate, forced])
 
   return { ...state, reload: () => setNonce((value) => value + 1) }
 }
@@ -350,7 +359,15 @@ export async function fetchJson(url, { signal, headers } = {}) {
 
 /* ---------- small views ---------- */
 
-export function Empty({ icon, children, action = null }) {
+/* Opens the widget's editor (given by the board around each widget, DashBoard.jsx WidgetBody). */
+export const WidgetSetupContext = createContext(null)
+/* Goes up when the widget menu's "Refresh" is chosen: every useRemote inside fetches again. */
+export const RefreshContext = createContext(0)
+
+/* An empty widget. `setup`: it needs something set first: a button opens its editor. */
+export function Empty({ icon, children, action = null, setup = false }) {
+  const { t } = useTranslation('dash')
+  const openSetup = useContext(WidgetSetupContext)
   return (
     <div className="dash-empty">
       <span className="material-symbols-outlined" aria-hidden="true">
@@ -358,6 +375,14 @@ export function Empty({ icon, children, action = null }) {
       </span>
       <p>{children}</p>
       {action}
+      {setup && openSetup && !action && (
+        <button type="button" className="dash-button dash-button--quiet dash-button--small" onClick={openSetup}>
+          <span className="material-symbols-outlined" aria-hidden="true">
+            tune
+          </span>
+          {t('board.setUp')}
+        </button>
+      )}
     </div>
   )
 }

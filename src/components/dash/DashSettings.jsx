@@ -3,9 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { clearSearchHistory } from '../Search.jsx'
+import { siteConfig } from '../../lib/siteConfig.js'
 import DashIntegrations from './DashIntegrations.jsx'
+import MusicSettings from './music/MusicSettings.jsx'
 import EmojiIconButton from './EmojiIconButton.jsx'
-import { Glyph, clearDashCache, emojiIconUrl } from './kit.jsx'
+import { Favicon, Glyph, clearDashCache, emojiIconUrl } from './kit.jsx'
+import { PROVIDER_CATALOG, PROVIDER_CATEGORIES } from '../../data/searchProviders.js'
 import {
   LOOK_CHOICES,
   LOOK_DEFAULTS,
@@ -15,6 +18,7 @@ import {
   addPage,
   DASH_SYNC_LIMIT,
   buildSearchUrl,
+  MAX_PROVIDERS,
   createId,
   isColor,
   isDashAccountSyncAvailable,
@@ -60,6 +64,7 @@ const TABS = [
   { id: 'search', icon: 'travel_explore' },
   { id: 'pages', icon: 'tab' },
   { id: 'integrations', icon: 'hub' },
+  ...(siteConfig.dashMusic ? [{ id: 'music', icon: 'library_music' }] : []),
   { id: 'backup', icon: 'cloud_sync' },
 ]
 
@@ -215,7 +220,7 @@ function LookSettings() {
 
 function LayoutSettings({ onEditBoard }) {
   const { t } = useTranslation('dash')
-  const { look, pages, widgets } = useDashSettings()
+  const { look, pages, widgets, refresh, shortcuts } = useDashSettings()
   const phoneArranged = widgets.some((widget) => widget.sm)
   return (
     <div className="dash-panel">
@@ -238,6 +243,11 @@ function LayoutSettings({ onEditBoard }) {
             {t('settings.layout.phoneReset')}
           </button>
         )}
+      </Section>
+      <Section title={t('settings.layout.behaviour')}>
+        <Segment label={t('settings.layout.refresh')} value={refresh} options={['normal', 'slow', 'open']} prefix="settings.layout.refreshChoices" onChange={(value) => updateDashSettings({ refresh: value })} />
+        <p className="dash-hint">{t(`settings.layout.refreshHint_${refresh}`)}</p>
+        <Toggle label={t('settings.layout.shortcuts')} hint={t('settings.layout.shortcutsHint')} checked={shortcuts} onChange={(value) => updateDashSettings({ shortcuts: value })} />
       </Section>
       <Section title={t('settings.layout.board')}>
         <p className="dash-hint">{t('settings.layout.boardHelp', { count: widgets.length, pages: pages.length })}</p>
@@ -481,30 +491,125 @@ function ProviderForm({ initial, onSave, onCancel, providers }) {
   )
 }
 
+/* The catalog: search, categories, everything not already on the dash; one click adds it. */
+function ProviderCatalog({ list, onAdd, onClose }) {
+  const { t } = useTranslation('dash')
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState('all')
+  const searchRef = useRef(null)
+  useEffect(() => searchRef.current?.focus({ preventScroll: true }), [])
+  const present = (entry) => list.some((item) => item.id === entry.id || item.catalog === entry.id || item.url === entry.url)
+  const words = query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean)
+  const shown = PROVIDER_CATALOG.filter((entry) => !present(entry) && (category === 'all' || entry.category === category) && words.every((word) => `${entry.name} ${entry.keyword} ${new URL(entry.url.replaceAll('%s', '')).hostname} ${t(`settings.search.categories.${entry.category}`)}`.toLocaleLowerCase().includes(word)))
+  return (
+    <div className="dash-catalog" role="dialog" aria-label={t('settings.search.fromList')}>
+      <div className="dash-catalog__head">
+        <label className="dash-catalog__search">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            search
+          </span>
+          <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('settings.search.catalogSearch')} aria-label={t('settings.search.catalogSearch')} />
+        </label>
+        <button type="button" className="dash-tool" onClick={onClose} aria-label={t('settings.close')} title={t('settings.close')}>
+          <span className="material-symbols-outlined" aria-hidden="true">
+            close
+          </span>
+        </button>
+      </div>
+      <div className="dash-chips" role="radiogroup" aria-label={t('settings.search.category')}>
+        {['all', ...PROVIDER_CATEGORIES].map((name) => (
+          <button key={name} type="button" role="radio" aria-checked={category === name} className={category === name ? 'is-active' : ''} onClick={() => setCategory(name)}>
+            {name === 'all' ? t('settings.search.categories.all') : t(`settings.search.categories.${name}`)}
+          </button>
+        ))}
+      </div>
+      {shown.length === 0 ? (
+        <p className="dash-hint">{t('settings.search.catalogEmpty')}</p>
+      ) : (
+        <ul className="dash-catalog__list">
+          {shown.map((entry) => (
+            <li key={entry.id}>
+              <Favicon url={entry.url.replaceAll('%s', '')} size={18} />
+              <span className="dash-list__name">
+                <strong>{entry.name}</strong>
+                <small>
+                  <code>!{entry.keyword}</code> {t(`settings.search.categories.${entry.category}`)}
+                </small>
+              </span>
+              <button type="button" className="dash-button dash-button--quiet dash-button--small" onClick={() => onAdd(entry)}>
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  add
+                </span>
+                {t('settings.add')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function SearchSettings({ owner }) {
   const { t } = useTranslation('dash')
   const settings = useDashSettings()
   const [editing, setEditing] = useState(null) // provider being edited, or EMPTY_PROVIDER
+  const [catalog, setCatalog] = useState(false)
+  const [dragging, setDragging] = useState(null)
   const list = settings.providers
 
   const setList = (providers) => updateDashSettings({ providers })
-  const move = (index, offset) => {
-    const target = index + offset
-    if (target < 0 || target >= list.length) return
+  const moveTo = (from, to) => {
+    if (to < 0 || to >= list.length || from === to) return
     const next = [...list]
-    ;[next[index], next[target]] = [next[target], next[index]]
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
     setList(next)
   }
+  // Removing a built-in or catalog engine puts it back into "Add from list" (adding it again resets your changes).
+  const remove = (provider) => {
+    const providers = list.filter((item) => item.id !== provider.id)
+    const removedProviders = provider.builtin ? [...new Set([...settings.removedProviders, provider.id])] : settings.removedProviders
+    updateDashSettings({ providers, removedProviders, activeProviderId: settings.activeProviderId === provider.id ? (providers.find((item) => !item.hidden)?.id ?? null) : settings.activeProviderId })
+  }
+  const addFromCatalog = (entry) => {
+    if (list.length >= MAX_PROVIDERS) return
+    const fresh = { id: entry.start ? entry.id : `cat-${entry.id}`, name: entry.name, url: entry.url, keyword: list.some((item) => item.keyword === entry.keyword) ? '' : entry.keyword, catalog: entry.id, ...(entry.start ? { builtin: true } : {}), ...(entry.minecraft ? { minecraft: entry.minecraft } : {}) }
+    updateDashSettings({ providers: [...list, fresh], removedProviders: settings.removedProviders.filter((id) => id !== entry.id) })
+  }
+  const minecraftChoices = [...list.filter((item) => item.minecraft), ...PROVIDER_CATALOG.filter((entry) => entry.minecraft && !list.some((item) => item.catalog === entry.id || item.id === entry.id))]
 
   return (
     <div className="dash-panel">
       <Section title={t('settings.search.providers')}>
         <p className="dash-hint">{t('settings.search.providersHelp')}</p>
-        <ul className="dash-list">
+        <ul className="dash-list dash-list--sortable">
           {list.map((provider, index) => {
             const active = provider.id === settings.activeProviderId
             return (
-              <li key={provider.id} className={provider.hidden ? 'is-hidden' : ''}>
+              <li
+                key={provider.id}
+                className={`${provider.hidden ? 'is-hidden' : ''}${dragging === index ? ' is-dragging' : ''}`}
+                draggable
+                onDragStart={(event) => {
+                  setDragging(index)
+                  event.dataTransfer.effectAllowed = 'move'
+                  event.dataTransfer.setData('text/plain', provider.id)
+                }}
+                onDragOver={(event) => {
+                  if (dragging === null) return
+                  event.preventDefault()
+                  if (dragging !== index) {
+                    moveTo(dragging, index)
+                    setDragging(index)
+                  }
+                }}
+                onDragEnd={() => setDragging(null)}
+                onDrop={(event) => event.preventDefault()}
+              >
+                <span className="material-symbols-outlined dash-list__grip" aria-hidden="true">
+                  drag_indicator
+                </span>
                 <button
                   type="button"
                   className={`dash-radio${active ? ' is-active' : ''}`}
@@ -513,14 +618,19 @@ function SearchSettings({ owner }) {
                   aria-label={t('settings.search.makeDefault')}
                   aria-pressed={active}
                 />
+                <Favicon url={provider.url.replaceAll('%s', '')} size={16} />
                 <span className="dash-list__name">
                   <strong>{provider.name}</strong>
-                  <small>
-                    {provider.keyword && <code>!{provider.keyword}</code>} {provider.builtin ? t('settings.search.builtin') : ''}
+                  <small title={provider.hidden ? t('settings.search.hiddenNote') : undefined}>
+                    {provider.keyword && <code>!{provider.keyword}</code>}
+                    {provider.hidden ? ` · ${t('settings.search.hiddenShort')}` : ''}
                   </small>
                 </span>
-                <button type="button" className="dash-tool" onClick={() => move(index, -1)} disabled={index === 0} aria-label={t('settings.moveUp')} title={t('settings.moveUp')}>
+                <button type="button" className="dash-tool" onClick={() => moveTo(index, index - 1)} disabled={index === 0} aria-label={t('settings.moveUp')} title={t('settings.moveUp')}>
                   <span className="material-symbols-outlined">arrow_upward</span>
+                </button>
+                <button type="button" className="dash-tool" onClick={() => moveTo(index, index + 1)} disabled={index === list.length - 1} aria-label={t('settings.moveDown')} title={t('settings.moveDown')}>
+                  <span className="material-symbols-outlined">arrow_downward</span>
                 </button>
                 <button
                   type="button"
@@ -535,11 +645,16 @@ function SearchSettings({ owner }) {
                 <button type="button" className="dash-tool" onClick={() => setEditing(provider)} aria-label={t('settings.edit')} title={t('settings.edit')}>
                   <span className="material-symbols-outlined">edit</span>
                 </button>
-                {!provider.builtin && (
-                  <button type="button" className="dash-tool dash-tool--danger" disabled={active} onClick={() => setList(list.filter((item) => item.id !== provider.id))} aria-label={t('settings.delete')} title={t('settings.delete')}>
-                    <span className="material-symbols-outlined">delete</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="dash-tool dash-tool--danger"
+                  disabled={active}
+                  onClick={() => remove(provider)}
+                  aria-label={provider.builtin || provider.catalog ? t('settings.search.removeToList') : t('settings.delete')}
+                  title={provider.builtin || provider.catalog ? t('settings.search.removeToList') : t('settings.delete')}
+                >
+                  <span className="material-symbols-outlined">{provider.builtin || provider.catalog ? 'playlist_remove' : 'delete'}</span>
+                </button>
               </li>
             )
           })}
@@ -556,19 +671,45 @@ function SearchSettings({ owner }) {
               setEditing(null)
             }}
           />
+        ) : catalog ? (
+          <ProviderCatalog list={list} onAdd={addFromCatalog} onClose={() => setCatalog(false)} />
         ) : (
-          <button type="button" className="dash-button dash-button--quiet dash-button--small" onClick={() => setEditing(EMPTY_PROVIDER)}>
-            <span className="material-symbols-outlined" aria-hidden="true">
-              add
-            </span>
-            {t('settings.search.addProvider')}
-          </button>
+          <div className="dash-row">
+            <button type="button" className="dash-button dash-button--small" onClick={() => setCatalog(true)} disabled={list.length >= MAX_PROVIDERS}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                playlist_add
+              </span>
+              {t('settings.search.fromList')}
+            </button>
+            <button type="button" className="dash-button dash-button--quiet dash-button--small" onClick={() => setEditing(EMPTY_PROVIDER)} disabled={list.length >= MAX_PROVIDERS}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                add
+              </span>
+              {t('settings.search.addProvider')}
+            </button>
+          </div>
         )}
+      </Section>
+
+      <Section title={t('settings.search.minecraft')}>
+        <label className="dash-field">
+          <span className="dash-field__label">{t('settings.search.minecraftOpen')}</span>
+          <select value={settings.minecraftProvider} onChange={(event) => updateDashSettings({ minecraftProvider: event.target.value })}>
+            {minecraftChoices.map((entry) => (
+              <option key={entry.catalog ?? entry.id} value={entry.catalog ?? entry.id}>
+                {entry.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="dash-hint">{t('settings.search.minecraftHint')}</p>
       </Section>
 
       <Section title={t('settings.search.behaviour')}>
         <Toggle label={t('settings.search.newTab')} checked={settings.openInNewTab} onChange={(openInNewTab) => updateDashSettings({ openInNewTab })} />
         <Toggle label={t('settings.search.siteResults')} hint={t('settings.search.siteResultsHint')} checked={settings.siteResults} onChange={(siteResults) => updateDashSettings({ siteResults })} />
+        <Toggle label={t('settings.search.camera')} hint={t('settings.search.cameraHint')} checked={settings.imageButton} onChange={(imageButton) => updateDashSettings({ imageButton })} />
+        <Toggle label={t('settings.search.voice')} hint={t('settings.search.voiceHint')} checked={settings.voiceSearch} onChange={(voiceSearch) => updateDashSettings({ voiceSearch })} />
         <Toggle
           label={t('settings.search.history')}
           hint={t('settings.search.historyHint')}
@@ -850,7 +991,7 @@ export default function DashSettings({ account, owner, loggedIn, initialTab = 'l
   }, [])
 
   return (
-    <dialog ref={ref} className="dash-dialog dash-sheet" onClose={onClose} aria-labelledby="dash-settings-title" onClick={(event) => event.target === ref.current && ref.current.close()}>
+    <dialog ref={ref} className={`dash-dialog dash-sheet${tab === 'music' ? ' dash-sheet--wide' : ''}`} onClose={onClose} aria-labelledby="dash-settings-title" onClick={(event) => event.target === ref.current && ref.current.close()}>
       <header className="dash-dialog__head">
         <span className="material-symbols-outlined" aria-hidden="true">
           tune
@@ -884,6 +1025,7 @@ export default function DashSettings({ account, owner, loggedIn, initialTab = 'l
         {tab === 'search' && <SearchSettings owner={owner} />}
         {tab === 'pages' && <PagesSettings />}
         {tab === 'integrations' && <DashIntegrations loggedIn={loggedIn} />}
+        {tab === 'music' && (loggedIn ? <MusicSettings /> : <p className="dash-hint">{t('music.login')}</p>)}
         {tab === 'backup' && <BackupSettings account={account} owner={owner} />}
       </div>
     </dialog>

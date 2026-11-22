@@ -40,7 +40,7 @@ function useWidgetIntegrations(widget, use, { multi = false } = {}) {
         {t('widgets.integration.unavailable')}
       </Empty>
     )
-  else if (!wanted.length) empty = <Empty icon="hub">{t('widgets.integration.pick', { kinds: kinds.map((kind) => INTEGRATION_KINDS[kind].name).join(', ') })}</Empty>
+  else if (!wanted.length) empty = <Empty icon="hub" setup>{t('widgets.integration.pick', { kinds: kinds.map((kind) => INTEGRATION_KINDS[kind].name).join(', ') })}</Empty>
   else if (!picked.length) empty = <Empty icon="link_off">{t('widgets.integration.missing')}</Empty>
   else if (picked.every((item) => item.broken)) empty = <Empty icon="key_off">{t('widgets.integration.broken')}</Empty>
   return { picked: picked.filter((item) => !item.broken), empty }
@@ -276,7 +276,7 @@ function SmartHomeView({ widget }) {
   const [busy, setBusy] = useState(null)
   const [overrides, setOverrides] = useState({})
   if (empty) return empty
-  if (!ids.length) return <Empty icon="home_iot_device">{t('widgets.smarthome.empty')}</Empty>
+  if (!ids.length) return <Empty icon="home_iot_device" setup>{t('widgets.smarthome.empty')}</Empty>
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={ids.length} />
   const toggle = async (entity) => {
     setBusy(entity.id)

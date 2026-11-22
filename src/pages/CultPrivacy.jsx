@@ -128,8 +128,8 @@ export default function CultPrivacy() {
               (links, notes, to-dos, places for the weather, feeds and repositories you follow), so it's the same on every device. Feeds are fetched
               for you by our server, because most feeds can't be read straight from a browser; it only sends their address, keeps the answer 10
               minutes in memory (shared by everyone reading the same feed) and never writes down who asked. Weather, prices, Hacker News, releases
-              and favicons are loaded by your browser straight from those services. Your recent searches in the dash's search bar stay in your
-              browser only (never sent to us; turn them off or clear them there). The calculator works in your browser too; if you divide by zero,
+              and favicons are loaded by your browser straight from those services (searching for a coin sends what you type to CoinGecko). A Discord status widget showing your own status reads it from our bot, like your profile page does; nothing new is stored. Your recent searches in the dash's search bar stay in your
+              browser only (never sent to us; turn them off or clear them there). If you speak a search, your browser's speech recognition hears it (Chrome and Edge send the audio to Google or Microsoft for that; we never get it). Looking up a Minecraft player sends the name you typed to playerdb.co and loads the face from crafthead.net (or mc-heads.net / minotar.net). A picture you add to the search stays in your browser: its text is read there (the reading models load once from jsDelivr), and it only goes to Google Lens, Bing or TinEye if you click one of them. Translations go to the translation service on our own server and are not kept. The calculator works in your browser too; if you divide by zero,
               it opens the Wikipedia page about that kind of mistake (only which kind, never what you typed).
             </li>
             <li>
@@ -138,6 +138,12 @@ export default function CultPrivacy() {
               sent back to any browser, not even yours; our server uses them to ask your service for what your widgets show, and keeps the answers a
               few seconds in memory. Files you open or upload in a files widget (WebDAV, Nextcloud, copyparty) pass through our server on their way
               and are never kept there. Removing an integration deletes it right away.
+            </li>
+            <li>
+              <strong>Your music library</strong> (the music widget on /dash), only if you use it: songs you upload (stored on our server, up to your space,
+              until you remove them or delete your account), links and YouTube videos you add, songs from your own Navidrome or file integrations (their files pass
+              through our server while they play and are kept a few minutes in memory for seeking), titles you edit, your playlists, and which of your devices is
+              playing right now (in memory only, so only one plays at a time). What plays, the queue and the volume stay in your browser.
             </li>
             <li>
               <strong>The setup on /card:</strong> its "Network" page shows you your own IP address and roughly where it is (city,

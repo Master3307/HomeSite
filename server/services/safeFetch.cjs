@@ -106,7 +106,7 @@ async function resolveHost(hostname, allowPrivate) {
   return addresses.find((entry) => entry.family === 4) ?? addresses[0];
 }
 
-function requestOnce(url, pinned, { method, headers, body, maxBytes, timeout, accept }) {
+function requestOnce(url, pinned, { method, headers, body, maxBytes, timeout, accept, stream }) {
   return new Promise((resolve, reject) => {
     const client = url.protocol === "https:" ? https : http;
     const request = client.request(
@@ -129,6 +129,8 @@ function requestOnce(url, pinned, { method, headers, body, maxBytes, timeout, ac
           response.destroy();
           return reject(httpError(415, "That address doesn't give the expected kind of answer."));
         }
+        // Streaming: the body is handed on as it comes (no size limit; `timeout` is then the longest silence).
+        if (stream) return resolve({ status, headers: response.headers, type, stream: response });
         const chunks = [];
         let size = 0;
         response.on("data", (chunk) => {
@@ -158,16 +160,18 @@ function requestOnce(url, pinned, { method, headers, body, maxBytes, timeout, ac
  *   ports                            "feed" | "service"
  *   accept                           a RegExp the content type must match
  *   maxBytes, timeout
+ *   stream                           true: { status, type, headers, stream } with the body unread (no size limit)
  */
-async function safeFetch(raw, { method = "GET", headers = {}, body = null, allowPrivate = false, ports = "feed", accept = null, maxBytes = MAX_BYTES, timeout = TIMEOUT_MS } = {}) {
+async function safeFetch(raw, { method = "GET", headers = {}, body = null, allowPrivate = false, ports = "feed", accept = null, maxBytes = MAX_BYTES, timeout = TIMEOUT_MS, stream = false } = {}) {
   let url = typeof raw === "string" ? parseTarget(raw, { ports }) : raw;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
     const pinned = await resolveHost(url.hostname, allowPrivate);
-    const result = await requestOnce(url, pinned, { method, headers, body, maxBytes, timeout, accept });
+    const result = await requestOnce(url, pinned, { method, headers, body, maxBytes, timeout, accept, stream });
     if (result.redirect && method === "GET") {
       url = parseTarget(new URL(result.redirect, url).href, { ports });
       continue;
     }
+    if (stream) return { url: url.href, status: result.status, type: result.type, headers: result.headers, stream: result.stream };
     return {
       url: url.href,
       status: result.status,

@@ -71,11 +71,18 @@ function activityShape(activity) {
   };
 }
 
+const forcedAt = new Map();
 async function profile(client, id) {
   if (!isSnowflake(id) || privacy.isHidden(id)) throw httpError(404, "Unknown member.");
   const guild = await getGuild(client);
   const member = await guild.members.fetch(id).catch(() => null);
-  const user = await client.users.fetch(id, { force: true }).catch(() => member?.user ?? null);
+  // The full user (banner, accent colour) is fetched from Discord at most every 10 minutes per person; the dash refreshes a status card often.
+  const force = Date.now() - (forcedAt.get(id) ?? 0) > 10 * 60_000;
+  if (force) {
+    forcedAt.set(id, Date.now());
+    if (forcedAt.size > 5000) forcedAt.delete(forcedAt.keys().next().value);
+  }
+  const user = await client.users.fetch(id, { force }).catch(() => member?.user ?? null);
   if (!user) throw httpError(404, "Unknown member.");
 
   const stored = levels.peekUser(id);

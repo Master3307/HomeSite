@@ -1,13 +1,13 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { useAccountSettings } from '../../lib/accountSettings.jsx'
 import { birthdayLabel, daysUntil, loadBirthdays } from '../../lib/birthdays.js'
 import { hubGet } from '../../lib/hub.js'
-import { keyPath } from '../../lib/members.js'
+import { keyPath, loadProfile as loadMemberProfile } from '../../lib/members.js'
 import { NOTIFICATIONS_EVENT, loadNotifications, markRead, removeNotifications } from '../../lib/moderation.js'
-import { siteConfig } from '../../lib/siteConfig.js'
+import { discordInviteUrl, siteConfig } from '../../lib/siteConfig.js'
 import { Empty, LoadError, Loading, timeAgo, useRemote } from './kit.jsx'
 import { SoftImage } from './widgetsFeeds.jsx'
 
@@ -60,14 +60,49 @@ function LobbyCatWidgetView({ widget, editing }) {
 
 const loggedInOf = (account) => Boolean(account && !account.local && !account.isAdminSession)
 
-function DiscordView() {
+/*
+ * Discord status: the site owner's card, or your own ("me", logged in). Your
+ * own status comes from the bot, which only sees people on the server: not
+ * joined, the card shows your name and picture and asks you to join.
+ */
+function DiscordView({ widget }) {
   const { t } = useTranslation('dash')
-  if (!siteConfig.ownerDiscordId) return <Empty icon="person_off">{t('widgets.discord.off')}</Empty>
+  const { account } = useAccountSettings()
+  const me = widget.options.who === 'mine'
+  const discordId = loggedInOf(account) ? account.discordUserId : null
+  const [joined, setJoined] = useState(true)
+  const load = useMemo(
+    () =>
+      me && discordId
+        ? async () => {
+            const profile = await loadMemberProfile(discordId)
+            setJoined(Boolean(profile?.discord?.member))
+            if (!profile?.discord) throw new Error(t('widgets.discord.unavailable'))
+            return profile.discord
+          }
+        : null,
+    [me, discordId, t],
+  )
+  if (me && !discordId) return <Empty icon="login">{t('widgets.discord.login')}</Empty>
+  if (!me && !siteConfig.ownerDiscordId) return <Empty icon="person_off">{t('widgets.discord.off')}</Empty>
   return (
     <div className="dash-w-discord">
       <Suspense fallback={<Loading lines={3} />}>
-        <DiscordCard />
+        <DiscordCard load={load} interval={me ? 20_000 : undefined} />
       </Suspense>
+      {me && !joined && (
+        <p className="dash-w-discord__join">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            info
+          </span>
+          <span>{t('widgets.discord.join')}</span>
+          {discordInviteUrl && (
+            <a className="dash-button dash-button--small" href={discordInviteUrl} target="_blank" rel="noopener noreferrer">
+              {t('widgets.discord.joinButton')}
+            </a>
+          )}
+        </p>
+      )}
     </div>
   )
 }

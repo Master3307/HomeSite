@@ -733,7 +733,12 @@ export function Activity({ activities, t }) {
   )
 }
 
-export default function DiscordProfileCard() {
+/*
+ * `load`: where the profile comes from (default: the owner's card from the
+ * profile API; the dash's "you" view loads the member's own through the
+ * account API). `interval`: how often it refreshes.
+ */
+export default function DiscordProfileCard({ load: loadProfile = null, interval = PROFILE_POLL_INTERVAL_MS }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -760,15 +765,13 @@ export default function DiscordProfileCard() {
           setRefreshing(true)
         }
 
-        const response = await fetch(
-          `${DISCORD_API_URL}/${DISCORD_USER_ID}`,
-        )
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`)
+        let rawProfile
+        if (loadProfile) rawProfile = await loadProfile()
+        else {
+          const response = await fetch(`${DISCORD_API_URL}/${DISCORD_USER_ID}`)
+          if (!response.ok) throw new Error(`HTTP ${response.status}`)
+          rawProfile = await response.json()
         }
-
-        const rawProfile = await response.json()
 
         if (cancelled) return
 
@@ -808,15 +811,16 @@ export default function DiscordProfileCard() {
 
     load(true)
 
+    // Only while the tab is visible.
     const timer = window.setInterval(() => {
-      load(false)
-    }, PROFILE_POLL_INTERVAL_MS)
+      if (!document.hidden) load(false)
+    }, interval)
 
     return () => {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [DISCORD_API_URL, t])
+  }, [DISCORD_API_URL, t, loadProfile, interval])
 
   // Loading: the card's own shape (picture, name, @name) as soft placeholders, so nothing jumps when it fills in.
   if (loading && !profile && !avatarSrc) {
