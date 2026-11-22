@@ -6,5 +6,18 @@
         "failed": "Fehler beim Lada vom Profil",
         "unavailable": "Discord-Profil net verfügbar:",
         "streak": "Streak"
+    },
+    "widget": {
+        "boosts": "boosts",
+        "onlineNow": "Online now",
+        "inVoice": "In voice",
+        "label": "Discord server",
+        "fallbackName": "Kult vo de schwarze Katzen 🧹",
+        "online": "online",
+        "members": "members",
+        "more": "+{{count}} more",
+        "unavailable": "Live server info is unavailable right now.",
+        "join": "Join the server",
+        "totalMembers": "Members"
     }
 }

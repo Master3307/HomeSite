@@ -6,5 +6,18 @@
         "failed": "Fehler beim laden des Profils",
         "unavailable": "Discord Profil nicht verfügbar:",
         "streak": "Streak"
+    },
+    "widget": {
+        "label": "Mein Discord-Server",
+        "fallbackName": "Kult der schwarzen Katzen",
+        "online": "online",
+        "members": "members",
+        "boosts": "boosts",
+        "onlineNow": "Online now",
+        "inVoice": "In voice",
+        "more": "+{{count}} more",
+        "unavailable": "Live server info is unavailable right now.",
+        "join": "Join the server",
+        "totalMembers": "Members"
     }
 }

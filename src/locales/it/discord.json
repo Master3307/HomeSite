@@ -6,5 +6,18 @@
         "playing": "Giocando ad un gioco",
         "unavailable": "Profilo discord non disponibile:",
         "failed": "Impossibile caricare il profilo"
+    },
+    "widget": {
+        "label": "Discord server",
+        "fallbackName": "Culto dei gatti neri",
+        "online": "online",
+        "members": "members",
+        "boosts": "boosts",
+        "onlineNow": "Online now",
+        "inVoice": "In voice",
+        "more": "+{{count}} more",
+        "unavailable": "Live server info is unavailable right now.",
+        "join": "Join the server",
+        "totalMembers": "Members"
     }
 }

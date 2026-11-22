@@ -6,5 +6,18 @@
         "failed": "Failed to load profile",
         "unavailable": "Discord profile unavailable:",
         "streak": "Streak"
+    },
+    "widget": {
+        "online": "online",
+        "members": "members",
+        "boosts": "boosts",
+        "onlineNow": "Online now",
+        "inVoice": "In voice",
+        "more": "+{{count}} more",
+        "unavailable": "Live server info is unavailable right now.",
+        "join": "Join the server",
+        "totalMembers": "Members",
+        "label": "Discord server",
+        "fallbackName": "Cult of Black Cats"
     }
 }
