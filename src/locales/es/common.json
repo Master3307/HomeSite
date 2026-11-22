@@ -1,1 +1,21 @@
-{}
+{
+    "image": {
+        "openTab": "Open in new tab",
+        "download": "Download",
+        "close": "Close",
+        "open": "Show larger"
+    },
+    "richText": {
+        "emoji": "Add an emoji",
+        "people": "People to mention",
+        "preview": "Preview"
+    },
+    "zone": {
+        "label": "Time zone",
+        "auto": "Automatic ({{zone}})",
+        "autoShort": "Automatic, like my device",
+        "search": "City, region or UTC+1",
+        "none": "No time zone found."
+    },
+    "loading": "Loading…"
+}
