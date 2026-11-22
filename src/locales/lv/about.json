@@ -1,11 +1,44 @@
 {
     "about": {
         "card": {
-            "github": "Apskati pirmkodu vietnē GitHub",
-            "line2": "Uzzini vairāk par mani šeit!",
             "line3": "Skatīt vairāk…",
             "line1": "Šis ir nepabeigts darbs."
         },
-        "header": "Par šo vietni"
+        "header": "Par šo vietni",
+        "lead": "My personal website, and the place where I learn web development by building real things with it.",
+        "whatTitle": "What's here",
+        "card_title": "About me",
+        "card_text": "Who I am, what I build, where to find me.",
+        "cult_title": "The Cult",
+        "cult_text": "Our Bongo Cat Discord community: lobby codes, the Friday dress code, profiles and birthdays.",
+        "dash_title": "Dash",
+        "dash_text": "A start page with search, bookmarks and widgets.",
+        "builtTitle": "Under the hood",
+        "source": "Source code",
+        "translate": "Translate the site",
+        "privacy": "Privacy",
+        "license": "License",
+        "storyTitle": "The story",
+        "story": "The first version was a static page, mostly written by AI and so bloated it was barely usable (<old>it's still online</old>). This one is a rewrite in Vite and React that I write myself, with real servers behind it, so it can do things a static page never could.",
+        "stack": {
+            "site_title": "The site",
+            "site_text": "Vite and React, translated by the community on Weblate.",
+            "api_title": "The backends",
+            "api_text": "Node.js with Express and SQLite: Discord login, profiles, polls.",
+            "bot_title": "The Cultbot",
+            "bot_text": "Our Discord bot (discord.js) lives in the same repository.",
+            "host_title": "The server",
+            "host_text": "Everything runs on my own Linux server at home."
+        },
+        "installBot": "Add the Cultbot",
+        "joinServer": "Join the Discord",
+        "helpTitle": "Help out",
+        "help": "Translations are always welcome, and so are ideas and fixes. Keep commits conventional and everything friendly.",
+        "contribute": "How to contribute",
+        "creditsTitle": "Thanks to",
+        "creditBot": "<a>NamVr</a> for the Discord bot template",
+        "creditTilt": "<a>Stormxxboy</a> for the card tilt effect",
+        "creditIcons": "<a>Simple Icons</a> for the brand icons",
+        "creditCachy": "The <a>CachyOS</a> logo on /card belongs to the CachyOS project"
     }
 }

@@ -3,9 +3,42 @@
         "header": "Über die Website",
         "card": {
             "line1": "Des isch a Bauschtell.",
-            "line2": "Do erfährsch mehr über mi!",
-            "github": "Guck dir dr Quellcode auf GitHub a",
             "line3": "Mehr a'gucka…"
-        }
+        },
+        "stack": {
+            "bot_text": "Our Discord bot (discord.js) lives in the same repository.",
+            "site_title": "The site",
+            "host_text": "Everything runs on my own Linux server at home.",
+            "site_text": "Vite and React, translated by the community on Weblate.",
+            "api_title": "The backends",
+            "bot_title": "The Cultbot",
+            "api_text": "Node.js with Express and SQLite: Discord login, profiles, polls.",
+            "host_title": "The server"
+        },
+        "storyTitle": "The story",
+        "cult_title": "The Cult",
+        "help": "Translations are always welcome, and so are ideas and fixes. Keep commits conventional and everything friendly.",
+        "joinServer": "Join the Discord",
+        "builtTitle": "Under the hood",
+        "contribute": "How to contribute",
+        "creditBot": "<a>NamVr</a> for the Discord bot template",
+        "privacy": "Privacy",
+        "helpTitle": "Help out",
+        "creditIcons": "<a>Simple Icons</a> for the brand icons",
+        "creditTilt": "<a>Stormxxboy</a> for the card tilt effect",
+        "creditCachy": "The <a>CachyOS</a> logo on /card belongs to the CachyOS project",
+        "whatTitle": "What's here",
+        "license": "License",
+        "installBot": "Add the Cultbot",
+        "cult_text": "Our Bongo Cat Discord community: lobby codes, the Friday dress code, profiles and birthdays.",
+        "story": "The first version was a static page, mostly written by AI and so bloated it was barely usable (<old>it's still online</old>). This one is a rewrite in Vite and React that I write myself, with real servers behind it, so it can do things a static page never could.",
+        "dash_title": "Dash",
+        "lead": "My personal website, and the place where I learn web development by building real things with it.",
+        "creditsTitle": "Thanks to",
+        "card_title": "About me",
+        "dash_text": "A start page with search, bookmarks and widgets.",
+        "card_text": "Who I am, what I build, where to find me.",
+        "translate": "Translate the site",
+        "source": "Source code"
     }
 }
