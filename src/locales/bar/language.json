@@ -8,6 +8,8 @@
         "fr": "🇫🇷 Franzesisch",
         "es": "🇪🇸 Spanisch",
         "it": "🇮🇹 Italienisch",
-        "lv": "🇱🇻 Lettisch"
-    }
+        "lv": "🇱🇻 Lettisch",
+        "swg": "🧹 Swabian"
+    },
+    "label": "Language"
 }
