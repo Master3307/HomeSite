@@ -1,6 +1,19 @@
 {
-    "viewCard": "Visualizza la carta utente",
     "header": "Saluti!",
     "welcome": "Benvenuto nel mio sito web! Spero ti piaccia :P",
-    "viewCardPretext": "My Personal User Card:"
+    "places": {
+        "dash": {
+            "title": "Dash",
+            "text": "A fast start page with search, bookmarks and widgets."
+        },
+        "card": {
+            "title": "About me",
+            "text": "Who I am, what I build and where to find me."
+        },
+        "cult": {
+            "title": "Culto dei gatti neri",
+            "text": "Our Bongo Cat Discord: lobby codes, the Friday dress code, members."
+        }
+    },
+    "placesLabel": "Pages"
 }

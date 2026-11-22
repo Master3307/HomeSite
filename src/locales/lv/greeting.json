@@ -1,6 +1,19 @@
 {
-    "viewCard": "View User Card",
     "header": "Greetings!",
     "welcome": "Welcome to my Website! Hope you like it here :P",
-    "viewCardPretext": "My Personal User Card:"
+    "placesLabel": "Pages",
+    "places": {
+        "card": {
+            "title": "About me",
+            "text": "Who I am, what I build and where to find me."
+        },
+        "cult": {
+            "title": "Cult of black Cats",
+            "text": "Our Bongo Cat Discord: lobby codes, the Friday dress code, members."
+        },
+        "dash": {
+            "title": "Dash",
+            "text": "A fast start page with search, bookmarks and widgets."
+        }
+    }
 }

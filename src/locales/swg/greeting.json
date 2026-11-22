@@ -1,6 +1,19 @@
 {
     "header": "Grüß Gott!",
-    "viewCard": "Benutzerkärtle a'gucka",
     "welcome": "Willkomme auf meiner Webseite! I hoff, dir g'fällt's hier :P",
-    "viewCardPretext": "Mei persönlichs Benutzerkärtle:"
+    "places": {
+        "cult": {
+            "title": "Kult vo de schwarze Katzen 🧹",
+            "text": "Our Bongo Cat Discord: lobby codes, the Friday dress code, members."
+        },
+        "dash": {
+            "text": "A fast start page with search, bookmarks and widgets.",
+            "title": "Dash"
+        },
+        "card": {
+            "title": "About me",
+            "text": "Who I am, what I build and where to find me."
+        }
+    },
+    "placesLabel": "Pages"
 }

@@ -1,6 +1,19 @@
 {
     "header": "Griaß di God!",
-    "viewCard": "Benutzerkartn o’schaugn",
     "welcome": "Griaß di auf meina Webseitn! Hoff, dass da do gfoid! :P",
-    "viewCardPretext": "My Personal User Card:"
+    "placesLabel": "Pages",
+    "places": {
+        "card": {
+            "title": "About me",
+            "text": "Who I am, what I build and where to find me."
+        },
+        "cult": {
+            "title": "Kuit vo de schwoarzn Katzn 🥨",
+            "text": "Our Bongo Cat Discord: lobby codes, the Friday dress code, members."
+        },
+        "dash": {
+            "title": "Dash",
+            "text": "A fast start page with search, bookmarks and widgets."
+        }
+    }
 }
