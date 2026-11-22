@@ -10,6 +10,7 @@
     "bot": "node server/bot.cjs",
     "fdc:import": "node scripts/import-fdc.cjs",
     "fdc:export": "node scripts/export-fdc.cjs",
+    "backup:import": "node scripts/import-backup.cjs",
     "discord": "node server/services/discord-profile.js",
     "accounts": "node server/account-api.cjs",
     "cleaner": "node scripts/clean.cjs",
