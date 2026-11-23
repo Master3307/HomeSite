@@ -1,14 +1,14 @@
 {
     "header": "Carta utente personale",
     "buttons": "Bottoni",
-    "bio": "I'm Korbinian from Bavaria. I build things, break them, and take them apart until I understand how they work. This whole site is one of those things.",
+    "bio": "Mi chiamo Korbinian e vengo dalla Baviera. Costruisco oggetti, li rompo e li smonto finché non capisco come funzionano. Questo sito è proprio uno di quei casi.",
     "facts": {
-        "title": "Quick facts",
-        "name": "Name",
+        "title": "Fatti veloci",
+        "name": "Nome",
         "nameValue": "Korbinian",
-        "birthday": "Birthday",
-        "birthdayValue": "9 September",
-        "from": "From",
+        "birthday": "Compleanno",
+        "birthdayValue": "9 settembre",
+        "from": "Da",
         "fromValue": "Bavaria, Germany",
         "languages": "Languages",
         "languagesValue": "German, English, a bit of Ukrainian"
