@@ -1,4 +1,22 @@
 {
     "header": "Benvenuto, {{user}}!",
-    "stranger": "Straniero"
+    "stranger": "Straniero",
+    "eyebrow": "A Bongo Cat community",
+    "lead": "A small server of black cat enjoyers who mostly hang out in Bongo Cat. Grab the lobby code, vote on this week's Friday Dress Code, and pet the cat while you're here.",
+    "game": {
+        "steamWidget": "Bongo Cat on Steam",
+        "title": "The Game"
+    },
+    "footer": {
+        "source": "View source on <0>GitHub</0>"
+    },
+    "catTitle": "hehehehehe",
+    "catAlt": "A funny cat greeting you",
+    "taps": {
+        "label": "Taps and pets on the lobby cat",
+        "taps": "taps",
+        "pets": "pets",
+        "byYou": "by you",
+        "split": "{{members}} by members, {{guests}} by guests"
+    }
 }

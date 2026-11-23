@@ -11,5 +11,12 @@
         "pets": "Streicheln",
         "byYou": "von dir",
         "split": "{{members}} von Mitgliedern, {{guests}} von Gästen"
+    },
+    "game": {
+        "steamWidget": "Bongo Cat on Steam",
+        "title": "The Game"
+    },
+    "footer": {
+        "source": "View source on <0>GitHub</0>"
     }
 }
