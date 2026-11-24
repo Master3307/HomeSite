@@ -15,5 +15,22 @@
     "hint": "↑ ↓ zum Navigieren · Enter zum Öffnen · Esc zum Schließen",
     "web": "Web",
     "discord": "Discord",
-    "onlyYou": "nur du"
+    "onlyYou": "nur du",
+    "calc": {
+        "title": "Calculator",
+        "copied": "Copied",
+        "graph": "Graph",
+        "drawGraph": "Draw the graph of {{what}}",
+        "copyGraph": "Copy the graph as a picture"
+    },
+    "recent": "Recent searches",
+    "recentBadge": "Recent",
+    "removeRecent": "Remove “{{text}}” from your recent searches",
+    "clearRecent": "Klar",
+    "latex": "LaTeX",
+    "latexHint": "Tab to insert",
+    "latexAlias": "You typed {{alias}}: this is the real command",
+    "voice": "Speak your search",
+    "voiceStop": "Stop listening",
+    "image": "Search with a picture (or paste / drop one)"
 }
