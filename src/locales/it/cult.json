@@ -18,5 +18,14 @@
         "pets": "Carezze",
         "byYou": "da te",
         "split": "{{members}} dai membri, {{guests}} dagli ospiti"
+    },
+    "join": {
+        "voting": "Voting on the Friday Dress Code is for people in our Discord server.",
+        "general": "You're logged in, but not in our Discord server yet. Voting, birthdays, member profiles and the lobby cat's progress are for people in the server.",
+        "button": "Join on Discord",
+        "title": "Join the server first",
+        "members": "The member list is for people in our Discord server. Join it and everyone here shows up.",
+        "note": "It updates by itself a few minutes after you join.",
+        "birthdays": "You see the public birthdays. Join the server to add your own, get reminders and see everyone's."
     }
 }
