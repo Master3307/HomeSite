@@ -36,6 +36,7 @@
             "music": "Music"
         },
         "choices": {
+            "custom": "Custom",
             "normal": "Normal",
             "wide": "Wide",
             "full": "Full",
@@ -124,6 +125,8 @@
         },
         "layout": {
             "grid": "Grid",
+            "maxWidth": "Custom width",
+            "gutter": "Space at the sides",
             "columns": "Columns",
             "columnsHint": "Widgets are placed on these columns; changing the number scales nothing, so widgets may need a new size.",
             "rowHeight": "Row height",
@@ -219,6 +222,34 @@
             "calcOnHint": "Sums, equations, unit conversions (1m, 5 ft to cm, 20 °C in F) and graphs right in the results. Enter copies the top answer.",
             "calcAngle": "Angles in",
             "calcGraph": "Graphs",
+            "tools": "Tools",
+            "toolsOn": "Tools in the search",
+            "toolsOnHint": "Answers as you type: currencies, encodings, hashes, ages, weather, your IP, QR codes, passwords and more. Type “help” in the search for the full list.",
+            "linkPreview": "Link previews",
+            "linkPreviewHint": "A typed or pasted link shows its title, description and picture, and is checked against Cloudflare's and Quad9's lists of dangerous sites. The page is fetched by this site's server, not your browser.",
+            "toolsEach": "Which tools answer",
+            "toolsHelp": "Tools that ask other services: weather (Open-Meteo, places via Photon), IP and location (ipwho.is), currencies (Coinbase, else the ECB). Everything else runs in your browser.",
+            "icons": "Icons",
+            "iconProvider": "Website icons from",
+            "iconTemplate": "Icon address ({host} or {url})",
+            "iconProviders": {
+                "auto": "Automatic",
+                "duckduckgo": "DuckDuckGo",
+                "google": "Google",
+                "iconhorse": "icon.horse",
+                "site": "The site itself",
+                "custom": "My own address",
+                "none": "No icons (letters)"
+            },
+            "iconProviderHints": {
+                "auto": "DuckDuckGo's icon service first, then the site's own icon. Sharp enough and private: the service only sees the site's name.",
+                "duckduckgo": "icons.duckduckgo.com: sees only the site's name, not you.",
+                "google": "Google's favicon service: the sharpest icons; Google sees which sites are on your dash.",
+                "iconhorse": "icon.horse: finds touch icons and app manifests, draws a letter when there's none.",
+                "site": "Each site's own /favicon.ico: no service in between, but every site sees your visit.",
+                "custom": "Any address that returns an image; {host} becomes the site's name, {url} its full address.",
+                "none": "Only the first letter of each site, nothing is loaded."
+            },
             "history": "Remember recent searches",
             "historyHint": "Kept only in this browser, shown when you click into the empty search bar and among the suggestions. Turning this off forgets them.",
             "fromList": "Add from list",
@@ -466,6 +497,52 @@
         "about": "About the site",
         "maps": "Maps"
     },
+    "intro": {
+        "eyebrow": "Your start page",
+        "title": "Everything you check every day, on one page.",
+        "lead": "The search bar above already works for everyone: search the web, convert, calculate and look things up as you type. Log in and this page becomes your own dash, with widgets on a grid you arrange, your own look, and the same setup on every device.",
+        "features": {
+            "widgets": {
+                "title": "Over 40 widgets",
+                "text": "Weather, calendar, bookmarks, feeds, releases, to-dos, notes, calculator, music and more, sized and placed the way you like."
+            },
+            "search": {
+                "title": "A search bar that answers",
+                "text": "Currencies, units, time zones, encodings, QR codes, passwords, your IP: type it and it's there. Try “help”."
+            },
+            "sync": {
+                "title": "Synced on every device",
+                "text": "Log in anywhere and your dash is there, exactly as you left it. Changes from two devices are merged."
+            },
+            "integrations": {
+                "title": "Your services, connected",
+                "text": "Jellyfin, Navidrome, Immich, Home Assistant, Pi-hole, GitHub and many more, with their keys kept safely on the server."
+            },
+            "look": {
+                "title": "Looks the way you want",
+                "text": "Colours, backgrounds, fonts, card styles, pages and your own CSS. Keep it minimal or fill it up."
+            },
+            "private": {
+                "title": "No tracking",
+                "text": "No ads and no profiling. What you put on your dash is only used to show it to you."
+            }
+        },
+        "andMore": "and {{count}} more",
+        "login": "Log in to make it yours",
+        "loginShort": "Log in",
+        "gallery": "See every widget",
+        "galleryTitle": "Every widget on the dash",
+        "galleryNote": "Log in to add them to your own dash.",
+        "note": "Free. You sign up with Discord; email login can be added later.",
+        "hide": "Hide this",
+        "showAgain": "What can the dash do?"
+    },
+    "sync": {
+        "saving": "Saving",
+        "tooBig": "Too big to sync",
+        "offline": "Offline: saved here",
+        "error": "Not synced"
+    },
     "board": {
         "editBoard": "Edit",
         "done": "Done",
@@ -613,6 +690,10 @@
             "placeholder": "Write something…"
         },
         "todo": {
+            "edit": "Edit “{{text}}”",
+            "editShort": "Edit",
+            "editLabel": "Task",
+            "position": "{{index}} of {{count}}",
             "name": "To-do",
             "text": "A checklist, synced with your account.",
             "placeholder": "Add a task",
@@ -651,6 +732,7 @@
         },
         "feed": {
             "name": "Feeds",
+            "feeds": "Feeds",
             "text": "RSS and Atom feeds: blogs, news, YouTube channels, podcasts, with pictures.",
             "empty": "Edit the widget and add feeds (or just a site's address: its feed is found).",
             "login": "Log in to read feeds (they're fetched by the site's server).",
@@ -661,6 +743,17 @@
         },
         "releases": {
             "name": "Releases",
+            "new": "New",
+            "recent": "Recent",
+            "unread_one": "{{count}} new release",
+            "unread_other": "{{count}} new releases",
+            "markAllRead": "Mark all as read",
+            "markRead": "Mark as read",
+            "markUnread": "Mark as unread",
+            "openRelease": "Open release",
+            "versions": "Versions",
+            "noNotes": "No release notes.",
+            "allRead": "All caught up.",
             "text": "New versions from GitHub, GitLab, Codeberg / Gitea, npm, PyPI, Docker Hub and crates.io.",
             "empty": "Edit the widget and add repositories or packages.",
             "none": "No releases yet",
@@ -942,6 +1035,17 @@
         },
         "timer": {
             "name": "Timer",
+            "resume": "Resume",
+            "stop": "Stop",
+            "up": "Time's up",
+            "addMinute": "One more minute",
+            "lap": "Lap",
+            "lapN": "Lap {{n}}",
+            "setLabel": "Timer: type the time, Enter starts",
+            "backspace": "Delete the last digit",
+            "startPreset": "Start a {{time}} timer",
+            "savePreset": "Keep as a preset",
+            "removePreset": "Remove the {{time}} preset",
             "text": "A countdown timer (with a soft chime) or a stopwatch. It keeps running across reloads.",
             "start": "Start",
             "pause": "Pause",
@@ -1049,12 +1153,18 @@
         "showHistory": "Recent history",
         "feeds": "Feeds",
         "limit": "Items",
+        "group": "Group",
+        "perFeed": "Items per feed",
         "images": "Pictures",
         "summary": "Summaries",
         "source": "Pictures from",
         "refresh": "Refresh every",
         "repos": "Repositories and packages",
         "perRepo": "Versions per entry",
+        "display": "Show as",
+        "unreadOnly": "Only new releases",
+        "readOnOpen": "Opening one marks it as read",
+        "newDays": "Mark as recent for (days)",
         "prereleases": "Pre-releases",
         "notes": "First line of the notes",
         "sort": "Order",
@@ -1196,7 +1306,12 @@
             "tiles": "Tiles",
             "list": "List",
             "icons": "Icons",
+            "mixed": "Mixed together",
+            "feed": "By feed",
+            "unread": "New first",
             "duckduckgo": "DuckDuckGo",
+            "google": "Google",
+            "iconhorse": "icon.horse",
             "none": "None",
             "cards": "Cards",
             "magazine": "Magazine",

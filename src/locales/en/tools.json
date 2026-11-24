@@ -1,0 +1,564 @@
+{
+    "words": {
+        "convert": "to, in, into, as, ->, →, =>",
+        "and": "and, &, +",
+        "encode": "encode, encoded, encoding, enc, convert, turn, make, write, put, translate",
+        "decode": "decode, decoded, decoding, dec, unescape, from, read, translate from",
+        "of": "of, for, from, on",
+        "fillers": "please, pls, can you, could you, would you, show me, give me, tell me, what is, what's, whats, what are, how do i, how to, i need, i want, quick, just",
+        "today": "today, this day",
+        "now": "now, right now",
+        "yesterday": "yesterday",
+        "tomorrow": "tomorrow",
+        "help": "help, tools, commands, ?, what can you do, what can this do, all tools, list tools, tool list, search help, cheat sheet, shortcuts",
+        "password": "passgen, password, passwords, pw, pwd, password generator, generate password, generate a password, new password, random password, strong password, secure password, passphrase, pass phrase, diceware, pin, pin code, random pin",
+        "qr": "qr, qr code, qrcode, qr-code, barcode, make qr, generate qr, qr for, qr code for",
+        "colorpicker": "color picker, colour picker, colorpicker, colourpicker, pick a color, pick a colour, pick color, pick colour, color wheel, colour wheel, color, colour, colors, colours, palette",
+        "clock": "clock, time, current time, the time, what time is it, what's the time, whats the time, time now, local time, my time, what is the time, tell me the time",
+        "weather": "weather, forecast, weather forecast, temperature, temp, rain, is it raining, will it rain, sun, wind",
+        "weatherPlace": "weather, forecast, weather forecast, weather report, temperature",
+        "ip": "my ip, ip, ip address, my ip address, what is my ip, whats my ip, what's my ip, public ip, my public ip, external ip, ipv4, ipv6, ip lookup, ip info, whois ip",
+        "location": "my location, where am i, location, current location, my position, where am i right now, locate me, my coordinates, gps",
+        "slug": "slugify, slug, url slug, permalink, kebab slug",
+        "count": "count, word count, character count, char count, count words, count characters, length of, how many words, how many characters, letters in",
+        "reverse": "reverse, backwards, mirror text, flip text",
+        "uuid": "uuid, guid, uuid4, uuid v4, random uuid, new uuid, generate uuid",
+        "coin": "flip a coin, coin flip, flip coin, coin toss, toss a coin, heads or tails, coin",
+        "dice": "roll, roll a die, roll a dice, roll dice, dice, die, d6, d20, throw dice",
+        "random": "random, random number, rng, pick a number, random between",
+        "age": "age, how old, how old am i, how old is, born, born on, born in, birthday, years old",
+        "since": "since, time since, how long since, how long ago, days since, ago was",
+        "until": "until, till, til, time until, how long until, days until, days till, countdown to, how many days until, how many days till",
+        "between": "between, from",
+        "ratio": "ratio, aspect ratio, aspect, resolution, screen ratio, dimensions",
+        "paper": "paper, paper size, size of, format, sheet",
+        "coords": "coordinates, coords, lat lon, latitude longitude, gps, dms, plus code, pluscode, olc, open location code",
+        "hash": "hash, hashes, checksum, digest, hash of",
+        "bases": {
+            "2": "binary, bin, base 2, base2, bits",
+            "8": "octal, oct, base 8, base8",
+            "10": "decimal, dec, base 10, base10, denary, number, integer, int",
+            "16": "hexadecimal, hex, base 16, base16",
+            "36": "base 36, base36",
+            "roman": "roman, roman numeral, roman numerals, roman number"
+        },
+        "fraction": "fraction, fractions, a fraction, as a fraction, ratio form",
+        "percent": "percent, percentage, %, per cent",
+        "codecs": {
+            "base64": "base64, base 64, b64, base-64",
+            "base64url": "base64url, base64 url, url-safe base64, urlsafe base64",
+            "base32": "base32, base 32, b32",
+            "base58": "base58, base 58, b58, bitcoin base58",
+            "ascii85": "ascii85, base85, a85, ascii 85",
+            "hex": "hex bytes, hexadecimal bytes, hex string, hex dump, hexdump",
+            "binary": "binary bytes, binary code, binary text, bits text, bytes, ones and zeros, 01",
+            "octal": "octal bytes",
+            "decimal": "decimal bytes, byte values, ascii codes, ascii, char codes, character codes",
+            "url": "url, url encoding, urlencode, url encode, percent encoding, percent-encoding, uri, uri component",
+            "html": "html, html entities, html entity, html escape, entities, xml entities",
+            "unicode": "unicode, unicode escapes, unicode escape, escapes, escape, \\u, js escape, javascript escape, json escape, utf-16 escapes",
+            "codepoints": "code points, codepoints, code point, u+, unicode code points",
+            "morse": "morse, morse code",
+            "nato": "nato, nato alphabet, phonetic, phonetic alphabet, nato phonetic, spelling alphabet, radio alphabet",
+            "rot13": "rot13, rot 13, rot-13",
+            "rot47": "rot47, rot 47",
+            "atbash": "atbash",
+            "braille": "braille",
+            "quotedprintable": "quoted-printable, quoted printable, qp",
+            "punycode": "punycode, idn, idna, xn--",
+            "jwt": "jwt, json web token, token"
+        },
+        "hashes": {
+            "md5": "md5, md-5",
+            "sha1": "sha1, sha-1, sha 1",
+            "sha256": "sha256, sha-256, sha 256, sha2, sha-2",
+            "sha384": "sha384, sha-384",
+            "sha512": "sha512, sha-512, sha 512",
+            "crc32": "crc32, crc-32, crc"
+        },
+        "cases": {
+            "lower": "lowercase, lower case, lower, small letters",
+            "upper": "uppercase, upper case, upper, caps, all caps, capitals, capital letters",
+            "title": "title case, titlecase, title",
+            "sentence": "sentence case, sentence",
+            "camel": "camelcase, camel case, camel",
+            "pascal": "pascalcase, pascal case, pascal, upper camel case",
+            "snake": "snake case, snake_case, snakecase, snake",
+            "constant": "constant case, screaming snake case, upper snake case, macro case",
+            "kebab": "kebab case, kebab-case, kebabcase, dash case, kebab",
+            "dot": "dot case, dot.case",
+            "alternating": "alternating case, spongebob, mocking case, sarcasm case",
+            "inverse": "inverse case, swap case, toggle case, invert case"
+        }
+    },
+    "tools": {
+        "help": {
+            "name": "Tools",
+            "description": "Everything this search bar can do, with examples."
+        },
+        "units": {
+            "name": "Units",
+            "description": "Length, mass, temperature, volume, speed, pressure, energy, power, torque, density, data, CSS sizes …",
+            "example": "5 ft to cm"
+        },
+        "cooking": {
+            "name": "Cooking",
+            "description": "Cups, tablespoons, teaspoons, fluid ounces, grams.",
+            "example": "2 cups to ml"
+        },
+        "calc": {
+            "name": "Calculator",
+            "description": "Sums, equations, functions with graphs, LaTeX.",
+            "example": "f(x) = x^2 - 4"
+        },
+        "currency": {
+            "name": "Currency",
+            "description": "Live exchange rates, fiat and crypto, symbols or codes.",
+            "example": "50 € to $"
+        },
+        "time": {
+            "name": "Time zones",
+            "description": "Times between zones, cities and countries.",
+            "example": "3pm Berlin to Tokyo"
+        },
+        "unix": {
+            "name": "Unix time",
+            "description": "Timestamps to dates and back, also for a time of day.",
+            "example": "14:00 to unix"
+        },
+        "clock": {
+            "name": "Clock",
+            "description": "An analog and a digital clock with seconds.",
+            "example": "what time is it"
+        },
+        "age": {
+            "name": "Age",
+            "description": "How old someone is, and the next birthday.",
+            "example": "age 1998-03-14"
+        },
+        "elapsed": {
+            "name": "Time between",
+            "description": "From one date or time to another, since or until a day.",
+            "example": "from 2020-03-01 to today"
+        },
+        "weather": {
+            "name": "Weather",
+            "description": "Here, or anywhere: city, country, postcode or street.",
+            "example": "weather Munich"
+        },
+        "ip": {
+            "name": "My IP",
+            "description": "Your public address and what it tells about you.",
+            "example": "my ip"
+        },
+        "location": {
+            "name": "Location",
+            "description": "Roughly from your IP, exactly if you allow it.",
+            "example": "where am i"
+        },
+        "numbers": {
+            "name": "Number bases",
+            "description": "Decimal, binary, hex, octal, any base, Roman numerals.",
+            "example": "255 to hex"
+        },
+        "fraction": {
+            "name": "Fractions & percent",
+            "description": "Decimals to fractions, fractions to decimals, percent.",
+            "example": "0.375 to fraction"
+        },
+        "color": {
+            "name": "Colours",
+            "description": "HEX, RGB, HSL, HSV, CMYK, OKLCH and a full colour picker.",
+            "example": "color picker"
+        },
+        "encode": {
+            "name": "Encodings",
+            "description": "Base64, Base32, Base58, hex, binary, URL, HTML, Unicode escapes, Morse, NATO, Braille …",
+            "example": "hello to base64"
+        },
+        "decode": {
+            "name": "Decoding",
+            "description": "Paste encoded text, or say what it is.",
+            "example": "decode SGVsbG8="
+        },
+        "hash": {
+            "name": "Hashes",
+            "description": "MD5, SHA-1, SHA-256, SHA-384, SHA-512, CRC-32.",
+            "example": "sha256 hello"
+        },
+        "text": {
+            "name": "Text",
+            "description": "Slugs, letter case, counting, reversing.",
+            "example": "slugify Hello, World!"
+        },
+        "password": {
+            "name": "Passwords",
+            "description": "Passwords, passphrases and PINs, made in your browser.",
+            "example": "passgen"
+        },
+        "qr": {
+            "name": "QR codes",
+            "description": "Text or a link as a QR code to scan or save.",
+            "example": "qr https://example.com"
+        },
+        "random": {
+            "name": "Random",
+            "description": "UUIDs, coins, dice, random numbers.",
+            "example": "roll 2d6"
+        },
+        "ratio": {
+            "name": "Aspect ratio",
+            "description": "Simplify a ratio or find the matching side.",
+            "example": "16:9 at 1440 wide"
+        },
+        "paper": {
+            "name": "Paper sizes",
+            "description": "ISO A, B, C and US sizes, in mm, inches or pixels.",
+            "example": "a4 in inches"
+        },
+        "coords": {
+            "name": "Coordinates",
+            "description": "Decimal degrees, degrees-minutes-seconds and plus codes.",
+            "example": "48.1374, 11.5755"
+        },
+        "link": {
+            "name": "Links",
+            "description": "A preview of a pasted link and a safety check.",
+            "example": "https://example.com"
+        },
+        "translate": {
+            "name": "Translate",
+            "description": "Text into another language.",
+            "example": "house in German"
+        }
+    },
+    "help": {
+        "title": "What this search bar can do",
+        "intro": "Type or pick an example. Everything here runs as you type; Enter still searches the web.",
+        "filter": "Filter tools",
+        "try": "Try",
+        "off": "Off in the settings",
+        "none": "No tool matches that."
+    },
+    "card": {
+        "copy": "Copy",
+        "copied": "Copied",
+        "copyAll": "Copy all",
+        "open": "Open",
+        "more": "More",
+        "less": "Less",
+        "loading": "Loading …",
+        "failed": "Couldn't load this.",
+        "retry": "Try again",
+        "source": "Source: {{source}}",
+        "updated": "Updated {{time}}",
+        "enterCopies": "Enter copies",
+        "settings": "Tool settings",
+        "hide": "Don't show this tool"
+    },
+    "encode": {
+        "encoded": "{{codec}}",
+        "decoded": "Decoded from {{codec}}",
+        "detected": "Looks like {{codec}}",
+        "failed": "That isn't valid {{codec}}.",
+        "all": "More encodings"
+    },
+    "codecs": {
+        "base64": "Base64",
+        "base64url": "Base64url",
+        "base32": "Base32",
+        "base58": "Base58",
+        "ascii85": "Ascii85",
+        "hex": "Hex bytes",
+        "binary": "Binary bytes",
+        "octal": "Octal bytes",
+        "decimal": "Byte values",
+        "url": "URL encoding",
+        "html": "HTML entities",
+        "unicode": "Unicode escapes",
+        "codepoints": "Code points",
+        "morse": "Morse code",
+        "nato": "NATO alphabet",
+        "rot13": "ROT13",
+        "rot47": "ROT47",
+        "atbash": "Atbash",
+        "braille": "Braille",
+        "quotedprintable": "Quoted-printable",
+        "punycode": "Punycode",
+        "jwt": "JSON Web Token"
+    },
+    "hash": {
+        "title": "Hashes of “{{text}}”",
+        "looksLike": "Looks like a {{kind}} hash",
+        "looksLikeHint": "Hashes can't be turned back into text."
+    },
+    "text": {
+        "slug": "Slug",
+        "case": "{{name}}",
+        "cases": {
+            "lower": "lowercase",
+            "upper": "UPPERCASE",
+            "title": "Title Case",
+            "sentence": "Sentence case",
+            "camel": "camelCase",
+            "pascal": "PascalCase",
+            "snake": "snake_case",
+            "constant": "CONSTANT_CASE",
+            "kebab": "kebab-case",
+            "dot": "dot.case",
+            "alternating": "aLtErNaTiNg",
+            "inverse": "iNVERSE"
+        },
+        "reverse": "Reversed",
+        "characters": "{{count}} characters",
+        "noSpaces": "{{count}} without spaces",
+        "words": "{{count}} words",
+        "lines": "{{count}} lines",
+        "sentences": "{{count}} sentences",
+        "bytes": "{{count}} bytes (UTF-8)",
+        "reading": "about {{minutes}} min to read"
+    },
+    "password": {
+        "title": "Password generator",
+        "modes": {
+            "password": "Password",
+            "passphrase": "Passphrase",
+            "pin": "PIN"
+        },
+        "length": "Length",
+        "words": "Words",
+        "lower": "a–z",
+        "upper": "A–Z",
+        "digits": "0–9",
+        "symbols": "!#$",
+        "avoidAmbiguous": "No look-alikes (I l 1 O 0)",
+        "separator": "Between words",
+        "capitalize": "Capitals",
+        "addNumber": "A number",
+        "custom": "Extra characters",
+        "again": "New one",
+        "strength": [
+            "Weak",
+            "Fair",
+            "Good",
+            "Strong",
+            "Very strong"
+        ],
+        "bits": "{{bits}} bits",
+        "local": "Made in your browser with crypto.getRandomValues; never sent or stored."
+    },
+    "qr": {
+        "title": "QR code",
+        "save": "Save PNG",
+        "saveSvg": "Save SVG",
+        "error": "Error correction",
+        "levels": {
+            "L": "Low",
+            "M": "Medium",
+            "Q": "Quartile",
+            "H": "High"
+        },
+        "tooLong": "That's too long for a QR code.",
+        "colors": "Colours",
+        "margin": "Margin"
+    },
+    "clock": {
+        "title": "Time here",
+        "utc": "UTC{{offset}}",
+        "week": "Week {{week}}",
+        "day": "Day {{day}} of the year"
+    },
+    "weather": {
+        "here": "Weather here",
+        "in": "Weather in {{place}}",
+        "feels": "Feels like {{value}}",
+        "humidity": "Humidity",
+        "wind": "Wind",
+        "rain": "Rain",
+        "uv": "UV",
+        "pressure": "Pressure",
+        "sunrise": "Sunrise",
+        "sunset": "Sunset",
+        "hourly": "Next hours",
+        "daily": "Next days",
+        "notFound": "Couldn't find “{{place}}”.",
+        "byIp": "From your IP; it can be off by a city.",
+        "precise": "Use my exact location",
+        "source": "Open-Meteo"
+    },
+    "ip": {
+        "title": "Your IP address",
+        "lookup": "IP address {{ip}}",
+        "version": "IPv{{version}}",
+        "fields": {
+            "country": "Country",
+            "region": "Region",
+            "city": "City",
+            "postal": "Postcode",
+            "coordinates": "Coordinates",
+            "timezone": "Time zone",
+            "isp": "Provider",
+            "org": "Organisation",
+            "asn": "ASN",
+            "domain": "Domain",
+            "type": "Type",
+            "continent": "Continent",
+            "calling": "Calling code",
+            "capital": "Capital",
+            "currency": "Currency",
+            "eu": "EU member"
+        },
+        "device": "This device",
+        "deviceFields": {
+            "browser": "Browser",
+            "platform": "Platform",
+            "languages": "Languages",
+            "screen": "Screen",
+            "timezone": "Time zone",
+            "cores": "CPU cores",
+            "memory": "Memory",
+            "connection": "Connection",
+            "touch": "Touch",
+            "dnt": "Do Not Track"
+        },
+        "yes": "Yes",
+        "no": "No",
+        "private": "A private address: it never reaches the internet, so there's nothing to look up.",
+        "map": "On the map",
+        "note": "Looked up with {{source}}; your address is sent to it for that."
+    },
+    "location": {
+        "title": "Your location",
+        "rough": "Roughly, from your IP",
+        "exact": "Exactly, from your device",
+        "ask": "Want it exact? Your browser will ask first; it stays on this device.",
+        "allow": "Use exact location",
+        "denied": "Location access was turned down. You can allow it in the browser's site settings.",
+        "unavailable": "Your device couldn't find its location.",
+        "accuracy": "within {{meters}}",
+        "forget": "Stop using exact location",
+        "map": "Open in maps",
+        "plusCode": "Plus code"
+    },
+    "currency": {
+        "title": "{{from}} to {{to}}",
+        "rate": "1 {{from}} = {{rate}} {{to}}",
+        "live": "Live",
+        "daily": "Daily reference rate",
+        "unknown": "No rate for {{code}}."
+    },
+    "age": {
+        "title": "Age",
+        "years": "{{count}} years",
+        "full": "{{years}} years, {{months}} months, {{days}} days",
+        "days": "{{count}} days",
+        "weeks": "{{count}} weeks",
+        "hours": "{{count}} hours",
+        "next": "Turns {{turns}} in {{days}} days",
+        "nextToday": "Turns {{turns}} today 🎉",
+        "born": "Born on a {{weekday}}",
+        "unborn": "That's in the future.",
+        "approx": "Born in {{year}}: {{low}} or {{high}} years old"
+    },
+    "elapsed": {
+        "title": "Time between",
+        "since": "Since {{date}}",
+        "until": "Until {{date}}",
+        "span": "{{years}} y {{months}} mo {{days}} d",
+        "days": "{{count}} days",
+        "weeks": "{{weeks}} weeks and {{days}} days",
+        "workdays": "{{count}} weekdays",
+        "hours": "{{count}} hours",
+        "minutes": "{{count}} minutes",
+        "seconds": "{{count}} seconds",
+        "ago": "{{span}} ago",
+        "ahead": "in {{span}}",
+        "duration": "Duration",
+        "overnight": "over midnight"
+    },
+    "numbers": {
+        "base": "Base {{base}}",
+        "names": {
+            "2": "Binary",
+            "8": "Octal",
+            "10": "Decimal",
+            "16": "Hexadecimal",
+            "36": "Base 36",
+            "roman": "Roman numerals"
+        },
+        "bits": "{{bits}} bits · {{bytes}} bytes",
+        "power": "2^{{power}}",
+        "fraction": "Fraction",
+        "mixed": "Mixed number",
+        "decimal": "Decimal",
+        "percent": "Percent",
+        "approx": "close to"
+    },
+    "ratio": {
+        "title": "Aspect ratio",
+        "simplified": "Simplified",
+        "decimal": "As a number",
+        "known": "Known as {{name}}",
+        "match": "At this ratio",
+        "width": "Width",
+        "height": "Height",
+        "megapixels": "{{value}} megapixels"
+    },
+    "paper": {
+        "title": "{{name}}",
+        "mm": "Millimetres",
+        "cm": "Centimetres",
+        "inches": "Inches",
+        "pixels": "Pixels at {{dpi}} dpi",
+        "points": "Points",
+        "area": "Area",
+        "series": "Same series",
+        "compare": "{{a}} and {{b}}",
+        "bigger": "{{a}} is {{percent}}% bigger than {{b}}"
+    },
+    "coords": {
+        "title": "Coordinates",
+        "decimal": "Decimal degrees",
+        "dms": "Degrees, minutes, seconds",
+        "ddm": "Degrees, decimal minutes",
+        "plusCode": "Plus code",
+        "map": "Open in maps",
+        "shortCode": "A short plus code needs a town after it (“4HPG+XX Munich”) or your location.",
+        "area": "An area of about {{meters}}"
+    },
+    "link": {
+        "title": "Link",
+        "checking": "Checking …",
+        "safe": "No known threats",
+        "unsafe": "Flagged as dangerous",
+        "unknown": "Couldn't check",
+        "checkedBy": "Checked against {{lists}}",
+        "redirects": "Goes on to {{host}}",
+        "open": "Open",
+        "openNew": "Open in a new tab",
+        "insecure": "Not encrypted (http)",
+        "failed": "No preview for this page.",
+        "status": "Answered {{status}}",
+        "missing": "This address doesn't exist"
+    },
+    "random": {
+        "uuid": "UUID v4",
+        "coin": [
+            "Heads",
+            "Tails"
+        ],
+        "coinTitle": "Coin flip",
+        "dice": "{{count}}d{{sides}}",
+        "total": "Total {{total}}",
+        "number": "Random number from {{min}} to {{max}}",
+        "again": "Again"
+    },
+    "image": {
+        "attachTitle": "Search with this picture",
+        "attachYes": "{{engine}} can search with pictures: it gets this one when you pick it below.",
+        "attachNo": "{{engine}} can't search with pictures, so it stays here. Read it, scan it or pick colours instead.",
+        "neverSent": "Nothing is uploaded until you pick a search below.",
+        "drop": "Drop a picture to search with it",
+        "paste": "Pasted picture"
+    }
+}

@@ -83,7 +83,10 @@
         "force": "Force",
         "current": "Current",
         "voltage": "Voltage",
-        "amount": "Amount of substance"
+        "amount": "Amount of substance",
+        "torque": "Torque",
+        "density": "Density",
+        "typography": "Typography (CSS, 16 px = 1 rem)"
     },
     "units": {
         "length": {
@@ -253,6 +256,29 @@
         "amount": {
             "mol": "mole, moles",
             "mmol": "millimole, millimoles"
+        },
+        "torque": {
+            "nm": "newton metre, newton metres, newton meter, newton meters, newton-metre, newton-meter",
+            "knm": "kilonewton metre, kilonewton meter",
+            "lbft": "pound-foot, pound-feet, pound foot, pound feet, foot-pound, foot-pounds, foot pound, foot pounds, ft lb, ft lbs, lb ft, lbs ft",
+            "lbin": "pound-inch, pound inch, inch-pound, inch-pounds, inch pound, inch pounds, in lb, in lbs",
+            "kgfm": "kilogram-force metre, kilogram-force meter, kilopond metre"
+        },
+        "density": {
+            "kgm3": "kilogram per cubic metre, kilograms per cubic metre, kilogram per cubic meter, kilograms per cubic meter",
+            "gcm3": "gram per cubic centimetre, grams per cubic centimetre, gram per cubic centimeter, grams per cubic centimeter, gram per millilitre, grams per milliliter",
+            "gl": "gram per litre, grams per litre, gram per liter, grams per liter",
+            "kgl": "kilogram per litre, kilograms per liter",
+            "lbft3": "pound per cubic foot, pounds per cubic foot",
+            "lbin3": "pound per cubic inch, pounds per cubic inch",
+            "lbgal": "pound per gallon, pounds per gallon"
+        },
+        "typography": {
+            "px": "px, css pixel, css pixels",
+            "point": "point, points, typographic point, typographic points",
+            "pica": "pica, picas",
+            "rem": "rem, root em",
+            "em": "em, ems"
         }
     },
     "symbols": {
