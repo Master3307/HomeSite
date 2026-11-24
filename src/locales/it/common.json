@@ -1,21 +1,21 @@
 {
     "image": {
-        "openTab": "Open in new tab",
-        "download": "Download",
-        "close": "Close",
-        "open": "Show larger"
+        "openTab": "Apri in una nuova scheda",
+        "download": "Scarica",
+        "close": "Chiudi",
+        "open": "Ingrandisci"
     },
     "richText": {
-        "emoji": "Add an emoji",
-        "people": "People to mention",
-        "preview": "Preview"
+        "emoji": "Aggiungi un'emoji",
+        "people": "Persone da menzionare",
+        "preview": "Anteprima"
     },
     "zone": {
-        "label": "Time zone",
-        "auto": "Automatic ({{zone}})",
-        "autoShort": "Automatic, like my device",
-        "search": "City, region or UTC+1",
-        "none": "No time zone found."
+        "label": "Fuso orario",
+        "auto": "Automatico ({{zone}})",
+        "autoShort": "Automatico, come il mio dispositivo",
+        "search": "Città, regione o UTC+1",
+        "none": "Non è stato trovato alcun fuso orario."
     },
     "loading": "Caricamento…"
 }
