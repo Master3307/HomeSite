@@ -1,19 +1,19 @@
 {
-    "header": "Saluti!",
-    "welcome": "Benvenuto nel mio sito web! Spero ti piaccia :P",
+    "header": "Saluti! Sono koby.",
+    "welcome": "Questo è il mio piccolo angolo di Internet. Scopri chi sono, fai un salto nella nostra community su Discord oppure usa la pagina iniziale che uso ogni giorno.",
     "places": {
         "dash": {
             "title": "Dash",
-            "text": "A fast start page with search, bookmarks and widgets."
+            "text": "Una pagina iniziale veloce con funzione di ricerca, segnalibri e widget."
         },
         "card": {
-            "title": "About me",
-            "text": "Who I am, what I build and where to find me."
+            "title": "Chi sono",
+            "text": "Chi sono, cosa realizzo e dove trovarmi."
         },
         "cult": {
             "title": "Culto dei gatti neri",
-            "text": "Our Bongo Cat Discord: lobby codes, the Friday dress code, members."
+            "text": "Il nostro server Discord di Bongo Cat: codici per la lobby, il dress code del venerdì, i membri."
         }
     },
-    "placesLabel": "Pages"
+    "placesLabel": "Pagine"
 }
