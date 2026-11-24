@@ -8,16 +8,16 @@
         "failed": "Impossibile caricare il profilo"
     },
     "widget": {
-        "label": "Discord server",
+        "label": "Server Discord",
         "fallbackName": "Culto dei gatti neri",
         "online": "online",
-        "members": "members",
+        "members": "membri",
         "boosts": "boosts",
-        "onlineNow": "Online now",
-        "inVoice": "In voice",
-        "more": "+{{count}} more",
-        "unavailable": "Live server info is unavailable right now.",
-        "join": "Join the server",
-        "totalMembers": "Members"
+        "onlineNow": "Online in questo momento",
+        "inVoice": "In vocale",
+        "more": "+{{count}} in più",
+        "unavailable": "Al momento le informazioni in tempo reale sul server non sono disponibili.",
+        "join": "Entra nel server",
+        "totalMembers": "Membri"
     }
 }
