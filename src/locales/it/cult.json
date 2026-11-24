@@ -1,22 +1,22 @@
 {
     "header": "Benvenuto, {{user}}!",
     "stranger": "Straniero",
-    "eyebrow": "A Bongo Cat community",
-    "lead": "A small server of black cat enjoyers who mostly hang out in Bongo Cat. Grab the lobby code, vote on this week's Friday Dress Code, and pet the cat while you're here.",
+    "eyebrow": "Una comunità di Bongo Cat",
+    "lead": "Un piccolo server di amanti dei gatti neri che si ritrovano principalmente su Bongo Cat. Prendi il codice della lobby, vota il dress code del venerdì di questa settimana e accarezza il gatto mentre sei qui.",
     "game": {
-        "steamWidget": "Bongo Cat on Steam",
-        "title": "The Game"
+        "steamWidget": "Bongo Cat su Steam",
+        "title": "Il gioco"
     },
     "footer": {
-        "source": "View source on <0>GitHub</0>"
+        "source": "Visualizza il codice sorgente su <0>GitHub</0>"
     },
-    "catTitle": "hehehehehe",
-    "catAlt": "A funny cat greeting you",
+    "catTitle": "Hehehehehe",
+    "catAlt": "Un gatto simpatico che ti saluta",
     "taps": {
-        "label": "Taps and pets on the lobby cat",
-        "taps": "taps",
-        "pets": "pets",
-        "byYou": "by you",
-        "split": "{{members}} by members, {{guests}} by guests"
+        "label": "Carezze e coccole al gatto della hall",
+        "taps": "Tocchi",
+        "pets": "Carezze",
+        "byYou": "da te",
+        "split": "{{members}} dai membri, {{guests}} dagli ospiti"
     }
 }
