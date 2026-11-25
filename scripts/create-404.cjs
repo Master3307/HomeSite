@@ -12,8 +12,7 @@ const { copyFileSync, readFileSync, writeFileSync } = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-// BUILD_OUT_DIR: another build folder (pnpm app:build builds into app/www).
-const dist = path.resolve(root, process.env.BUILD_OUT_DIR || 'dist');
+const dist = path.resolve(root, 'dist');
 
 copyFileSync(path.join(dist, 'index.html'), path.join(dist, '404.html'));
 console.log('[Build] Created dist/404.html from dist/index.html');

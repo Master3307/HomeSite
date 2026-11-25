@@ -954,10 +954,6 @@ select.members-input option {
 .settings-swatch--default {
   background: var(--accent-default, #b60b0b);
 }
-/* In the HomeSite app the settings wear HomeSite's look: its own colour is the site's violet (main.css, dark). */
-.is-app--home .settings-swatch--default {
-  background: #3d29d4;
-}
 .settings-swatch--any {
   background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
   overflow: hidden;

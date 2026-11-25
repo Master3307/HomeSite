@@ -47,8 +47,7 @@ export default defineConfig(({ mode }) => {
     ],
     base: "/",
     build: {
-      // BUILD_OUT_DIR: pnpm app:build builds the very same site into app/www (dist/ stays the web's).
-      outDir: process.env.BUILD_OUT_DIR || "dist",
+      outDir: "dist",
       emptyOutDir: true,
       /*
        * three.js (the /card setup viewer) and xterm (the hub console) get

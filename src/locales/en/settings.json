@@ -65,7 +65,6 @@
         "push": "Push",
         "pushGeneral": "General",
         "pushThisBrowser": "Push notifications in this browser",
-        "pushThisApp": "Push notifications in this app",
         "pushChecking": "Checking push notifications …",
         "pushOn": "On. This device gets the kinds below that have Push ticked.",
         "pushOff": "Off on this device. Turn it on to get notifications even when the site is closed.",
@@ -76,17 +75,14 @@
         "pushTestSent": "Sent. It should show up in a moment.",
         "pushTestNone": "No device got it. Turn push on for this device first.",
         "pushDenied": "Notifications are blocked for this site. Allow them in the browser's site settings, then try again.",
-        "pushDeniedApp": "Notifications are blocked for the app. Allow them in the phone's settings (Apps → HomeSite → Notifications).",
         "pushFailed": "That didn't work ({{error}}).",
         "pushReason": {
             "server": "Push notifications aren't set up on this server yet.",
-            "app": "This build of the app has no push notifications.",
             "browser": "This browser can't receive push notifications.",
             "install": "On iPhone and iPad, add the site to the home screen first (Share → Add to Home Screen), then turn push on there."
         },
         "pushDevices": "Devices with push",
         "pushHere": "this device",
-        "pushApp": "App",
         "pushBrowser": "Browser",
         "pushAdded": "added {{date}}",
         "pushLast": "last notification {{date}}",
@@ -122,12 +118,6 @@
         "keep": "Keep my account",
         "deleting": "Deleting…",
         "confirm": "Delete everything"
-    },
-    "appOpen": {
-        "title": "The apps",
-        "text": "HomeSite and the cult also come as Android apps.",
-        "open": "Open pages in the app",
-        "openText": "On an Android phone with the HomeSite or CultSite app installed, pages you open in the browser go to the app. Off: they stay in the browser."
     },
     "back": "Back",
     "searchPlaceholder": "Search all settings",

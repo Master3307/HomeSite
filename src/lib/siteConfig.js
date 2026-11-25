@@ -23,9 +23,6 @@ export const siteConfig = Object.freeze({
   searchEngineUrl: config.SEARCH_ENGINE_URL || "",
   searchEngineName: config.SEARCH_ENGINE_NAME || "My search",
   masterSearch: !/^(off|false|0|no)$/i.test(String(config.MASTER_SEARCH ?? "on")),
-  // Android package names of the apps (public on the store anyway): the "open the app" preference uses them.
-  appId: config.APP_ID || "",
-  cultAppId: config.CULT_APP_ID || "",
   dashFeeds: !/^(off|false|0|no)$/i.test(String(config.DASH_FEEDS ?? "on")),
   dashLinkPreview: !/^(off|false|0|no)$/i.test(String(config.DASH_LINK_PREVIEW ?? "on")),
   dashMusic: !/^(off|false|0|no)$/i.test(String(config.DASH_MUSIC ?? "on")),

@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Cult of black Cats: the server icon's grey, /cult's night colour (bg-secondary) and red. -->
-    <color name="ic_launcher_background">#383838</color>
-    <color name="app_background">#1A0B0B</color>
-    <color name="notification_accent">#B60B0B</color>
-</resources>

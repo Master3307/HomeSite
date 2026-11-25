@@ -200,8 +200,8 @@ function findJavaScriptFiles(directory) {
       const relativePath = path.relative(projectRoot, absolutePath);
 
       if (entry.isDirectory()) {
-        // The app's copy of the build and its native projects (pnpm app:build).
-        if (!ignoredDirectories.has(entry.name) && !["app/www", "app/android", "app/ios", "app/build"].includes(relativePath.split(path.sep).join("/"))) {
+        // app/: what may be left locally of the former Android app.
+        if (!ignoredDirectories.has(entry.name) && relativePath.split(path.sep).join("/") !== "app") {
           walk(absolutePath);
         }
 

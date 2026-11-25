@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Brand colours (app_background, notification_accent, ic_launcher_background) are in each app's res/values/brand.xml. -->
-    <color name="colorPrimary">#5416A4</color>
-    <color name="colorPrimaryDark">#150A24</color>
-    <color name="colorAccent">#7C4DFF</color>
-</resources>

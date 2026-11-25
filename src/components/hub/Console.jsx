@@ -335,7 +335,7 @@ function TextView({ text, onClose }) {
   )
 }
 
-/* Saves the whole output as a .txt file (in the app through Android's Save as, src/lib/native.js). */
+/* Saves the whole output as a .txt file. */
 function saveOutput(term, name) {
   const text = bufferText(term, term.buffer.active.length)
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
@@ -343,7 +343,6 @@ function saveOutput(term, name) {
   const link = document.createElement('a')
   link.href = URL.createObjectURL(new Blob([`${text}\n`], { type: 'text/plain' }))
   link.download = `${slug}-${stamp}.txt`
-  // In the page, so the app's download handler (a capture-phase listener) sees the click.
   document.body.append(link)
   link.click()
   link.remove()

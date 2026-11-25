@@ -13,11 +13,8 @@ const SOURCE = process.env.FDC_ARCHIVE_DIR
   ? path.resolve(process.env.FDC_ARCHIVE_DIR)
   : path.join(PROJECT_ROOT, "server", "services", "db", "fdc-polls");
 
-// --dist: the build folder (BUILD_OUT_DIR, e.g. app/www for pnpm app:build; default dist).
-const OUTPUT_ROOT = path.resolve(
-  PROJECT_ROOT,
-  process.argv.includes("--dist") ? process.env.BUILD_OUT_DIR || "dist" : "public",
-);
+// --dist: into the build (dist/), else public/ for the dev server.
+const OUTPUT_ROOT = path.resolve(PROJECT_ROOT, process.argv.includes("--dist") ? "dist" : "public");
 
 const DESTINATION = path.join(OUTPUT_ROOT, "fdc-polls");
 

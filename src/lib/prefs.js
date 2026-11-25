@@ -8,7 +8,6 @@
  *   motion    full | reduce | none all animations, fewer (small ones stay) or none at all
  *   blockInsights  true: Cloudflare's page analytics send nothing (index.html, early script)
  *   loudSounds false: loud sounds (the calculator's explosion) stay muted; on by default
- *   openApp   true: on Android, pages open in the installed HomeSite / CultSite app (lib/openApp.js); off by default
  *   notify    { moderation | reports: { site, email } } (server/services/moderation.cjs)
  *   chrome    { themeSwitch, languageSwitch, account: full | avatar }: the site's own buttons (Root.jsx, Login.jsx)
  *   search    { safesearch: strict | moderate | off, language, newTab, suggest, infobox, thumbnails, hiddenTabs }: Master Search (pages/MasterSearch.jsx)
@@ -17,10 +16,10 @@
  */
 
 const KEY = 'homesite:prefs'
-export const PREF_KEYS = ['clock', 'timeZone', 'accent', 'motion', 'loudSounds', 'blockInsights', 'openApp', 'notify', 'chrome', 'search']
+export const PREF_KEYS = ['clock', 'timeZone', 'accent', 'motion', 'loudSounds', 'blockInsights', 'notify', 'chrome', 'search']
 /* Safe search is strict until someone chooses otherwise. */
 export const SEARCH_DEFAULTS = { safesearch: 'strict', language: 'auto', newTab: false, suggest: true, infobox: true, thumbnails: true, hiddenTabs: [] }
-const DEFAULT_PREFS = { clock: 'auto', timeZone: 'auto', accent: null, motion: 'full', loudSounds: true, blockInsights: false, openApp: false, notify: {}, chrome: { themeSwitch: true, languageSwitch: true, account: 'full' }, search: SEARCH_DEFAULTS }
+const DEFAULT_PREFS = { clock: 'auto', timeZone: 'auto', accent: null, motion: 'full', loudSounds: true, blockInsights: false, notify: {}, chrome: { themeSwitch: true, languageSwitch: true, account: 'full' }, search: SEARCH_DEFAULTS }
 const MOTIONS = ['full', 'reduce', 'none']
 /* Master Search tabs that can be hidden ("all" always stays). */
 const SEARCH_TABS = ['images', 'videos', 'news', 'maps', 'music', 'science', 'it', 'files', 'social']

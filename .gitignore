@@ -200,15 +200,6 @@ typings/
 # pnpm setup:gui / setup:cli answers
 .setup-state.json
 
-# App (pnpm app:build): generated from .env, signing keys and Firebase config stay local
+# The former Android app: whatever is left of it locally (signing keys!) never goes into git
+/app/
 /capacitor.config.json
-/app/keys/
-/app/build/
-/app/www/
-/app/google-services.json
-/app/GoogleService-Info.plist
-/app/android/homesite.properties
-/app/android/app/google-services.json
-/app/android/app/src/home/assets/
-/app/android/app/src/cult/assets/
-!/app/android/gradle/wrapper/gradle-wrapper.jar

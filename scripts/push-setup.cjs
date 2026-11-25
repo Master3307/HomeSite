@@ -4,11 +4,9 @@
  *   pnpm push:setup             new VAPID keys for Web Push into .env
  *                               (--force replaces existing ones: every browser
  *                               then has to turn push on again)
- *   pnpm push:setup -- --check  shows what is set up (browser / app), no changes
+ *   pnpm push:setup -- --check  shows whether it is set up, no changes
  *
- * Push in the app (Firebase) needs FCM_SERVICE_ACCOUNT in .env and the
- * project's google-services.json in app/ (docs/app.md). Restart the account
- * API after changing .env.
+ * Restart the account API after changing .env.
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -23,18 +21,7 @@ const readEnv = () => (fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, "utf8
 function check() {
   const env = parseEnv(readEnv());
   const web = Boolean(env.WEB_PUSH_PUBLIC_KEY && env.WEB_PUSH_PRIVATE_KEY);
-  let app = false;
-  try {
-    const raw = String(env.FCM_SERVICE_ACCOUNT || "").trim();
-    const account = raw ? JSON.parse(raw.startsWith("{") ? raw : Buffer.from(raw, "base64").toString("utf8")) : null;
-    app = Boolean(account?.project_id && account?.client_email && account?.private_key);
-  } catch {
-    app = false;
-  }
-  const googleServices = fs.existsSync(path.join(ROOT, "app", "google-services.json"));
   console.log(`Browser push (Web Push): ${web ? "ready" : "not set up (run pnpm push:setup)"}`);
-  console.log(`App push (Firebase):     ${app ? "server ready" : "FCM_SERVICE_ACCOUNT missing or invalid"}`);
-  console.log(`App build:               ${googleServices ? "app/google-services.json found" : "no app/google-services.json (the app builds without push)"}`);
 }
 
 function setup() {

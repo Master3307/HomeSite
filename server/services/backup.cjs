@@ -88,17 +88,9 @@ const FALLBACK_PATHS = [
 
 const toPosix = (value) => value.split(path.sep).join("/");
 
-/*
- * The apps (app/): everything there is made again by `pnpm app:build`
- * (Gradle output, the APKs / AABs, the copied site, generated configs),
- * over 1.5 GB. Only what can't be made again goes into a backup: the
- * signing key (losing it means no more updates on Google Play) and the
- * Firebase config.
- */
-const APP_KEPT = /^app\/(keys\/|google-services\.json$)/;
-
+// app/ held the former Android app (removed); its files, if any are left, aren't backed up.
 function isExcluded(rel) {
-  if (rel.startsWith("app/") && !APP_KEPT.test(rel)) return true;
+  if (rel.startsWith("app/")) return true;
   if (rel.endsWith(".tmp") || /\.tmp$|\.[0-9a-f-]{36}\.tmp$/.test(rel))
     return true;
   // Bongo Cat imports in progress (uploads, the next version, the one being replaced).

@@ -48,32 +48,6 @@ const OAUTH_STATE_COOKIE_NAME = "__Secure-homesite_oauth_state";
 const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
 
 /*
- * Discord login from the app (RFC 8252: in the system browser, not the app's
- * WebView). The app opens /auth/discord?app=<PKCE challenge> in a browser tab;
- * after Discord the callback doesn't set a cookie in that browser but sends a
- * one-time code to <APP_ID>://login, which the app trades for its own login
- * with POST /auth/app/exchange { code, verifier }. Only the app that made the
- * challenge knows the verifier, so a code caught by another app is useless.
- */
-const APP_LOGIN_CODE_TTL_MS = 2 * 60 * 1000;
-const APP_ID_PATTERN = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/;
-// The apps' login addresses: HomeSite (APP_ID) and Cult of black Cats (CULT_APP_ID).
-const appSchemes = () => ["APP_ID", "CULT_APP_ID"].map((key) => setting(key).toLowerCase()).filter((id) => APP_ID_PATTERN.test(id));
-const appPending = new Map(); // OAuth state -> { challenge, scheme, expires }
-const appCodes = new Map(); // one-time code -> { userId, challenge, expires }
-const sweep = (map) => {
-  for (const [key, value] of map) if (value.expires < Date.now()) map.delete(key);
-};
-function appRedirect(scheme, params) {
-  return `${scheme}://login?${new URLSearchParams(params).toString()}`;
-}
-/* A tiny page that hands over to the app (a plain redirect to a custom scheme can be blocked without a tap). */
-function appHandoffPage(target) {
-  const href = target.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><title>HomeSite</title><style>body{font:16px system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;background:#140c24;color:#eee}a{color:#fff;background:#6d4aff;padding:.8em 1.4em;border-radius:999px;text-decoration:none;font-weight:600}</style></head><body><a href="${href}">Back to the app</a><script>location.replace(${JSON.stringify(target)})</script></body></html>`;
-}
-
-/*
  * ADMIN_KEY login: signs in as the bot's own Discord identity (BOT_DISPLAY_NAME)
  * with the owner role, without going through Discord OAuth.
  */
@@ -844,19 +818,6 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
 
     setOAuthStateCookie(res, state);
 
-    // From the app: remember its PKCE challenge for the callback.
-    const challenge = typeof req.query.app === "string" ? req.query.app : "";
-    if (challenge) {
-      // Which app asked (its package name is its login address); only the configured ones.
-      const schemes = appSchemes();
-      const scheme = typeof req.query.scheme === "string" ? req.query.scheme.toLowerCase() : schemes[0];
-      if (!schemes.includes(scheme) || !/^[A-Za-z0-9_-]{43}$/.test(challenge)) {
-        return res.status(400).send("App login is not set up on this server.");
-      }
-      sweep(appPending);
-      appPending.set(state, { challenge, scheme, expires: Date.now() + OAUTH_STATE_MAX_AGE_MS });
-    }
-
     const query = new URLSearchParams({
       client_id: process.env.DISCORD_CLIENT_ID,
       redirect_uri: DISCORD_REDIRECT_URI,
@@ -888,12 +849,8 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
           .send("Invalid or expired Discord login request.");
       }
 
-      const fromApp = appPending.get(state);
-      appPending.delete(state);
-      const appTarget = fromApp && fromApp.expires > Date.now() && appSchemes().includes(fromApp.scheme) ? fromApp : null;
-      // Where a refused login is told about: the site, or the app.
+      // A refused login is told about on the site.
       const refuse = (reason) => {
-        if (appTarget) return res.send(appHandoffPage(appRedirect(appTarget.scheme, { login: reason })));
         const target = new URL(process.env.FRONTEND_REDIRECT_URL || process.env.FRONTEND_ORIGIN);
         target.searchParams.set("login", reason);
         return res.redirect(target.toString());
@@ -980,14 +937,6 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
           );
         }
 
-        // The app gets a one-time code; its own login is made by /auth/app/exchange.
-        if (appTarget) {
-          sweep(appCodes);
-          const oneTime = createRandomToken();
-          appCodes.set(oneTime, { userId: user.id, challenge: appTarget.challenge, expires: Date.now() + APP_LOGIN_CODE_TTL_MS });
-          return res.send(appHandoffPage(appRedirect(appTarget.scheme, { code: oneTime })));
-        }
-
         const oldToken = req.cookies?.[AUTH_COOKIE_NAME];
 
         if (oldToken) {
@@ -1014,35 +963,6 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
       }
     },
   );
-
-  // The app's half of the Discord login (see appPending above): code + verifier -> the login cookie.
-  app.post("/auth/app/exchange", authRateLimiter, requireStorage, (req, res) => {
-    const oneTime = typeof req.body?.code === "string" ? req.body.code : "";
-    const verifier = typeof req.body?.verifier === "string" ? req.body.verifier : "";
-    const entry = appCodes.get(oneTime);
-    appCodes.delete(oneTime);
-    if (!entry || entry.expires < Date.now() || !/^[A-Za-z0-9._~-]{43,128}$/.test(verifier)) {
-      return res.status(400).json({ error: "This login has expired. Try again." });
-    }
-    const challenge = crypto.createHash("sha256").update(verifier).digest("base64url");
-    if (!safeTokenEqual(entry.challenge, challenge)) {
-      return res.status(400).json({ error: "This login has expired. Try again." });
-    }
-    const user = db.prepare("SELECT id, discord_user_id, username, display_name FROM users WHERE id = ?").get(entry.userId);
-    if (!user || isBanned(user.discord_user_id)) return res.status(403).json({ error: "Login refused." });
-
-    const oldToken = req.cookies?.[AUTH_COOKIE_NAME];
-    if (oldToken) deletePersistentSession(oldToken);
-    const persistentSession = createPersistentSession(user.id);
-    setAuthCookie(res, persistentSession.token);
-    logActivity({
-      level: "normal",
-      action: "login",
-      actor: { discordId: user.discord_user_id, name: user.display_name || user.username },
-      summary: "logged in with Discord (app)",
-    });
-    return res.json({ ok: true });
-  });
 
   /** The current session, or null. Used by other routes (e.g. FDC). */
   function getRequestSession(req) {

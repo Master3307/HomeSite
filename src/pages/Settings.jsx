@@ -10,7 +10,6 @@ import SecuritySettings from '../components/cult/SecuritySettings.jsx'
 import PushSettings from '../components/cult/PushSettings.jsx'
 import VisibilityChoice from '../components/cult/VisibilityChoice.jsx'
 import { DashCustomize, DashSearchSettings } from '../components/dash/DashSettings.jsx'
-import { isNativeApp } from '../lib/native.js'
 import { useAccountSettings } from '../lib/accountSettings.jsx'
 import { forgetAccountDash, useDashSettings, updateDashSettings } from '../lib/dashSettings.js'
 import { deleteAccount, forgetThisBrowser, GOODBYE_KEY, loadProfile, profilePath, updateProfile } from '../lib/members.js'
@@ -245,12 +244,6 @@ function GeneralTab({ loggedIn }) {
           <TimeZonePicker value={prefs.timeZone ?? 'auto'} onChange={(timeZone) => setPrefs({ timeZone })} />
         </div>
       </Section>
-
-      {!isNativeApp && (
-        <Section icon="install_mobile" title={t('appOpen.title')} text={t('appOpen.text')}>
-          <Switch checked={prefs.openApp === true} onChange={(openApp) => setPrefs({ openApp })} title={t('appOpen.open')} text={t('appOpen.openText')} />
-        </Section>
-      )}
 
       <Section icon="visibility_off" title={t('analytics.title')} text={t('analytics.text')}>
         <label className="members-switch">

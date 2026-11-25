@@ -7,29 +7,26 @@ const { httpError } = require("./http.cjs");
 /*
  * Push notifications (account API).
  *
- * Two kinds of devices, both opted in by the person themselves:
- *   web  a browser (Web Push with VAPID keys; public/push-sw.js shows them)
- *   fcm  the Android / iOS app (Firebase Cloud Messaging, HTTP v1 API)
+ * Browsers the person turned push on in (Web Push with VAPID keys;
+ * public/push-sw.js shows them).
  *
  * What gets pushed: every notify() of services/moderation.cjs, for the
  * categories where the person left "Push" on (settings.notify.<category>.push).
  *
- *   GET    /push/config          { web: <VAPID public key> | null, app: boolean }
+ *   GET    /push/config          { web: <VAPID public key> | null }
  *   GET    /push/devices         the own devices (no tokens)
- *   POST   /push/devices         { kind, token, keys?, label? } add / refresh this device
+ *   POST   /push/devices         { kind: "web", token, keys, label? } add / refresh this browser
  *   DELETE /push/devices/:id     remove one of the own devices
  *   POST   /push/devices/remove  { token } remove this device by its token (logout, turning it off)
  *   POST   /push/test            a test notification to the own devices
  *
  * Settings: WEB_PUSH_PUBLIC_KEY / WEB_PUSH_PRIVATE_KEY (`pnpm push:setup`),
- * WEB_PUSH_CONTACT, FCM_SERVICE_ACCOUNT (the Firebase service account JSON,
- * raw or base64). Each kind switches off cleanly when its settings are empty.
+ * WEB_PUSH_CONTACT. Push switches off cleanly when the keys are empty.
  * Table push_devices (accounts.sqlite, in backups; deleted with the account).
  */
 
 const MAX_DEVICES = 12;
-const KINDS = new Set(["web", "fcm"]);
-const FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
+const KINDS = new Set(["web"]);
 
 const nowIso = () => new Date().toISOString();
 const newId = () => crypto.randomBytes(8).toString("hex");
@@ -68,71 +65,6 @@ function webPush() {
   return webPushLib;
 }
 
-/* ---------- Firebase Cloud Messaging (HTTP v1) ---------- */
-
-function serviceAccount() {
-  const raw = setting("FCM_SERVICE_ACCOUNT").trim();
-  if (!raw) return null;
-  try {
-    const text = raw.startsWith("{") ? raw : Buffer.from(raw, "base64").toString("utf8");
-    const account = JSON.parse(text);
-    if (!account.project_id || !account.client_email || !account.private_key) return null;
-    return account;
-  } catch {
-    return null;
-  }
-}
-
-let fcmToken = null; // { value, expires, email }
-async function fcmAccessToken(account) {
-  if (fcmToken && fcmToken.email === account.client_email && fcmToken.expires > Date.now() + 60_000) return fcmToken.value;
-  const tokenUri = account.token_uri || "https://oauth2.googleapis.com/token";
-  const now = Math.floor(Date.now() / 1000);
-  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
-  const unsigned = `${encode({ alg: "RS256", typ: "JWT" })}.${encode({ iss: account.client_email, scope: FCM_SCOPE, aud: tokenUri, iat: now, exp: now + 3600 })}`;
-  const signature = crypto.sign("RSA-SHA256", Buffer.from(unsigned), account.private_key).toString("base64url");
-  const response = await fetch(tokenUri, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: `${unsigned}.${signature}` }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data.access_token) throw new Error(`Firebase login failed (${response.status}).`);
-  fcmToken = { value: data.access_token, expires: Date.now() + Number(data.expires_in || 3600) * 1000, email: account.client_email };
-  return fcmToken.value;
-}
-
-/** Sends one FCM message. Returns "ok" | "gone" (token no longer valid) | "failed". */
-async function sendFcm(account, token, message) {
-  const access = await fcmAccessToken(account);
-  const data = { link: message.link || "", category: message.category || "", id: message.id || "" };
-  const response = await fetch(`https://fcm.googleapis.com/v1/projects/${encodeURIComponent(account.project_id)}/messages:send`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${access}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: {
-        token,
-        notification: { title: message.title, body: message.body || undefined },
-        data,
-        android: {
-          priority: "high",
-          // Channels are created by the app (src/lib/native.js), one per category.
-          notification: { channel_id: message.category || "general", tag: message.tag || undefined },
-        },
-        apns: { payload: { aps: { sound: "default", "thread-id": message.category || "general" } } },
-      },
-    }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (response.ok) return "ok";
-  const error = await response.json().catch(() => ({}));
-  const code = error?.error?.details?.find?.((detail) => detail.errorCode)?.errorCode || error?.error?.status;
-  if (response.status === 404 || code === "UNREGISTERED" || code === "INVALID_ARGUMENT") return "gone";
-  console.warn("[Push] FCM send failed:", response.status, code || "");
-  return "failed";
-}
-
 /* ---------- the service ---------- */
 
 function registerPush(app, { getRequestSession, getDatabase }) {
@@ -155,12 +87,14 @@ function registerPush(app, { getRequestSession, getDatabase }) {
         );
         CREATE INDEX IF NOT EXISTS push_devices_user_idx ON push_devices(user_id);
       `);
+      // Devices of the former Android app (kind "fcm") can't be reached any more.
+      handle.prepare("DELETE FROM push_devices WHERE kind <> 'web'").run();
       ready = true;
     }
     return handle;
   };
 
-  const config = () => ({ web: webPush() ? setting("WEB_PUSH_PUBLIC_KEY") : null, app: Boolean(serviceAccount()) });
+  const config = () => ({ web: webPush() ? setting("WEB_PUSH_PUBLIC_KEY") : null });
   const removeToken = (token) => db().prepare("DELETE FROM push_devices WHERE token = ?").run(token);
   const sessionOf = (req) => {
     const session = getRequestSession(req);
@@ -178,7 +112,6 @@ function registerPush(app, { getRequestSession, getDatabase }) {
     }
     if (!devices.length) return 0;
     const web = webPush();
-    const account = serviceAccount();
     let sent = 0;
     await Promise.all(
       devices.map(async (device) => {
@@ -188,8 +121,6 @@ function registerPush(app, { getRequestSession, getDatabase }) {
             const payload = JSON.stringify({ title: message.title, body: message.body || "", link: message.link || "", category: message.category || "", tag: message.tag || "" });
             await web.sendNotification({ endpoint: device.token, keys: JSON.parse(device.keys_json || "{}") }, payload, { TTL: 24 * 3600, urgency: "normal", topic: message.tag ? String(message.tag).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32) || undefined : undefined });
             result = "ok";
-          } else if (device.kind === "fcm" && account) {
-            result = await sendFcm(account, device.token, message);
           }
         } catch (error) {
           result = [404, 410].includes(error?.statusCode) ? "gone" : "failed";
@@ -238,24 +169,18 @@ function registerPush(app, { getRequestSession, getDatabase }) {
       const label = String(req.body?.label ?? "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 60) || null;
       if (!KINDS.has(kind)) throw httpError(400, "Unknown device kind.");
       if (kind === "web" && !webPush()) throw httpError(503, "Push in the browser is not set up on this server.");
-      if (kind === "fcm" && !serviceAccount()) throw httpError(503, "Push in the app is not set up on this server.");
-      let keys = null;
-      if (kind === "web") {
-        // Only real push services, so the server never posts to an address someone made up.
-        let endpoint;
-        try {
-          endpoint = new URL(token);
-        } catch {
-          throw httpError(400, "Invalid push subscription.");
-        }
-        if (endpoint.protocol !== "https:" || token.length > 1000) throw httpError(400, "Invalid push subscription.");
-        const p256dh = String(req.body?.keys?.p256dh ?? "");
-        const auth = String(req.body?.keys?.auth ?? "");
-        if (!/^[A-Za-z0-9_-]{80,100}={0,2}$/.test(p256dh) || !/^[A-Za-z0-9_-]{16,32}={0,2}$/.test(auth)) throw httpError(400, "Invalid push subscription.");
-        keys = JSON.stringify({ p256dh, auth });
-      } else if (!/^[A-Za-z0-9_:\-.]{20,4096}$/.test(token)) {
-        throw httpError(400, "Invalid device token.");
+      // Only real push services, so the server never posts to an address someone made up.
+      let endpoint;
+      try {
+        endpoint = new URL(token);
+      } catch {
+        throw httpError(400, "Invalid push subscription.");
       }
+      if (endpoint.protocol !== "https:" || token.length > 1000) throw httpError(400, "Invalid push subscription.");
+      const p256dh = String(req.body?.keys?.p256dh ?? "");
+      const auth = String(req.body?.keys?.auth ?? "");
+      if (!/^[A-Za-z0-9_-]{80,100}={0,2}$/.test(p256dh) || !/^[A-Za-z0-9_-]{16,32}={0,2}$/.test(auth)) throw httpError(400, "Invalid push subscription.");
+      const keys = JSON.stringify({ p256dh, auth });
 
       const handle = db();
       const existing = handle.prepare("SELECT id, user_id FROM push_devices WHERE token = ?").get(token);

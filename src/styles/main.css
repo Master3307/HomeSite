@@ -126,18 +126,6 @@ body,
   min-height: 100vh;
 }
 
-/*
- * Inside the app (src/lib/native.js sets .is-app): no grey flash on taps
- * (buttons have their own pressed look) and no browser long-press menu on
- * links and pictures, which an app doesn't have.
- */
-.is-app {
-  -webkit-tap-highlight-color: transparent;
-}
-.is-app :is(a, img) {
-  -webkit-touch-callout: none;
-}
-
 body {
   position: relative;
   z-index: 0;

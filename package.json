@@ -20,7 +20,7 @@
     "search:index": "node scripts/generate-search-index.mjs",
     "weblate:components": "node scripts/weblate-components.mjs",
     "searxng:check": "node scripts/searxng-check.mjs",
-    "build": "pnpm run sitemap && pnpm run search:index && vite build && node scripts/export-fdc.cjs --dist && node scripts/create-404.cjs && node scripts/app-links.cjs",
+    "build": "pnpm run sitemap && pnpm run search:index && vite build && node scripts/export-fdc.cjs --dist && node scripts/create-404.cjs",
     "preview": "vite preview",
     "images": "node scripts/generate-images.mjs",
     "serve": "serve dist -l tcp://127.0.0.1:8081",
@@ -38,23 +38,13 @@
     "env:example": "node scripts/env-example.cjs",
     "bongo:import": "node scripts/bongo-import.cjs",
     "mail:test": "node scripts/mail-test.cjs",
-    "push:setup": "node scripts/push-setup.cjs",
-    "app:build": "node scripts/app-build.mjs"
+    "push:setup": "node scripts/push-setup.cjs"
   },
   "packageManager": "pnpm@12.23.0",
   "engines": {
     "pnpm": ">=10.0.0"
   },
   "dependencies": {
-    "@capacitor/android": "8.6.2",
-    "@capacitor/app": "8.1.2",
-    "@capacitor/browser": "8.0.5",
-    "@capacitor/core": "8.6.2",
-    "@capacitor/filesystem": "8.1.5",
-    "@capacitor/ios": "8.6.2",
-    "@capacitor/push-notifications": "8.1.3",
-    "@capacitor/share": "8.0.3",
-    "@capacitor/splash-screen": "8.0.2",
     "@discordjs/rest": "^2.6.3",
     "@mongez/sitemap": "^1.0.2",
     "@simplewebauthn/browser": "14.0.0",
@@ -99,7 +89,6 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.6.2",
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.19.0",
     "@types/react": "^19.3.0",

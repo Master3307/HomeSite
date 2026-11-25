@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { disablePush, enablePush, loadPushDevices, pushStatus, PUSH_EVENT, removePushDevice, sendTestPush, thisPushDevice } from '/src/lib/push'
-import { isNativeApp } from '/src/lib/native'
 
 /*
  * Settings → Notifications: push on this device (browser or app) and the
@@ -48,8 +47,8 @@ export default function PushSettings() {
       const code = error?.code
       const text =
         code === 'denied'
-          ? t(isNativeApp ? 'notify.pushDeniedApp' : 'notify.pushDenied')
-          : code === 'server' || code === 'app' || code === 'browser' || code === 'install'
+          ? t('notify.pushDenied')
+          : code === 'server' || code === 'browser' || code === 'install'
             ? t(`notify.pushReason.${code}`)
             : error?.status === 409
               ? t('notify.pushTestNone')
@@ -71,14 +70,14 @@ export default function PushSettings() {
           {status.enabled ? 'notifications_active' : status.supported ? 'notifications_off' : 'block'}
         </span>
         <span className="push-settings__text">
-          <strong>{t(isNativeApp ? 'notify.pushThisApp' : 'notify.pushThisBrowser')}</strong>
+          <strong>{t('notify.pushThisBrowser')}</strong>
           <small>
             {!status.supported
               ? t(`notify.pushReason.${status.reason}`)
               : status.enabled
                 ? t('notify.pushOn')
                 : status.permission === 'denied'
-                  ? t(isNativeApp ? 'notify.pushDeniedApp' : 'notify.pushDenied')
+                  ? t('notify.pushDenied')
                   : t('notify.pushOff')}
           </small>
         </span>
@@ -121,11 +120,11 @@ export default function PushSettings() {
             {devices.map((device) => (
               <li key={device.id}>
                 <span className="material-symbols-outlined" aria-hidden="true">
-                  {device.kind === 'fcm' ? 'smartphone' : 'web'}
+                  web
                 </span>
                 <span className="push-settings__text">
                   <strong>
-                    {device.label || (device.kind === 'fcm' ? t('notify.pushApp') : t('notify.pushBrowser'))}
+                    {device.label || t('notify.pushBrowser')}
                     {device.id === here && <em> · {t('notify.pushHere')}</em>}
                   </strong>
                   <small>
