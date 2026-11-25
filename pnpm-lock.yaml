@@ -247,8 +247,8 @@ importers:
         specifier: ^6.9.0
         version: 6.9.0
       discord-api-types:
-        specifier: ^0.36.3
-        version: 0.36.3
+        specifier: ^0.38.0
+        version: 0.38.59
       discord.js:
         specifier: ^14.28.1
         version: 14.28.1
@@ -1385,9 +1385,6 @@ packages:
 
   dijkstrajs@1.0.3:
     resolution: {integrity: sha512-qiSlmBq9+BCdCA/L46dw8Uy93mloxsPSbwnm5yrKn2vMPiy8KyAskTF6zuV/j5BMsmOGZDPs7KjU+mjb670kfA==}
-
-  discord-api-types@0.36.3:
-    resolution: {integrity: sha512-bz/NDyG0KBo/tY14vSkrwQ/n3HKPf87a0WFW/1M9+tXYK+vp5Z5EksawfCWo2zkAc6o7CClc0eff1Pjrqznlwg==}
 
   discord-api-types@0.38.59:
     resolution: {integrity: sha512-LZqh8gvWU/Bhl9qEVIRLeLJuaPGO7rA26IXLrXnMcjXxofh/h5UhP6notfCTj4X5kR1ogMvVgcrVYIuynY/CxQ==}
@@ -3516,8 +3513,6 @@ snapshots:
   detect-libc@2.1.2: {}
 
   dijkstrajs@1.0.3: {}
-
-  discord-api-types@0.36.3: {}
 
   discord-api-types@0.38.59: {}
 
