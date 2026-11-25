@@ -34,10 +34,13 @@ const TIMES = new Set(["day", "week", "month", "year"]);
 const LANGUAGE = /^(auto|all|[a-z]{2}(-[A-Z]{2})?)$/;
 const CACHE_MS = 10 * 60_000;
 
-/* Where SearXNG is: SEARXNG_URL, or the origin (and path before /search) of the dash's own engine. */
+/*
+ * Where SearXNG is: SEARXNG_URL, or the origin (and path before /search) of the dash's own engine.
+ * An address written without its scheme ("127.0.0.1:8888", "search.example.com") gets http://.
+ */
 function searxBase() {
-  const own = setting("SEARXNG_URL");
-  if (own) return own.replace(/\/+$/, "");
+  const own = setting("SEARXNG_URL").trim().replace(/^["']|["']$/g, "");
+  if (own) return (/^https?:\/\//i.test(own) ? own : `http://${own}`).replace(/\/+$/, "");
   const engine = setting("SEARCH_ENGINE_URL");
   const match = /^(https?:\/\/[^?#]+?)\/search\b/i.exec(engine ?? "");
   return match ? match[1] : "";
@@ -138,10 +141,19 @@ const openCors = (res) => {
 
 /* ---------- SearXNG (the main source) ---------- */
 
+/* The SearXNG address for one request; a broken setting says which one (never the address itself: visitors see this). */
+function searxTarget(path) {
+  try {
+    return parseTarget(`${searxBase()}${path}`, { ports: "service" });
+  } catch {
+    throw httpError(502, "The SearXNG address in the server's settings (SEARXNG_URL) isn't valid. Use one like http://127.0.0.1:8888, then check it with: pnpm searxng:check");
+  }
+}
+
 async function askSearx({ q, category, page, safe, language, time }) {
   const params = new URLSearchParams({ q, format: "json", categories: category, pageno: String(page), safesearch: String(safe), language });
   if (time) params.set("time_range", time);
-  const answer = await safeFetch(parseTarget(`${searxBase()}/search?${params}`, { ports: "service" }), {
+  const answer = await safeFetch(searxTarget(`/search?${params}`), {
     headers: { Accept: "application/json" },
     // The owner's own SearXNG may be on the LAN (it's set in .env, not by a visitor).
     allowPrivate: true,
@@ -347,7 +359,7 @@ function registerMasterSearch(app, { getRequestSession, getDatabase }) {
     try {
       const q = clean(req.query.q, 200);
       if (!available() || q.length < 2) return res.json({ suggestions: [] });
-      const answer = await safeFetch(parseTarget(`${searxBase()}/autocompleter?${new URLSearchParams({ q })}`, { ports: "service" }), { headers: { Accept: "application/json" }, allowPrivate: true, ports: "service", timeout: 4000, maxBytes: 256 * 1024 });
+      const answer = await safeFetch(searxTarget(`/autocompleter?${new URLSearchParams({ q })}`), { headers: { Accept: "application/json" }, allowPrivate: true, ports: "service", timeout: 4000, maxBytes: 256 * 1024 });
       const data = answer.status < 400 ? answer.json() : [];
       // Either ["q", ["a", "b"]] (OpenSearch) or ["a", "b"].
       const list = Array.isArray(data?.[1]) ? data[1] : Array.isArray(data) ? data : [];
