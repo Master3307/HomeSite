@@ -54,7 +54,7 @@ export function createViewer(canvas, { info = [], reducedMotion = false, onReady
   renderer.toneMapping = THREE.NeutralToneMapping
   renderer.toneMappingExposure = 0.92
   renderer.shadowMap.enabled = true
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap
+  renderer.shadowMap.type = THREE.PCFShadowMap
 
   const scene = new THREE.Scene()
   const pmrem = new THREE.PMREMGenerator(renderer)
@@ -443,17 +443,18 @@ export function createViewer(canvas, { info = [], reducedMotion = false, onReady
   })
   intersection.observe(canvas)
 
-  const clock = new THREE.Clock()
+  const clock = new THREE.Timer()
   let ready = false
   // Pictures drawn so far (the About window's Graphics page counts them).
   let drawn = 0
-  renderer.setAnimationLoop(() => {
+  renderer.setAnimationLoop((time) => {
+    clock.update(time)
     const delta = Math.min(clock.getDelta(), 0.1)
     if (!visible || document.hidden || !current) return
     applyTheme(themeProgress())
     stepFlight()
     controls.update()
-    if (!reducedMotion) current.update?.(clock.elapsedTime, delta)
+    if (!reducedMotion) current.update?.(clock.getElapsed(), delta)
     else current.update?.(0, 0)
     renderer.render(scene, camera)
     drawn += 1
