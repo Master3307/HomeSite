@@ -429,6 +429,28 @@ async function main() {
         }
       }
 
+      /*
+       * The undici override in pnpm-workspace.yaml forces one undici on every
+       * package. @discordjs/rest only works with the major it asks for: undici 8
+       * under it broke every Discord login ("Headers constructor: Key
+       * Symbol(sensitiveHeaders) …"), which no other check notices.
+       */
+      const store = path.join(projectRoot, "node_modules", ".pnpm");
+      const entries = fs.existsSync(store) ? fs.readdirSync(store) : [];
+      const majorOf = (range) => Number(/(\d+)/.exec(String(range))?.[1]);
+      for (const name of entries.filter((entry) => entry.startsWith("@discordjs+rest@"))) {
+        const manifest = JSON.parse(fs.readFileSync(path.join(store, name, "node_modules", "@discordjs", "rest", "package.json"), "utf8"));
+        const wanted = majorOf(manifest.dependencies?.undici);
+        if (!wanted) continue;
+        // The undici it really loads: pnpm links it next to the package.
+        const linked = path.join(store, name, "node_modules", "undici", "package.json");
+        const version = fs.existsSync(linked) ? JSON.parse(fs.readFileSync(linked, "utf8")).version : "none";
+        const wrong = majorOf(version) !== wanted;
+        const message = `${wrong ? "✗" : "✓"} @discordjs/rest ${manifest.version} wants undici ${manifest.dependencies.undici}; it gets ${version}`;
+        lines.push(message);
+        if (wrong) failures.push(`${message} (keep the undici override in pnpm-workspace.yaml on that major)`);
+      }
+
       if (failures.length > 0) {
         throw new Error(`${lines.join(os.EOL)}${os.EOL}`);
       }

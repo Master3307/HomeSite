@@ -182,7 +182,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  undici: ^8.0.0
+  undici: ^6.28.0
   qs: ^6.16.1
   compression: ^1.8.2
 
@@ -2057,9 +2057,9 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
-  undici@8.13.1:
-    resolution: {integrity: sha512-Kt7EaPjh0s93lJH/PmW3d5rhkcpUa6fS3jqZ7+YGxNd9L7Xy/i827xe4C2uhhq+pJebM4tQOl5AgHmW11G5Skg==}
-    engines: {node: '>=22.19.0'}
+  undici@6.29.1:
+    resolution: {integrity: sha512-EvRlUt/QqAEvXdQeRMYUfwOQsfzpDztykrG2owGEE/rBOBoYv9uF39ZzsNDh4lTFHhTr2XOZjKkYgueD12ZmGA==}
+    engines: {node: '>=18.17'}
 
   unicode-emoji-json@0.9.0:
     resolution: {integrity: sha512-HdrQW/7SdbXUsTd8uTATv7LvQJkCSgbAgRCDCtOhQ6xn3EAx+xZHQtRniOXWJK3ywIqPegkNhP4U4EbuFsiQng==}
@@ -2227,7 +2227,7 @@ snapshots:
       discord-api-types: 0.38.59
       magic-bytes.js: 1.13.1
       tslib: 2.9.1
-      undici: 8.13.1
+      undici: 6.29.1
 
   '@discordjs/util@1.2.0':
     dependencies:
@@ -2997,7 +2997,7 @@ snapshots:
       lodash.snakecase: 4.1.1
       magic-bytes.js: 1.13.1
       tslib: 2.9.1
-      undici: 8.13.1
+      undici: 6.29.1
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -3867,7 +3867,7 @@ snapshots:
 
   undici-types@8.9.0: {}
 
-  undici@8.13.1: {}
+  undici@6.29.1: {}
 
   unicode-emoji-json@0.9.0: {}
 
