@@ -121,6 +121,7 @@ function registerAdminBackup(app, { getRequestSession, getDatabase, activity = n
           error: status >= 500 ? "Something went wrong; nothing was changed." : error.message,
           ...(error.locked ? { locked: true } : {}),
           ...(error.twoFactor ? { twoFactor: true } : {}),
+          ...(Number.isSafeInteger(error.received) ? { received: error.received } : {}),
         });
       }
     }
@@ -254,7 +255,7 @@ function registerAdminBackup(app, { getRequestSession, getDatabase, activity = n
       requireUnlocked(req);
       if (!adminKeyMatches(req.get("X-Admin-Key"))) throw httpError(403, "Wrong admin key.");
       for (const [id, upload] of uploads) {
-        if (Date.now() - upload.at > 60 * 60_000) {
+        if (!upload.busy && Date.now() - upload.at > 60 * 60_000) {
           uploads.delete(id);
           await fs.rm(upload.file, { force: true }).catch(() => {});
         }
@@ -275,24 +276,103 @@ function registerAdminBackup(app, { getRequestSession, getDatabase, activity = n
       if (!adminKeyMatches(req.get("X-Admin-Key"))) throw httpError(403, "Wrong admin key.");
       const upload = uploads.get(String(req.params.id));
       if (!upload) throw httpError(404, "This upload expired. Start again.");
-      if (Number(req.query.offset) !== upload.bytes) throw httpError(409, "A part is missing. Start again.");
+      // The answer says how far it got, so the page can go on from there after a dropped part.
+      if (upload.busy) throw httpError(409, "A part is still arriving.", { received: upload.bytes });
+      if (Number(req.query.offset) !== upload.bytes) throw httpError(409, "A part is missing.", { received: upload.bytes });
+      upload.busy = true;
       let bytes = 0;
-      await pipeline(
-        req,
-        async function* limit(source) {
-          for await (const chunk of source) {
-            bytes += chunk.length;
-            if (bytes > CHUNK_LIMIT || upload.bytes + bytes > MAX_UPLOAD_BYTES) throw httpError(413, "The backup is too big.");
-            yield chunk;
-          }
-        },
-        fsSync.createWriteStream(upload.file, { flags: "a", mode: 0o600 }),
-      );
+      try {
+        await pipeline(
+          req,
+          async function* limit(source) {
+            for await (const chunk of source) {
+              bytes += chunk.length;
+              if (bytes > CHUNK_LIMIT || upload.bytes + bytes > MAX_UPLOAD_BYTES) throw httpError(413, "The backup is too big.");
+              yield chunk;
+            }
+          },
+          // Written at its place (not appended), and cut off again if it breaks: a retry can't leave half a part behind.
+          fsSync.createWriteStream(upload.file, { flags: "r+", start: upload.bytes, mode: 0o600 }),
+        );
+      } catch (error) {
+        await fs.truncate(upload.file, upload.bytes).catch(() => {});
+        throw error.status ? error : httpError(400, "The part broke off.", { received: upload.bytes });
+      } finally {
+        upload.busy = false;
+      }
       upload.bytes += bytes;
       upload.at = Date.now();
       return { received: upload.bytes };
     }),
   );
+
+  /*
+   * Checking and applying take as long as the backup is big. Behind
+   * Cloudflare a request gets 100 seconds to answer (then 524), so both
+   * also run as jobs: start, poll the step, read the result. Jobs live
+   * 30 minutes. The one-request routes stay for older pages.
+   */
+  const importJobs = new Map(); // id -> { step, error, result, at }
+  setInterval(() => {
+    for (const [id, job] of importJobs) if (job.finished && Date.now() - job.at > 30 * 60_000) importJobs.delete(id);
+  }, 5 * 60_000).unref();
+  const startJob = (step, work) => {
+    const id = crypto.randomUUID();
+    const job = { step, error: null, result: null, finished: false, at: Date.now() };
+    importJobs.set(id, job);
+    work((next) => (job.step = next))
+      .then((result) => Object.assign(job, { result, step: "Done", finished: true, at: Date.now() }))
+      .catch((error) => {
+        if (!error.status) console.error("[Backup] Import step failed:", error);
+        Object.assign(job, { error: error.status ? error.message : "Something went wrong; nothing was changed.", step: "Failed", finished: true, at: Date.now() });
+      });
+    return { id };
+  };
+
+  /* Decrypts and checks an uploaded backup: the import plan (nothing changes yet). */
+  async function analyzeUpload(req, key, setStep = () => {}) {
+    // The backup may have been made with an older admin key.
+    const backupKey = req.get("X-Backup-Key") || key;
+    await backup.cleanupStaging();
+    await fs.mkdir(backup.WORK_DIR, { recursive: true, mode: 0o700 });
+    // Uploaded in parts before (X-Upload-Id), or sent in this request (small backups, old clients).
+    const parts = req.get("X-Upload-Id") ? uploads.get(String(req.get("X-Upload-Id"))) : null;
+    if (req.get("X-Upload-Id") && !parts) throw httpError(404, "This upload expired. Start again.");
+    if (parts?.busy) throw httpError(409, "A part is still arriving.");
+    if (parts) uploads.delete(String(req.get("X-Upload-Id")));
+    const upload = parts ? parts.file : path.join(backup.WORK_DIR, `upload-${crypto.randomUUID()}.enc`);
+    let bytes = parts ? parts.bytes : 0;
+    try {
+      if (!parts) await pipeline(
+        req,
+        async function* limit(source) {
+          for await (const chunk of source) {
+            bytes += chunk.length;
+            if (bytes > MAX_UPLOAD_BYTES) throw httpError(413, "The backup is too big.");
+            yield chunk;
+          }
+        },
+        fsSync.createWriteStream(upload, { mode: 0o600 }),
+      );
+      if (!bytes) throw httpError(400, "Choose a backup file.");
+
+      setStep("Decrypting and checking");
+      const plan = await backup.analyzeImport({
+        archive: upload,
+        password: backup.passwordFor(backupKey),
+        localDb: getDatabase?.() ?? null,
+      });
+      log({
+        level: "normal",
+        action: "backup-check",
+        summary: `checked a backup from ${plan.manifest.exportedAt ? new Date(plan.manifest.exportedAt).toISOString() : "an unknown time"}`,
+        details: { files: plan.manifest.files, host: plan.manifest.host },
+      });
+      return plan;
+    } finally {
+      await fs.rm(upload, { force: true });
+    }
+  }
 
   app.post(
     "/account/admin/backup/import/analyze",
@@ -301,60 +381,44 @@ function registerAdminBackup(app, { getRequestSession, getDatabase, activity = n
       requireUnlocked(req);
       const key = req.get("X-Admin-Key");
       if (!adminKeyMatches(key)) throw httpError(403, "Wrong admin key.");
-      // The backup may have been made with an older admin key.
-      const backupKey = req.get("X-Backup-Key") || key;
-      await backup.cleanupStaging();
-
-      await fs.mkdir(backup.WORK_DIR, { recursive: true, mode: 0o700 });
-      // Uploaded in parts before (X-Upload-Id), or sent in this request (small backups, old clients).
-      const parts = req.get("X-Upload-Id") ? uploads.get(String(req.get("X-Upload-Id"))) : null;
-      if (req.get("X-Upload-Id") && !parts) throw httpError(404, "This upload expired. Start again.");
-      if (parts) uploads.delete(String(req.get("X-Upload-Id")));
-      const upload = parts ? parts.file : path.join(backup.WORK_DIR, `upload-${crypto.randomUUID()}.enc`);
-      let bytes = parts ? parts.bytes : 0;
-      try {
-        if (!parts) await pipeline(
-          req,
-          async function* limit(source) {
-            for await (const chunk of source) {
-              bytes += chunk.length;
-              if (bytes > MAX_UPLOAD_BYTES) throw httpError(413, "The backup is too big.");
-              yield chunk;
-            }
-          },
-          fsSync.createWriteStream(upload, { mode: 0o600 }),
-        );
-        if (!bytes) throw httpError(400, "Choose a backup file.");
-
-        const plan = await backup.analyzeImport({
-          archive: upload,
-          password: backup.passwordFor(backupKey),
-          localDb: getDatabase?.() ?? null,
-        });
-        log({
-          level: "normal",
-          action: "backup-check",
-          summary: `checked a backup from ${plan.manifest.exportedAt ? new Date(plan.manifest.exportedAt).toISOString() : "an unknown time"}`,
-          details: { files: plan.manifest.files, host: plan.manifest.host },
-        });
-        return plan;
-      } finally {
-        await fs.rm(upload, { force: true });
-      }
+      return analyzeUpload(req, key);
     }),
   );
 
+  // As a job: only for uploads sent in parts before (the request itself carries nothing).
   app.post(
-    "/account/admin/backup/import/apply",
+    "/account/admin/backup/import/analyze/start",
     keyLimiter,
-    express.json({ limit: "1mb" }),
     route(async (req) => {
-      const key = requireAdminKey(req, req.body?.key, req.body?.code, "import", { needKey: true });
+      requireUnlocked(req);
+      const key = req.get("X-Admin-Key");
+      if (!adminKeyMatches(key)) throw httpError(403, "Wrong admin key.");
+      if (!req.get("X-Upload-Id")) throw httpError(400, "Upload the backup first.");
+      if (!uploads.has(String(req.get("X-Upload-Id")))) throw httpError(404, "This upload expired. Start again.");
+      const headers = { "X-Upload-Id": req.get("X-Upload-Id"), "X-Backup-Key": req.get("X-Backup-Key") ?? "" };
+      // The work outlives the request: it reads the headers it needs from a copy.
+      return startJob("Decrypting and checking", (setStep) => analyzeUpload({ get: (name) => headers[name] || undefined }, key, setStep));
+    }),
+  );
+
+  app.get(
+    "/account/admin/backup/import/job/:id",
+    route(async (req, res) => {
+      requireUnlocked(req);
+      res.set("Cache-Control", "no-store");
+      const job = importJobs.get(String(req.params.id));
+      if (!job) throw httpError(404, "That step is gone (the server may have restarted). Look at the result in the activity log, then start again if needed.");
+      return { step: job.step, done: job.finished, error: job.error, result: job.finished && !job.error ? job.result : null };
+    }),
+  );
+
+  /* Applies a checked plan (a safety backup is made first by backup.applyImport). */
+  async function applyPlan(body, key) {
       const report = await backup.applyImport({
-        planId: req.body?.planId,
+        planId: body?.planId,
         adminKey: key,
         localDb: getDatabase?.() ?? null,
-        choices: req.body?.choices ?? {},
+        choices: body?.choices ?? {},
         activity,
       });
       log({
@@ -376,6 +440,23 @@ function registerAdminBackup(app, { getRequestSession, getDatabase, activity = n
         },
       });
       return report;
+  }
+
+  app.post(
+    "/account/admin/backup/import/apply",
+    keyLimiter,
+    express.json({ limit: "1mb" }),
+    route(async (req) => applyPlan(req.body, requireAdminKey(req, req.body?.key, req.body?.code, "import", { needKey: true }))),
+  );
+
+  app.post(
+    "/account/admin/backup/import/apply/start",
+    keyLimiter,
+    express.json({ limit: "1mb" }),
+    route(async (req) => {
+      const key = requireAdminKey(req, req.body?.key, req.body?.code, "import", { needKey: true });
+      const body = { planId: req.body?.planId, choices: req.body?.choices ?? {} };
+      return startJob("Making a safety backup, then importing", () => applyPlan(body, key));
     }),
   );
 

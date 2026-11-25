@@ -23,6 +23,8 @@
                 <data android:pathPrefix="/hub" />
                 <data android:pathPrefix="/admin-settings" />
                 <data android:pathPrefix="/backup" />
+                <data android:pathPrefix="/settings" />
+                <data android:pathPrefix="/privacy" />
                 <data android:pathPrefix="/error" />
             </intent-filter>
         </activity>

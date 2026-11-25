@@ -1,3 +1,4 @@
+const { memberGate, isMember } = require("./membership.cjs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const express = require("express");
@@ -153,8 +154,9 @@ async function canCreateFdc(session) {
   return value;
 }
 
-function canVote(session) {
-  return Boolean(session && session.discord_user_id !== ADMIN_DISCORD_USER_ID);
+/* Logged in with a real account that is in the Discord server (services/membership.cjs). */
+async function canVote(session) {
+  return Boolean(session && session.discord_user_id !== ADMIN_DISCORD_USER_ID && (await isMember(session.discord_user_id)));
 }
 
 /* `profileKeyOf(id)`: "@name" when the voter has a public profile (their name links to it). */
@@ -225,6 +227,9 @@ async function inviteWidget() {
 /* ---------- routes ---------- */
 
 function registerFdcWeb(app, { requireStorage, getRequestSession, getDatabase = () => null, activity = null, getModeration = () => null }) {
+  // Voting, making and editing FDCs, the recycle bin, designs, emojis, the lobby code: server members only.
+  // Looking at the archive stays open (services/membership.cjs).
+  app.use(["/fdc", "/discord/lobby"], memberGate({ methods: ["POST", "PUT", "PATCH", "DELETE"] }));
   const privacy = require("./privacy.cjs");
   const profileKeyOf = (discordId) => {
     try {
@@ -295,7 +300,8 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, getDatabase = 
         ...summary,
         viewer: {
           authenticated: Boolean(session),
-          canVote: canVote(session),
+          canVote: await canVote(session),
+          member: session ? await isMember(session.discord_user_id) : false,
           canCreate: await canCreateFdc(session),
         },
       };
@@ -324,7 +330,8 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, getDatabase = 
         imageBase: `/fdc/images/${date}/`,
         viewer: {
           authenticated: Boolean(session),
-          canVote: canVote(session),
+          canVote: await canVote(session),
+          member: session ? await isMember(session.discord_user_id) : false,
           myVote: myVote?.optionNumber ?? null,
           canManage: poll.status === "active" && (await canCreateFdc(session)),
           // Editors: fix archived polls and enter votes from elsewhere.
@@ -369,7 +376,7 @@ function registerFdcWeb(app, { requireStorage, getRequestSession, getDatabase = 
     route(async (req) => {
       const session = getRequestSession(req);
       if (!session) throw httpError(401, "Log in to vote.");
-      if (!canVote(session)) throw httpError(403, "This account cannot vote.");
+      if (!(await canVote(session))) throw httpError(403, "This account cannot vote.");
 
       const { pollId } = req.params;
       if (!/^\d{17,20}$/.test(pollId)) throw httpError(400, "Invalid poll.");
@@ -1204,6 +1211,10 @@ module.exports = {
       requestPath === "/fdc/polls" ||
       requestPath === "/fdc/polls/manual" ||
       requestPath === "/fdc/emojis" ||
+      // An .ics file (up to 6 MB), parsed by dashCalendar.cjs.
+      requestPath === "/calendars/import" ||
+      // Contacts from a .vcf (photos included), parsed by dashContacts.cjs.
+      requestPath === "/contacts/import" ||
       requestPath === "/bongo/admin/import/start" ||
       /^\/bongo\/admin\/import\/[0-9a-f]+\/file$/.test(requestPath) ||
       /^\/fdc\/polls\/\d{17,20}\/(edit|designs)$/.test(requestPath),

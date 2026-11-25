@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import TimeZonePicker from '../TimeZonePicker.jsx'
+import { readWhen } from '../../lib/quick/dates.js'
 import { WIDGETS, defaultOptions } from './widgets.jsx'
 import EmojiIconButton from './EmojiIconButton.jsx'
 import { Glyph, LinkIcon, dashboardIconUrl, loadIconNames, useFloatingPanel } from './kit.jsx'
@@ -302,7 +303,7 @@ function RowsField({ field, value, onChange }) {
 
 /* ---------- a place for the weather ---------- */
 
-function PlaceField({ options, onChange }) {
+export function PlaceField({ options, onChange }) {
   const { t, i18n } = useTranslation('dash')
   const [query, setQuery] = useState(options.place ?? '')
   const [results, setResults] = useState([])
@@ -473,6 +474,69 @@ function EntitiesField({ value, onChange, integration }) {
 
 /* ---------- one field ---------- */
 
+/* A local "YYYY-MM-DDTHH:mm" (what datetime-local inputs and older countdowns store). */
+const localStamp = (date) => {
+  const pad = (value) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+/*
+ * A moment typed in words ("christmas", "friday 5pm", "in 3 weeks",
+ * "24.12. 18:00", lib/quick/dates.js readWhen), with what it was read as
+ * shown under it; the calendar button opens the browser's own picker.
+ */
+function WhenField({ id, label, text, date, onChange }) {
+  const { t, i18n } = useTranslation('dash')
+  const picker = useRef(null)
+  const [draft, setDraft] = useState(text || (date ? '' : ''))
+  const parsed = useMemo(() => (draft.trim() ? readWhen(draft, { locale: i18n.language }) : null), [draft, i18n.language])
+  const shown = parsed?.date ?? (date ? new Date(date) : null)
+  return (
+    <div className="dash-field">
+      <label className="dash-field__label" htmlFor={id}>
+        {label}
+      </label>
+      <span className="dash-when">
+        <input
+          id={id}
+          value={draft}
+          placeholder={t('fields.whenPlaceholder')}
+          autoComplete="off"
+          onChange={(event) => {
+            const value = event.target.value
+            setDraft(value)
+            const read = value.trim() ? readWhen(value, { locale: i18n.language }) : null
+            if (read) onChange(value.trim(), localStamp(read.date))
+          }}
+        />
+        <button type="button" className="dash-tool" onClick={() => picker.current?.showPicker?.()} aria-label={t('fields.whenPick')} title={t('fields.whenPick')}>
+          <span className="material-symbols-outlined">calendar_month</span>
+        </button>
+        <input
+          ref={picker}
+          className="dash-when__native"
+          type="datetime-local"
+          tabIndex={-1}
+          aria-hidden="true"
+          value={date ?? ''}
+          onChange={(event) => {
+            if (!event.target.value) return
+            setDraft('')
+            onChange('', event.target.value)
+          }}
+        />
+      </span>
+      <span className={`dash-hint${draft.trim() && !parsed ? ' dash-error' : ''}`}>
+        {draft.trim() && !parsed
+          ? t('fields.whenUnknown')
+          : shown && !Number.isNaN(shown.getTime())
+            ? shown.toLocaleString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : t('fields.whenHelp')}
+      </span>
+    </div>
+  )
+}
+
 function Field({ field, options, setOption, setOptions }) {
   const { t } = useTranslation('dash')
   const settings = useDashSettings()
@@ -575,6 +639,17 @@ function Field({ field, options, setOption, setOptions }) {
       return <IntegrationField field={field} value={value} legacy={field.multi ? options.integration : null} onChange={(next) => (field.multi ? setOptions({ [field.key]: next, integration: null }) : setOption(field.key, next))} />
     case 'entities':
       return <EntitiesField value={value} integration={options.integration} onChange={(next) => setOption(field.key, next)} />
+    case 'when':
+      return <WhenField id={id} label={label} text={options.when ?? ''} date={value} onChange={(when, date) => setOptions({ when, [field.key]: date })} />
+    case 'custom':
+      // A widget's own editor (field.Editor): pictures, albums … ({ value, options, setOption, setOptions }).
+      return (
+        <div className="dash-field">
+          <span className="dash-field__label">{label}</span>
+          <field.Editor value={value} options={options} setOption={(next) => setOption(field.key, next)} setOptions={setOptions} />
+          {hint && <span className="dash-hint">{hint}</span>}
+        </div>
+      )
     case 'code':
       return (
         <label className="dash-field" htmlFor={id}>
@@ -718,6 +793,7 @@ export default function DashWidgetEditor({ widget, onClose }) {
                 </select>
               </label>
               <Segment label={t('editor.rolling')} value={look.rolling ?? 'inherit'} choices={['inherit', 'on', 'off']} prefix="editor.rollings" onChange={(rolling) => setLook({ ...look, rolling })} />
+              <Segment label={t('editor.selectable')} value={look.selectable ?? 'inherit'} choices={['inherit', 'text', 'all', 'none']} prefix="editor.selectables" onChange={(selectable) => setLook({ ...look, selectable })} />
               <label className="dash-field">
                 <span className="dash-field__label">{t('editor.css')}</span>
                 <textarea className="dash-code dash-code--small" value={look.css ?? ''} spellCheck={false} maxLength={6000} placeholder={'& { border-color: hotpink; }\n.dash-widget__title { color: gold; }'} onChange={(event) => setLook({ ...look, css: event.target.value })} />

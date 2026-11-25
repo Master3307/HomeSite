@@ -50,7 +50,7 @@ export default function CultNotifications() {
       <header className="members-head">
         <h1>Notifications</h1>
         <p>
-          Choose what you get, on the site or by email, in <Link to="/cult/settings#notifications">Settings</Link>.
+          Choose what you get, on the site or by email, in <Link to="/settings/notifications" state={{ from: 'cult' }}>Settings</Link>.
         </p>
       </header>
       {error && <p className="members-error">{error.status === 401 ? 'Log in to see your notifications.' : error.message}</p>}

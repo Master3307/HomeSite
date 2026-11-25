@@ -4,7 +4,12 @@ import { Link } from 'react-router'
 
 import { clearSearchHistory } from '../Search.jsx'
 import { siteConfig } from '../../lib/siteConfig.js'
+import { SWITCHABLE_TOOL_IDS as QUICK_TOOL_IDS } from '../../lib/quick/toolIds.js'
+import '../../styles/dash.css'
 import DashIntegrations from './DashIntegrations.jsx'
+import DashboardImport from './DashboardImport.jsx'
+import { PlaceField } from './DashWidgetEditor.jsx'
+import { BackgroundSettings, CustomFontSettings } from './BackgroundSettings.jsx'
 import MusicSettings from './music/MusicSettings.jsx'
 import EmojiIconButton from './EmojiIconButton.jsx'
 import { Favicon, Glyph, clearDashCache, emojiIconUrl } from './kit.jsx'
@@ -177,37 +182,19 @@ function LookSettings() {
         <Toggle label={t('settings.look.border')} checked={look.border} onChange={(border) => updateLook({ border })} />
         <Toggle label={t('settings.look.animate')} hint={t('settings.look.animateHint')} checked={look.animate} onChange={(animate) => updateLook({ animate })} />
         <Toggle label={t('settings.look.rolling')} hint={t('settings.look.rollingHint')} checked={look.rolling} onChange={(rolling) => updateLook({ rolling })} />
+        <Segment label={t('settings.look.selectable')} value={look.selectable} options={LOOK_CHOICES.selectable} prefix="settings.look.selectables" onChange={(selectable) => updateLook({ selectable })} />
       </Section>
 
       <Section title={t('settings.look.type')}>
         <Segment label={t('settings.look.font')} value={look.font} options={LOOK_CHOICES.font} onChange={(font) => updateLook({ font })} />
+        {look.font === 'custom' && <CustomFontSettings />}
         <Range label={t('settings.look.fontScale')} value={look.fontScale} min={80} max={130} step={5} unit="%" onChange={(fontScale) => updateLook({ fontScale })} />
         <ColorInput label={t('settings.look.accent')} value={look.accent} fallback="#8b5cf6" onChange={(accent) => updateLook({ accent })} onReset={() => updateLook({ accent: '' })} resetLabel={t('settings.look.accentReset')} />
         <p className="dash-hint">{t('settings.look.accentHint')}</p>
       </Section>
 
       <Section title={t('settings.look.background')}>
-        <Segment label={t('settings.look.backgroundKind')} value={look.background} options={LOOK_CHOICES.background} onChange={(background) => updateLook({ background })} />
-        {look.background === 'color' && <ColorInput label={t('settings.look.color')} value={look.backgroundValue} fallback="#1a1030" onChange={(backgroundValue) => updateLook({ backgroundValue })} />}
-        {look.background === 'gradient' && (
-          <>
-            <ColorInput label={t('settings.look.from')} value={look.gradientFrom} fallback={LOOK_DEFAULTS.gradientFrom} onChange={(gradientFrom) => updateLook({ gradientFrom })} />
-            <ColorInput label={t('settings.look.to')} value={look.gradientTo} fallback={LOOK_DEFAULTS.gradientTo} onChange={(gradientTo) => updateLook({ gradientTo })} />
-            <Range label={t('settings.look.angle')} value={look.gradientAngle} min={0} max={360} step={5} unit="°" onChange={(gradientAngle) => updateLook({ gradientAngle })} />
-          </>
-        )}
-        {look.background === 'image' && (
-          <>
-            <label className="dash-field">
-              <span className="dash-field__label">{t('settings.look.imageUrl')}</span>
-              <input type="url" value={look.backgroundValue} placeholder="https://…" onChange={(event) => updateLook({ backgroundValue: event.target.value })} />
-              <span className="dash-hint">{t('settings.look.imageHint')}</span>
-            </label>
-            <Segment label={t('settings.look.fit')} value={look.backgroundFit} options={LOOK_CHOICES.backgroundFit} onChange={(backgroundFit) => updateLook({ backgroundFit })} />
-            <Range label={t('settings.look.dim')} value={look.dim} min={0} max={80} unit="%" onChange={(dim) => updateLook({ dim })} />
-            <Range label={t('settings.look.backgroundBlur')} value={look.backgroundBlur} min={0} max={30} unit="px" onChange={(backgroundBlur) => updateLook({ backgroundBlur })} />
-          </>
-        )}
+        <BackgroundSettings />
       </Section>
       <button type="button" className="dash-link-button" onClick={() => resetDashSettings('look')}>
         {t('settings.resetPart')}
@@ -230,6 +217,8 @@ function LayoutSettings({ onEditBoard }) {
         <Range label={t('settings.layout.rowHeight')} value={look.rowHeight} min={32} max={200} step={4} unit="px" onChange={(rowHeight) => updateLook({ rowHeight })} />
         <Range label={t('settings.layout.gap')} value={look.gap} min={0} max={40} unit="px" onChange={(gap) => updateLook({ gap })} />
         <Segment label={t('settings.layout.width')} value={look.width} options={LOOK_CHOICES.width} onChange={(width) => updateLook({ width })} />
+        {look.width === 'custom' && <Range label={t('settings.layout.maxWidth')} value={look.maxWidth} min={480} max={3200} step={20} unit=" px" onChange={(maxWidth) => updateLook({ maxWidth })} />}
+        <Range label={t('settings.layout.gutter')} value={look.gutter} min={0} max={240} step={2} unit=" px" onChange={(gutter) => updateLook({ gutter })} />
         <Toggle label={t('settings.layout.gravity')} hint={t('settings.layout.gravityHint')} checked={look.float} onChange={(float) => updateLook({ float })} />
       </Section>
       <Section title={t('settings.layout.phone')}>
@@ -380,6 +369,81 @@ function TabIconField({ value }) {
   )
 }
 
+/* The tab's title: one text, or frames shown in turn, with live parts to drop in. */
+const TITLE_TOKENS = ['time', 'seconds', 'date', 'weekday', 'page', 'music', 'weather', 'greeting']
+function TabTitleField({ top }) {
+  const { t } = useTranslation('dash')
+  const animated = top.tabTitleFrames.length > 0
+  const focused = useRef(null)
+  const insert = (token) => {
+    const target = focused.current
+    const piece = `{${token}}`
+    if (target?.kind === 'frame') {
+      const frames = [...top.tabTitleFrames]
+      frames[target.index] = `${frames[target.index] ?? ''}${piece}`
+      updateTop({ tabTitleFrames: frames })
+    } else updateTop({ tabTitle: `${top.tabTitle}${top.tabTitle && !top.tabTitle.endsWith(' ') ? ' ' : ''}${piece}`.slice(0, 80) })
+  }
+  return (
+    <div className="dash-field dash-title-field">
+      <span className="dash-field__label">{t('settings.top.tabTitle')}</span>
+      {!animated ? (
+        <input value={top.tabTitle} maxLength={80} placeholder="Dash – MrKoby07" onFocus={() => (focused.current = { kind: 'title' })} onChange={(event) => updateTop({ tabTitle: event.target.value })} />
+      ) : (
+        <ol className="dash-title-frames">
+          {top.tabTitleFrames.map((frame, index) => (
+            <li key={index}>
+              <span className="dash-muted">{index + 1}</span>
+              <input value={frame} maxLength={80} onFocus={() => (focused.current = { kind: 'frame', index })} onChange={(event) => updateTop({ tabTitleFrames: top.tabTitleFrames.map((entry, position) => (position === index ? event.target.value : entry)) })} aria-label={t('settings.top.frame', { n: index + 1 })} />
+              <button type="button" className="dash-tool" onClick={() => updateTop({ tabTitleFrames: top.tabTitleFrames.filter((_, position) => position !== index) })} aria-label={t('settings.top.removeFrame')} title={t('settings.top.removeFrame')}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+      <div className="dash-title-tokens" role="group" aria-label={t('settings.top.tokens')}>
+        {TITLE_TOKENS.map((token) => (
+          <button key={token} type="button" className="dash-chip-button" onMouseDown={(event) => event.preventDefault()} onClick={() => insert(token)} title={t(`settings.top.token.${token}`)}>
+            {`{${token}}`}
+          </button>
+        ))}
+      </div>
+      <div className="dash-row">
+        {animated ? (
+          <>
+            {top.tabTitleFrames.length < 20 && (
+              <button type="button" className="dash-button dash-button--quiet dash-button--small" onClick={() => updateTop({ tabTitleFrames: [...top.tabTitleFrames, ''] })}>
+                {t('settings.top.addFrame')}
+              </button>
+            )}
+            <button type="button" className="dash-link-button" onClick={() => updateTop({ tabTitleFrames: [] })}>
+              {t('settings.top.stopAnimating')}
+            </button>
+          </>
+        ) : (
+          <button type="button" className="dash-button dash-button--quiet dash-button--small" onClick={() => updateTop({ tabTitleFrames: [top.tabTitle || 'Dash', '{time}'] })}>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              animation
+            </span>
+            {t('settings.top.animate')}
+          </button>
+        )}
+      </div>
+      {animated && (
+        <label className="dash-field dash-range">
+          <span className="dash-field__label">
+            {t('settings.top.frameSpeed')}
+            <output>{(top.tabTitleSpeed / 1000).toFixed(top.tabTitleSpeed < 1000 ? 2 : 1)} s</output>
+          </span>
+          <input type="range" min="200" max="10000" step="100" value={top.tabTitleSpeed} onChange={(event) => updateTop({ tabTitleSpeed: Number(event.target.value) })} />
+        </label>
+      )}
+      <span className="dash-hint">{t('settings.top.tabTitleHint')}</span>
+    </div>
+  )
+}
+
 function TopSettings() {
   const { t } = useTranslation('dash')
   const { top } = useDashSettings()
@@ -387,10 +451,7 @@ function TopSettings() {
     <div className="dash-panel">
       <Section title={t('settings.top.page')}>
         <Toggle label={t('settings.top.showHeader')} checked={top.showHeader} onChange={(showHeader) => updateTop({ showHeader })} />
-        <label className="dash-field">
-          <span className="dash-field__label">{t('settings.top.tabTitle')}</span>
-          <input value={top.tabTitle} maxLength={80} placeholder="Dash – MrKoby07" onChange={(event) => updateTop({ tabTitle: event.target.value })} />
-        </label>
+        <TabTitleField top={top} />
         <TabIconField value={top.tabIcon} />
         <Segment label={t('settings.top.align')} value={top.align} options={TOP_CHOICES.align} onChange={(align) => updateTop({ align })} />
         <Segment label={t('settings.top.size')} value={top.size} options={TOP_CHOICES.size} onChange={(size) => updateTop({ size })} />
@@ -408,8 +469,20 @@ function TopSettings() {
           </>
         )}
         <p className="dash-hint">
-          {t('settings.top.zoneHint')} <Link to="/cult/settings">{t('settings.top.zoneLink')}</Link>
+          {t('settings.top.zoneHint')} <Link to="/settings">{t('settings.top.zoneLink')}</Link>
         </p>
+      </Section>
+      <Section title={t('settings.top.weather')}>
+        <Toggle label={t('settings.top.weatherShow')} hint={t('settings.top.weatherHint')} checked={top.weather} onChange={(weather) => updateTop({ weather })} />
+        {top.weather && (
+          <>
+            <div className="dash-field">
+              <span className="dash-field__label">{t('fields.place')}</span>
+              <PlaceField options={{ place: top.weatherPlace, lat: top.weatherLat, lon: top.weatherLon }} onChange={(next) => updateTop({ weatherPlace: next.place ?? '', weatherLat: String(next.lat ?? ''), weatherLon: String(next.lon ?? '') })} />
+            </div>
+            <Segment label={t('fields.unit')} value={top.weatherUnit} options={['c', 'f']} prefix="fields.choices" onChange={(weatherUnit) => updateTop({ weatherUnit })} />
+          </>
+        )}
       </Section>
       <Section title={t('settings.top.greeting')}>
         <Toggle label={t('settings.top.showGreeting')} checked={top.showGreeting} onChange={(showGreeting) => updateTop({ showGreeting })} />
@@ -552,6 +625,7 @@ function ProviderCatalog({ list, onAdd, onClose }) {
 
 function SearchSettings({ owner }) {
   const { t } = useTranslation('dash')
+  const { t: tt } = useTranslation('tools')
   const settings = useDashSettings()
   const [editing, setEditing] = useState(null) // provider being edited, or EMPTY_PROVIDER
   const [catalog, setCatalog] = useState(false)
@@ -734,6 +808,49 @@ function SearchSettings({ owner }) {
           </>
         )}
       </Section>
+
+      <Section title={t('settings.search.tools')}>
+        <Toggle label={t('settings.search.toolsOn')} hint={t('settings.search.toolsOnHint')} checked={settings.quickTools} onChange={(quickTools) => updateDashSettings({ quickTools })} />
+        {settings.quickTools && (
+          <>
+            {siteConfig.dashLinkPreview && <Toggle label={t('settings.search.linkPreview')} hint={t('settings.search.linkPreviewHint')} checked={settings.linkPreview} onChange={(linkPreview) => updateDashSettings({ linkPreview })} />}
+            <div className="dash-field">
+              <span className="dash-field__label">{t('settings.search.toolsEach')}</span>
+              <div className="dash-chips" role="group" aria-label={t('settings.search.toolsEach')}>
+                {QUICK_TOOL_IDS.map((id) => {
+                  const on = !settings.quickDisabled.includes(id)
+                  return (
+                    <button key={id} type="button" className={`dash-chip${on ? ' is-active' : ''}`} aria-pressed={on} onClick={() => updateDashSettings({ quickDisabled: on ? [...settings.quickDisabled, id] : settings.quickDisabled.filter((entry) => entry !== id) })}>
+                      {tt(`tools.${id}.name`)}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <p className="dash-hint">{t('settings.search.toolsHelp')}</p>
+          </>
+        )}
+      </Section>
+
+      <Section title={t('settings.search.icons')}>
+        <label className="dash-field">
+          <span className="dash-field__label">{t('settings.search.iconProvider')}</span>
+          <select value={settings.iconProvider} onChange={(event) => updateDashSettings({ iconProvider: event.target.value })}>
+            {['auto', 'duckduckgo', 'google', 'iconhorse', 'site', 'custom', 'none'].map((id) => (
+              <option key={id} value={id}>
+                {t(`settings.search.iconProviders.${id}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {settings.iconProvider === 'custom' && (
+          <label className="dash-field">
+            <span className="dash-field__label">{t('settings.search.iconTemplate')}</span>
+            <input className="dash-input" defaultValue={settings.iconTemplate} placeholder="https://icons.example.com/{host}.png" spellCheck="false" onBlur={(event) => updateDashSettings({ iconTemplate: event.target.value.trim() })} />
+          </label>
+        )}
+        <p className="dash-hint">{t(`settings.search.iconProviderHints.${settings.iconProvider}`)}</p>
+      </Section>
     </div>
   )
 }
@@ -906,6 +1023,10 @@ function BackupSettings({ account, owner }) {
         </div>
       </Section>
 
+      <Section title={t('settings.import.title')}>
+        <DashboardImport />
+      </Section>
+
       <Section title={t('settings.backup.newTab')}>
         <p className="dash-hint">{t('settings.backup.newTabHelp')}</p>
         <p className="dash-copy">
@@ -966,7 +1087,7 @@ function BackupSettings({ account, owner }) {
           </button>
         </div>
         <p className="dash-hint">
-          {t('settings.backup.css')} <Link to="/cult/settings#css">{t('settings.backup.cssLink')}</Link>
+          {t('settings.backup.css')} <Link to="/settings">{t('settings.backup.cssLink')}</Link>
         </p>
       </Section>
       {message && (
@@ -982,28 +1103,16 @@ const siteOrigin = () => (typeof window !== 'undefined' ? window.location.origin
 
 /* ---------- the sheet ---------- */
 
-export default function DashSettings({ account, owner, loggedIn, initialTab = 'look', onClose, onEditBoard }) {
+/* The dash's settings without a dialog: /settings → Dash (pages/Settings.jsx). Search has its own tab there. */
+export const CUSTOMIZE_TABS = TABS.filter((entry) => entry.id !== 'search')
+export function DashCustomize({ account, owner, loggedIn, tab, onTab, onEditBoard }) {
   const { t } = useTranslation('dash')
-  const [tab, setTab] = useState(TABS.some((entry) => entry.id === initialTab) ? initialTab : 'look')
-  const ref = useRef(null)
-  useEffect(() => {
-    ref.current?.showModal()
-  }, [])
-
+  const current = CUSTOMIZE_TABS.some((entry) => entry.id === tab) ? tab : 'look'
   return (
-    <dialog ref={ref} className={`dash-dialog dash-sheet${tab === 'music' ? ' dash-sheet--wide' : ''}`} onClose={onClose} aria-labelledby="dash-settings-title" onClick={(event) => event.target === ref.current && ref.current.close()}>
-      <header className="dash-dialog__head">
-        <span className="material-symbols-outlined" aria-hidden="true">
-          tune
-        </span>
-        <h2 id="dash-settings-title">{t('settings.title')}</h2>
-        <button type="button" className="dash-tool" onClick={() => ref.current?.close()} aria-label={t('settings.close')}>
-          <span className="material-symbols-outlined">close</span>
-        </button>
-      </header>
+    <div className="dash-embedded">
       <div className="dash-tabs" role="tablist" aria-label={t('settings.title')}>
-        {TABS.map((entry) => (
-          <button key={entry.id} type="button" role="tab" id={`dash-tab-${entry.id}`} aria-selected={tab === entry.id} aria-controls="dash-tabpanel" className={tab === entry.id ? 'is-active' : ''} onClick={() => setTab(entry.id)}>
+        {CUSTOMIZE_TABS.map((entry) => (
+          <button key={entry.id} type="button" role="tab" id={`dash-tab-${entry.id}`} aria-selected={current === entry.id} aria-controls="dash-tabpanel" className={current === entry.id ? 'is-active' : ''} onClick={() => onTab(entry.id)}>
             <span className="material-symbols-outlined" aria-hidden="true">
               {entry.icon}
             </span>
@@ -1011,23 +1120,24 @@ export default function DashSettings({ account, owner, loggedIn, initialTab = 'l
           </button>
         ))}
       </div>
-      <div className="dash-dialog__body" role="tabpanel" id="dash-tabpanel" aria-labelledby={`dash-tab-${tab}`}>
-        {tab === 'look' && <LookSettings />}
-        {tab === 'layout' && (
-          <LayoutSettings
-            onEditBoard={() => {
-              ref.current?.close()
-              onEditBoard()
-            }}
-          />
-        )}
-        {tab === 'top' && <TopSettings />}
-        {tab === 'search' && <SearchSettings owner={owner} />}
-        {tab === 'pages' && <PagesSettings />}
-        {tab === 'integrations' && <DashIntegrations loggedIn={loggedIn} />}
-        {tab === 'music' && (loggedIn ? <MusicSettings /> : <p className="dash-hint">{t('music.login')}</p>)}
-        {tab === 'backup' && <BackupSettings account={account} owner={owner} />}
+      <div className="dash-dialog__body" role="tabpanel" id="dash-tabpanel" aria-labelledby={`dash-tab-${current}`}>
+        {current === 'look' && <LookSettings />}
+        {current === 'layout' && <LayoutSettings onEditBoard={onEditBoard} />}
+        {current === 'top' && <TopSettings />}
+        {current === 'pages' && <PagesSettings />}
+        {current === 'integrations' && <DashIntegrations loggedIn={loggedIn} />}
+        {current === 'music' && (loggedIn ? <MusicSettings /> : <p className="dash-hint">{t('music.login')}</p>)}
+        {current === 'backup' && <BackupSettings account={account} owner={owner} />}
       </div>
-    </dialog>
+    </div>
+  )
+}
+
+/* The dash's search bar: engines, tools, icons (/settings → Search). */
+export function DashSearchSettings({ owner }) {
+  return (
+    <div className="dash-embedded">
+      <SearchSettings owner={owner} />
+    </div>
   )
 }

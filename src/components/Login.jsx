@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { profilePath } from '../lib/members'
 import EmailLogin from './EmailLogin'
+import { useAccountSettings } from '../lib/accountSettings.jsx'
 import { loadNotifications, loadStaff, NOTIFICATIONS_EVENT } from '../lib/moderation'
 import { loadStatsAccess } from '../lib/stats'
 import {
@@ -188,6 +189,12 @@ export default function Login() {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   // The reset link in security emails opens the login panel right away.
   const [open, setOpen] = useState(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('login') === 'reset')
+  // Other parts of the site ask for the login panel (the dash's "Log in"): `homesite:open-login`.
+  useEffect(() => {
+    const show = () => setOpen(true)
+    window.addEventListener('homesite:open-login', show)
+    return () => window.removeEventListener('homesite:open-login', show)
+  }, [])
 
   useEffect(() => {
     let isActive = true
@@ -252,7 +259,7 @@ export default function Login() {
     return (
       <div className="login-wrap login-wrap--guest">
         {/* Settings work without an account too (kept in this browser). */}
-        <Link className="loginButton loginSettings" to="/cult/settings" aria-label={t('settings', { defaultValue: 'Settings' })} title={t('settings', { defaultValue: 'Settings' })}>
+        <Link className="loginButton loginSettings" to="/settings" aria-label={t('settings', { defaultValue: 'Settings' })} title={t('settings', { defaultValue: 'Settings' })}>
           <span className="material-symbols-outlined" aria-hidden="true">
             settings
           </span>
@@ -298,6 +305,9 @@ export default function Login() {
 
 /** Avatar + name; a click opens Profile, Settings and Log out. */
 function AccountMenu({ user, badge, hasProfile, loggingOut, onLogout, title, logoutLabel }) {
+  // Only the avatar (Settings → General): the name and arrow step aside.
+  const { prefs } = useAccountSettings()
+  const avatarOnly = prefs.chrome?.account === 'avatar'
   const { t } = useTranslation('login')
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
@@ -348,19 +358,28 @@ function AccountMenu({ user, badge, hasProfile, loggingOut, onLogout, title, log
   }, [open])
 
   return (
-    <div className="accountMenu" ref={ref}>
-      <button type="button" className="accountMenu__toggle" aria-expanded={open} aria-haspopup="menu" aria-controls={menuId} title={title} onClick={() => setOpen((value) => !value)}>
-        {user.avatarUrl ? <img className="accountAvatar" src={user.avatarUrl} alt="" width="36" height="36" /> : null}
-        <span className="accountName">{user.displayName}</span>
-        {badge && <span className="accountBadge">{badge}</span>}
+    <div className={`accountMenu${avatarOnly ? ' accountMenu--avatar' : ''}`} ref={ref}>
+      <button type="button" className="accountMenu__toggle" aria-expanded={open} aria-haspopup="menu" aria-controls={menuId} title={avatarOnly ? `${user.displayName}${badge ? ` · ${badge}` : ''}` : title} aria-label={avatarOnly ? user.displayName : undefined} onClick={() => setOpen((value) => !value)}>
+        {/* No picture: the initial in a circle, so the button is never empty (phones show only this). */}
+        {user.avatarUrl ? (
+          <img className="accountAvatar" src={user.avatarUrl} alt="" width="36" height="36" />
+        ) : (
+          <span className="accountAvatar accountAvatar--initial" aria-hidden="true">
+            {[...(user.displayName || user.username || '?').trim()][0]?.toUpperCase() ?? '?'}
+          </span>
+        )}
+        {!avatarOnly && <span className="accountName">{user.displayName}</span>}
+        {badge && !avatarOnly && <span className="accountBadge">{badge}</span>}
         {unread > 0 && (
           <span className="accountMenu__unread" aria-label={t('menu.newNotifications', { count: unread })}>
             {unread > 9 ? '9+' : unread}
           </span>
         )}
-        <span className="material-symbols-outlined accountMenu__chevron" aria-hidden="true">
-          {open ? 'expand_less' : 'expand_more'}
-        </span>
+        {!avatarOnly && (
+          <span className="material-symbols-outlined accountMenu__chevron" aria-hidden="true">
+            {open ? 'expand_less' : 'expand_more'}
+          </span>
+        )}
       </button>
 
       {open && (
@@ -414,7 +433,7 @@ function AccountMenu({ user, badge, hasProfile, loggingOut, onLogout, title, log
               {t('menu.birthdays')}
             </Link>
           )}
-          <Link role="menuitem" to="/cult/settings" onClick={() => setOpen(false)}>
+          <Link role="menuitem" to="/settings" onClick={() => setOpen(false)}>
             <span className="material-symbols-outlined" aria-hidden="true">
               settings
             </span>

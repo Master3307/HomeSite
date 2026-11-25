@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import Search from '../Search.jsx'
 import { hubGet, userPageUrl } from '../../lib/hub.js'
+import { findContacts, openContact, useContacts } from '../../lib/dashContacts.js'
 import { buildSearchUrl, resolveSearch, updateDashSettings, useDashSettings, visibleProviders } from '../../lib/dashSettings.js'
 import { Favicon } from './kit.jsx'
 import MathGraph from './MathGraph.jsx'
@@ -16,6 +17,7 @@ import { latexCommands, nextSlot } from './mathSymbols.js'
 import { catalogEntry } from '../../data/searchProviders.js'
 import { languageName, languageNames, languageOf, translateText, translationQuery } from '../../lib/translate.js'
 import { useMathLanguage } from './useMathLanguage.js'
+import { siteConfig } from '../../lib/siteConfig.js'
 
 const Reference = lazy(() => import('./science/Reference.jsx'))
 
@@ -110,7 +112,7 @@ function SearchPretty({ trees, source, className }) {
  * people on Discord (the hub's member search, needs the hub unlocked).
  */
 
-export default function DashSearch({ owner }) {
+export default function DashSearch({ owner, loggedIn = false }) {
   const { t } = useTranslation('dash')
   const settings = useDashSettings()
   const providers = visibleProviders(settings)
@@ -126,26 +128,53 @@ export default function DashSearch({ owner }) {
         const resolved = resolveSearch(settings, query)
         if (!resolved.provider || !resolved.query) return
         const url = buildSearchUrl(resolved.provider.url, resolved.query)
-        if (settings.openInNewTab) window.open(url, '_blank', 'noopener,noreferrer')
-        else window.location.assign(url)
+        if (settings.openInNewTab) {
+          window.open(url, '_blank', 'noopener,noreferrer')
+          return 'tab'
+        }
+        window.location.assign(url)
+        return 'page'
       },
     }),
     [settings, t],
   )
 
-  const people = useCallback(async (query, signal) => {
-    if (signal.aborted) return []
-    const data = await hubGet('/hub/members', { q: query.replace(/^@/, ''), limit: 6 }).catch((error) => {
-      throw new Error(error.status === 401 || error.locked ? t('search.hubLocked') : error.message)
-    })
-    return (data.members ?? []).map((member) => ({
-      id: member.id,
-      name: member.displayName || member.globalName || member.username,
-      handle: member.username,
-      avatarUrl: member.avatar ?? null,
-      open: () => window.open(userPageUrl(member.id), '_blank', 'noopener'),
-    }))
-  }, [t])
+  // People: your contacts (lib/dashContacts.js) and, for the owner, the server's members through the hub.
+  const contacts = useContacts({ enabled: loggedIn })
+  const people = useCallback(
+    async (query, signal) => {
+      if (signal.aborted) return []
+      const mine = findContacts(contacts.contacts, query, 4).map((contact) => ({
+        id: contact.id,
+        group: 'contacts',
+        name: contact.name,
+        handle: contact.member ? contact.member.slice(1) : '',
+        detail: contact.phones?.[0]?.value || contact.emails?.[0]?.value || contact.org || '',
+        avatarUrl: contact.photo || null,
+        open: () => openContact(contact.id),
+      }))
+      if (!(owner && settings.discordLookup)) return mine
+      try {
+        const data = await hubGet('/hub/members', { q: query.replace(/^@/, ''), limit: 6 })
+        return [
+          ...mine,
+          ...(data.members ?? []).map((member) => ({
+            id: member.id,
+            group: 'discord',
+            name: member.displayName || member.globalName || member.username,
+            handle: member.username,
+            avatarUrl: member.avatar ?? null,
+            open: () => window.open(userPageUrl(member.id), '_blank', 'noopener'),
+          })),
+        ]
+      } catch (error) {
+        // The hub being locked only hides Discord, not the contacts.
+        if (mine.length) return mine
+        throw new Error(error.status === 401 || error.locked ? t('search.hubLocked') : error.message)
+      }
+    },
+    [t, contacts.contacts, owner, settings.discordLookup],
+  )
 
   const { i18n } = useTranslation()
   const { t: te } = useTranslation('elements')
@@ -195,6 +224,11 @@ export default function DashSearch({ owner }) {
       return [...translation(query), ...player(query), ...(science ? science.suggest(query, { t: te, tf, locale: i18n.language, open: setReference }) : [])]
     }
   }, [science, te, tf, i18n.language, minecraft, translated, profileUrl, t, typed])
+  const quickDisabledKey = settings.quickDisabled.join(',')
+  const quick = useMemo(
+    () => (settings.quickTools === false ? null : { disabled: new Set(settings.quickDisabled), links: settings.linkPreview !== false && siteConfig.dashLinkPreview !== false, newTab: settings.openInNewTab }),
+    [settings.quickTools, quickDisabledKey, settings.linkPreview, settings.openInNewTab], // eslint-disable-line react-hooks/exhaustive-deps
+  )
   const explode = useExplosion()
   const math = useMathLanguage()
   const calc = useMemo(
@@ -217,10 +251,11 @@ export default function DashSearch({ owner }) {
 
   return (
     <>
-    <Search calc={calc} extras={extras} voice={settings.voiceSearch} onImage={setImage} imageButton={settings.imageButton} history={settings.searchHistory ? 'dash' : false} className="dash-search" autoFocus={settings.top.autofocus} sitePages={settings.siteResults} web={web} people={owner && settings.discordLookup ? people : null} placeholder={t('search.placeholder', { provider: active?.name ?? '' })}>
+    <Search calc={calc} extras={extras} quick={quick} voice={settings.voiceSearch} onImage={setImage} imageButton={settings.imageButton} history={settings.searchHistory ? 'dash' : false} className="dash-search" autoFocus={settings.top.autofocus} sitePages={settings.siteResults} web={web} people={loggedIn ? people : null} placeholder={t('search.placeholder', { provider: active?.name ?? '' })}>
       {image && (
         <ImageTools
           file={image}
+          provider={active}
           onClose={() => setImage(null)}
           onQuery={(text) => {
             // Into the search box (colours, codes): the answers show up there.

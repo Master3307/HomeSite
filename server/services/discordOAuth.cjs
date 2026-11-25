@@ -1,9 +1,11 @@
+const { configureMembership, isMember, noteMembership } = require("./membership.cjs");
 const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { twoFactorEnabled, checkTwoFactor } = require("./totp.cjs");
-const { setting, origin, enabled } = require("../config.cjs");
+const { setting, origin, rawOrigin, enabled } = require("../config.cjs");
 const accountPrefs = require("./accountPrefs.cjs");
+const express = require("express");
 const rateLimit = require("express-rate-limit");
 
 const Database = require("better-sqlite3");
@@ -33,9 +35,10 @@ function requestProfileRoles(discordId) {
 const AUTH_COOKIE_NAME = "__Secure-homesite_auth";
 // Shared with the site's subdomains (AUTH_COOKIE_DOMAIN); empty: host-only.
 const AUTH_COOKIE_DOMAIN = setting("AUTH_COOKIE_DOMAIN") || undefined;
+// The account API's own host as set (not the gateway): a host-only cookie from before AUTH_COOKIE_DOMAIN lives there.
 const ACCOUNT_API_HOST = (() => {
   try {
-    return new URL(origin("ACCOUNT_API_ORIGIN")).hostname;
+    return new URL(rawOrigin("ACCOUNT_API_ORIGIN")).hostname;
   } catch {
     return undefined;
   }
@@ -223,6 +226,16 @@ function ensureSettingsColumn(db) {
   }
 }
 
+/* Own avatars (POST /account/avatar): the Discord one is kept beside it, for going back. */
+function ensureAvatarColumns(db) {
+  const names = new Set(db.prepare("PRAGMA table_info(users)").all().map((column) => column.name));
+  if (!names.has("custom_avatar")) db.exec("ALTER TABLE users ADD COLUMN custom_avatar INTEGER NOT NULL DEFAULT 0");
+  if (!names.has("discord_avatar_path")) {
+    db.exec("ALTER TABLE users ADD COLUMN discord_avatar_path TEXT");
+    db.exec("UPDATE users SET discord_avatar_path = avatar_path WHERE custom_avatar = 0");
+  }
+}
+
 function ensureRoleColumn(db) {
   const columns = db.prepare("PRAGMA table_info(users)").all();
 
@@ -288,6 +301,7 @@ function openDatabase() {
 
   ensureSettingsColumn(db);
   ensureRoleColumn(db);
+  ensureAvatarColumns(db);
 
   return db;
 }
@@ -583,16 +597,18 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
   function updateAvatarPath(userId, avatarPath) {
     const now = nowIso();
 
+    // The Discord picture is always kept; it's shown unless the person chose their own.
     db.prepare(
       `
       UPDATE users
       SET
-        avatar_path = ?,
+        discord_avatar_path = ?,
+        avatar_path = CASE WHEN custom_avatar = 1 THEN avatar_path ELSE ? END,
         avatar_updated_at = ?,
         updated_at = ?
       WHERE id = ?
     `,
-    ).run(avatarPath, now, now, userId);
+    ).run(avatarPath, avatarPath, now, now, userId);
 
     return getUserById(userId);
   }
@@ -677,6 +693,8 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
           users.username,
           users.display_name,
           users.avatar_path,
+          users.custom_avatar,
+          users.discord_avatar_path,
           users.settings_json
         FROM sessions
         INNER JOIN users ON users.id = sessions.user_id
@@ -794,6 +812,11 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
       displayName: accountSession.display_name,
       avatarUrl: accountSession.avatar_path
         ? `${apiOrigin}/${accountSession.avatar_path}`
+        : null,
+      // Their own picture (Settings → Account) instead of Discord's, and Discord's for going back.
+      customAvatar: Boolean(accountSession.custom_avatar),
+      discordAvatarUrl: accountSession.discord_avatar_path
+        ? `${apiOrigin}/${accountSession.discord_avatar_path}`
         : null,
       settings: parseSettings(accountSession.settings_json),
     };
@@ -930,14 +953,19 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
 
         // Only members of the server get an account (MEMBERS_ONLY_LOGIN, on by default; the owner always).
         const owner = discordUser.id === setting("DISCORD_USER_ID");
-        if (!owner && enabled("MEMBERS_ONLY_LOGIN") && process.env.DISCORD_BOT_TOKEN && process.env.DISCORD_GUILD_ID) {
-          const member = await fetchGuildMember(discordUser.id).catch(() => undefined);
-          if (member === null) return refuse("not-member");
+        // Everyone else gets an account (MEMBERS_ONLY_LOGIN off, the default); what belongs to the server is
+        // only for members (services/membership.cjs), so whether they are is noted right away.
+        let guildMember; // undefined: unknown, null: not in the server
+        if (!owner && process.env.DISCORD_BOT_TOKEN && process.env.DISCORD_GUILD_ID) {
+          guildMember = await fetchGuildMember(discordUser.id).catch(() => undefined);
+          if (guildMember === null && enabled("MEMBERS_ONLY_LOGIN")) return refuse("not-member");
+          if (guildMember !== undefined) setImmediate(() => noteMembership(discordUser.id, guildMember !== null));
         }
 
         let user = upsertUserFromDiscord(discordUser);
         try {
-          db.prepare("UPDATE users SET last_member_at = ? WHERE id = ?").run(nowIso(), user.id);
+          // Only a member's login counts as "was in the server" (the daily cleanup looks at it).
+          if (owner || guildMember || !process.env.DISCORD_GUILD_ID) db.prepare("UPDATE users SET last_member_at = ? WHERE id = ?").run(nowIso(), user.id);
         } catch {
           // column not added yet (services/members.cjs migrates on start)
         }
@@ -1141,7 +1169,7 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
     },
   );
 
-  app.get("/auth/me", accountReadRateLimiter, requireStorage, (req, res) => {
+  app.get("/auth/me", accountReadRateLimiter, requireStorage, async (req, res) => {
     const rawToken = req.cookies?.[AUTH_COOKIE_NAME];
     const accountSession = getAuthenticatedUser(rawToken);
 
@@ -1154,9 +1182,11 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
       });
     }
 
+    // `member`: in the Discord server right now (voting, birthdays, member profiles …; services/membership.cjs).
+    const member = await isMember(accountSession.discord_user_id).catch(() => false);
     return res.json({
       authenticated: true,
-      user: toPublicUser(accountSession),
+      user: { ...toPublicUser(accountSession), member },
     });
   });
 
@@ -1185,6 +1215,14 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
       if (error) return res.status(400).json({ error, rejected });
 
       const currentSettings = parseSettings(req.accountSession.settings_json);
+      // The dash is saved against the copy the browser last had (`_dashBase`, its updatedAt): if another
+      // device saved in between, nothing is overwritten; the browser gets the newer copy, merges and sends again.
+      if (updates.dash && body._dashBase !== undefined && Number.isFinite(Number(body._dashBase))) {
+        const stored = Number(currentSettings.dash?.updatedAt) || 0;
+        if (stored > Number(body._dashBase)) {
+          return res.status(409).json({ error: "The dash was changed on another device.", conflict: "dash", dash: currentSettings.dash });
+        }
+      }
       // The newest change time stays (an old browser can't make newer settings look older).
       updates._at = Math.max(Number(updates._at) || Date.now(), Number(currentSettings._at) || 0);
 
@@ -1251,6 +1289,74 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
     },
   );
 
+  /*
+   * An own avatar: a picture (PNG, JPEG, WebP, AVIF, animated GIF or WebP,
+   * 12 MB at most) cut to the square the browser chose (?x=&y=&size= as
+   * parts 0-1 of the picture's width / height) and made 256 px WebP, which
+   * drops everything hidden in it (camera, place, date). Animations keep
+   * moving (each frame cut on its own, 300 frames at most). Deleting it goes
+   * back to the Discord picture.
+   */
+  const CUSTOM_DIR = path.join(AVATAR_DIR, "custom");
+  const CUSTOM_FILE = /^[0-9a-f-]{36}-[a-z0-9]{4,16}\.webp$/;
+  const avatarUploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: "draft-8", legacyHeaders: false, message: { error: "Too many avatar changes. Please try again later." } });
+  const avatarBody = express.raw({ type: () => true, limit: 12 * 1024 * 1024 });
+  const removeCustomFiles = async (userId, keep = "") => {
+    const names = await fs.readdir(CUSTOM_DIR).catch(() => []);
+    await Promise.all(names.filter((name) => name.startsWith(`${userId}-`) && name !== keep).map((name) => fs.rm(path.join(CUSTOM_DIR, name), { force: true })));
+  };
+  const fraction = (value, fallback) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.min(1, Math.max(0, number)) : fallback;
+  };
+
+  app.post("/account/avatar", avatarUploadLimiter, requireStorage, avatarBody, async (req, res) => {
+    const session = getRequestSession(req);
+    if (!session) return res.status(401).json({ error: "Log in first." });
+    if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ error: "Choose a picture." });
+    try {
+      const out = await makeAvatar(req.body, { x: fraction(req.query.x, 0), y: fraction(req.query.y, 0), size: fraction(req.query.size, 1) || 1 });
+      await fs.mkdir(CUSTOM_DIR, { recursive: true });
+      // A new name each time: the address changes, so every page shows the new one at once.
+      const name = `${session.user_id}-${Date.now().toString(36)}.webp`;
+      await fs.writeFile(path.join(CUSTOM_DIR, name), out);
+      db.prepare("UPDATE users SET avatar_path = ?, custom_avatar = 1, avatar_updated_at = ?, updated_at = ? WHERE id = ?").run(`avatars/custom/${name}`, nowIso(), nowIso(), session.user_id);
+      await removeCustomFiles(session.user_id, name);
+      return res.json({ avatarUrl: `${origin("ACCOUNT_API_ORIGIN")}/avatars/custom/${name}`, customAvatar: true });
+    } catch (error) {
+      if (!error.status) console.error("[Accounts] Avatar upload failed:", error.message);
+      return res.status(error.status ?? 400).json({ error: error.status ? error.message : "That picture couldn't be read." });
+    }
+  });
+
+  app.delete("/account/avatar", avatarUploadLimiter, requireStorage, async (req, res) => {
+    const session = getRequestSession(req);
+    if (!session) return res.status(401).json({ error: "Log in first." });
+    const row = db.prepare("SELECT discord_avatar_path FROM users WHERE id = ?").get(session.user_id);
+    db.prepare("UPDATE users SET avatar_path = ?, custom_avatar = 0, updated_at = ? WHERE id = ?").run(row?.discord_avatar_path ?? null, nowIso(), session.user_id);
+    await removeCustomFiles(session.user_id);
+    const apiOrigin = origin("ACCOUNT_API_ORIGIN");
+    return res.json({ avatarUrl: row?.discord_avatar_path ? `${apiOrigin}/${row.discord_avatar_path}` : null, customAvatar: false });
+  });
+
+  app.get("/avatars/custom/:file", avatarRateLimiter, requireStorage, async (req, res) => {
+    const file = String(req.params.file || "");
+    if (!CUSTOM_FILE.test(file)) return res.status(400).send("Invalid avatar.");
+    const full = path.join(CUSTOM_DIR, file);
+    try {
+      await fs.access(full);
+      res.setHeader("Content-Type", "image/webp");
+      // The name changes with every new picture, so it can be kept for long.
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      return res.sendFile(full);
+    } catch {
+      return res.status(404).send("Avatar not found.");
+    }
+  });
+
+  configureMembership({ getDatabase: () => db, fetchGuildMember, getRequestSession, adminId: ADMIN_DISCORD_USER_ID });
+
   return {
     requireStorage,
     getRequestSession,
@@ -1270,7 +1376,37 @@ function registerDiscordOAuth(app, { activity = null, isBanned = () => false } =
   };
 }
 
+/* An own avatar from a picture and the browser's square (parts 0-1 of width / height): 256 px WebP, animations kept. */
+async function makeAvatar(buffer, crop) {
+  const SIZE = 256;
+  const probe = await sharp(buffer, { animated: true, limitInputPixels: 50_000_000 }).metadata().catch(() => null);
+  if (!probe || !["png", "jpeg", "webp", "gif", "avif", "heif"].includes(probe.format)) throw Object.assign(new Error("That isn't a picture this can use (PNG, JPEG, WebP, GIF, AVIF)."), { status: 400 });
+  const pages = Math.min(probe.pages ?? 1, 300);
+  const frameHeight = probe.pageHeight ?? probe.height;
+  // Still pictures: turned upright first (phone photos), so the browser's crop matches.
+  const upright = pages === 1 ? await sharp(buffer).rotate().toBuffer({ resolveWithObject: true }) : null;
+  const width = upright ? upright.info.width : probe.width;
+  const height = upright ? upright.info.height : frameHeight;
+  const side = Math.max(1, Math.round(Math.min(width, height) * crop.size));
+  const area = {
+    left: Math.min(width - side, Math.max(0, Math.round(width * crop.x))),
+    top: Math.min(height - side, Math.max(0, Math.round(height * crop.y))),
+    width: Math.min(side, width),
+    height: Math.min(side, height),
+  };
+  if (upright) return sharp(upright.data).extract(area).resize(SIZE, SIZE, { fit: "cover" }).webp({ quality: 88, effort: 4 }).toBuffer();
+  // Animated: each frame cut on its own (sharp would cut the whole strip of frames), then joined again.
+  const frames = await Promise.all(Array.from({ length: pages }, (_, page) => sharp(buffer, { page }).extract(area).resize(SIZE, SIZE, { fit: "cover" }).png().toBuffer()));
+  const delay = Array.isArray(probe.delay) ? probe.delay.slice(0, pages) : undefined;
+  let out = await sharp(frames, { join: { animated: true } }).webp({ quality: 82, effort: 4, loop: Number.isInteger(probe.loop) ? probe.loop : 0, ...(delay ? { delay } : {}) }).toBuffer();
+  // Very busy animations: smaller files at a lower quality.
+  if (out.length > 3 * 1024 * 1024) out = await sharp(frames, { join: { animated: true } }).webp({ quality: 55, effort: 4, loop: Number.isInteger(probe.loop) ? probe.loop : 0, ...(delay ? { delay } : {}) }).toBuffer();
+  if (out.length > 4 * 1024 * 1024) throw Object.assign(new Error("That animation is too big for an avatar. Try a shorter one."), { status: 413 });
+  return out;
+}
+
 module.exports = {
+  makeAvatar,
   ADMIN_DISCORD_USER_ID,
   adminKeyMatches,
   registerDiscordOAuth,

@@ -63,6 +63,8 @@ const EXCLUDED = [
   "public/fdc-polls/",
   "server/services/db/backups/",
   "server/services/db/.backup-work/",
+  // Uploads still arriving in parts (chunkedUploads.cjs; gone after an hour).
+  "server/services/db/upload-parts/",
   "server/services/db/fdc-polls/.import.lock",
   "server/services/db/accounts.sqlite-wal",
   "server/services/db/accounts.sqlite-shm",
@@ -1243,6 +1245,15 @@ function mergeAccounts(
         const user = localDb
           .prepare("SELECT avatar_path FROM users WHERE id = ?")
           .get(to);
+        // The kept Discord picture of someone with their own avatar (discordOAuth.cjs) follows too.
+        if (columnsOf(localDb, "users").includes("discord_avatar_path")) {
+          const kept = localDb.prepare("SELECT discord_avatar_path, avatar_path FROM users WHERE id = ?").get(to);
+          if (kept?.discord_avatar_path?.includes(from) && kept.discord_avatar_path !== kept.avatar_path) {
+            const next = kept.discord_avatar_path.replace(from, to);
+            localDb.prepare("UPDATE users SET discord_avatar_path = ? WHERE id = ?").run(next, to);
+            report.avatarRenames.push({ from: kept.discord_avatar_path, to: next });
+          } else if (kept?.discord_avatar_path?.includes(from)) localDb.prepare("UPDATE users SET discord_avatar_path = ? WHERE id = ?").run(kept.discord_avatar_path.replace(from, to), to);
+        }
         if (user?.avatar_path?.includes(from)) {
           const next = user.avatar_path.replace(from, to);
           localDb

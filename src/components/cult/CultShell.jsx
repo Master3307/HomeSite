@@ -76,7 +76,7 @@ export function CultFooter() {
         <span className="material-symbols-outlined" aria-hidden="true">
           shield_person
         </span>
-        <Link to="/cult/privacy">Privacy</Link>
+        <Link to="/privacy" state={{ from: 'cult' }}>Privacy</Link>
       </p>
     </footer>
   )

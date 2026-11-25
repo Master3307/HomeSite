@@ -314,7 +314,7 @@ function registerPush(app, { getRequestSession, getDatabase }) {
       const sent = await sendToUser(session.user_id, {
         title: german ? "Benachrichtigungen funktionieren" : "Notifications work",
         body: german ? "So sehen Push-Benachrichtigungen von HomeSite aus." : "This is how push notifications from HomeSite look.",
-        link: "/cult/settings#notifications",
+        link: "/settings/notifications",
         category: "general",
         tag: "test",
       });

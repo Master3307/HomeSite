@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { ACCOUNT_API_URL, accountFetch } from './account'
+import { ACCOUNT_API_URL, accountFetch, getCurrentAccount } from './account'
 import { indexCatalog } from '/shared/bongo-design.mjs'
 
 /*
@@ -91,6 +91,9 @@ function readLocalFavorites() {
 
 export async function loadFavorites() {
   try {
+    // Kept on the account for members of the server; everyone else keeps them in this browser.
+    const account = await getCurrentAccount().catch(() => null)
+    if (!account || account.member === false) throw new Error('local')
     return { synced: true, ...(await get('/bongo/favorites')) }
   } catch {
     return { synced: false, ...readLocalFavorites(), theme: localTheme() }

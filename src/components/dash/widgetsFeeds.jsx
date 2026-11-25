@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useAccountSettings } from '../../lib/accountSettings.jsx'
 import { integrationById, integrationGet, useIntegrations } from '../../lib/dashIntegrations.js'
 import { siteConfig } from '../../lib/siteConfig.js'
-import { Empty, LoadError, Loading, Num, Sparkline, compactNumber, corsJson, dashboardIconPng, dashboardIconUrl, fetchJson, hostOf, loadFeed, proxyJson, timeAgo, useRemote } from './kit.jsx'
+import { updateWidgetOptions } from '../../lib/dashSettings.js'
+import MarkdownLite from './MarkdownLite.jsx'
+import { Empty, Favicon, LoadError, Loading, Num, Sparkline, compactNumber, corsJson, dashboardIconPng, dashboardIconUrl, fetchJson, hostOf, loadFeed, proxyJson, timeAgo, useRemote } from './kit.jsx'
 
 /*
  * Things from elsewhere: releases (GitHub, GitLab, Gitea / Forgejo /
@@ -122,52 +124,173 @@ function integrationFor(widget, source) {
   return item && item.kind === source ? item : null
 }
 
-function ReleaseRow({ row, widget, loggedIn, onData }) {
-  const { t, i18n } = useTranslation('dash')
-  const { perRepo = 1, prereleases = false, notes = false, icons = 'auto', dates = 'relative' } = widget.options
+const releaseKey = (row) => `${row.source ?? 'github'}:${String(row.repo ?? '').trim()}`
+const firstLine = (notes) => String(notes ?? '').replace(/<[^>]+>/g, ' ').replace(/[#*_`>[\]]/g, '').split('\n').find((line) => line.trim())?.trim().slice(0, 160) ?? ''
+
+/* One project's releases (cached per source; kit.jsx useRemote). */
+function useReleases(row, widget, loggedIn) {
   const source = row.source ?? 'github'
   const integration = integrationFor(widget, source)
   const name = String(row.repo).trim()
   const { data, error, reload } = useRemote(
     `rel:${source}:${name}:${integration?.id ?? ''}`,
-    (signal) => loadReleases({ ...row, source }, { integration, loggedIn, perRepo, signal }),
+    (signal) => loadReleases({ ...row, source }, { integration, loggedIn, perRepo: 10, signal }),
     { refresh: integration ? 15 * 60 : 45 * 60, private: Boolean(integration) },
   )
-  const shown = (data ?? []).filter((release) => prereleases || !release.prerelease).slice(0, Math.max(1, Math.min(10, perRepo)))
-  const newest = shown[0]?.date
+  const all = (data ?? []).filter((release) => widget.options.prereleases || !release.prerelease)
+  return { source, name, integration, data, all, error, reload }
+}
+
+/*
+ * A project in the list. New since you last looked (the version you marked
+ * read, synced with the dash): a dot, bold, "new". Click: the details.
+ */
+function ReleaseRow({ row, widget, loggedIn, onData, onOpen, seen, onFirstSeen }) {
+  const { t, i18n } = useTranslation('dash')
+  const { perRepo = 1, notes = false, icons = 'auto', dates = 'relative', display = 'list', newDays = 7, unreadOnly = false } = widget.options
+  const { source, name, integration, data, all, error, reload } = useReleases(row, widget, loggedIn)
+  const shown = all.slice(0, Math.max(1, Math.min(10, perRepo)))
+  const newest = all[0]
+  const key = releaseKey(row)
+  const unread = Boolean(newest && seen !== undefined && seen !== newest.version)
+  const latest = newest?.version
   useEffect(() => {
-    if (newest) onData(name, newest)
-  }, [name, newest, onData])
+    if (latest !== undefined) onData(key, { date: newest?.date ?? null, unread, latest })
+    // newest is followed through its version and date
+  }, [key, latest, newest?.date, unread, onData]) // eslint-disable-line react-hooks/exhaustive-deps
+  // A project you just added starts as read (only what comes out after that is new).
+  useEffect(() => {
+    if (latest !== undefined && seen === undefined) onFirstSeen(key, latest)
+  }, [key, latest, seen, onFirstSeen])
+  if (unreadOnly && data && !unread) return null
   const label = row.label || name
+  const fresh = (date) => date && Date.now() - new Date(date).getTime() < Math.max(1, Number(newDays) || 7) * 86_400_000
+  const when = (date) => (dates === 'date' ? new Date(date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', year: 'numeric' }) : timeAgo(date, i18n.language))
   return (
-    <li className="dash-w-rel__repo">
-      <RepoIcon sources={iconsFor(source, name, icons, giteaHost(integration))} size={28} />
-      <div className="dash-w-rel__main">
-        <p className="dash-w-rel__name">
-          <span>{label}</span>
-          {source !== 'github' && <small className="dash-chip">{t(`widgets.releases.sources.${source}`)}</small>}
-        </p>
-        {!data && !error && <span className="skeleton skeleton--text" style={{ width: '6em' }} />}
-        {!data && error && (
-          <button type="button" className="dash-link-button dash-w-rel__error" onClick={reload} title={error}>
-            {t('widgets.releases.failed')}
+    <li className={`dash-w-rel__repo dash-w-rel__repo--${display}${unread ? ' is-unread' : ''}`}>
+      <button type="button" className="dash-w-rel__open" onClick={() => onOpen(row)} aria-label={`${label}${unread ? `, ${t('widgets.releases.new')}` : ''}`}>
+        <span className="dash-w-rel__icon">
+          <RepoIcon sources={iconsFor(source, name, icons, giteaHost(integration))} size={display === 'compact' ? 22 : 30} />
+          {unread && <span className="dash-w-rel__dot" aria-hidden="true" />}
+        </span>
+        <span className="dash-w-rel__main">
+          <span className="dash-w-rel__name">
+            <span>{label}</span>
+            {source !== 'github' && display !== 'compact' && <small className="dash-chip">{t(`widgets.releases.sources.${source}`)}</small>}
+          </span>
+          {!data && !error && <span className="skeleton skeleton--text" style={{ width: '6em' }} />}
+          {!data && error && <small className="dash-w-rel__error">{t('widgets.releases.failed')}</small>}
+          {data && !shown.length && <small className="dash-muted">{t('widgets.releases.none')}</small>}
+          {shown.map((release, index) => (
+            <span key={release.version} className="dash-w-rel__version">
+              <strong>{release.version}</strong>
+              {index === 0 && unread && <small className="dash-chip dash-chip--new">{t('widgets.releases.new')}</small>}
+              {index === 0 && !unread && fresh(release.date) && <small className="dash-chip">{t('widgets.releases.recent')}</small>}
+              {release.prerelease && <small className="dash-chip dash-chip--warn">{t('widgets.releases.pre')}</small>}
+              {release.date && (
+                <time dateTime={release.date} title={new Date(release.date).toLocaleString(i18n.language)}>
+                  {when(release.date)}
+                </time>
+              )}
+              {notes && display !== 'compact' && firstLine(release.notes) && <span className="dash-w-rel__notes">{firstLine(release.notes)}</span>}
+            </span>
+          ))}
+        </span>
+      </button>
+      {!data && error && (
+        <button type="button" className="dash-tool dash-w-rel__retry" onClick={reload} title={error} aria-label={t('widgets.releases.failed')}>
+          <span className="material-symbols-outlined">refresh</span>
+        </button>
+      )}
+    </li>
+  )
+}
+
+/* The details of one project: every version, the notes, read / unread. */
+function ReleaseDetail({ row, widget, loggedIn, seen, onSeen, onClose }) {
+  const { t, i18n } = useTranslation('dash')
+  const ref = useRef(null)
+  const { source, name, integration, data, all, error, reload } = useReleases(row, widget, loggedIn)
+  const [open, setOpen] = useState(null)
+  const newest = all[0]
+  const current = open ?? newest?.version
+  const release = all.find((entry) => entry.version === current) ?? newest
+  useEffect(() => {
+    ref.current?.showModal()
+  }, [])
+  const unreadIndex = all.findIndex((entry) => entry.version === seen)
+  const isNew = (index) => seen !== undefined && (unreadIndex === -1 ? index === 0 : index < unreadIndex)
+  return (
+    <dialog ref={ref} className="dash-dialog dash-dialog--release" onClose={onClose} aria-labelledby="dash-rel-title" onClick={(event) => event.target === ref.current && ref.current.close()}>
+      <header className="dash-dialog__head">
+        <RepoIcon sources={iconsFor(source, name, widget.options.icons ?? 'auto', giteaHost(integration))} size={28} />
+        <h2 id="dash-rel-title">
+          {row.label || name}
+          <small>{t(`widgets.releases.sources.${source}`)}</small>
+        </h2>
+        <button type="button" className="dash-tool" onClick={() => ref.current?.close()} aria-label={t('settings.close')}>
+          <span className="material-symbols-outlined">close</span>
+        </button>
+      </header>
+      {!data ? (
+        error ? (
+          <div className="dash-rel-detail__state">
+            <LoadError error={error} onRetry={reload} />
+          </div>
+        ) : (
+          <div className="dash-rel-detail__state">
+            <Loading lines={6} />
+          </div>
+        )
+      ) : !all.length ? (
+        <p className="dash-rel-detail__state dash-muted">{t('widgets.releases.none')}</p>
+      ) : (
+        <div className="dash-rel-detail">
+          <ol className="dash-rel-detail__versions" aria-label={t('widgets.releases.versions')}>
+            {all.map((entry, index) => (
+              <li key={entry.version}>
+                <button type="button" className={entry.version === release?.version ? 'is-active' : ''} aria-current={entry.version === release?.version} onClick={() => setOpen(entry.version)}>
+                  <strong>{entry.version}</strong>
+                  {isNew(index) && <small className="dash-chip dash-chip--new">{t('widgets.releases.new')}</small>}
+                  {entry.prerelease && <small className="dash-chip dash-chip--warn">{t('widgets.releases.pre')}</small>}
+                  {entry.date && <time dateTime={entry.date}>{timeAgo(entry.date, i18n.language)}</time>}
+                </button>
+              </li>
+            ))}
+          </ol>
+          {release && (
+            <article className="dash-rel-detail__body">
+              <header>
+                <h3>{release.name && release.name !== release.version ? release.name : release.version}</h3>
+                <p className="dash-muted">
+                  {release.version}
+                  {release.date && ` · ${new Date(release.date).toLocaleString(i18n.language, { dateStyle: 'long', timeStyle: 'short' })}`}
+                </p>
+              </header>
+              {release.notes ? <MarkdownLite text={release.notes} max={160} /> : <p className="dash-muted">{t('widgets.releases.noNotes')}</p>}
+            </article>
+          )}
+        </div>
+      )}
+      <footer className="dash-dialog__foot dash-rel-detail__foot">
+        {newest && (
+          <button type="button" className="dash-button dash-button--quiet dash-button--small" onClick={() => onSeen(seen === newest.version ? (all[1]?.version ?? '') : newest.version)}>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              {seen === newest.version ? 'mark_email_unread' : 'done_all'}
+            </span>
+            {seen === newest.version ? t('widgets.releases.markUnread') : t('widgets.releases.markRead')}
           </button>
         )}
-        {data && !shown.length && <small className="dash-muted">{t('widgets.releases.none')}</small>}
-        {shown.map((release) => (
-          <a key={release.version} className="dash-w-rel__version" href={release.url} target="_blank" rel="noopener noreferrer">
-            <strong>{release.version}</strong>
-            {release.prerelease && <small className="dash-chip dash-chip--warn">{t('widgets.releases.pre')}</small>}
-            {release.date && (
-              <time dateTime={release.date} title={new Date(release.date).toLocaleString(i18n.language)}>
-                {dates === 'date' ? new Date(release.date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', year: 'numeric' }) : timeAgo(release.date, i18n.language)}
-              </time>
-            )}
-            {notes && release.notes && <span className="dash-w-rel__notes">{release.notes.replace(/[#*_`>[\]]/g, '').split('\n').find((line) => line.trim())?.slice(0, 140)}</span>}
+        {release?.url && (
+          <a className="dash-button dash-button--small" href={release.url} target="_blank" rel="noopener noreferrer">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              open_in_new
+            </span>
+            {t('widgets.releases.openRelease')}
           </a>
-        ))}
-      </div>
-    </li>
+        )}
+      </footer>
+    </dialog>
   )
 }
 
@@ -176,23 +299,53 @@ function ReleasesView({ widget }) {
   const { account } = useAccountSettings()
   useIntegrations() // re-render when the list of integrations arrives
   const rows = (widget.options.repos ?? []).filter(validRow)
-  const [dates, setDates] = useState({})
-  const recordDate = useCallback((name, date) => setDates((current) => (current[name] === date ? current : { ...current, [name]: date })), [])
+  const loggedIn = loggedInOf(account)
+  const seen = widget.options.seen && typeof widget.options.seen === 'object' ? widget.options.seen : {}
+  const [known, setKnown] = useState({})
+  const [detail, setDetail] = useState(null)
+  const recordData = useCallback((key, value) => setKnown((current) => (current[key]?.date === value.date && current[key]?.unread === value.unread && current[key]?.latest === value.latest ? current : { ...current, [key]: value })), [])
+  // What you've read is kept with the widget (so every device knows it); first sight of a project counts as read.
+  const markSeen = useCallback((patch) => updateWidgetOptions(widget.id, (options) => ({ seen: { ...(options.seen ?? {}), ...patch } })), [widget.id])
+  const firstSeen = useCallback((key, version) => markSeen({ [key]: version }), [markSeen])
   if (!rows.length) return <Empty icon="new_releases" setup>{t('widgets.releases.empty')}</Empty>
-  // Newest release first (once known), else the order you gave.
-  const ordered = widget.options.sort === 'order' ? rows : [...rows].sort((a, b) => (new Date(dates[b.repo] ?? 0) - new Date(dates[a.repo] ?? 0)) || 0)
+  const { sort = 'date', display = 'list', readOnOpen = true } = widget.options
+  const time = (row) => new Date(known[releaseKey(row)]?.date ?? 0).getTime() || 0
+  const ordered = sort === 'order' ? rows : [...rows].sort((a, b) => (sort === 'unread' ? Number(Boolean(known[releaseKey(b)]?.unread)) - Number(Boolean(known[releaseKey(a)]?.unread)) : 0) || time(b) - time(a))
+  const unread = rows.filter((row) => known[releaseKey(row)]?.unread)
+  const open = (row) => {
+    setDetail(row)
+    if (readOnOpen) {
+      const key = releaseKey(row)
+      if (known[key]?.unread && known[key]?.latest !== undefined) markSeen({ [key]: known[key].latest })
+    }
+  }
   return (
-    <ul className="dash-w-rel">
-      {ordered.map((row) => (
-        <ReleaseRow
-          key={`${row.source ?? 'github'}:${row.repo}`}
-          row={row}
+    <div className={`dash-w-rel-wrap dash-w-rel-wrap--${display}`}>
+      {unread.length > 0 && (
+        <div className="dash-w-rel__bar">
+          <span>{t('widgets.releases.unread', { count: unread.length })}</span>
+          <button type="button" className="dash-link-button" onClick={() => markSeen(Object.fromEntries(unread.map((row) => [releaseKey(row), known[releaseKey(row)].latest])))}>
+            {t('widgets.releases.markAllRead')}
+          </button>
+        </div>
+      )}
+      <ul className={`dash-w-rel dash-w-rel--${display}`}>
+        {ordered.map((row) => (
+          <ReleaseRow key={releaseKey(row)} row={row} widget={widget} loggedIn={loggedIn} onData={recordData} onOpen={open} seen={seen[releaseKey(row)]} onFirstSeen={firstSeen} />
+        ))}
+      </ul>
+      {widget.options.unreadOnly && !unread.length && Object.keys(known).length >= rows.length && <Empty icon="done_all">{t('widgets.releases.allRead')}</Empty>}
+      {detail && (
+        <ReleaseDetail
+          row={detail}
           widget={widget}
-          loggedIn={loggedInOf(account)}
-          onData={recordDate}
+          loggedIn={loggedIn}
+          seen={seen[releaseKey(detail)]}
+          onSeen={(version) => markSeen({ [releaseKey(detail)]: version })}
+          onClose={() => setDetail(null)}
         />
-      ))}
-    </ul>
+      )}
+    </div>
   )
 }
 
@@ -339,7 +492,8 @@ function FeedSource({ url, refresh, onItems }) {
 function FeedView({ widget }) {
   const { t, i18n } = useTranslation('dash')
   const { account } = useAccountSettings()
-  const { limit = 15, style = 'list', images = true, summary = false, source = true, newTab = true, refresh = 30 } = widget.options
+  const { limit = 15, style = 'list', images = true, summary = false, source = true, newTab = true, refresh = 30, group = 'mixed', perFeed = 5 } = widget.options
+  const [tab, setTab] = useState(null)
   const rows = (widget.options.feeds ?? []).filter((row) => /^https?:\/\//i.test(String(row?.url ?? '').trim()))
   const [results, setResults] = useState({})
   const record = useCallback((url, result) => setResults((old) => (old[url]?.data === result.data && old[url]?.error === result.error ? old : { ...old, [url]: result })), [])
@@ -352,11 +506,24 @@ function FeedView({ widget }) {
         const key = item.link || item.id || item.title
         if (!key || seen.has(key)) continue
         seen.add(key)
-        all.push({ ...item, source: row.title || data.title || hostOf(row.url) })
+        all.push({ ...item, source: row.title || data.title || hostOf(row.url), feed: row.url })
       }
     }
-    return all.sort((a, b) => (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0)).slice(0, Math.max(3, Math.min(60, Number(limit) || 15)))
-  }, [rows, results, limit])
+    return all.sort((a, b) => (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0))
+  }, [rows, results])
+  // Grouped by feed (each with its own limit), as tabs, or all mixed by date.
+  const grouping = ['feed', 'tabs'].includes(group) ? group : 'none'
+  const groups = useMemo(
+    () =>
+      rows
+        .map((row) => {
+          const own = items.filter((item) => item.feed === row.url)
+          return { url: row.url, title: row.title || results[row.url]?.data?.title || hostOf(row.url), items: own.slice(0, Math.max(1, Math.min(30, Number(perFeed) || 5))), total: own.length }
+        })
+        .filter((entry) => entry.items.length),
+    [rows, items, results, perFeed],
+  )
+  const mixed = items.slice(0, Math.max(3, Math.min(60, Number(limit) || 15)))
 
   if (!siteConfig.dashFeeds) return <Empty icon="rss_feed">{t('widgets.feed.off')}</Empty>
   if (!loggedInOf(account)) return <Empty icon="rss_feed">{t('widgets.feed.login')}</Empty>
@@ -368,16 +535,10 @@ function FeedView({ widget }) {
   const target = newTab ? '_blank' : undefined
   const layout = ['list', 'cards', 'compact', 'magazine'].includes(style) ? style : 'list'
 
-  return (
-    <div className={`dash-w-feed dash-w-feed--${layout}`}>
-      {rows.map((row) => (
-        <FeedSource key={row.url} url={row.url} refresh={refreshSeconds} onItems={record} />
-      ))}
-      {!items.length && settled.length < rows.length && <Loading lines={5} />}
-      {!items.length && settled.length === rows.length && (errors.length ? <LoadError error={errors.map((row) => `${hostOf(row.url)}: ${results[row.url].error === 'not-a-feed' ? t('widgets.feed.notAFeed') : results[row.url].error}`).join('\n')} /> : <Empty icon="rss_feed">{t('widgets.feed.nothing')}</Empty>)}
-      {items.length > 0 && (
+  // One list of items (all feeds mixed, or one feed's when grouped: its name isn't repeated then).
+  const feedList = (list, grouped = false) => (
         <ul>
-          {items.map((item, index) => {
+          {list.map((item, index) => {
             const showImage = images && item.image && (layout !== 'compact')
             return (
               <li key={item.link || item.id || index} className={layout === 'magazine' && index === 0 ? 'is-lead' : undefined}>
@@ -387,7 +548,7 @@ function FeedView({ widget }) {
                     <span className="dash-w-feed__title">{item.title || t('widgets.feed.untitled')}</span>
                     {summary && item.summary && layout !== 'compact' && <span className="dash-w-feed__summary">{item.summary}</span>}
                     <small>
-                      {source && <span>{item.source}</span>}
+                      {source && !grouped && <span>{item.source}</span>}
                       {item.date && !Number.isNaN(new Date(item.date).getTime()) && <time dateTime={new Date(item.date).toISOString()}>{timeAgo(item.date, i18n.language)}</time>}
                     </small>
                   </span>
@@ -396,7 +557,41 @@ function FeedView({ widget }) {
             )
           })}
         </ul>
+      )
+
+  return (
+    <div className={`dash-w-feed dash-w-feed--${layout}${grouping !== 'none' ? ' is-grouped' : ''}`}>
+      {rows.map((row) => (
+        <FeedSource key={row.url} url={row.url} refresh={refreshSeconds} onItems={record} />
+      ))}
+      {grouping === 'tabs' && groups.length > 1 && (
+        <div className="dash-w-feed__tabs" role="tablist" aria-label={t('widgets.feed.feeds')}>
+          {groups.map((entry) => {
+            const active = (tab ?? groups[0].url) === entry.url
+            return (
+              <button key={entry.url} type="button" role="tab" aria-selected={active} className={active ? 'is-active' : ''} onClick={() => setTab(entry.url)}>
+                <Favicon url={entry.url} size={14} />
+                {entry.title}
+              </button>
+            )
+          })}
+        </div>
       )}
+      {!items.length && settled.length < rows.length && <Loading lines={5} />}
+      {!items.length && settled.length === rows.length && (errors.length ? <LoadError error={errors.map((row) => `${hostOf(row.url)}: ${results[row.url].error === 'not-a-feed' ? t('widgets.feed.notAFeed') : results[row.url].error}`).join('\n')} /> : <Empty icon="rss_feed">{t('widgets.feed.nothing')}</Empty>)}
+      {items.length > 0 && grouping === 'none' && feedList(mixed)}
+      {items.length > 0 && grouping === 'feed' &&
+        groups.map((entry) => (
+          <section key={entry.url} className="dash-w-feed__group" aria-label={entry.title}>
+            <h4 className="dash-w-feed__group-title">
+              <Favicon url={entry.url} size={14} />
+              <span>{entry.title}</span>
+              <small>{entry.total}</small>
+            </h4>
+            {feedList(entry.items, true)}
+          </section>
+        ))}
+      {items.length > 0 && grouping === 'tabs' && feedList((groups.find((entry) => entry.url === tab) ?? groups[0])?.items ?? [], groups.length > 1)}
       {items.length > 0 && errors.length > 0 && <LoadError error={errors.map((row) => hostOf(row.url)).join(', ')} compact />}
     </div>
   )

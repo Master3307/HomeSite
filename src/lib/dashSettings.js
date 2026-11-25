@@ -1,5 +1,6 @@
 import { siteConfig } from './siteConfig'
-import { updateAccountSettings } from './account'
+import { getCurrentAccount, patchAccountSettings } from './account'
+import { changedKeys, mergeSettings } from './dashSync.js'
 import { useSyncExternalStore } from 'react'
 import { bottom, fit, pack, repair } from './dashGrid.js'
 import { PROVIDER_CATALOG } from '../data/searchProviders.js'
@@ -30,8 +31,12 @@ import { PROVIDER_CATALOG } from '../data/searchProviders.js'
  *              own card look; components/dash/widgets*.jsx has every type
  *
  * Logged in, everything but custom CSS is also saved on the account
- * (settings_json.dash, accountPrefs.cjs, 130 KB, the owner unlimited); the newer copy (updatedAt)
- * wins. Custom CSS is a site-wide account setting of its own.
+ * (settings_json.dash, accountPrefs.cjs, 130 KB, the owner unlimited) and
+ * kept in step across devices (see "account sync" below and lib/dashSync.js:
+ * each browser's own changes are laid over the account's newer copy item by
+ * item). This browser's copy belongs to one account; logged out, the dash is
+ * the plain default (`guestDashSettings`). Custom CSS is a site-wide account
+ * setting of its own.
  *
  * Version 1 had `bookmarks`, `showClock`, `showQuickLinks` and iframe
  * `widgets`; version 2 a flowing board of 2-6 columns (w / h only). Both
@@ -57,13 +62,16 @@ export const MAX_PROVIDERS = 80
 
 /* Every choice the look settings offer (DashSettings.jsx reads these too). */
 export const LOOK_CHOICES = Object.freeze({
-  width: ['normal', 'wide', 'full'],
+  width: ['normal', 'wide', 'full', 'custom'],
   style: ['glass', 'solid', 'outline', 'bare'],
   shadow: ['none', 'soft', 'strong'],
   titles: ['normal', 'small', 'caps', 'hidden'],
-  font: ['site', 'rounded', 'mono', 'system', 'serif', 'display', 'condensed'],
+  font: ['site', 'rounded', 'mono', 'system', 'serif', 'display', 'condensed', 'custom'],
   background: ['site', 'color', 'gradient', 'image'],
+  gradientType: ['linear', 'radial', 'conic'],
+  backgroundRandom: ['off', 'visit', 'daily'],
   backgroundFit: ['cover', 'contain', 'tile'],
+  selectable: ['text', 'all', 'none'],
 })
 
 export const LOOK_DEFAULTS = Object.freeze({
@@ -96,8 +104,17 @@ export const LOOK_DEFAULTS = Object.freeze({
   gradientTo: '#0d2a3a',
   gradientAngle: 135,
   dim: 30, // darkening over a picture, 0-80
+  gutter: 16, // px left and right of the dash (phones keep at least 8)
+  maxWidth: 1400, // px, for width "custom"
   backgroundBlur: 0, // px over a picture, 0-30
   backgroundFit: 'cover', // cover | contain | tile
+  gradientType: 'linear', // linear | radial | conic
+  gradientStops: [], // [{ color, at }] 2-5; empty: gradientFrom → gradientTo
+  backgroundFile: '', // id of an uploaded wallpaper (its address is backgroundValue)
+  backgroundRandom: 'off', // off | visit (a new one each time the dash opens) | daily
+  backgroundPool: ['presets', 'saved', 'wallpapers'], // what randomizing picks from
+  customFont: null, // { name, source: file | url | google, value, fileId } for font "custom"
+  selectable: 'text', // text (what's written can be selected, buttons not) | all | none (nothing on the dash)
 })
 
 export const TOP_CHOICES = Object.freeze({
@@ -130,6 +147,15 @@ export const TOP_DEFAULTS = Object.freeze({
   showEngines: true, // the engine chips under the search bar
   autofocus: true, // the search bar has the focus when the page opens
   actions: 'always', // always | hover: the Edit / Customize buttons
+  // The tab's title animated: frames shown in turn (each may use {time} {seconds} {date} {weekday} {page} {music} {weather} {greeting}), every `tabTitleSpeed` ms.
+  tabTitleFrames: [],
+  tabTitleSpeed: 1500,
+  // Quick weather in the top (a click opens the whole forecast): a place picked like the weather widget's.
+  weather: false,
+  weatherPlace: '',
+  weatherLat: '',
+  weatherLon: '',
+  weatherUnit: 'c',
 })
 
 const WIDGET_LOOK_DEFAULTS = Object.freeze({
@@ -162,6 +188,9 @@ export const WIDGET_SIZES = Object.freeze({
   weather: { w: 4, h: 3, minW: 2, minH: 2 },
   countdown: { w: 3, h: 2, minW: 2, minH: 1 },
   calendar: { w: 3, h: 5, minW: 2, minH: 3 },
+  top: { w: 8, h: 3, minW: 3, minH: 2 },
+  slideshow: { w: 4, h: 4, minW: 2, minH: 2 },
+  contacts: { w: 3, h: 5, minW: 2, minH: 3 },
   image: { w: 4, h: 4, minW: 1, minH: 1 },
   status: { w: 4, h: 4, minW: 2, minH: 2 },
   api: { w: 3, h: 2, minW: 1, minH: 1 },
@@ -200,7 +229,7 @@ export const WIDGET_SIZES = Object.freeze({
 })
 
 /* Types that can be on the dash only once (the lobby cat counts taps; a second copy must never count them again). */
-export const SINGLE_TYPES = new Set(['lobbycat'])
+export const SINGLE_TYPES = new Set(['lobbycat', 'top'])
 const WIDGET_TYPES = Object.keys(WIDGET_SIZES)
 
 /** A size of the 12-column table scaled to `columns`. */
@@ -238,6 +267,15 @@ const DEFAULT_SETTINGS = Object.freeze({
   siteResults: true,
   discordLookup: true,
   calculator: true,
+  // The search bar's tools (lib/quick): all on; single ones switched off by id (TOOL_IDS).
+  // Own background presets (Customize → Look → Background): { id, name, look: { background fields } }, at most 40.
+  savedBackgrounds: [],
+  quickTools: true,
+  quickDisabled: [],
+  linkPreview: true,
+  // Favicons of links and engines (components/dash/kit.jsx iconSources): auto | duckduckgo | google | iconhorse | site | custom (iconTemplate with {host} / {url}).
+  iconProvider: 'auto',
+  iconTemplate: '',
   searchHistory: true,
   voiceSearch: true,
   imageButton: true,
@@ -369,6 +407,7 @@ function normalizeWidgetLook(raw) {
     icon: cleanGlyph(look.icon, ''),
     font: oneOf(look.font, ['inherit', ...LOOK_CHOICES.font], 'inherit'),
     rolling: oneOf(look.rolling, ['inherit', 'on', 'off'], 'inherit'),
+    selectable: oneOf(look.selectable, ['inherit', 'text', 'all', 'none'], 'inherit'),
     css: text(look.css, 6000),
     hideOnPhone: flag(look.hideOnPhone, WIDGET_LOOK_DEFAULTS.hideOnPhone),
   }
@@ -414,6 +453,8 @@ function normalizeLook(raw) {
     rowHeight: clamp(look.rowHeight, 32, 200, d.rowHeight),
     gap: clamp(look.gap, 0, 40, d.gap),
     width: oneOf(look.width, LOOK_CHOICES.width, d.width),
+    gutter: clamp(look.gutter, 0, 240, d.gutter),
+    maxWidth: clamp(look.maxWidth, 480, 4000, d.maxWidth),
     phoneColumns: clamp(look.phoneColumns, 2, 6, d.phoneColumns),
     float: flag(look.float, d.float),
     style: oneOf(look.style, LOOK_CHOICES.style, d.style),
@@ -437,8 +478,46 @@ function normalizeLook(raw) {
     dim: clamp(look.dim, 0, 80, d.dim),
     backgroundBlur: clamp(look.backgroundBlur, 0, 30, d.backgroundBlur),
     backgroundFit: oneOf(look.backgroundFit, LOOK_CHOICES.backgroundFit, d.backgroundFit),
+    gradientType: oneOf(look.gradientType, LOOK_CHOICES.gradientType, d.gradientType),
+    gradientStops: (Array.isArray(look.gradientStops) ? look.gradientStops : [])
+      .map((stop) => ({ color: color(stop?.color), at: clamp(stop?.at, 0, 100, 0) }))
+      .filter((stop) => stop.color)
+      .slice(0, 5),
+    backgroundFile: /^[a-f0-9]{32}$/.test(String(look.backgroundFile ?? '')) ? look.backgroundFile : '',
+    backgroundRandom: oneOf(look.backgroundRandom, LOOK_CHOICES.backgroundRandom, d.backgroundRandom),
+    backgroundPool: (Array.isArray(look.backgroundPool) ? look.backgroundPool : d.backgroundPool).filter((entry) => ['presets', 'saved', 'wallpapers'].includes(entry)),
+    customFont: cleanFont(look.customFont),
+    selectable: oneOf(look.selectable, LOOK_CHOICES.selectable, d.selectable),
   }
 }
+
+/* An own font: an uploaded file (its address), a font file on the web, or a Google Fonts family. */
+function cleanFont(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const source = ['file', 'url', 'google'].includes(raw.source) ? raw.source : null
+  const value = String(raw.value ?? '').trim().slice(0, 600)
+  if (!source || !value) return null
+  if (source === 'google' && !/^[A-Za-z0-9 ]{2,60}$/.test(value)) return null
+  if (source !== 'google' && !/^https:\/\/[^\s"'()<>]+$/i.test(value)) return null
+  return { source, value, name: String(raw.name ?? '').trim().slice(0, 60) || (source === 'google' ? value : 'Custom font'), fileId: /^[a-f0-9]{32}$/.test(String(raw.fileId ?? '')) ? raw.fileId : '' }
+}
+
+/** The CSS background of a dash look (`picture: false` leaves a picture out: /settings, /privacy opened from the dash). */
+export function backgroundCss(look, { picture = true } = {}) {
+  if (look.background === 'color' && isColor(look.backgroundValue)) return look.backgroundValue
+  if (look.background === 'gradient') {
+    const stops = look.gradientStops?.length >= 2 ? look.gradientStops.map((stop) => `${stop.color} ${stop.at}%`).join(', ') : `${look.gradientFrom}, ${look.gradientTo}`
+    if (look.gradientType === 'radial') return `radial-gradient(circle at 50% 30%, ${stops})`
+    if (look.gradientType === 'conic') return `conic-gradient(from ${look.gradientAngle}deg at 50% 50%, ${stops})`
+    return `linear-gradient(${look.gradientAngle}deg, ${stops})`
+  }
+  if (look.background === 'image' && picture && look.backgroundValue) return null // a picture: drawn by the dash itself (dim, blur, fit)
+  return ''
+}
+
+/* The parts of a look that make its background (a saved preset keeps only these). */
+export const BACKGROUND_KEYS = ['background', 'backgroundValue', 'gradientFrom', 'gradientTo', 'gradientAngle', 'gradientType', 'gradientStops', 'dim', 'backgroundBlur', 'backgroundFit', 'backgroundFile']
+export const pickBackground = (look) => Object.fromEntries(BACKGROUND_KEYS.map((key) => [key, look[key]]))
 
 /* An uploaded tab icon (a PNG made in the browser, about 5 kB) or a picture address. */
 const ICON_DATA = /^data:image\/png;base64,[A-Za-z0-9+/]+=*$/
@@ -471,6 +550,13 @@ function normalizeTop(raw) {
     showEngines: flag(top.showEngines, d.showEngines),
     autofocus: flag(top.autofocus, d.autofocus),
     actions: oneOf(top.actions, TOP_CHOICES.actions, d.actions),
+    tabTitleFrames: (Array.isArray(top.tabTitleFrames) ? top.tabTitleFrames : []).map((frame) => text(frame, 80)).filter((frame) => frame.trim()).slice(0, 20),
+    tabTitleSpeed: clamp(top.tabTitleSpeed, 200, 20_000, d.tabTitleSpeed),
+    weather: flag(top.weather, d.weather),
+    weatherPlace: text(top.weatherPlace, 120),
+    weatherLat: Number.isFinite(Number(top.weatherLat)) && top.weatherLat !== '' ? String(top.weatherLat).slice(0, 20) : '',
+    weatherLon: Number.isFinite(Number(top.weatherLon)) && top.weatherLon !== '' ? String(top.weatherLon).slice(0, 20) : '',
+    weatherUnit: oneOf(top.weatherUnit, ['c', 'f'], d.weatherUnit),
   }
 }
 
@@ -606,6 +692,15 @@ function normalizeDashSettings(raw) {
     siteResults: input.siteResults !== false,
     discordLookup: input.discordLookup !== false,
     calculator: input.calculator !== false,
+    savedBackgrounds: (Array.isArray(input.savedBackgrounds) ? input.savedBackgrounds : [])
+      .filter((entry) => entry && typeof entry === 'object' && typeof entry.id === 'string' && entry.look && typeof entry.look === 'object')
+      .slice(0, 40)
+      .map((entry) => ({ id: entry.id.slice(0, 40), name: text(entry.name, 40), look: pickBackground(normalizeLook({ ...LOOK_DEFAULTS, ...entry.look })) })),
+    quickTools: input.quickTools !== false,
+    quickDisabled: Array.isArray(input.quickDisabled) ? [...new Set(input.quickDisabled.filter((id) => typeof id === 'string' && /^[a-z]{2,20}$/.test(id)))].slice(0, 40) : [],
+    linkPreview: input.linkPreview !== false,
+    iconProvider: oneOf(input.iconProvider, ['auto', 'duckduckgo', 'google', 'iconhorse', 'site', 'custom', 'none'], 'auto'),
+    iconTemplate: typeof input.iconTemplate === 'string' && /^https:\/\/[^\s"'<>]{3,300}$/.test(input.iconTemplate) && /\{(?:host|url)\}/.test(input.iconTemplate) ? input.iconTemplate : '',
     searchHistory: input.searchHistory !== false,
     voiceSearch: input.voiceSearch !== false,
     imageButton: input.imageButton !== false,
@@ -668,6 +763,7 @@ function subscribe(listener) {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (event) => {
+    if (event.key === DASH_SYNC_KEY) syncState = readSync()
     if (event.key !== DASH_SETTINGS_KEY) return
     currentSettings = readFromStorage()
     emit()
@@ -684,11 +780,18 @@ export function getDashSettings() {
  * syncing (the open page), only remembered in this browser.
  */
 export function updateDashSettings(update, { quiet = false } = {}) {
+  const before = currentSettings
   const patch = typeof update === 'function' ? update(currentSettings) : update
-  currentSettings = normalizeDashSettings({ ...currentSettings, ...patch, version: DASH_SETTINGS_VERSION, updatedAt: quiet ? currentSettings.updatedAt : Date.now() })
+  const next = normalizeDashSettings({ ...currentSettings, ...patch, version: DASH_SETTINGS_VERSION, updatedAt: currentSettings.updatedAt })
+  // Only a real change is one: it gets a new time and is noted for syncing.
+  const changed = quiet ? [] : changedKeys(before, next)
+  currentSettings = changed.length ? { ...next, updatedAt: Math.max(Date.now(), before.updatedAt + 1) } : next
   writeToStorage(currentSettings)
   emit()
-  if (!quiet) scheduleAccountSync()
+  if (changed.length) {
+    noteChanges(changed)
+    scheduleAccountSync()
+  }
   return currentSettings
 }
 
@@ -777,11 +880,17 @@ export function phoneLayout(widgets, look) {
   const cols = look.phoneColumns
   const half = Math.max(1, Math.floor(cols / 2))
   const types = new Map(widgets.map((widget) => [widget.id, widget.type]))
-  return pack(
+  const packed = pack(
     widgets.map(({ id, x, y, w, h }) => ({ id, x, y, w, h })),
     cols,
     (box) => ({ w: PHONE_PAIRS.has(types.get(box.id)) && box.w <= look.columns / 3 ? half : cols, h: box.h }),
   )
+  // A small one that found no partner beside it takes the whole row (no empty half next to it).
+  return packed.map((box) => {
+    if (box.w >= cols) return box
+    const beside = packed.some((other) => other !== box && other.y < box.y + box.h && box.y < other.y + other.h)
+    return beside ? box : { ...box, x: 0, w: cols }
+  })
 }
 
 /* ---------- pages ---------- */
@@ -857,6 +966,67 @@ export function replaceDashSettings(next) {
   return updateDashSettings(() => normalizeDashSettings({ ...DEFAULT_SETTINGS, ...incoming }))
 }
 
+/**
+ * Another dashboard's board (lib/dashImport.js readDashboard) as new pages,
+ * or in place of the board (`replace`). Glance's columns keep their places
+ * (small = 1 share, full = 2); otherwise widgets fill the rows in order.
+ * Returns the number of widgets placed (the dash's limits apply).
+ */
+export function importBoard(result, { replace = false } = {}) {
+  const current = currentSettings
+  const columns = current.look.columns
+  const keptPages = replace ? [] : current.pages
+  const keptWidgets = replace ? current.widgets.filter((widget) => SINGLE_TYPES.has(widget.type) && widget.type !== 'top') : current.widgets
+  let room = MAX_WIDGETS - keptWidgets.length
+  const pages = []
+  const widgets = []
+  for (const source of result.pages) {
+    if (keptPages.length + pages.length >= MAX_PAGES || room <= 0) break
+    const page = { id: createId('page'), name: text(source.name, 40), icon: 'dashboard' }
+    pages.push(page)
+    const placed = []
+    // Column ranges for Glance pages.
+    const shares = Array.isArray(source.columns) && source.columns.length > 1 ? source.columns : null
+    const total = shares ? shares.reduce((sum, share) => sum + share, 0) : 1
+    const ranges = []
+    if (shares) {
+      let x = 0
+      shares.forEach((share, index) => {
+        const w = index === shares.length - 1 ? columns - x : Math.max(1, Math.round((share / total) * columns))
+        ranges.push({ x, w })
+        x += w
+      })
+    }
+    const heights = ranges.map(() => 0)
+    for (const item of source.widgets) {
+      if (room <= 0 || !WIDGET_SIZES[item.type]) continue
+      const size = scaledSize(item.type, columns)
+      let box
+      const range = shares ? ranges[Math.min(ranges.length - 1, item.column ?? 0)] : null
+      if (range) {
+        box = { x: range.x, y: heights[ranges.indexOf(range)], w: Math.max(Math.min(range.w, columns), size.minW), h: size.h }
+        heights[ranges.indexOf(range)] += size.h
+      } else box = findSpot(placed, size.w, size.h, columns)
+      // Rows (links, feeds, repos …) carry ids like the editor's.
+      const options = Object.fromEntries(Object.entries(item.options ?? {}).map(([key, value]) => [key, Array.isArray(value) ? value.map((row) => (row && typeof row === 'object' && !row.id ? { id: createId('row'), ...row } : row)) : value]))
+      const widget = { id: createId('widget'), type: item.type, page: page.id, title: text(item.title ?? '', 60), options, ...box }
+      placed.push(widget)
+      widgets.push(widget)
+      room -= 1
+    }
+  }
+  if (!pages.length) return 0
+  updateDashSettings(() =>
+    normalizeDashSettings({
+      ...current,
+      pages: [...keptPages, ...pages],
+      widgets: [...keptWidgets, ...widgets],
+      activePage: pages[0].id,
+    }),
+  )
+  return widgets.length
+}
+
 /** Back to the start: everything (`all`), or only the look / top / board. */
 export function resetDashSettings(part = 'all') {
   const fresh = normalizeDashSettings(DEFAULT_SETTINGS)
@@ -897,55 +1067,262 @@ export function resolveSearch(settings, rawQuery) {
 
 /* ---------- account sync ---------- */
 
+/*
+ * This browser's sync state (localStorage DASH_SYNC_KEY):
+ *   owner   the account this copy belongs to (another account starts fresh)
+ *   base    the account copy's updatedAt this browser last had in step
+ *   dirty   what changed here since then (lib/dashSync.js changedKeys)
+ * The account is asked again when the tab comes back into view, gets focus
+ * and every minute while it's open; changes go up 800 ms after the last
+ * edit, and right away when the tab is hidden. The server refuses a save
+ * made on an outdated copy (409), which is then merged and sent again.
+ */
+const DASH_SYNC_KEY = 'dashSettings:sync'
+const PULL_EVERY_MS = 60_000
+
+function readSync() {
+  try {
+    const value = JSON.parse(localStorage.getItem(DASH_SYNC_KEY) ?? 'null')
+    if (value && typeof value === 'object') return { owner: value.owner ?? null, base: Number(value.base) || 0, dirty: Array.isArray(value.dirty) ? value.dirty.filter((key) => typeof key === 'string') : [] }
+  } catch {
+    // unreadable: start over
+  }
+  return { owner: null, base: 0, dirty: [] }
+}
+let syncState = readSync()
+function writeSync(patch) {
+  syncState = { ...syncState, ...patch }
+  try {
+    localStorage.setItem(DASH_SYNC_KEY, JSON.stringify(syncState))
+  } catch {
+    // storage blocked: this visit only
+  }
+}
+function noteChanges(keys) {
+  writeSync({ dirty: [...new Set([...syncState.dirty, ...keys])].slice(-500) })
+}
+
+/* What the sync is doing, for the little status in the dash: idle | saving | saved | offline | tooBig | error. */
+let status = { state: 'idle', at: 0, message: '' }
+const statusListeners = new Set()
+function setStatus(next) {
+  status = { ...status, ...next, at: Date.now() }
+  for (const listener of statusListeners) listener()
+}
+export function useDashSyncStatus() {
+  return useSyncExternalStore(
+    (listener) => {
+      statusListeners.add(listener)
+      return () => statusListeners.delete(listener)
+    },
+    () => status,
+    () => status,
+  )
+}
+
 let syncTimer = null
 let syncAccount = null
+let pushing = null
 
 /* What goes to the account (custom CSS has its own setting; the open page is this browser's). */
 const accountPart = (settings) => {
-  const { customCss: _css, customCssEnabled: _enabled, replaceSiteCss: _replace, ...rest } = settings
+  const { customCss: _css, customCssEnabled: _enabled, replaceSiteCss: _replace, activePage: _page, ...rest } = settings
   return rest
 }
 
-/** Called by the dash page with the current account (or null). */
-export function setDashSyncAccount(account) {
-  syncAccount = account && !account.local && !account.isAdminSession ? account : null
+/* The plain default dash, for visitors who aren't logged in (and the look of a fresh account). */
+let guestSettings = null
+export function guestDashSettings() {
+  guestSettings ??= normalizeDashSettings(DEFAULT_SETTINGS)
+  return guestSettings
 }
 
-function scheduleAccountSync() {
+/* Back to the default here (logged out, or another account), keeping this browser's own custom CSS. */
+function resetLocal(owner) {
+  const { customCss, customCssEnabled, replaceSiteCss } = currentSettings
+  currentSettings = normalizeDashSettings({ ...DEFAULT_SETTINGS, customCss, customCssEnabled, replaceSiteCss, updatedAt: 0 })
+  writeToStorage(currentSettings)
+  writeSync({ owner, base: 0, dirty: [] })
+  emit()
+}
+
+/*
+ * A dash made here before it needed an account: set aside when the dash
+ * becomes the plain default for guests, and brought back on the first login
+ * whose account has no dash yet.
+ */
+const GUEST_KEPT_KEY = 'dashSettings:beforeLogin'
+
+/**
+ * Called by the dash page once it knows who is there: the account, or null
+ * (logged out). Logged out, this browser forgets the account's dash.
+ */
+export function setDashSyncAccount(account) {
+  const next = account && !account.local && !account.isAdminSession ? account : null
+  syncAccount = next
+  if (!next) {
+    clearTimeout(syncTimer)
+    if (!syncState.owner && currentSettings.updatedAt > 0) {
+      try {
+        localStorage.setItem(GUEST_KEPT_KEY, JSON.stringify(accountPart(currentSettings)))
+      } catch {
+        // no room: it stays as it is
+      }
+    }
+    if (syncState.owner || currentSettings.updatedAt > 0) resetLocal(null)
+    return
+  }
+  // An earlier copy here from before accounts were remembered: kept as this account's.
+  if (syncState.owner && syncState.owner !== next.id) resetLocal(next.id)
+  else if (!syncState.owner) writeSync({ owner: next.id })
+}
+
+function scheduleAccountSync(delay = 800) {
   if (!syncAccount) return
   clearTimeout(syncTimer)
-  syncTimer = setTimeout(() => {
-    pushDashSettingsToAccount(currentSettings).catch((error) => console.error('Could not sync dash settings:', error))
-  }, 800)
+  setStatus({ state: 'saving', message: '' })
+  syncTimer = setTimeout(() => pushDashSettings().catch(() => {}), delay)
 }
 
-async function pushDashSettingsToAccount(settings) {
-  if (!syncAccount) return null
-  return updateAccountSettings({ dash: accountPart(settings) })
+/** Sends this browser's copy up (on the copy it last had in step); on a conflict, merges and tries again. */
+async function pushDashSettings(attempt = 0) {
+  if (!syncAccount || !syncState.dirty.length) {
+    if (status.state === 'saving') setStatus({ state: 'saved' })
+    return
+  }
+  if (pushing) return pushing
+  const sent = currentSettings
+  pushing = (async () => {
+    try {
+      const result = await patchAccountSettings({ dash: accountPart(sent), _dashBase: syncState.base })
+      if (!result) return // logged out meanwhile
+      if (result.rejected.includes('dash')) {
+        setStatus({ state: 'tooBig', message: '' })
+        return
+      }
+      // Done. Changed again while it was on its way: everything noted goes up once more.
+      if (currentSettings === sent) {
+        writeSync({ base: sent.updatedAt, dirty: [] })
+        setStatus({ state: 'saved', message: '' })
+      } else {
+        writeSync({ base: sent.updatedAt })
+        scheduleAccountSync()
+      }
+    } catch (error) {
+      if (error.status === 409 && error.data?.dash && attempt < 3) {
+        pushing = null
+        adoptRemote(error.data.dash)
+        return pushDashSettings(attempt + 1)
+      }
+      if (error.status === 400 && error.rejected?.includes('dash')) setStatus({ state: 'tooBig', message: '' })
+      else setStatus({ state: navigator.onLine === false ? 'offline' : 'error', message: error.message })
+    } finally {
+      pushing = null
+    }
+  })()
+  return pushing
 }
 
-/** Brings the account's copy and this browser's together: the newer one (updatedAt) wins; a newer local copy is sent up. */
+/* The account's copy (newer than this browser's base): taken, with this browser's own changes laid over it. */
+function adoptRemote(remote) {
+  const remoteAt = Number(remote?.updatedAt) || 0
+  const { customCss, customCssEnabled, replaceSiteCss, activePage } = currentSettings
+  const dirty = syncState.dirty
+  const merged = dirty.length ? mergeSettings(remote, currentSettings, dirty) : remote
+  currentSettings = normalizeDashSettings({ ...merged, customCss, customCssEnabled, replaceSiteCss, activePage, updatedAt: dirty.length ? Math.max(Date.now(), remoteAt + 1) : remoteAt })
+  writeToStorage(currentSettings)
+  writeSync({ base: remoteAt })
+  emit()
+}
+
+/** Brings the account's copy and this browser's together (see above). True when something changed here. */
 export function mergeDashSettingsFromAccount(account) {
+  if (!syncAccount || account?.id !== syncAccount.id) return false
   const remote = account?.settings?.dash
   if (!remote || typeof remote !== 'object') {
-    if (currentSettings.updatedAt) scheduleAccountSync()
+    // Nothing on the account yet: a dash made here before logging in comes back.
+    let kept = null
+    try {
+      kept = JSON.parse(localStorage.getItem(GUEST_KEPT_KEY) ?? 'null')
+      localStorage.removeItem(GUEST_KEPT_KEY)
+    } catch {
+      kept = null
+    }
+    if (kept && typeof kept === 'object') {
+      const { customCss, customCssEnabled, replaceSiteCss } = currentSettings
+      currentSettings = normalizeDashSettings({ ...kept, customCss, customCssEnabled, replaceSiteCss, updatedAt: Date.now() })
+      writeToStorage(currentSettings)
+      emit()
+      writeSync({ dirty: [] })
+    }
+    // This browser's copy goes up (unless it's the untouched default).
+    if (currentSettings.updatedAt) {
+      if (!syncState.dirty.length) noteChanges(changedKeys({}, accountPart(currentSettings)))
+      scheduleAccountSync(0)
+    }
     return false
   }
   const remoteAt = Number(remote.updatedAt) || 0
-  if (remoteAt < currentSettings.updatedAt) {
-    scheduleAccountSync()
+  // A copy from before this kind of sync: whichever is newer wins once, as before.
+  if (!syncState.base && !syncState.dirty.length && currentSettings.updatedAt > remoteAt) {
+    noteChanges(changedKeys(remote, accountPart(currentSettings)))
+    writeSync({ base: remoteAt })
+    scheduleAccountSync(0)
     return false
   }
-  if (remoteAt === currentSettings.updatedAt) return false
-  const { customCss, customCssEnabled, replaceSiteCss, activePage } = currentSettings
-  currentSettings = normalizeDashSettings({ ...remote, customCss, customCssEnabled, replaceSiteCss, activePage })
-  writeToStorage(currentSettings)
-  emit()
+  if (remoteAt === syncState.base || remoteAt === currentSettings.updatedAt) {
+    if (remoteAt === currentSettings.updatedAt) writeSync({ base: remoteAt })
+    if (syncState.dirty.length) scheduleAccountSync(0)
+    return false
+  }
+  adoptRemote(remote)
+  if (syncState.dirty.length) scheduleAccountSync(0)
   return true
+}
+
+/* Asking the account again (tab back in view, focus, every minute while open). */
+let lastPull = 0
+async function pull() {
+  if (!syncAccount || document.visibilityState !== 'visible' || Date.now() - lastPull < 4000) return
+  lastPull = Date.now()
+  try {
+    const account = await getCurrentAccount()
+    if (account?.id === syncAccount?.id) mergeDashSettingsFromAccount(account)
+  } catch {
+    // offline: next time
+  }
+}
+/** Starts the live sync while the dash is open; returns the stop function. */
+export function startDashSync() {
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') pull()
+    // Leaving: what's waiting goes up now.
+    else if (syncState.dirty.length && syncAccount) {
+      clearTimeout(syncTimer)
+      pushDashSettings().catch(() => {})
+    }
+  }
+  const timer = setInterval(pull, PULL_EVERY_MS)
+  document.addEventListener('visibilitychange', onVisible)
+  window.addEventListener('focus', pull)
+  window.addEventListener('online', pull)
+  return () => {
+    clearInterval(timer)
+    document.removeEventListener('visibilitychange', onVisible)
+    window.removeEventListener('focus', pull)
+    window.removeEventListener('online', pull)
+  }
 }
 
 export function isDashAccountSyncAvailable() {
   return Boolean(syncAccount)
+}
+
+/* Logging out: this browser forgets the account's dash (lib/account.js logoutAccount). */
+export function forgetAccountDash() {
+  syncAccount = null
+  clearTimeout(syncTimer)
+  resetLocal(null)
 }
 
 /** How big the synced part is. The account keeps up to DASH_SYNC_LIMIT (the site owner: no limit; server/services/accountPrefs.cjs). */

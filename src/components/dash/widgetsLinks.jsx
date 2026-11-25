@@ -64,7 +64,7 @@ const stateOf = (result) => (result === undefined ? 'wait' : result.ms === null 
 function BookmarksView({ widget }) {
   const { t } = useTranslation('dash')
   const { openInNewTab } = useDashSettings()
-  const { layout = 'grid', iconSize = 'medium', iconSource = 'site', showStatus = false, showUrl = false, newTab } = widget.options
+  const { layout = 'grid', iconSize = 'medium', iconSource = 'auto', showStatus = false, showUrl = false, newTab } = widget.options
   const items = (widget.options.items ?? []).filter((item) => isHttpUrl(item?.url))
   const pings = usePings(
     items.map((item) => item.url),
@@ -170,7 +170,7 @@ function SiteView({ widget }) {
           ['/cult/members', 'groups', t('quick.members')],
           ['/cult/birthdays', 'cake', t('quick.birthdays')],
           ['/cult/notifications', 'notifications', t('quick.notifications')],
-          ['/cult/settings', 'settings', t('quick.settings')],
+          ['/settings', 'settings', t('quick.settings')],
         ]
       : [['/about', 'info', t('quick.about')]]),
     ['/maps', 'map', t('quick.maps')],

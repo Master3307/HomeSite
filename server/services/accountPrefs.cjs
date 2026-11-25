@@ -1,6 +1,6 @@
 /*
  * The settings an account keeps (users.settings_json), synced across
- * devices by /cult/settings. Everything is optional; unknown or invalid
+ * devices by /settings. Everything is optional; unknown or invalid
  * values are dropped, never stored.
  *
  *   theme             light | dark | system (follows the device)
@@ -93,6 +93,27 @@ function cleanSetting(key, value, languages, { dashLimit = Infinity } = {}) {
       clean.updatedAt = Number.isFinite(Number(value.updatedAt)) ? Number(value.updatedAt) : 0;
       return { ok: true, value: clean };
     }
+    case "chrome": {
+      // The site's own buttons: the theme and language switches shown or not, the account button as a name or only the avatar.
+      if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false };
+      return { ok: true, value: { themeSwitch: value.themeSwitch !== false, languageSwitch: value.languageSwitch !== false, account: value.account === "avatar" ? "avatar" : "full" } };
+    }
+    case "search": {
+      // Master Search (/search): safe search strict unless chosen, results language, new tab, suggestions, infobox, pictures, hidden tabs.
+      if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false };
+      return {
+        ok: true,
+        value: {
+          safesearch: ["strict", "moderate", "off"].includes(value.safesearch) ? value.safesearch : "strict",
+          language: /^(auto|all|[a-z]{2}(-[A-Z]{2})?)$/.test(String(value.language ?? "")) ? value.language : "auto",
+          newTab: value.newTab === true,
+          suggest: value.suggest !== false,
+          infobox: value.infobox !== false,
+          thumbnails: value.thumbnails !== false,
+          hiddenTabs: [...new Set((Array.isArray(value.hiddenTabs) ? value.hiddenTabs : []).filter((id) => SEARCH_TABS.includes(id)))],
+        },
+      };
+    }
     case "notify": {
       if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false };
       const clean = {};
@@ -107,7 +128,9 @@ function cleanSetting(key, value, languages, { dashLimit = Infinity } = {}) {
   }
 }
 
-const KEYS = ["theme", "language", "clock", "timeZone", "accent", "motion", "customCss", "customCssEnabled", "blockInsights", "loudSounds", "openApp", "notify", "dash", "_at"];
+/* Master Search tabs that can be hidden ("all" always stays). */
+const SEARCH_TABS = ["images", "videos", "news", "maps", "music", "science", "it", "files", "social"];
+const KEYS = ["theme", "language", "clock", "timeZone", "accent", "motion", "customCss", "customCssEnabled", "blockInsights", "loudSounds", "openApp", "notify", "chrome", "search", "dash", "_at"];
 
 /** Stored JSON -> the valid settings in it. */
 function parseSettings(json, languages) {

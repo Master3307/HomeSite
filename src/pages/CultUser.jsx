@@ -351,7 +351,7 @@ export default function CultUser() {
                   Remove it
                 </button>
               )}
-              <Link className="members-button members-button--quiet" to="/cult/settings">
+              <Link className="members-button members-button--quiet" to="/settings/account" state={{ from: 'cult' }}>
                 <span className="material-symbols-outlined" aria-hidden="true">
                   settings
                 </span>

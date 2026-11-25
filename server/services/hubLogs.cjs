@@ -16,7 +16,7 @@ const { spawn, spawnSync } = require("node:child_process");
 const ROOT = path.resolve(__dirname, "..", "..");
 const LOGS = path.join(ROOT, ".logs");
 const DB = path.join(__dirname, "db");
-const UNITS = ["discord-bot", "accounts-api", "discord-profile", "homesite", "github-deploy-listener", "homesite-deploy"];
+const UNITS = ["discord-bot", "accounts-api", "discord-profile", "homesite-gateway", "homesite", "github-deploy-listener", "homesite-deploy"];
 const MAX_READ = 2 * 1024 * 1024;
 
 let journalUnits = null; // detected once
@@ -48,7 +48,7 @@ async function walk(directory, depth = 0) {
   return found;
 }
 
-const SERVICE_LABELS = { bot: "Discord bot", accounts: "Account API", profile: "Profile API", deploy: "Deploy listener" };
+const SERVICE_LABELS = { bot: "Discord bot", accounts: "Account API", profile: "Profile API", gateway: "API gateway", deploy: "Deploy listener" };
 
 async function sources() {
   const files = [...(await walk(LOGS)), ...(await walk(DB))];

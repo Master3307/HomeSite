@@ -1,10 +1,12 @@
 import { Link } from 'react-router'
+import { useTranslation } from 'react-i18next'
 
-import CultShell from '/src/components/cult/CultShell'
+import OriginShell from '/src/components/OriginShell.jsx'
 import { siteConfig } from '/src/lib/siteConfig'
 
 /*
- * /cult/privacy: what is stored, why, who sees it, how to delete it.
+ * /privacy: what is stored, why, who sees it, how to delete it. It wears the
+ * look of where it was opened from (components/OriginShell.jsx).
  * Keep it in sync with what the code does (server/services/members.cjs,
  * memberData.cjs, privacy.cjs, discordOAuth.cjs, backup.cjs).
  */
@@ -30,12 +32,13 @@ function years(days) {
 }
 
 export default function CultPrivacy() {
+  const { t } = useTranslation('title')
   const name = siteConfig.privacyName
   const email = siteConfig.privacyEmail
   const inactive = years(siteConfig.inactiveDays)
 
   return (
-    <CultShell title="Privacy">
+    <OriginShell storeKey="homesite:privacy:from" title="Privacy" heading={t('privacy', { ns: 'title', defaultValue: 'Privacy of HomeSite' })} backLabel="Back">
       <article className="privacy">
         <header className="privacy-hero">
           <span className="material-symbols-outlined" aria-hidden="true">
@@ -72,7 +75,8 @@ export default function CultPrivacy() {
 
         <Block icon="login" title="Logging in">
           <p>
-            You log in with Discord. Only members of our Discord server can make an account. Discord tells us your <strong>user ID, username, display
+            You log in with Discord. Anyone can make an account; what belongs to our Discord server (voting, birthdays, member profiles and the
+            member list) is only for people who are in it. Discord tells us your <strong>user ID, username, display
             name and profile picture</strong> (nothing else: not your email, not your messages, not your friends). We keep a copy of your picture so the
             site loads fast.
           </p>
@@ -91,7 +95,10 @@ export default function CultPrivacy() {
         <Block icon="inventory_2" title="What we keep about you">
           <ul className="privacy-list">
             <li>
-              <strong>Your account:</strong> the Discord details above, when you joined and last logged in, and the last time you were seen in the server.
+              <strong>Your account:</strong> the Discord details above, when you joined and last logged in, the last time you were seen in the server, and whether you're in our Discord server right now.
+              Anyone can have an account; voting, birthdays, member profiles and the member list, the lobby cat's progress and reporting are only for people in
+              the server, so whether you are is checked with Discord (when you log in, while you use those parts, and once a day). Leaving takes those parts away again;
+              your account and dash stay.
             </li>
             <li>
               <strong>Your settings:</strong> theme, language, clock, time zone, colour, animations, your own CSS and whether pages should open in the
@@ -99,6 +106,11 @@ export default function CultPrivacy() {
             </li>
             <li>
               <strong>Your profile:</strong> public or private, your bongo avatar, the picture or GIF you upload for it, and your saved looks.
+            </li>
+            <li>
+              <strong>Your avatar,</strong> if you choose your own instead of the Discord one (Settings → Account): only the round part you picked, made
+              smaller and saved again, which drops everything hidden in the file (camera, place, date). It's shown wherever your Discord picture would be.
+              &quot;Back to the Discord picture&quot; deletes it right away; a copy of your Discord picture is kept for that.
             </li>
             <li>
               <strong>Your email,</strong> only if you add it. It's only for news about your account or the site, and never shown to anyone.
@@ -133,6 +145,24 @@ export default function CultPrivacy() {
               it opens the Wikipedia page about that kind of mistake (only which kind, never what you typed).
             </li>
             <li>
+              <strong>What your dash keeps is only used to show your dash.</strong> It isn't read, analysed or shared for anything else. Wallpapers,
+              fonts and pictures you upload are stored on our server under long random addresses (anyone with such an address can load the file, nobody
+              can list them); pictures are made again when uploaded, which drops everything hidden in them (camera, place, date). Together with uploaded
+              songs they count against your storage. In <Link to="/settings/account">Settings → Account</Link>, “Wipe my dash” deletes all of it at once:
+              layout, widgets, integrations, calendars, contacts, music and files. Your account stays.
+            </li>
+            <li>
+              <strong>The search bar's tools</strong> (type “help” in the dash search): encodings, hashes, passwords, QR codes, ages, dates and numbers are
+              worked out in your browser and never sent anywhere; the password generator's options and the colours you keep stay in your browser.
+              A few tools ask a service, straight from your browser and only when you use them: <em>my IP</em> and <em>my location</em> ask ipwho.is
+              (which sees your IP address, that is the point), <em>weather</em> asks Open-Meteo for the place (and Photon / OpenStreetMap to find a typed
+              place), currencies ask Coinbase for the rates (or the ECB through frankfurter.dev); only the currency codes go there, never the amount.
+              Your exact location is only used if you allow it in your browser; it stays on your device apart from going to the weather or map service you asked.
+              A link you paste gets a preview from our server: it fetches that page (without cookies), and checks the link's host name against Cloudflare's
+              and Quad9's lists of dangerous sites. The answer is kept 30 minutes in memory, shared by everyone, and nobody writes down who asked.
+              Website icons on the dash come from the service chosen in its settings (DuckDuckGo by default, which only sees the site names).
+            </li>
+            <li>
               <strong>Dash integrations,</strong> only if you add some: the address of each of your services (like your Navidrome, Jellyfin or
               Home Assistant), a name, a user name if it needs one, and its password, token or key. Those secrets are encrypted on our server and never
               sent back to any browser, not even yours; our server uses them to ask your service for what your widgets show, and keeps the answers a
@@ -140,10 +170,34 @@ export default function CultPrivacy() {
               and are never kept there. Removing an integration deletes it right away.
             </li>
             <li>
+              <strong>Your calendars</strong> (the calendar widget on /dash), only if you use them: the calendars you make or import and their events (title,
+              time, place, notes, link, how they repeat), and for a calendar you subscribe to, its address (encrypted on our server, like an integration's
+              secret, since whoever has it can read that calendar; only its host name is shown back) and a copy of its events, fetched again at most every half
+              hour while you look at it. Deleting a calendar deletes its events right away.
+            </li>
+            <li>
+              <strong>Your contacts</strong> (the contacts widget on /dash), only if you use it: the people you add or import from a .vcf file, with what you
+              give them (name, nickname, company, phone numbers, email and postal addresses, websites, birthday, notes, a small photo, which member of our
+              server they are). They're only ever shown to you; .vcf files are read and written in your browser. Deleting a contact deletes it right away.
+            </li>
+            <li>
+              <strong>Pictures for a slideshow</strong> you upload are stored like wallpapers (see above). An Immich album is read through that integration.
+            </li>
+            <li>
               <strong>Your music library</strong> (the music widget on /dash), only if you use it: songs you upload (stored on our server, up to your space,
               until you remove them or delete your account), links and YouTube videos you add, songs from your own Navidrome or file integrations (their files pass
               through our server while they play and are kept a few minutes in memory for seeking), titles you edit, your playlists, and which of your devices is
               playing right now (in memory only, so only one plays at a time). What plays, the queue and the volume stay in your browser.
+            </li>
+            <li>
+              <strong>Master Search (/search):</strong> what you search for goes to our server and from there to this site's own SearXNG, which asks
+              several search engines for you; they see our server, not you. Searches aren't saved with your name or account; the same search is answered
+              from memory for 10 minutes. Safe search is strict unless you choose otherwise in its preferences (kept in this browser and, when you're
+              logged in, with your settings). Pictures and website icons in the results load straight from those sites and DuckDuckGo's icon service.
+              When SearXNG has nothing and you're logged in, the search can go on to Brave Search (from our server, without your name); the server only
+              counts how many such searches were made this month. Logged in, the same words are also looked up in your own things: this browser's copy of
+              your dash bookmarks and your contacts, and, through our server, the services you connected (music, photos, films, documents, devices,
+              files). Those answers come back only to you and aren't kept.
             </li>
             <li>
               <strong>The setup on /card:</strong> its "Network" page shows you your own IP address and roughly where it is (city,
@@ -186,7 +240,7 @@ export default function CultPrivacy() {
             <li>Your email, settings and saved looks are only for you.</li>
           </ul>
           <p>
-            Change it any time in <Link to="/cult/settings">Settings</Link>.
+            Change it any time in <Link to="/settings/account">Settings</Link>.
           </p>
         </Block>
 
@@ -207,10 +261,10 @@ export default function CultPrivacy() {
 
         <Block icon="delete_forever" title="Deleting your account" id="deleting">
           <p>
-            In <Link to="/cult/settings">Settings</Link>, “Delete my account” removes <strong>everything</strong> about you, right away:
+            In <Link to="/settings/account">Settings</Link>, “Delete my account” removes <strong>everything</strong> about you, right away:
           </p>
           <ul className="privacy-list">
-            <li>your account, profile, avatar, pictures, settings (your dash too), email, saved looks, push devices and dash integrations,</li>
+            <li>your account, profile, avatar, pictures, settings (your dash too), email, saved looks, push devices, dash integrations, calendars and contacts,</li>
             <li>your levels, points, pets, taps, achievements and birthday,</li>
             <li>messages from our bot that mention you,</li>
             <li>everything about you in the activity log,</li>
@@ -234,7 +288,8 @@ export default function CultPrivacy() {
           </p>
           {inactive && (
             <p>
-              <strong>If you leave the server,</strong> your account and data are deleted the same way once you've been gone for {inactive}.
+              <strong>Accounts nobody uses:</strong> if you're not in the server and haven't used the site while logged in for {inactive}, your account and
+              data are deleted the same way. Members of the server are never removed by this.
             </p>
           )}
           <p>You can log in again later; you start from zero, like the first time.</p>
@@ -257,13 +312,13 @@ export default function CultPrivacy() {
             pages load, which country and browser. It sets no cookies and builds no profile of you, but it does send a small report to Cloudflare.
           </p>
           <p>
-            <strong>Don't want that?</strong> Turn on “Block Cloudflare analytics” in <Link to="/cult/settings">Settings</Link>. Then the statistics script
+            <strong>Don't want that?</strong> Turn on “Block Cloudflare analytics” in <Link to="/settings">Settings</Link>. Then the statistics script
             is stopped and nothing is sent, also when you're not logged in (the choice is saved in your browser).
           </p>
         </Block>
 
         <p className="privacy-updated">Questions? {email ? <a href={`mailto:${email}`}>{email}</a> : 'Ask the server owner.'}</p>
       </article>
-    </CultShell>
+    </OriginShell>
   )
 }

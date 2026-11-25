@@ -5,6 +5,7 @@ import { Link } from 'react-router'
 import CultShell from '/src/components/cult/CultShell'
 import { DesignPreview } from '/src/components/bongo/BongoRender'
 import { useCatalog } from '/src/lib/bongo'
+import JoinServer from '../components/cult/JoinServer.jsx'
 import { birthdayLabel, daysUntil, loadBirthdays, loadMyBirthday, removeDressCode, saveDressCode, saveMyBirthday, setReminder } from '/src/lib/birthdays'
 import { apiUrl, keyPath } from '/src/lib/members'
 import { DISCORD_LOGIN_URL } from '/src/lib/account'
@@ -347,7 +348,9 @@ export default function CultBirthdays() {
         <p>{t('intro')}</p>
       </header>
 
-      {data?.loggedIn ? (
+      {data?.loggedIn && data.member === false ? (
+        <JoinServer what="birthdays" compact />
+      ) : data?.loggedIn ? (
         <MyBirthday onSaved={load} />
       ) : (
         data && (
@@ -402,7 +405,7 @@ export default function CultBirthdays() {
                             </small>
                           </span>
                         </PersonLink>
-                        {data.loggedIn && !person.self && (
+                        {data.loggedIn && data.member !== false && !person.self && (
                           <button
                             type="button"
                             className={`members-icon-button birthday-bell${person.reminder ? ' is-on' : ''}`}

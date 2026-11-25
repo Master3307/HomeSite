@@ -109,7 +109,7 @@ const STAGES = [
     icon: "group",
     feature: "members",
     title: "Members & privacy",
-    intro: "Who can log in, when accounts of people who left are removed, where member reports go, and who is named on the privacy page (/cult/privacy).",
+    intro: "Who can log in, when accounts of people who left are removed, where member reports go, and who is named on the privacy page (/privacy).",
     steps: [
       "Keep \"Only server members can log in\" on, unless the site should be open to everyone with Discord.",
       "Put your name and an email address for privacy questions; they are shown on the privacy page.",
@@ -266,7 +266,7 @@ const STAGES = [
     intro: "A source link, your own search engine for the dashboard and automatic deploys from GitHub.",
     steps: ["Auto deploy: add a GitHub webhook (push events) pointing at your deploy listener, with this secret."],
     links: [{ label: "GitHub: creating webhooks", url: "https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks" }],
-    keys: ["SOURCE_REPO_URL", "TRANSLATE_URL", "SEARCH_ENGINE_URL", "SEARCH_ENGINE_NAME", "GITHUB_WEBHOOK_SECRET"],
+    keys: ["SOURCE_REPO_URL", "TRANSLATE_URL", "SEARCH_ENGINE_URL", "SEARCH_ENGINE_NAME", "SEARXNG_URL", "SEARCH_FALLBACK_KEY", "GITHUB_WEBHOOK_SECRET"],
   },
 ];
 

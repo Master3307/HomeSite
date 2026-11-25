@@ -46,7 +46,8 @@
         "text": "Who sees your profile.",
         "mine": "My profile",
         "avatar": "Bongo avatar",
-        "privacy": "How we handle your data"
+        "privacy": "How we handle your data",
+        "notMember": "Your profile shows once you're in the Discord server; until then nobody else sees it."
     },
     "notify": {
         "title": "Notifications",
@@ -127,5 +128,91 @@
         "text": "HomeSite and the cult also come as Android apps.",
         "open": "Open pages in the app",
         "openText": "On an Android phone with the HomeSite or CultSite app installed, pages you open in the browser go to the app. Off: they stay in the browser."
+    },
+    "back": "Back",
+    "searchPlaceholder": "Search all settings",
+    "searchEmpty": "No setting matches “{{query}}”.",
+    "tabs": {
+        "general": "General",
+        "generalText": "Look, language, time, buttons, custom CSS",
+        "account": "Account",
+        "accountText": "Profile, login, your data",
+        "notifications": "Notifications",
+        "notificationsText": "On the site, by email, as push",
+        "dash": "Dash",
+        "dashText": "Your start page: look, layout, pages",
+        "search": "Search",
+        "searchText": "Engines, tools, icons",
+        "about": "About",
+        "aboutText": "Who made this, help, legal"
+    },
+    "chrome": {
+        "title": "Site buttons",
+        "text": "The buttons at the top of every page.",
+        "themeSwitch": "Light / dark switch",
+        "themeSwitchText": "The switch in the corner. The theme stays as you set it here.",
+        "languageSwitch": "Language switch",
+        "languageSwitchText": "The language button in the corner.",
+        "account": "Account button",
+        "accountFull": "Name and avatar",
+        "accountAvatar": "Only the avatar",
+        "hint": "Both switches always show here, so you can bring them back."
+    },
+    "dashData": {
+        "title": "Your dash data",
+        "text": "Everything your dash keeps: its layout and widgets, your integrations, your music library and uploaded files. Nothing of it is used for anything but showing your dash.",
+        "open": "Wipe my dash",
+        "confirmTitle": "Wipe your dash?",
+        "points": {
+            "layout": "Pages, widgets and everything in them (notes, to-dos, bookmarks, read releases)",
+            "integrations": "Your integrations and their keys",
+            "files": "Uploaded songs, wallpapers, fonts and pictures"
+        },
+        "final": "Your account stays. Every device starts with the default dash. This can't be undone.",
+        "confirm": "Wipe it",
+        "busy": "Wiping …",
+        "failed": "Couldn't wipe the dash."
+    },
+    "dashTab": {
+        "text": "How your dash looks and works. Changes show on the dash right away and on your other devices a moment later.",
+        "preview": "Preview",
+        "previewLabel": "Preview of your dash",
+        "exitPreview": "Exit preview",
+        "open": "Open the dash"
+    },
+    "searchTab": {
+        "text": "The search bar on your dash: engines, !keywords, the tools that answer as you type, and where website icons come from."
+    },
+    "about": {
+        "title": "About HomeSite",
+        "text": "A personal website with a dash, a search and a Discord community's home.",
+        "credit": "Made by <name>MrKoby07</name>. Ideas, bugs, questions: open an issue on GitHub or write on Discord.",
+        "issues": "Report a problem or an idea",
+        "source": "Source code",
+        "discord": "Discord server",
+        "mail": "Email",
+        "legal": "Legal",
+        "privacy": "Privacy policy",
+        "license": "License",
+        "site": "About the site"
+    },
+    "avatar": {
+        "title": "Avatar",
+        "text": "The picture shown with your name on this site. Your Discord picture unless you choose your own.",
+        "own": "Your own picture",
+        "discord": "Your Discord picture",
+        "hint": "Shown on your profile, in the member list and in the account button. Discord itself isn't changed.",
+        "choose": "Choose a picture …",
+        "reset": "Back to the Discord picture",
+        "type": "That isn't a picture this can use (PNG, JPEG, WebP, GIF, AVIF).",
+        "tooBig": "That picture is bigger than 12 MB.",
+        "failed": "The avatar couldn't be saved.",
+        "place": "Place your picture",
+        "placeHelp": "Drag to move it, zoom with the wheel, two fingers or the slider. What's inside the circle is kept.",
+        "animatedHint": "Animated pictures keep moving. Drag to move it, zoom with the wheel or the slider.",
+        "zoom": "Zoom",
+        "cancel": "Cancel",
+        "save": "Use this picture",
+        "saving": "Saving …"
     }
 }

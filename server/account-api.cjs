@@ -1,15 +1,23 @@
 require("./services/processLog.cjs").capture("accounts");
 require("dotenv").config();
-const { origin } = require("./config.cjs");
+const { origin, rawOrigin } = require("./config.cjs");
 
 const path = require("node:path");
 
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const chunkBodyParser = express.raw({
+  type: "application/octet-stream",
+  limit: "60mb",
+});
 
 const { registerDiscordOAuth } = require("./services/discordOAuth.cjs");
-const { registerFdcWeb, canCreateFdc, LARGE_BODY_PATHS } = require("./services/fdcWeb.cjs");
+const {
+  registerFdcWeb,
+  canCreateFdc,
+  LARGE_BODY_PATHS,
+} = require("./services/fdcWeb.cjs");
 const { registerSetup } = require("./services/setupWeb.cjs");
 const { registerBongo } = require("./services/bongoWeb.cjs");
 const { registerLobbyCat } = require("./services/lobbyCat.cjs");
@@ -33,8 +41,9 @@ const FRONTEND_ORIGIN = origin("FRONTEND_ORIGIN");
 const allowedOrigins = new Set(
   [
     FRONTEND_ORIGIN,
-    // The profile API's /<id>-ui pages log in to the hub from there.
-    origin("PROFILE_API_ORIGIN"),
+    // The profile API's /<id>-ui pages log in to the hub from there: the gateway's address and the old one (an alias).
+    origin("API_ORIGIN"),
+    rawOrigin("PROFILE_API_ORIGIN"),
     "http://localhost:5173",
     "http://127.0.0.1:5173",
   ].filter(Boolean),
@@ -56,8 +65,20 @@ const corsOptions = {
   origin: corsOrigin,
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "X-Requested-With", "X-Admin-Key", "X-Backup-Key", "X-Admin-Unlock", "X-Upload-Id"],
-  exposedHeaders: ["Content-Disposition", "Content-Length", "X-Backup-Files", "X-Backup-Time-Differences"],
+  allowedHeaders: [
+    "Content-Type",
+    "X-Requested-With",
+    "X-Admin-Key",
+    "X-Backup-Key",
+    "X-Admin-Unlock",
+    "X-Upload-Id",
+  ],
+  exposedHeaders: [
+    "Content-Disposition",
+    "Content-Length",
+    "X-Backup-Files",
+    "X-Backup-Time-Differences",
+  ],
   optionsSuccessStatus: 204,
 };
 
@@ -67,7 +88,10 @@ function requireTrustedMutation(req, res, next) {
   }
 
   // Server-to-server calls from the bot (/internal/*) prove themselves with the internal key instead.
-  if (req.path.startsWith("/internal/") && isValidInternalKey(req.get("X-Internal-Key"))) {
+  if (
+    req.path.startsWith("/internal/") &&
+    isValidInternalKey(req.get("X-Internal-Key"))
+  ) {
     return next();
   }
 
@@ -107,7 +131,11 @@ const jsonParser = express.json();
 // Settings carry the /dash (130 kB for everyone, more for the owner; accountPrefs.cjs checks per person).
 const settingsParser = express.json({ limit: "4mb" });
 app.use((req, res, next) =>
-  LARGE_BODY_PATHS.has(req.path) ? next() : req.path === "/account/settings" ? settingsParser(req, res, next) : jsonParser(req, res, next),
+  LARGE_BODY_PATHS.has(req.path)
+    ? next()
+    : req.path === "/account/settings"
+      ? settingsParser(req, res, next)
+      : jsonParser(req, res, next),
 );
 
 app.use(cookieParser());
@@ -119,25 +147,50 @@ const activity = createActivityLog(path.join(__dirname, "services", "db"));
 
 // Filled in once moderation is registered: banned people can't log in.
 const loginGate = { banned: () => false };
-const accounts = registerDiscordOAuth(app, { activity, isBanned: (discordId) => loginGate.banned(discordId) });
+const accounts = registerDiscordOAuth(app, {
+  activity,
+  isBanned: (discordId) => loginGate.banned(discordId),
+});
 
 // Moderation comes later (it needs the members); FDC asks for it when used.
 let moderationRef = null;
-registerFdcWeb(app, { ...accounts, activity, getModeration: () => moderationRef });
+registerFdcWeb(app, {
+  ...accounts,
+  activity,
+  getModeration: () => moderationRef,
+});
 // /dash feeds, fetched for logged-in people (public addresses only).
 registerDashWeb(app, { ...accounts, activity });
 // The /card setup's Network page: the visitor's own connection (nothing stored).
 registerSetup(app);
-const adminSettings = registerAdminBackup(app, { ...accounts, activity, hubSessionOf });
+const adminSettings = registerAdminBackup(app, {
+  ...accounts,
+  activity,
+  hubSessionOf,
+});
 registerLobbyCat(app, accounts);
-const emailAuth = registerEmailAuth(app, { ...accounts, activity, isBanned: (discordId) => loginGate.banned(discordId) });
+const emailAuth = registerEmailAuth(app, {
+  ...accounts,
+  activity,
+  isBanned: (discordId) => loginGate.banned(discordId),
+});
 const members = registerMembers(app, { ...accounts, activity, emailAuth });
 // Push notifications to the browsers / app installs people turned it on for.
 const push = registerPush(app, accounts);
-const moderation = registerModeration(app, { ...accounts, activity, members, push });
+const moderation = registerModeration(app, {
+  ...accounts,
+  activity,
+  members,
+  push,
+});
 moderationRef = moderation;
 registerEmailUnsubscribe(app, { ...accounts, activity });
-registerBirthdaysWeb(app, { ...accounts, activity, members, getModeration: () => moderation });
+registerBirthdaysWeb(app, {
+  ...accounts,
+  activity,
+  members,
+  getModeration: () => moderation,
+});
 members.attachModeration(moderation);
 loginGate.banned = (discordId) => {
   try {

@@ -7,6 +7,7 @@ import './styles/theme-transition.css'
 import App, { preloadPage } from './App.jsx'
 import ScrollManager from './components/ScrollManager.jsx'
 import ThemeSwitch from './components/ThemeSwitch.jsx'
+import { useAccountSettings } from './lib/accountSettings.jsx'
 import Login from './components/Login'
 import LanguageSwitch from './components/LanguageSwitch.jsx'
 import CustomCss from './components/CustomCss.jsx'
@@ -55,9 +56,11 @@ export default function Root() {
   const { i18n } = useTranslation()
   const rootRef = useRef(null)
 
-  const hideThemeSwitch = themeSwitchHiddenPaths.some((pattern) =>
-    matchesPath(pathname, pattern)
-  )
+  // The site's own buttons can be hidden in /settings (prefs.chrome); the switches are always on /settings itself.
+  const { prefs } = useAccountSettings()
+  const onSettings = matchesPath(pathname, '/settings*')
+  const hideThemeSwitch = themeSwitchHiddenPaths.some((pattern) => matchesPath(pathname, pattern)) || (!onSettings && prefs.chrome?.themeSwitch === false)
+  const hideLanguageSwitch = matchesPath(pathname, '/hub*') || (!onSettings && prefs.chrome?.languageSwitch === false)
 
   // Every click / key press is a Bongo Cat tap (left, right, …) for the lobby cat.
   useEffect(() => installBongoTap(), [])
@@ -123,7 +126,7 @@ export default function Root() {
       {/* Desktop: together at the top left (picker.css); phones: bottom corners. */}
       <div className="site-pickers">
         {!hideThemeSwitch && <ThemeSwitch />}
-        {!matchesPath(pathname, '/hub*') && <LanguageSwitch />}
+        {!hideLanguageSwitch && <LanguageSwitch />}
       </div>
     </div>
   )

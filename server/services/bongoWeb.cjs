@@ -1,3 +1,4 @@
+const { memberGate } = require("./membership.cjs");
 const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
@@ -105,6 +106,8 @@ async function writeFavorites(all) {
 }
 
 function registerBongo(app, { getRequestSession, canEdit, isAdmin, activity }) {
+  // Favourites, the lobby cat's wardrobe and search words: server members only. The catalog and textures stay open.
+  app.use(["/bongo/favorites", "/bongo/aliases", "/lobby-cat/wardrobe"], memberGate());
   const log = (actor, entry) => activity?.append({ actor, ...entry });
   const actorOf = (session) => (session ? { discordId: session.discord_user_id, name: session.display_name || session.username } : { discordId: null, name: "Admin" });
 

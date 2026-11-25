@@ -73,6 +73,44 @@ function Several({ picked, render }) {
   )
 }
 
+/*
+ * Several integrations shown as one ("Together", option `combine`): each
+ * one's answer is loaded by an invisible <Collect> (hooks can't be called in
+ * a loop) and handed up; the widget merges them. Returns { parts: [{ item, data, error }], loading, failed }.
+ */
+function Collect({ item, cacheKey, load, refresh, onData }) {
+  const { data, error } = useRemote(cacheKey, load, { refresh, private: true })
+  useEffect(() => {
+    onData(item.id, { data, error })
+  }, [item.id, data, error, onData])
+  return null
+}
+function useCollected(picked, { key, load, refresh = 60 }) {
+  const [results, setResults] = useState({})
+  const record = useCallback((id, result) => setResults((old) => (old[id]?.data === result.data && old[id]?.error === result.error ? old : { ...old, [id]: result })), [])
+  const collectors = picked.map((item) => <Collect key={item.id} item={item} cacheKey={key(item)} load={(signal) => load(item, signal)} refresh={refresh} onData={record} />)
+  const parts = picked.map((item) => ({ item, data: results[item.id]?.data ?? null, error: results[item.id]?.error ?? null }))
+  return {
+    collectors,
+    parts,
+    ready: parts.filter((part) => part.data),
+    loading: parts.some((part) => !part.data && !part.error),
+    failed: parts.filter((part) => part.error && !part.data),
+  }
+}
+/* "Together" is the choice once a widget has more than one integration. */
+const together = (widget, picked) => picked.length > 1 && widget.options.combine === 'together'
+/* A merged widget's top: loading, or the names that failed. */
+function CollectedState({ collected, children }) {
+  if (!collected.ready.length) return collected.loading ? <Loading lines={3} /> : <LoadError error={collected.failed.map((part) => part.item.name).join(', ')} />
+  return (
+    <>
+      {children}
+      {collected.failed.length > 0 && <LoadError compact error={collected.failed.map((part) => part.item.name).join(', ')} />}
+    </>
+  )
+}
+
 const duration = (seconds) => {
   if (!Number.isFinite(seconds)) return ''
   const total = Math.max(0, Math.round(seconds))
@@ -206,6 +244,7 @@ function DnsView({ widget }) {
   const { t, i18n } = useTranslation('dash')
   const { picked, empty } = useWidgetIntegrations(widget, 'dns', { multi: true })
   if (empty) return empty
+  if (together(widget, picked)) return <DnsTogether picked={picked} language={i18n.language} t={t} />
   return (
     <div className="dash-w-dns">
       {picked.map((item) => (
@@ -215,9 +254,41 @@ function DnsView({ widget }) {
   )
 }
 
+/* All blockers as one: queries and blocks added up, the share worked out again. */
+function DnsTogether({ picked, language, t }) {
+  const collected = useCollected(picked, { key: (item) => `int:${item.id}:summary`, load: (item, signal) => integrationGet(item.id, 'summary', {}, signal) })
+  const datas = collected.ready.map((part) => part.data)
+  const sum = (key) => datas.reduce((total, data) => total + (Number(data[key]) || 0), 0)
+  const queries = sum('queries')
+  const blocked = sum('blocked')
+  const domainsKnown = datas.filter((data) => Number.isFinite(data.domains))
+  const speeds = datas.filter((data) => Number.isFinite(data.avgMs))
+  const states = datas.map((data) => data.enabled).filter((value) => value !== null && value !== undefined)
+  const merged = {
+    queries,
+    blocked,
+    percent: queries ? (blocked / queries) * 100 : 0,
+    domains: domainsKnown.length ? Math.max(...domainsKnown.map((data) => data.domains)) : undefined,
+    avgMs: speeds.length ? speeds.reduce((total, data) => total + data.avgMs, 0) / speeds.length : undefined,
+    enabled: states.length ? states.every(Boolean) : null,
+  }
+  return (
+    <div className="dash-w-dns">
+      {collected.collectors}
+      <CollectedState collected={collected}>
+        <DnsBody data={merged} language={language} t={t} />
+      </CollectedState>
+    </div>
+  )
+}
+
 function DnsOne({ item, language, t, showName }) {
   const { data, error, reload } = useRemote(`int:${item.id}:summary`, (signal) => integrationGet(item.id, 'summary', {}, signal), { refresh: 60, private: true })
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={2} />
+  return <DnsBody data={data} item={item} language={language} t={t} showName={showName} />
+}
+
+function DnsBody({ data, item = null, language, t, showName = false }) {
   const cells = [
     ['dns', t('widgets.dns.queries'), compactNumber(data.queries, language)],
     ['block', t('widgets.dns.blocked'), compactNumber(data.blocked, language)],
@@ -328,13 +399,32 @@ function SmartHomeView({ widget }) {
 function UptimeView({ widget }) {
   const { picked, empty } = useWidgetIntegrations(widget, 'uptime', { multi: true })
   if (empty) return empty
+  if (together(widget, picked)) return <UptimeTogether picked={picked} widget={widget} />
   return <Several picked={picked} render={(item) => <UptimeOne key={item.id} item={item} widget={widget} />} />
 }
 
+/* Every status page's monitors in one list, each with where it's from. */
+function UptimeTogether({ picked, widget }) {
+  const collected = useCollected(picked, { key: (item) => `int:${item.id}:status`, load: (item, signal) => integrationGet(item.id, 'status', {}, signal) })
+  const monitors = collected.ready.flatMap((part) => (part.data.monitors ?? []).map((monitor) => ({ ...monitor, id: `${part.item.id}:${monitor.id}`, from: part.item.name })))
+  return (
+    <>
+      {collected.collectors}
+      <CollectedState collected={collected}>
+        <UptimeBody data={{ monitors }} widget={widget} />
+      </CollectedState>
+    </>
+  )
+}
+
 function UptimeOne({ item, widget }) {
-  const { t, i18n } = useTranslation('dash')
   const { data, error, reload } = useRemote(item ? `int:${item.id}:status` : null, (signal) => integrationGet(item.id, 'status', {}, signal), { refresh: 60, enabled: Boolean(item), private: true })
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={4} />
+  return <UptimeBody data={data} widget={widget} error={error} />
+}
+
+function UptimeBody({ data, widget, error = null }) {
+  const { t, i18n } = useTranslation('dash')
   const { history = true, downFirst = true } = widget.options
   const monitors = downFirst ? [...data.monitors].sort((a, b) => (a.status === 0 ? -1 : 0) - (b.status === 0 ? -1 : 0)) : data.monitors
   const down = data.monitors.filter((monitor) => monitor.status === 0).length
@@ -350,7 +440,10 @@ function UptimeOne({ item, widget }) {
           <li key={monitor.id}>
             <span>
               <span className={`dash-dot dash-dot--${STATE[monitor.status] ?? 'wait'}`} aria-hidden="true" />
-              <span className="dash-w-status__name">{monitor.name}</span>
+              <span className="dash-w-status__name">
+                {monitor.name}
+                {monitor.from && <small className="dash-muted"> {monitor.from}</small>}
+              </span>
               {history && monitor.history.length > 1 && (
                 <span className="dash-w-status__bars" aria-hidden="true">
                   {monitor.history.map((status, index) => (
@@ -438,15 +531,41 @@ function MediaCalendarList({ integrations, days, widget, t, language }) {
 function DownloadsView({ widget }) {
   const { picked, empty } = useWidgetIntegrations(widget, 'downloads', { multi: true })
   if (empty) return empty
+  if (together(widget, picked)) return <DownloadsTogether picked={picked} widget={widget} />
   return <Several picked={picked} render={(item) => <DownloadsOne key={item.id} item={item} widget={widget} />} />
 }
 
+/* Every client's and queue's downloads in one list; the speeds added up. */
+function DownloadsTogether({ picked, widget }) {
+  const size = Math.max(1, Math.min(40, Number(widget.options.size) || 10))
+  const filter = widget.options.filter ?? 'active'
+  const collected = useCollected(picked, { key: (item) => `int:${item.id}:queue:${size}:${filter}`, load: (item, signal) => integrationGet(item.id, 'queue', { size, filter }, signal), refresh: 10 })
+  const withSpeed = collected.ready.filter((part) => !Array.isArray(part.data))
+  const items = collected.ready
+    .flatMap((part) => (Array.isArray(part.data) ? part.data : (part.data.items ?? [])).map((entry) => ({ ...entry, id: `${part.item.id}:${entry.id}`, from: part.item.name })))
+    // The busiest first, then the closest to done.
+    .sort((a, b) => (Number(b.down) || 0) - (Number(a.down) || 0) || (Number(b.progress) || 0) - (Number(a.progress) || 0))
+  const merged = withSpeed.length ? { items, down: withSpeed.reduce((sum, part) => sum + (Number(part.data.down) || 0), 0), up: withSpeed.some((part) => part.data.up !== null && part.data.up !== undefined) ? withSpeed.reduce((sum, part) => sum + (Number(part.data.up) || 0), 0) : null } : items
+  return (
+    <>
+      {collected.collectors}
+      <CollectedState collected={collected}>
+        <DownloadsBody data={merged} size={size} />
+      </CollectedState>
+    </>
+  )
+}
+
 function DownloadsOne({ item, widget }) {
-  const { t, i18n } = useTranslation('dash')
   const action = 'queue'
   const size = Math.max(1, Math.min(40, Number(widget.options.size) || 10))
   const { data, error, reload } = useRemote(item ? `int:${item.id}:${action}:${size}:${widget.options.filter ?? 'active'}` : null, (signal) => integrationGet(item.id, action, { size, filter: widget.options.filter ?? 'active' }, signal), { refresh: 10, enabled: Boolean(item), private: true })
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={3} />
+  return <DownloadsBody data={data} size={size} />
+}
+
+function DownloadsBody({ data, size }) {
+  const { t, i18n } = useTranslation('dash')
   const items = Array.isArray(data) ? data : (data.items ?? [])
   return (
     <div className="dash-w-dl">
@@ -458,19 +577,21 @@ function DownloadsOne({ item, widget }) {
             </span>
             {bytesPerSecond(data.down, i18n.language)}
           </span>
-          <span>
-            <span className="material-symbols-outlined" aria-hidden="true">
-              upload
+          {data.up !== null && data.up !== undefined && (
+            <span>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                upload
+              </span>
+              {bytesPerSecond(data.up, i18n.language)}
             </span>
-            {bytesPerSecond(data.up, i18n.language)}
-          </span>
+          )}
         </p>
       )}
       {items.length ? (
         <ul>
           {items.slice(0, size).map((entry) => (
             <li key={entry.id}>
-              <span className="dash-w-dl__name" title={entry.name}>
+              <span className="dash-w-dl__name" title={entry.from ? `${entry.name} · ${entry.from}` : entry.name}>
                 {entry.name}
               </span>
               <span className="dash-w-dl__bar" aria-hidden="true">
@@ -544,4 +665,4 @@ function SystemOne({ item, widget }) {
 
 export const INTEGRATION_VIEWS = { MediaView, LibraryView, DnsView, SmartHomeView, UptimeView, MediaCalendarView, DownloadsView, SystemView }
 
-export { useWidgetIntegrations, Several, IntegrationBadge }
+export { useWidgetIntegrations, Several, IntegrationBadge, useCollected, CollectedState, together }

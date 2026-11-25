@@ -321,7 +321,7 @@ async function passThrough(req, res, ctx, target, headers, type) {
 
 /* ---------- routes ---------- */
 
-function registerMusic(app, { getRequestSession, getDatabase, requireStorage, integrations }) {
+function registerMusic(app, { getRequestSession, getDatabase, requireStorage, integrations, uploads = null }) {
   let ready = false;
   const db = () => {
     const handle = getDatabase();
@@ -365,7 +365,17 @@ function registerMusic(app, { getRequestSession, getDatabase, requireStorage, in
   const trackLimit = (session) => (owner(session) ? Infinity : Math.max(100, number("MUSIC_MAX_TRACKS") ?? 5000));
   const fullError = (session) => httpError(400, `That's the most songs a library can have (${trackLimit(session)}).`);
   const quotaOf = (session) => (owner(session) ? null : Math.max(0, number("MUSIC_UPLOAD_MB") ?? 130) * 1024 * 1024);
-  const used = (session) => db().prepare("SELECT COALESCE(SUM(size), 0) AS used FROM music_tracks WHERE user_id = ? AND source = 'upload'").get(session.user_id).used;
+  // Songs share the account's storage with its files (wallpapers, fonts, pictures; userFiles.cjs).
+  const used = (session) => {
+    const songs = db().prepare("SELECT COALESCE(SUM(size), 0) AS used FROM music_tracks WHERE user_id = ? AND source = 'upload'").get(session.user_id).used;
+    let files = 0;
+    try {
+      files = db().prepare("SELECT COALESCE(SUM(size), 0) AS used FROM user_files WHERE user_id = ?").get(session.user_id).used;
+    } catch {
+      files = 0; // no files table yet
+    }
+    return songs + files;
+  };
   const folderOf = (session) => path.join(ROOT, String(session.user_id).replace(/[^A-Za-z0-9_-]/g, ""));
   const toPublic = (row) => ({
     id: row.id,
@@ -451,7 +461,8 @@ function registerMusic(app, { getRequestSession, getDatabase, requireStorage, in
   // Uploads: everyone else's file is read into memory (up to MAX_UPLOAD); the owner's goes straight to disk (any size).
   const rawUpload = express.raw({ type: () => true, limit: MAX_UPLOAD });
   const uploadBody = (req, res, next) => {
-    if (owner(getRequestSession(req))) return next();
+    // The owner's file streams to disk; one sent in parts before (X-Upload-Id) has no body here.
+    if (owner(getRequestSession(req)) || uploads?.chunked(req)) return next();
     rawUpload(req, res, (error) => {
       if (!error) return next();
       res.status(error.type === "entity.too.large" ? 413 : 400).json({ error: error.type === "entity.too.large" ? `That file is too big (${MAX_UPLOAD / 1024 / 1024} MB at most).` : "The upload broke off." });
@@ -508,20 +519,37 @@ function registerMusic(app, { getRequestSession, getDatabase, requireStorage, in
     }),
   );
 
-  /* The owner's upload: written to disk as it arrives (any size), then its tags are read from the file. */
-  async function ownerUpload(req, session, name, type) {
+  /*
+   * An upload that lands on disk first: the owner's (written as it arrives, any size)
+   * or one sent in parts (chunkedUploads.cjs, moved over). Then its tags are read from the file.
+   */
+  async function fileUpload(session, name, type, { req = null, part = null }) {
     const folder = folderOf(session);
     await fs.promises.mkdir(folder, { recursive: true });
     const file = `${crypto.randomBytes(12).toString("hex")}.${ext(name)}`;
     const full = path.join(folder, file);
     const remove = () => fs.promises.rm(full, { force: true }).catch(() => {});
     let size = 0;
-    req.on("data", (chunk) => (size += chunk.length));
-    try {
-      await pipeline(req, fs.createWriteStream(full, { flags: "wx" }));
-    } catch {
-      await remove();
-      throw httpError(400, "The upload broke off.");
+    if (part) {
+      size = part.size;
+      try {
+        await fs.promises.rename(part.file, full);
+      } catch {
+        // Another file system: copied, then the part goes.
+        await fs.promises.copyFile(part.file, full).catch(async () => {
+          uploads.release(part);
+          throw httpError(500, "The upload couldn't be stored.");
+        });
+        uploads.release(part);
+      }
+    } else {
+      req.on("data", (chunk) => (size += chunk.length));
+      try {
+        await pipeline(req, fs.createWriteStream(full, { flags: "wx" }));
+      } catch {
+        await remove();
+        throw httpError(400, "The upload broke off.");
+      }
     }
     if (!size) {
       await remove();
@@ -563,6 +591,20 @@ function registerMusic(app, { getRequestSession, getDatabase, requireStorage, in
     }
   }
 
+  /* Whether this person may upload a song of this size now (type, file limit, storage, number of songs). */
+  function checkUpload(session, { name, size }) {
+    if (!AUDIO[ext(name)]) throw httpError(400, "That isn't an audio file this player knows (mp3, m4a, aac, ogg, opus, flac, wav, webm).");
+    if (owner(session)) return;
+    if (size > MAX_UPLOAD) throw httpError(413, `That file is too big (${MAX_UPLOAD / 1024 / 1024} MB at most).`);
+    const limit = quotaOf(session);
+    if (limit !== null && used(session) + size > limit) throw httpError(413, `Your storage is full (${Math.round(limit / 1024 / 1024)} MB): songs, wallpapers and fonts share it.`);
+    if (countOf(session) >= trackLimit(session)) throw fullError(session);
+  }
+  uploads?.purpose("music", async (session, file) => {
+    if (!enabled("DASH_MUSIC")) throw httpError(404, "Music is switched off on this site.");
+    checkUpload(session, file);
+  });
+
   app.post(
     "/music/upload",
     writeLimiter,
@@ -572,11 +614,22 @@ function registerMusic(app, { getRequestSession, getDatabase, requireStorage, in
       const name = plain(req.query.name, 200);
       const type = AUDIO[ext(name)];
       if (!type) throw httpError(400, "That isn't an audio file this player knows (mp3, m4a, aac, ogg, opus, flac, wav, webm).");
-      if (owner(session)) return ownerUpload(req, session, name, type);
+      const part = uploads?.take(req, session, "music");
+      if (part) {
+        // Checked when it started, and again now (the library may have filled up meanwhile).
+        try {
+          checkUpload(session, { name, size: part.size });
+        } catch (error) {
+          uploads.release(part);
+          throw error;
+        }
+        return fileUpload(session, name, type, { part });
+      }
+      if (owner(session)) return fileUpload(session, name, type, { req });
       const buffer = Buffer.isBuffer(req.body) ? req.body : null;
       if (!buffer?.length) throw httpError(400, "The file is empty.");
       const limit = quotaOf(session);
-      if (limit !== null && used(session) + buffer.length > limit) throw httpError(413, `Your music space is full (${Math.round(limit / 1024 / 1024)} MB).`);
+      if (limit !== null && used(session) + buffer.length > limit) throw httpError(413, `Your storage is full (${Math.round(limit / 1024 / 1024)} MB): songs, wallpapers and fonts share it.`);
       const tags = await readTags(buffer, type);
       if (tags.duration === null && !/^(ID3|fLaC|OggS|RIFF)/.test(buffer.subarray(0, 4).toString("latin1")) && buffer.subarray(4, 8).toString("latin1") !== "ftyp") throw httpError(400, "That doesn't look like an audio file.");
       const folder = folderOf(session);

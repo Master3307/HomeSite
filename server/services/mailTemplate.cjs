@@ -224,7 +224,7 @@ function render({ user = null, language: forcedLanguage, theme: forcedTheme, sub
   const footerLines = [
     security ? escape(t("footer.security")) : category ? escape(t("footer.why")) : "",
     [
-      site ? `<a href="${escape(site)}/cult/settings#notifications" style="color:${main.muted}">${escape(t("footer.settings"))}</a>` : "",
+      site ? `<a href="${escape(site)}/settings/notifications" style="color:${main.muted}">${escape(t("footer.settings"))}</a>` : "",
       unsubscribe ? `<a href="${escape(unsubscribe)}" style="color:${main.muted}">${escape(t("footer.unsubscribe"))}</a>` : "",
     ]
       .filter(Boolean)
@@ -233,7 +233,7 @@ function render({ user = null, language: forcedLanguage, theme: forcedTheme, sub
   ].filter(Boolean);
 
   textParts.push("—", ...(security ? [t("footer.security")] : category ? [t("footer.why")] : []));
-  if (site) textParts.push(`${t("footer.settings")}: ${site}/cult/settings#notifications`);
+  if (site) textParts.push(`${t("footer.settings")}: ${site}/settings/notifications`);
   if (unsubscribe) textParts.push(`${t("footer.unsubscribe")}: ${unsubscribe}`);
 
   // The mail app's own dark / light mode, for people on "system".

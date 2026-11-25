@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router'
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -22,6 +23,69 @@ export const RollingContext = createContext(false)
  * its zeros, unlike the cult's RollingNumber for whole numbers). Other
  * characters stay as they are. Screen readers get the plain text.
  */
+/*
+ * When the page was last hidden or shown: numbers that change while it's in
+ * the background, or right as it comes back, jump straight to their value
+ * (no catching up with a slow roll).
+ */
+let pageShownAt = 0
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') pageShownAt = performance.now()
+  })
+}
+const ROLL_MS = 550
+
+/*
+ * One digit of a rolling number. It never shows a wrong value for long:
+ * the roll is at most as long as the time since the digit last changed
+ * (fast counters just switch), and 9 → 0 rolls on to a spare 0 below
+ * and quietly snaps back, like an odometer.
+ */
+function RollDigit({ digit }) {
+  const strip = useRef(null)
+  const last = useRef({ digit, at: 0 })
+  const [shown, setShown] = useState(digit)
+  useLayoutEffect(() => {
+    const element = strip.current
+    const before = last.current
+    if (!element || before.digit === digit) return
+    const now = performance.now()
+    const gap = now - before.at
+    last.current = { digit, at: now }
+    const still = document.hidden || now - pageShownAt < 400 || matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('motion-none')
+    const duration = still ? 0 : Math.min(ROLL_MS, Math.max(0, gap * 0.8))
+    if (duration < 90) {
+      element.style.transition = 'none'
+      setShown(digit)
+      return
+    }
+    element.style.transition = `transform ${duration}ms cubic-bezier(0.2, 0.8, 0.2, 1)`
+    // Over the top (9 → 0, 8 → 1 …): on to the copy of 0–9 below, then back without a transition.
+    const wraps = digit < before.digit && before.digit - digit > 5
+    if (!wraps) {
+      setShown(digit)
+      return
+    }
+    setShown(digit + 10)
+    const snap = () => {
+      element.style.transition = 'none'
+      setShown(digit)
+    }
+    const timer = setTimeout(snap, duration + 20)
+    return () => clearTimeout(timer)
+  }, [digit])
+  return (
+    <span className="dash-roll__digit" aria-hidden="true">
+      <span ref={strip} className="dash-roll__strip" style={{ '--d': shown }}>
+        {'01234567890123456789'.split('').map((value, index) => (
+          <span key={index}>{value}</span>
+        ))}
+      </span>
+    </span>
+  )
+}
+
 export function RollingText({ text, className = '' }) {
   const value = String(text ?? '')
   const characters = [...value]
@@ -36,15 +100,7 @@ export function RollingText({ text, className = '' }) {
               {character}
             </span>
           )
-        return (
-          <span key={`d${key}`} className="dash-roll__digit" aria-hidden="true">
-            <span className="dash-roll__strip" style={{ '--d': Number(character) }}>
-              {'0123456789'.split('').map((digit) => (
-                <span key={digit}>{digit}</span>
-              ))}
-            </span>
-          </span>
-        )
+        return <RollDigit key={`d${key}`} digit={Number(character)} />
       })}
     </span>
   )
@@ -60,6 +116,37 @@ export function Num({ children, className = '' }) {
 /* ---------- time ---------- */
 
 /** The current time, ticking on the full second / minute. */
+/** The first day of the week where this language is spoken (0 = Sunday, 1 = Monday). */
+export function localeWeekStart(language) {
+  try {
+    const info = new Intl.Locale(language)
+    const first = (info.getWeekInfo?.() ?? info.weekInfo)?.firstDay
+    return first === 7 ? 0 : 1
+  } catch {
+    return 1
+  }
+}
+
+/** The Top widget: the dash's top (greeting, clock, weather, search) in a cell of the board. */
+export function TopView() {
+  const content = useContext(TopSlotContext)
+  return <div className="dash-w-top">{content}</div>
+}
+
+/* The Top widget's editor: its settings are the top's own (Customize → Top). */
+export function TopSettingsLink() {
+  const { t } = useTranslation('dash')
+  const navigate = useNavigate()
+  return (
+    <button type="button" className="dash-button dash-button--quiet dash-button--small" onClick={() => navigate('/settings/dash?section=top', { state: { from: 'dash' } })}>
+      <span className="material-symbols-outlined" aria-hidden="true">
+        tune
+      </span>
+      {t('menu.topSettings')}
+    </button>
+  )
+}
+
 export function useNow(everyMs) {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -361,6 +448,8 @@ export async function fetchJson(url, { signal, headers } = {}) {
 
 /* Opens the widget's editor (given by the board around each widget, DashBoard.jsx WidgetBody). */
 export const WidgetSetupContext = createContext(null)
+/** The top's content (greeting, clock, weather, search) when the Top widget holds it (pages/Dash.jsx). */
+export const TopSlotContext = createContext(null)
 /* Goes up when the widget menu's "Refresh" is chosen: every useRemote inside fetches again. */
 export const RefreshContext = createContext(0)
 
@@ -449,7 +538,49 @@ const DASHBOARD_ICONS = 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons
 const SIMPLE_ICONS = 'https://cdn.jsdelivr.net/npm/simple-icons@16.30.0/icons'
 const ICON_NAME = /^[a-z0-9][a-z0-9-]{0,60}$/i
 
-export function iconSources(icon, url, source = 'site') {
+/*
+ * Where favicons come from. The dash's setting (Customize → Search, `iconProvider`)
+ * is set here once (setIconProvider); a bookmarks widget can still pick its own.
+ *   auto        DuckDuckGo's icon service, then the site's own /favicon.ico
+ *   duckduckgo  icons.duckduckgo.com (sees only the host name)
+ *   google      Google's favicon service (sharp 64 px; Google sees the host name)
+ *   iconhorse   icon.horse (finds touch icons and manifests, falls back to a letter)
+ *   site        the site's own /favicon.ico (the site sees your visit)
+ *   custom      a template with {host} or {url}
+ *   none        letters only
+ */
+let ICON_PROVIDER = { provider: 'auto', template: '' }
+export function setIconProvider(provider = 'auto', template = '') {
+  ICON_PROVIDER = { provider, template }
+}
+export function faviconUrls(url, provider = ICON_PROVIDER.provider, template = ICON_PROVIDER.template) {
+  const host = hostOf(url)
+  if (!host || provider === 'none') return []
+  let origin = null
+  try {
+    origin = new URL(url).origin
+  } catch {
+    origin = null
+  }
+  const own = origin ? [`${origin}/favicon.ico`] : []
+  const ddg = `https://icons.duckduckgo.com/ip3/${host}.ico`
+  switch (provider) {
+    case 'duckduckgo':
+      return [ddg, ...own]
+    case 'google':
+      return [`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`, ddg]
+    case 'iconhorse':
+      return [`https://icon.horse/icon/${encodeURIComponent(host)}`, ddg]
+    case 'site':
+      return [...own, ddg]
+    case 'custom':
+      return template ? [template.replaceAll('{host}', encodeURIComponent(host)).replaceAll('{url}', encodeURIComponent(url)), ddg] : [ddg]
+    default:
+      return [ddg, ...own]
+  }
+}
+
+export function iconSources(icon, url, source = 'auto') {
   const value = String(icon ?? '').trim()
   const list = []
   const emoji = emojiIconUrl(value)
@@ -457,17 +588,9 @@ export function iconSources(icon, url, source = 'site') {
   else if (/^https?:\/\//i.test(value)) list.push(value)
   else if (/^si:[a-z0-9]{1,60}$/i.test(value)) list.push(`${SIMPLE_ICONS}/${value.slice(3).toLowerCase()}.svg`)
   else if (ICON_NAME.test(value)) list.push(`${DASHBOARD_ICONS}/svg/${value.toLowerCase()}.svg`, `${DASHBOARD_ICONS}/png/${value.toLowerCase()}.png`)
-  const host = hostOf(url)
-  if (host && source !== 'none') {
-    if (source === 'duckduckgo') list.push(`https://icons.duckduckgo.com/ip3/${host}.ico`)
-    else
-      try {
-        list.push(`${new URL(url).origin}/favicon.ico`)
-      } catch {
-        // no favicon
-      }
-  }
-  return list
+  // A widget's own choice, else the dash's ("auto" follows the setting).
+  if (source !== 'none') list.push(...faviconUrls(url, source === 'auto' ? undefined : source))
+  return [...new Set(list)]
 }
 
 /*
@@ -544,7 +667,7 @@ export function useFloatingPanel(rootRef, selector) {
 
 export const isSimpleIcon = (icon) => /^si:/i.test(String(icon ?? ''))
 
-export function LinkIcon({ url, icon = '', source = 'site', size = 22, label = '' }) {
+export function LinkIcon({ url, icon = '', source = 'auto', size = 22, label = '' }) {
   const sources = iconSources(icon, url, source)
   const key = sources.join('|')
   const [state, setState] = useState({ key, index: 0 })

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { integrationFileUrl, integrationGet, integrationImage, uploadToIntegration } from '../../lib/dashIntegrations.js'
 import { Empty, LoadError, Loading, Num, compactNumber, timeAgo, useRemote } from './kit.jsx'
 import { SoftImage } from './widgetsFeeds.jsx'
-import { Several, useWidgetIntegrations } from './widgetsIntegrations.jsx'
+import { CollectedState, Several, together, useCollected, useWidgetIntegrations } from './widgetsIntegrations.jsx'
 
 /*
  * Widgets for the newer integrations: files (WebDAV, Nextcloud, copyparty,
@@ -52,13 +52,17 @@ function FilesOne({ item, widget }) {
 
   async function send(files) {
     if (!files?.length || documents) return
-    setState({ busy: true })
+    const list = [...files].slice(0, 20)
+    setState({ busy: true, progress: 0, index: 0, total: list.length, name: list[0].name })
     try {
-      for (const file of [...files].slice(0, 20)) await uploadToIntegration(item.id, path, file)
+      for (const [index, file] of list.entries()) {
+        setState({ busy: true, progress: 0, index, total: list.length, name: file.name })
+        await uploadToIntegration(item.id, path, file, (progress) => setState((current) => (current?.busy ? { ...current, progress } : current)))
+      }
       setState({ done: files.length })
       reload()
     } catch (problem) {
-      setState({ error: problem.message === 'too-big' ? t('widgets.files.tooBig') : problem.message })
+      setState({ error: problem.message })
     }
   }
 
@@ -135,6 +139,15 @@ function FilesOne({ item, widget }) {
         </p>
       )}
       {state?.error && <p className="dash-error">{state.error}</p>}
+      {state?.busy && (
+        <div className="dash-w-files__progress" role="status">
+          <span>
+            {state.total > 1 ? `${state.index + 1}/${state.total} · ` : ''}
+            {state.name}
+          </span>
+          <span className="dash-image__progress" style={{ '--progress': `${Math.round((state.progress ?? 0) * 100)}%` }} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((state.progress ?? 0) * 100)} aria-label={t('widgets.files.uploading')} />
+        </div>
+      )}
       {state?.done && <p className="dash-hint dash-ok">{t('widgets.files.uploaded', { count: state.done })}</p>}
       {items.length ? (
         <ul className="dash-w-files__list">
@@ -229,14 +242,35 @@ function PhotosOne({ item, widget }) {
 function ContainersView({ widget }) {
   const { picked, empty } = useWidgetIntegrations(widget, 'containers', { multi: true })
   if (empty) return empty
+  if (together(widget, picked)) return <ContainersTogether picked={picked} widget={widget} />
   return <Several picked={picked} render={(item) => <ContainersOne key={item.id} item={item} widget={widget} />} />
 }
 
+/* Every host's containers in one list, each with its host. */
+function ContainersTogether({ picked, widget }) {
+  const filter = widget.options.filter ?? 'all'
+  const collected = useCollected(picked, { key: (item) => `int:${item.id}:containers:${filter}`, load: (item, signal) => integrationGet(item.id, 'containers', { filter }, signal) })
+  const data = collected.ready.flatMap((part) => part.data.map((container) => ({ ...container, id: `${part.item.id}:${container.id}`, from: part.item.name })))
+  return (
+    <>
+      {collected.collectors}
+      <CollectedState collected={collected}>
+        <ContainersBody data={data} widget={widget} />
+      </CollectedState>
+    </>
+  )
+}
+
 function ContainersOne({ item, widget }) {
-  const { t } = useTranslation('dash')
-  const { filter = 'all', image = false } = widget.options
+  const { filter = 'all' } = widget.options
   const { data, error, reload } = useRemote(`int:${item.id}:containers:${filter}`, (signal) => integrationGet(item.id, 'containers', { filter }, signal), { refresh: 60, private: true })
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={4} />
+  return <ContainersBody data={data} widget={widget} />
+}
+
+function ContainersBody({ data, widget }) {
+  const { t } = useTranslation('dash')
+  const { image = false } = widget.options
   const running = data.filter((container) => container.state === 'running').length
   return (
     <div className="dash-w-status">
@@ -254,6 +288,7 @@ function ContainersOne({ item, widget }) {
                 <span className="dash-w-status__name">
                   {container.name}
                   {image && <small className="dash-muted"> {container.image}</small>}
+                  {container.from && <small className="dash-muted"> · {container.from}</small>}
                 </span>
                 <span className="dash-w-status__ms">{container.status}</span>
               </span>
@@ -269,15 +304,39 @@ function ContainersOne({ item, widget }) {
 function MessagesView({ widget }) {
   const { picked, empty } = useWidgetIntegrations(widget, 'messages', { multi: true })
   if (empty) return empty
+  if (together(widget, picked)) return <MessagesTogether picked={picked} widget={widget} />
   return <Several picked={picked} render={(item) => <MessagesOne key={item.id} item={item} widget={widget} />} />
 }
 
+/* Every server's messages in one stream, newest first. */
+function MessagesTogether({ picked, widget }) {
+  const size = Math.max(1, Math.min(50, Number(widget.options.count) || 10))
+  const since = widget.options.since ?? '24h'
+  const collected = useCollected(picked, { key: (item) => `int:${item.id}:messages:${size}:${since}`, load: (item, signal) => integrationGet(item.id, 'messages', { size, since }, signal) })
+  const data = collected.ready
+    .flatMap((part) => part.data.map((message) => ({ ...message, id: `${part.item.id}:${message.id}`, source: message.source || part.item.name })))
+    .sort((a, b) => new Date(b.date ?? 0) - new Date(a.date ?? 0))
+    .slice(0, size)
+  return (
+    <>
+      {collected.collectors}
+      <CollectedState collected={collected}>
+        <MessagesBody data={data} />
+      </CollectedState>
+    </>
+  )
+}
+
 function MessagesOne({ item, widget }) {
-  const { t, i18n } = useTranslation('dash')
   const size = Math.max(1, Math.min(50, Number(widget.options.count) || 10))
   const since = widget.options.since ?? '24h'
   const { data, error, reload } = useRemote(`int:${item.id}:messages:${size}:${since}`, (signal) => integrationGet(item.id, 'messages', { size, since }, signal), { refresh: 60, private: true })
   if (!data) return error ? <LoadError error={error} onRetry={reload} /> : <Loading lines={3} />
+  return <MessagesBody data={data} />
+}
+
+function MessagesBody({ data }) {
+  const { t, i18n } = useTranslation('dash')
   if (!data.length) return <p className="dash-muted">{t('widgets.messages.none')}</p>
   return (
     <ul className="dash-w-msgs">

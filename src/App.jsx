@@ -12,6 +12,17 @@ function OldSettings() {
   return <Navigate to={`/hub/settings${/^[a-z0-9-]+$/i.test(target) ? `/${target}` : ''}`} replace />
 }
 
+/* /cult/settings (and its #notifications link) and /cult/privacy moved to the top: /settings[/<tab>], /privacy. */
+function MovedSettings() {
+  const hash = typeof window !== 'undefined' ? window.location.hash.slice(1) : ''
+  const tab = { notifications: 'notifications', profile: 'account', delete: 'account', css: 'general' }[hash]
+  return <Navigate to={`/settings${tab ? `/${tab}` : ''}`} replace state={{ from: 'cult' }} />
+}
+function MovedPrivacy() {
+  const hash = typeof window !== 'undefined' ? window.location.hash : ''
+  return <Navigate to={`/privacy${hash}`} replace state={{ from: 'cult' }} />
+}
+
 /*
  * Pages other than the home and error page load on demand, which keeps the
  * main bundle small (Leaflet + the maps UI in particular are big). Each one
@@ -35,10 +46,11 @@ const CultProfile = page(/^\/cult\/profile$/, () => import('./pages/CultProfile.
 const Maps = page(/^\/maps$/, () => import('./pages/Maps.jsx'))
 const Activity = page(/^\/activity$/, () => import('./pages/Activity.jsx'))
 const Hub = page(/^\/hub(\/|$)/, () => import('./pages/Hub.jsx'))
-const CultSettings = page(/^\/cult\/settings$/, () => import('./pages/CultSettings.jsx'))
+const Settings = page(/^\/settings(\/|$)/, () => import('./pages/Settings.jsx'))
+const MasterSearch = page(/^\/search$/, () => import('./pages/MasterSearch.jsx'))
 const CultMembers = page(/^\/cult\/members$/, () => import('./pages/CultMembers.jsx'))
 const CultStats = page(/^\/cult\/stats$/, () => import('./pages/CultStats.jsx'))
-const CultPrivacy = page(/^\/cult\/privacy$/, () => import('./pages/CultPrivacy.jsx'))
+const Privacy = page(/^\/privacy$/, () => import('./pages/CultPrivacy.jsx'))
 const CultModeration = page(/^\/cult\/moderation$/, () => import('./pages/CultModeration.jsx'))
 const CultNotifications = page(/^\/cult\/notifications$/, () => import('./pages/CultNotifications.jsx'))
 const CultBirthdays = page(/^\/cult\/birthdays$/, () => import('./pages/CultBirthdays.jsx'))
@@ -63,6 +75,7 @@ export function preloadPage(pathname) {
 function pageKey(pathname) {
   if (pathname.startsWith('/hub')) return '/hub'
   if (pathname.startsWith('/admin-settings')) return '/admin-settings'
+  if (pathname.startsWith('/settings')) return '/settings'
   return pathname.replace(/\/+$/, '') || '/'
 }
 
@@ -86,10 +99,14 @@ export default function App() {
           <Route path="/cult/profile" element={<CultProfile />} />
           <Route path="/cult/user/:key" element={<CultUser />} />
           <Route path="/cult/:handle" element={<CultUser />} />
-          <Route path="/cult/settings" element={<CultSettings />} />
+          <Route path="/search" element={<MasterSearch />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/:tab" element={<Settings />} />
+          <Route path="/cult/settings" element={<MovedSettings />} />
           <Route path="/cult/members" element={<CultMembers />} />
           <Route path="/cult/stats" element={<CultStats />} />
-          <Route path="/cult/privacy" element={<CultPrivacy />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/cult/privacy" element={<MovedPrivacy />} />
           <Route path="/cult/moderation" element={<CultModeration />} />
           <Route path="/cult/notifications" element={<CultNotifications />} />
           <Route path="/cult/birthdays" element={<CultBirthdays />} />

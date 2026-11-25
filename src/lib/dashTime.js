@@ -190,6 +190,16 @@ export function parseDate(text) {
   return null
 }
 
+/* "14:00", "tomorrow 9am", "yesterday at noon": that time on that day (local). */
+function clockOnDay(text, now) {
+  const match = /^(?:(today|tomorrow|yesterday)\s+(?:at\s+)?)?(.+?)(?:\s+(today|tomorrow|yesterday))?$/i.exec(String(text ?? '').trim())
+  const clock = match && parseClock(match[2])
+  if (!clock) return null
+  const day = (match[1] ?? match[3] ?? 'today').toLowerCase()
+  const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (day === 'tomorrow' ? 1 : day === 'yesterday' ? -1 : 0), clock.h, clock.m, clock.s)
+  return date
+}
+
 /* ---------- putting it together ---------- */
 
 const CONVERT = /\s+(?:in|to|into|as|->|→|=>)\s+/i
@@ -261,7 +271,7 @@ export function analyzeTime(raw, { fmt, plain, locale, label, countries = {}, no
   }
 
   // Unix time: "1700000000", "1700000000000", "@1700000000"; "now in unix", "date to unix"
-  const stamp = /^@?(\d{9,10}|\d{12,13})$/.exec(text)
+  const stamp = /^@?(\d{9,10}|\d{12,13})$/.exec(text) ?? (right !== undefined && /^(?:date|time|date ?time|iso(?: 8601)?|utc|human(?: readable)?|readable|local(?: time)?)$/i.test(right) ? /^(?:unix\s+|epoch\s+|timestamp\s+)?@?(\d{9,10}|\d{12,13})$/i.exec(left) : null)
   if (stamp) {
     const ms = stamp[1].length > 11 ? Number(stamp[1]) : Number(stamp[1]) * 1000
     const date = new Date(ms)
@@ -270,8 +280,8 @@ export function analyzeTime(raw, { fmt, plain, locale, label, countries = {}, no
       { text: date.toISOString(), copy: date.toISOString(), hint: 'ISO 8601 (UTC)' },
     ])
   }
-  if (right !== undefined && /^(?:unix(?: ?time(?:stamp)?)?|epoch|timestamp)$/i.test(right)) {
-    const date = /^(?:now|today)$/i.test(left) ? now : parseDate(left)?.date
+  if (right !== undefined && /^(?:unix(?: ?time(?:stamp)?)?|epoch(?: time)?|(?:unix |posix )?timestamp|posix(?: time)?|seconds since (?:the )?epoch)$/i.test(right)) {
+    const date = /^(?:now|today)$/i.test(left) ? now : (parseDate(left)?.date ?? clockOnDay(left, now))
     if (date && !Number.isNaN(date.getTime())) {
       return result([
         { text: String(Math.floor(date.getTime() / 1000)), copy: String(Math.floor(date.getTime() / 1000)), hint: label('unixSeconds') },

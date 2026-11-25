@@ -81,6 +81,17 @@ export async function whenLoggedIn(load) {
   return load(account);
 }
 
+/**
+ * Like whenLoggedIn, for what belongs to the Discord server (voting, birthdays, the member list …):
+ * an account that isn't in the server is answered 403 (`code: 'not-member'`) without asking the API.
+ */
+export async function whenMember(load) {
+  return whenLoggedIn((account) => {
+    if (account.member === false) throw Object.assign(new Error("This is for members of the Discord server."), { status: 403, code: "not-member" });
+    return load(account);
+  });
+}
+
 async function loadCurrentAccount() {
   let response;
 
@@ -158,6 +169,7 @@ export async function patchAccountSettings(settings) {
     const error = new Error(data?.error || `Settings update failed: ${response.status}`);
     error.status = response.status;
     error.rejected = Array.isArray(data?.rejected) ? data.rejected : [];
+    error.data = data;
     throw error;
   }
   return { settings: data?.settings ?? null, rejected: Array.isArray(data?.rejected) ? data.rejected : [] };
@@ -173,6 +185,13 @@ export function forgetPrivateDashCache() {
 }
 
 export async function logoutAccount() {
+  // The dash of this account isn't left behind in this browser (lib/dashSettings.js: logged out, it's the default).
+  try {
+    localStorage.removeItem("dashSettings");
+    localStorage.removeItem("dashSettings:sync");
+  } catch {
+    // storage blocked
+  }
   accountRequest = null;
   const local = getLocalAdminSession();
   clearLocalAdminSession();
@@ -180,6 +199,8 @@ export async function logoutAccount() {
   await import("./push").then((push) => push.disablePushOnLogout()).catch(() => {});
   // The dash's cached personal answers (notifications, integrations) stay with the account.
   forgetPrivateDashCache();
+  // Contacts held in memory too (lib/dashContacts.js), dynamic so this file doesn't pull them in.
+  await import("./dashContacts.js").then((contacts) => contacts.forgetContacts()).catch(() => {});
 
   let response;
 

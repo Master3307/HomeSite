@@ -328,8 +328,9 @@ export function createLobbyCatBrain({ getT, speak, ask, isBusy }) {
 
       visit = pageVisit.visit;
 
-      // Accounts keep trust and milestones (activation too) on the server.
-      const serverMode = Boolean(account) && !account.local;
+      // Members keep trust and milestones (activation too) on the server; anyone else (guests, accounts
+      // not in the Discord server) keeps them in this browser.
+      const serverMode = Boolean(account) && !account.local && account.member !== false;
 
       if (serverMode) {
         const state = await fetchServerProgress();

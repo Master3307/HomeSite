@@ -1,0 +1,372 @@
+/* /settings (pages/Settings.jsx): tabs on the left (above on phones), a search over all of them. */
+
+.settings-main {
+  --m-line: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  --m-raised: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  --m-raised-2: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --m-muted: color-mix(in srgb, var(--text-primary) 62%, transparent);
+  --m-card: color-mix(in srgb, var(--bg-secondary) 70%, transparent);
+  --m-danger: #e5484d;
+  box-sizing: border-box;
+  width: min(1180px, 100% - 32px);
+  min-height: 70vh;
+  margin: 0 auto;
+  padding: 104px 0 64px;
+  color: var(--text-primary);
+  text-align: left;
+}
+.settings-main *,
+.settings-main *::before,
+.settings-main *::after {
+  box-sizing: border-box;
+}
+.settings-main.cult-sub {
+  max-width: 880px;
+}
+.settings-main.settings-main--wide {
+  max-width: none;
+}
+/* Opened from the dash: its accent. */
+body.settings-from-dash .settings-main {
+  --accent: var(--dash-accent, var(--accent));
+}
+
+.settings-page__top {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 22px;
+}
+.settings-page__top h1 {
+  margin: 6px 0 0;
+  font-size: clamp(1.7rem, 4vw, 2.2rem);
+}
+.settings-back {
+  justify-self: start;
+  margin-bottom: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.settings-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 520px;
+  margin-top: 12px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--m-card);
+  box-shadow: inset 0 0 0 1px var(--m-line);
+}
+.settings-search:focus-within {
+  box-shadow:
+    inset 0 0 0 1px var(--m-line),
+    0 0 0 2px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.settings-search .material-symbols-outlined {
+  color: var(--m-muted);
+}
+.settings-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+
+.settings-page__layout {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  align-items: start;
+  gap: 28px;
+}
+.settings-tabs {
+  position: sticky;
+  top: 88px;
+  display: grid;
+  gap: 2px;
+}
+.settings-tabs button {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+.settings-tabs button:hover {
+  background: var(--m-raised);
+}
+.settings-tabs button.is-active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.settings-tabs .material-symbols-outlined {
+  margin-top: 1px;
+  color: var(--m-muted);
+}
+.settings-tabs button.is-active .material-symbols-outlined {
+  color: color-mix(in srgb, var(--accent) 55%, var(--text-primary));
+}
+.settings-tabs button > span:last-child {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.settings-tabs strong {
+  font-size: 0.95rem;
+}
+.settings-tabs small {
+  color: var(--m-muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.settings-panels {
+  display: grid;
+  gap: 28px;
+  min-width: 0;
+}
+.settings-panel__title {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--m-muted);
+}
+.settings-panel:has(.settings-grid:empty),
+.settings-panel:not(:has([data-settings-card]:not([hidden]))) {
+  display: none;
+}
+.settings-empty {
+  display: none;
+  color: var(--m-muted);
+}
+.settings-page[data-search-empty='true'] .settings-empty {
+  display: block;
+}
+.settings-main .settings-grid {
+  grid-template-columns: 1fr;
+}
+.settings-card--wide {
+  padding: 18px 20px;
+}
+.settings-dash-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 4px;
+}
+.settings-dash-head p {
+  max-width: 52ch;
+  margin: 0;
+}
+.settings-tab-intro {
+  margin: 0;
+}
+.settings-about {
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Previewing the dash: held (it shows while the button is held) or kept open. */
+.settings-preview-button.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+.settings-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  animation: settings-preview-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.settings-preview--hold {
+  cursor: grabbing;
+}
+@keyframes settings-preview-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+.settings-preview__exit {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-preview {
+    animation: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .settings-page__layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .settings-tabs {
+    position: sticky;
+    top: 64px;
+    z-index: 5;
+    display: flex;
+    gap: 6px;
+    margin: 0 -16px;
+    padding: 8px 16px;
+    overflow-x: auto;
+    background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
+    backdrop-filter: blur(10px);
+    scrollbar-width: none;
+  }
+  .settings-tabs button {
+    flex: none;
+    align-items: center;
+    width: auto;
+    padding: 8px 12px;
+    border-radius: 999px;
+  }
+  .settings-tabs small {
+    display: none;
+  }
+  .settings-tabs .material-symbols-outlined {
+    margin: 0;
+    font-size: 1.15rem;
+  }
+}
+/* The settings search hides cards and rows with `hidden`: it wins over their own display. */
+.settings-page [hidden] {
+  display: none !important;
+}
+
+/* Settings → Account → Avatar (components/AvatarEditor.jsx) */
+.avatar-editor {
+  display: grid;
+  gap: 12px;
+}
+.avatar-editor__now {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.avatar-editor__now > img,
+.avatar-editor__blank {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.avatar-editor__blank {
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  font-size: 36px;
+}
+.avatar-editor__now > div {
+  display: grid;
+  gap: 2px;
+}
+.avatar-crop {
+  width: min(360px, 100% - 24px);
+  margin: auto;
+  padding: 20px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.45);
+}
+.avatar-crop[open] {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+.avatar-crop::backdrop {
+  background: rgb(0 0 0 / 0.5);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.avatar-crop h2 {
+  justify-self: start;
+  margin: 0;
+  font-size: 1.15rem;
+}
+.avatar-crop__view {
+  position: relative;
+  width: min(var(--view), 100%);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #000;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.avatar-crop__view:active {
+  cursor: grabbing;
+}
+.avatar-crop__view:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* The stage is always 280 px; on small phones it's scaled down to the view (AvatarEditor's `fit`). */
+.avatar-crop__stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 280px;
+  transform-origin: 0 0;
+}
+.avatar-crop__stage > img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.avatar-crop__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgb(0 0 0 / 0.55);
+  outline: 2px solid rgb(255 255 255 / 0.8);
+  outline-offset: -2px;
+  pointer-events: none;
+}
+.avatar-crop__zoom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.avatar-crop__zoom input {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.avatar-crop__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+}

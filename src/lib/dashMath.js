@@ -250,7 +250,7 @@ export function normalizeMath(input, { decimalComma = false } = {}) {
   text = text.replace(/([A-Za-z])([₀₁₂₃₄₅₆₇₈₉]+)/g, (_, letter, run) => `${letter}_${[...run].map((char) => SUB_IN[char]).join('')}`).replace(/[₀₁₂₃₄₅₆₇₈₉]+/g, (run) => [...run].map((char) => SUB_IN[char]).join(''))
   text = text.replace(/[×✕✖⨯∙⋅·•]/g, '*').replace(/[÷∶⁄∕]/g, '/').replace(/[−–—‒]/g, '-').replace(/[＋]/g, '+')
   text = text.replace(/√/g, ' sqrt ').replace(/∛/g, ' cbrt ').replace(/∜/g, ' root4 ').replace(/π/g, 'pi').replace(/τ/g, 'tau').replace(/[φϕ]/g, 'phi').replace(/ℯ/g, 'e').replace(/∞/g, 'Infinity').replace(/θ/g, 'theta')
-  text = text.replace(/\*\*/g, '^').replace(/([\d)\]])\s*:\s*(?=[\d(.\-−])/g, '$1/').replace(/\s:\s/g, ' / ')
+  text = text.replace(/\*\*/g, '^')
   // Words (the language packs': "plus", "squared", "divided by" …), and "to the 3rd power".
   text = text.replace(/\bto the\s+(\d+)(?:st|nd|rd|th)?\s+power\b/gi, '^$1')
   for (const [pattern, replacement] of LANGUAGE.words) text = text.replace(pattern, replacement)
@@ -787,8 +787,8 @@ function diagnose(node, options, env) {
  * the kind of fault, or null.
  */
 const FAULTS = {
-  'divide-by-zero': [/\\frac\s*\{[^{}]*\}\s*\{\s*0+\s*\}/g, /(?:\/|÷|∶|⁄|:|\\div|\\bmod|\bmod(?:ulo)?\b|\bdivided\s+by\b|\bover\b)\s*\(?\s*0+(?:[.,]0+)?(?![.,]?\d)/gi, /\b0+\s*\^\s*[({]?\s*-/g],
-  'zero-by-zero': [/\\frac\s*\{\s*0+\s*\}\s*\{\s*0+\s*\}/g, /\b0+\s*(?:\/|÷|∶|⁄|:|\\div)\s*\(?\s*0+(?![.,]?\d)/g],
+  'divide-by-zero': [/\\frac\s*\{[^{}]*\}\s*\{\s*0+\s*\}/g, /(?:\/|÷|∶|⁄|\div|\bmod|\bmod(?:ulo)?\b|\bdivided\s+by\b|\bover\b)\s*\(?\s*0+(?:[.,]0+)?(?![.,]?\d)/gi, /\b0+\s*\^\s*[({]?\s*-/g],
+  'zero-by-zero': [/\\frac\s*\{\s*0+\s*\}\s*\{\s*0+\s*\}/g, /\b0+\s*(?:\/|÷|∶|⁄|\div)\s*\(?\s*0+(?![.,]?\d)/g],
   'root-negative': [/(?:√|∛|∜|\bsqrt|\bcbrt|\broot|\\sqrt(?:\[[^\]]*\])?)\s*[({[]?\s*[-−]\s*[\d.,]*/gi, /\(\s*[-−][^()]*\)\s*\^\s*[({]?\s*[\d.,]*\s*[/.,]\s*\d*/g],
   'log-domain': [/\\?(?:ln|log(?:2|10|_\{?\d+\}?)?|lg)\s*[({]?\s*[-−]?\s*[\d.,]*/gi],
   'arc-domain': [/\\?(?:arc(?:sin|cos)|a(?:sin|cos))\s*[({]?\s*[-−]?\s*[\d.,]*/gi],
@@ -1026,10 +1026,28 @@ const UNIT_LIST = [
   ['voltage', 'mV', 1e-3, ['mV']],
   ['amount', 'mol', 1, ['mol']],
   ['amount', 'mmol', 1e-3, ['mmol']],
+  ['torque', 'nm', 1, ['N·m', 'Nm', 'N*m', 'N-m', 'N m']],
+  ['torque', 'knm', 1000, ['kN·m', 'kNm', 'kN*m', 'kN-m']],
+  ['torque', 'lbft', 1.3558179483314004, ['lb·ft', 'lbft', 'lb-ft', 'lb*ft', 'lbf·ft', 'lbfft', 'lbf-ft', 'ft·lb', 'ftlb', 'ft-lb', 'ft·lbf', 'ft-lbf']],
+  ['torque', 'lbin', 0.1129848290276167, ['lb·in', 'lbin', 'lb-in', 'lbf·in', 'lbf-in', 'in·lb', 'inlb', 'in-lb']],
+  ['torque', 'kgfm', 9.80665, ['kgf·m', 'kgfm', 'kgf-m', 'kp·m', 'kpm']],
+  ['density', 'kgm3', 1, ['kg/m³', 'kg/m3', 'kg/m^3']],
+  ['density', 'gcm3', 1000, ['g/cm³', 'g/cm3', 'g/cm^3', 'g/cc', 'g/ml', 'g/mL']],
+  ['density', 'gl', 1, ['g/l', 'g/L']],
+  ['density', 'kgl', 1000, ['kg/l', 'kg/L', 'kg/dm³', 'kg/dm3']],
+  ['density', 'lbft3', 16.018463373960138, ['lb/ft³', 'lb/ft3', 'lb/ft^3', 'lb/cu ft']],
+  ['density', 'lbin3', 27679.904710203125, ['lb/in³', 'lb/in3', 'lb/in^3']],
+  ['density', 'lbgal', 119.82642731689663, ['lb/gal']],
+  // CSS: 1in = 96px = 72pt; em / rem at the browser's 16px.
+  ['typography', 'px', 1, ['px', 'pixel', 'pixels']],
+  ['typography', 'point', 4 / 3, ['typo-pt']],
+  ['typography', 'pica', 16, ['pica', 'picas']],
+  ['typography', 'rem', 16, ['rem']],
+  ['typography', 'em', 16, ['em']],
 ]
 
 /* A few names stand for two units (1m: metres or minutes). Shown both ways. */
-const AMBIGUOUS = { m: ['m', 'min'], b: ['bit', 'B'], c: ['°c', 'c'], kn: ['kn', 'kN'], t: ['t', 'tonne'], mb: ['MB', 'Mbit'], gb: ['GB', 'Gbit'], kb: ['kB', 'kbit'], grad: ['°', 'gon'] }
+const AMBIGUOUS = { m: ['m', 'min'], b: ['bit', 'B'], c: ['°c', 'c'], kn: ['kn', 'kN'], t: ['t', 'tonne'], mb: ['MB', 'Mbit'], gb: ['GB', 'Gbit'], kb: ['kB', 'kbit'], grad: ['°', 'gon'], pt: ['pt', 'typo-pt'], pts: ['pt', 'typo-pt'] }
 
 const UNITS = UNIT_LIST.map(([dimension, id, factor, names]) => ({ dimension, id, factor: Array.isArray(factor) ? factor[0] : factor, offset: Array.isArray(factor) ? factor[1] : 0, names, symbol: names[0] }))
 let EXACT = new Map()
@@ -1049,7 +1067,7 @@ function indexUnits(words = {}) {
 }
 indexUnits()
 // Symbols shown in results (nicer than the first alias in some cases).
-const SHOW = { '°c': '°C', '°f': '°F', k: 'K', '°': '°', l: 'L', B: 'B', bit: 'bit', 'm²': 'm²', 'm³': 'm³', j: 'J', w: 'W', hz: 'Hz', n: 'N', pa: 'Pa', ev: 'eV', wh: 'Wh', kwh: 'kWh', kj: 'kJ', kw: 'kW', mw: 'MW', khz: 'kHz', mhz: 'MHz', ghz: 'GHz', hpa: 'hPa', kpa: 'kPa', mmhg: 'mmHg', btu: 'BTU' }
+const SHOW = { 'typo-pt': 'pt', '°c': '°C', '°f': '°F', k: 'K', '°': '°', l: 'L', B: 'B', bit: 'bit', 'm²': 'm²', 'm³': 'm³', j: 'J', w: 'W', hz: 'Hz', n: 'N', pa: 'Pa', ev: 'eV', wh: 'Wh', kwh: 'kWh', kj: 'kJ', kw: 'kW', mw: 'MW', khz: 'kHz', mhz: 'MHz', ghz: 'GHz', hpa: 'hPa', kpa: 'kPa', mmhg: 'mmHg', btu: 'BTU' }
 // The proper spelling to show: kN (not kn, which is knots), Pa, Hz.
 const symbolOf = (unit) => SHOW[unit.symbol] ?? unit.names.find((name) => name !== unit.symbol && name.toLowerCase() === unit.symbol.toLowerCase() && /[A-Z]/.test(name)) ?? unit.symbol
 const unitGap = (unit) => (['°', "'", '"', '′', '″'].includes(symbolOf(unit)) ? '' : ' ')
@@ -1098,6 +1116,9 @@ const SUGGEST = {
   current: ['mA', 'A'],
   voltage: ['mV', 'V', 'kV'],
   amount: ['mmol', 'mol'],
+  torque: ['N·m', 'lb·ft', 'lb·in', 'kgf·m'],
+  density: ['kg/m³', 'g/cm³', 'g/l', 'lb/ft³'],
+  typography: ['px', 'typo-pt', 'rem', 'pica'],
 }
 
 // Arrows and LaTeX arrows work in every language; the words ("in", "to") come from the language packs.
@@ -1127,7 +1148,7 @@ function readQuantity(text, options) {
     }
   }
   // value + unit: the longest ending that is a unit, the rest a number expression.
-  const match = /^(.*?)\s*((?:[A-Za-zµμ°℃℉'"″′][A-Za-zµμ°'"″′²³/^ \d]*?)|[°'"″′])\s*$/.exec(source)
+  const match = /^(.*?)\s*((?:[A-Za-zµμ°℃℉'"″′][A-Za-zµμ°'"″′²³/^ \d·*-]*?)|[°'"″′])\s*$/.exec(source)
   if (!match) return null
   let [, amount, name] = match
   // Try shorter unit names (the end of "2 square meters", "5 sq ft").
@@ -1937,6 +1958,12 @@ function convertExpression(raw, { known, fns, options, fmt, plain, decimalComma 
     }
     // Only when there's something to work out or a value to use (plain "5 km to mi" is for the unit converter).
     const usesValues = [...freeVariables(tree)].length > 0
+    // "5 ft", "20°C": a number and its unit is the plain converter's (temperatures keep their offset there).
+    const single = tree.type === 'unit' || (tree.type === 'mul' && tree.left.type === 'num' && tree.right.type === 'unit') || (tree.type === 'neg' && tree.value.type === 'mul' && tree.value.left.type === 'num' && tree.value.right.type === 'unit') || (tree.type === 'deg' && tree.value.type === 'num')
+    if (!usesValues && single) {
+      const plainRows = conversions(raw, options)
+      if (plainRows?.length) return { rows: plainRows.map((row, index) => ({ id: `u${index}`, kind: 'convert', text: row.text, copy: row.copy, hint: row.hint })), graph: null, points: [], define: null, defineFunctions: [], tree, illegal: false, error: null }
+    }
     if (!usesValues && !hasOperation(tree)) continue
     if ([...freeVariables(tree)].some((name) => !(name in known))) continue
     let q

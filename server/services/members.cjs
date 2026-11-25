@@ -1,3 +1,4 @@
+const membership = require("./membership.cjs");
 const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -34,8 +35,9 @@ const today = () => new Date().toISOString().slice(0, 10);
  *   POST   /lobby-cat/pets             { count }: pets on the lobby cat, for the totals
  *                                      (a member's own pets are lobby_cat.total_pets, services/lobbyCat.cjs)
  *
- * Once a day: accounts of people who left the server ACCOUNT_INACTIVE_DAYS
- * ago are deleted the same way. What happens to data is described on the
+ * Once a day: accounts that aren't in the server and haven't been used for
+ * ACCOUNT_INACTIVE_DAYS are deleted the same way (anyone may have an
+ * account; the server's parts are only for members, services/membership.cjs). What happens to data is described on the
  * privacy page (src/pages/CultPrivacy.jsx); keep both in sync.
  */
 
@@ -124,6 +126,11 @@ function registerMembers(app, { requireStorage, getRequestSession, getDatabase, 
     add("profile_json", "TEXT NOT NULL DEFAULT '{}'");
     add("presets_json", "TEXT NOT NULL DEFAULT '[]'");
     add("last_member_at", "TEXT");
+    if (!columns.has("in_server")) {
+      // In the Discord server (1), not (0), not known yet (NULL). Before anyone could log in, every account was a member.
+      handle.exec("ALTER TABLE users ADD COLUMN in_server INTEGER");
+      handle.exec("UPDATE users SET in_server = 1");
+    }
     add("taps", "INTEGER NOT NULL DEFAULT 0");
     ensureLobbyDaily(handle);
     handle.exec(`
@@ -200,19 +207,15 @@ function registerMembers(app, { requireStorage, getRequestSession, getDatabase, 
    */
   const VISIBILITY = new Set(["everyone", "members", "private"]);
   const visibilityOf = (user) => (VISIBILITY.has(user.profile_visibility) ? user.profile_visibility : user.profile_public === 0 ? "private" : "members");
-  const memberCache = new Map(); // discordId -> { at, member }
+  // In the server right now (live, kept 5 minutes; when Discord can't be asked, the last known answer).
   async function viewerInServer(session) {
     if (!session) return false;
-    const cached = memberCache.get(session.discord_user_id);
-    if (cached && Date.now() - cached.at < 10 * 60_000) return cached.member;
-    const result = await botFetch(`/members/${session.discord_user_id}/member`).catch(() => null);
-    // Bot offline: an account is only made by server members, so a login counts.
-    const member = result ? Boolean(result.member) : true;
-    memberCache.set(session.discord_user_id, { at: Date.now(), member });
-    return member;
+    return membership.isMember(session.discord_user_id);
   }
   async function canView(user, session) {
     if (session?.user_id === user.id) return true;
+    // Someone who isn't in the server has an account, not a member profile: nobody else sees it.
+    if (user.in_server === 0 && user.discord_user_id !== setting("DISCORD_USER_ID")) return false;
     const visibility = visibilityOf(user);
     if (visibility === "everyone") return true;
     if (visibility === "members") return viewerInServer(session);
@@ -314,7 +317,7 @@ function registerMembers(app, { requireStorage, getRequestSession, getDatabase, 
       const session = requireSession(req);
       if (!(await viewerInServer(session))) throw httpError(403, "The member list is for members of the server.");
       const rows = database()
-        .prepare("SELECT id, discord_user_id, username, display_name, avatar_path, profile_json FROM users WHERE profile_visibility IN ('everyone', 'members') ORDER BY lower(display_name)")
+        .prepare("SELECT id, discord_user_id, username, display_name, avatar_path, profile_json FROM users WHERE profile_visibility IN ('everyone', 'members') AND (in_server IS NULL OR in_server = 1) ORDER BY lower(display_name)")
         .all()
         .filter((row) => !privacy.isHidden(row.discord_user_id) && SNOWFLAKE.test(row.discord_user_id));
       const status = await botFetch("/members/presence", { method: "POST", body: { ids: rows.map((row) => row.discord_user_id) } }).catch(() => ({}));
@@ -385,6 +388,7 @@ function registerMembers(app, { requireStorage, getRequestSession, getDatabase, 
     "/members/mention",
     readLimiter,
     requireStorage,
+    membership.memberOnly,
     route(async (req, res) => {
       res.set("Cache-Control", "no-store");
       const session = requireSession(req);
@@ -597,6 +601,7 @@ function registerMembers(app, { requireStorage, getRequestSession, getDatabase, 
     "/account/nickname",
     writeLimiter,
     requireStorage,
+    membership.memberOnly,
     route(async (req) => {
       const session = requireSession(req);
       requireNotLimited(session);
@@ -629,6 +634,7 @@ function registerMembers(app, { requireStorage, getRequestSession, getDatabase, 
     "/members/report",
     reportLimiter,
     requireStorage,
+    membership.memberOnly,
     route(async (req) => {
       const session = requireSession(req);
       requireNotLimited(session);
@@ -700,7 +706,15 @@ function registerMembers(app, { requireStorage, getRequestSession, getDatabase, 
     })();
 
     await fs.rm(path.join(AVATAR_DIR, `${user.id}.webp`), { force: true });
+    // Their own avatars (discordOAuth.cjs: custom/<id>-<version>.webp).
+    for (const name of await fs.readdir(path.join(AVATAR_DIR, "custom")).catch(() => [])) if (name.startsWith(`${user.id}-`)) await fs.rm(path.join(AVATAR_DIR, "custom", name), { force: true });
     await fs.rm(path.join(BONGO_DIR, `${user.id}.png`), { force: true });
+    // Their uploads: songs (dashMusic.cjs) and files (wallpapers, fonts, pictures; userFiles.cjs). The rows went with the tables above.
+    const folder = String(user.id).replace(/[^A-Za-z0-9_-]/g, "");
+    if (folder) {
+      await fs.rm(path.join(DB_DIR, "music", folder), { recursive: true, force: true });
+      await fs.rm(path.join(DB_DIR, "user-files", folder), { recursive: true, force: true });
+    }
     for (const old of ["gif", "webp"]) await fs.rm(path.join(BONGO_DIR, `${user.id}-bg.${old}`), { force: true });
     // Their birthday dress code picture (the birthday itself is the bot's, removed by /privacy/forget).
     for (const old of ["png", "gif"]) await fs.rm(path.join(DB_DIR, "birthday-dress", `${discordId}.${old}`), { force: true });
@@ -714,7 +728,7 @@ function registerMembers(app, { requireStorage, getRequestSession, getDatabase, 
     }
     privacy.hideDeleted(discordId);
     syncPrivateList();
-    await activity?.forget(discordId, user.display_name, reason === "self" ? undefined : reason === "moderation" ? "account and all its data removed by the moderators" : "account and all its data removed: left the server long ago");
+    await activity?.forget(discordId, user.display_name, reason === "self" ? undefined : reason === "moderation" ? "account and all its data removed by the moderators" : reason === "inactive" ? "account and all its data removed: not used for a long time" : "account and all its data removed: left the server long ago");
   }
 
   app.post(
@@ -799,20 +813,24 @@ function registerMembers(app, { requireStorage, getRequestSession, getDatabase, 
       if (done) handle.prepare("DELETE FROM site_counters WHERE key = ?").run(row.key);
     }
 
+    // Every account's membership, fresh once a day (what the site lets them do follows it).
     const days = number("ACCOUNT_INACTIVE_DAYS");
-    if (!days || days < 1) return;
-    const cutoff = Date.now() - days * 86_400_000;
+    const cutoff = days && days >= 1 ? Date.now() - days * 86_400_000 : null;
     const owner = setting("DISCORD_USER_ID");
     for (const user of handle.prepare("SELECT * FROM users").all()) {
       if (!SNOWFLAKE.test(user.discord_user_id) || user.discord_user_id === owner || user.role === "owner") continue;
       const check = await botFetch(`/members/${user.discord_user_id}/member`).catch(() => null);
       if (!check) return; // the bot is offline: try again tomorrow
+      membership.noteMembership(user.discord_user_id, check.member);
       if (check.member) {
         handle.prepare("UPDATE users SET last_member_at = ? WHERE id = ?").run(nowIso(), user.id);
         continue;
       }
-      const lastSeen = Date.parse(user.last_member_at ?? user.last_login_at ?? user.created_at);
-      if (Number.isFinite(lastSeen) && lastSeen < cutoff) await deleteAccount(user, { reason: "left" });
+      // Not in the server and not used for that long (last login or the last time a session of theirs was used): removed.
+      if (!cutoff) continue;
+      const lastSession = handle.prepare("SELECT MAX(last_seen_at) AS at FROM sessions WHERE user_id = ?").get(user.id)?.at ?? null;
+      const lastUsed = Math.max(...[user.last_login_at, lastSession, user.last_member_at, user.created_at].map((value) => Date.parse(value ?? "")).filter(Number.isFinite));
+      if (Number.isFinite(lastUsed) && lastUsed < cutoff) await deleteAccount(user, { reason: user.last_member_at ? "left" : "inactive" });
     }
   }
 

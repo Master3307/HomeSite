@@ -11,6 +11,10 @@ import Root from './Root.jsx'
 import { preloadPage } from './App.jsx'
 import { initNativeApp } from './lib/native.js'
 import { openInAppIfWanted } from './lib/openApp.js'
+import { installNativeMenuFallback } from './lib/nativeMenu.js'
+
+// Right-clicking twice on the same spot: the browser's own menu (lib/nativeMenu.js).
+installNativeMenuFallback()
 
 /*
  * After a new build, an already-open page may ask for a code chunk that no

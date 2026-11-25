@@ -169,7 +169,42 @@ function RenameField({ widget, placeholder, onDone }) {
 /* A widget's own CSS, nested under its card (`&` is the card), strong enough to beat the dash's card styles; `</style` can't end the element early. */
 const widgetCss = (id, css) => `.dash-widget.dash-widget[data-widget="${id}"] {\n${String(css).replaceAll('</', '<\\/')}\n}`
 
-function Widget({ widget, box, frame, editing, dragging, onPointerDown, onResizeStart, onKey, onEdit, onRemove, onDuplicate, onMenu, renaming, onRenamed, hiddenOnPhone, rollingAll }) {
+/*
+ * A widget opened big (its title, or "Open details" in its menu), like
+ * Homarr's detail view: its own detail view when it has one (spec.Detail:
+ * more than fits on the card), else the same view with room to breathe.
+ */
+function WidgetDetail({ widget, onClose, onEdit }) {
+  const { t } = useTranslation('dash')
+  const ref = useRef(null)
+  const spec = WIDGETS[widget.type]
+  const title = useWidgetTitle(widget) || t(`widgets.${widget.type}.name`)
+  useEffect(() => {
+    ref.current?.showModal()
+  }, [])
+  const Detail = spec.Detail
+  return (
+    <dialog ref={ref} className={`dash-dialog dash-detail dash-detail--${widget.type}`} onClose={onClose} aria-labelledby={`dash-detail-${widget.id}`} onClick={(event) => event.target === ref.current && ref.current.close()}>
+      <header className="dash-dialog__head">
+        <Glyph icon={widget.look?.icon} fallback={spec.icon} />
+        <h2 id={`dash-detail-${widget.id}`}>{title}</h2>
+        <button type="button" className="dash-tool" onClick={() => onEdit(widget.id)} aria-label={t('board.edit')} title={t('board.edit')}>
+          <span className="material-symbols-outlined">tune</span>
+        </button>
+        <button type="button" className="dash-tool" onClick={() => ref.current?.close()} aria-label={t('settings.close')}>
+          <span className="material-symbols-outlined">close</span>
+        </button>
+      </header>
+      <div className={`dash-dialog__body dash-detail__body dash-widget--${widget.type}`}>
+        <WidgetBoundary fallback={<p className="dash-error">{t('widgets.crashed')}</p>}>
+          {Detail ? <Detail widget={widget} /> : <spec.View widget={widget} editing={false} detail />}
+        </WidgetBoundary>
+      </div>
+    </dialog>
+  )
+}
+
+function Widget({ widget, box, frame, editing, dragging, onPointerDown, onResizeStart, onKey, onEdit, onRemove, onDuplicate, onMenu, renaming, onRenamed, hiddenOnPhone, rollingAll, onDetail }) {
   const { t } = useTranslation('dash')
   const trigger = useMenuTrigger((at) => onMenu(at, widget))
   const spec = WIDGETS[widget.type]
@@ -190,6 +225,7 @@ function Widget({ widget, box, frame, editing, dragging, onPointerDown, onResize
         look.style && look.style !== 'inherit' ? `dash-widget--style-${look.style}` : '',
         look.padding === 'none' ? 'dash-widget--flush' : '',
         look.font && look.font !== 'inherit' ? `dash-widget--font-${look.font}` : '',
+        look.selectable && look.selectable !== 'inherit' ? `dash-widget--select-${look.selectable}` : '',
         editing ? 'is-editing' : '',
         dragging ? 'is-dragging' : '',
         hiddenOnPhone ? 'is-phone-hidden' : '',
@@ -224,8 +260,20 @@ function Widget({ widget, box, frame, editing, dragging, onPointerDown, onResize
         <RenameField widget={widget} placeholder={t(`widgets.${widget.type}.name`)} onDone={onRenamed} />
       ) : title && (
         <h2 className="dash-widget__title">
-          {look.titleIcon !== false && <Glyph icon={look.icon} fallback={spec.icon} />}
-          {title}
+          {editing || spec.detail === false ? (
+            <>
+              {look.titleIcon !== false && <Glyph icon={look.icon} fallback={spec.icon} />}
+              {title}
+            </>
+          ) : (
+            <button type="button" className="dash-widget__title-button" onClick={() => onDetail(widget.id)} title={t('menu.details')}>
+              {look.titleIcon !== false && <Glyph icon={look.icon} fallback={spec.icon} />}
+              {title}
+              <span className="material-symbols-outlined dash-widget__title-open" aria-hidden="true">
+                open_in_full
+              </span>
+            </button>
+          )}
         </h2>
       )}
       {look.css?.trim() && <style>{widgetCss(widget.id, look.css)}</style>}
@@ -245,7 +293,8 @@ function Widget({ widget, box, frame, editing, dragging, onPointerDown, onResize
 
 const NEEDS_SETUP = new Set(['rows', 'url', 'integration', 'place', 'datetime', 'code', 'entities'])
 
-export function AddWidget({ onPick, onClose }) {
+/* `browse`: only a look at what there is (the dash's intro for guests): nothing can be picked. */
+export function AddWidget({ onPick, onClose, browse = false }) {
   const { t } = useTranslation('dash')
   const ref = useRef(null)
   const [category, setCategory] = useState('all')
@@ -261,7 +310,7 @@ export function AddWidget({ onPick, onClose }) {
         <span className="material-symbols-outlined" aria-hidden="true">
           add_box
         </span>
-        <h2 id="dash-add-title">{t('board.addTitle')}</h2>
+        <h2 id="dash-add-title">{browse ? t('intro.galleryTitle') : t('board.addTitle')}</h2>
         <button type="button" className="dash-tool" onClick={() => ref.current?.close()} aria-label={t('settings.close')}>
           <span className="material-symbols-outlined">close</span>
         </button>
@@ -279,7 +328,22 @@ export function AddWidget({ onPick, onClose }) {
       <ul className="dash-picker">
         {types.map((type) => {
           const spec = WIDGETS[type]
-          const taken = spec.single && getDashSettings().widgets.some((widget) => widget.type === type)
+          const taken = !browse && spec.single && getDashSettings().widgets.some((widget) => widget.type === type)
+          if (browse)
+            return (
+              <li key={type}>
+                <div className="dash-picker__item">
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    {spec.icon}
+                  </span>
+                  <strong>
+                    {t(`widgets.${type}.name`)}
+                    {spec.needs && <small className="dash-chip">{t(`board.needs.${spec.needs}`)}</small>}
+                  </strong>
+                  <span>{t(`widgets.${type}.text`)}</span>
+                </div>
+              </li>
+            )
           return (
             <li key={type}>
               <button type="button" onClick={() => onPick(type)} disabled={taken} title={taken ? t('board.onlyOnce') : undefined}>
@@ -298,6 +362,21 @@ export function AddWidget({ onPick, onClose }) {
         })}
         {!types.length && <li className="dash-hint">{t('board.noWidget')}</li>}
       </ul>
+      {browse && (
+        <footer className="dash-dialog__foot dash-picker__foot">
+          <span>{t('intro.galleryNote')}</span>
+          <button
+            type="button"
+            className="dash-button dash-button--small"
+            onClick={() => {
+              ref.current?.close()
+              window.dispatchEvent(new CustomEvent('homesite:open-login'))
+            }}
+          >
+            {t('intro.login')}
+          </button>
+        </footer>
+      )}
     </dialog>
   )
 }
@@ -312,6 +391,7 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
   const ref = useRef(null)
   const width = useWidth(ref)
   const [editId, setEditId] = useState(null)
+  const [detailId, setDetailId] = useState(null)
   // "Set up" on an empty widget opens its editor.
   useEffect(() => {
     const open = (event) => typeof event.detail === 'string' && setEditId(event.detail)
@@ -385,6 +465,7 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
         href && { label: t('menu.openLink'), icon: 'open_in_new', onSelect: () => window.open(href, '_blank', 'noopener,noreferrer') },
         href && { label: t('menu.copyLink'), icon: 'link', onSelect: () => navigator.clipboard?.writeText(href) },
         href && '-',
+        WIDGETS[widget.type].detail !== false && { label: t('menu.details'), icon: 'open_in_full', onSelect: () => setDetailId(widget.id) },
         { label: t('board.edit'), icon: 'tune', hint: editing ? 'Enter' : undefined, onSelect: () => setEditId(widget.id) },
         { label: t('menu.refresh'), icon: 'refresh', onSelect: () => window.dispatchEvent(new CustomEvent('dash:refresh-widget', { detail: widget.id })) },
         { label: t('menu.rename'), icon: 'edit', onSelect: () => setRenaming(widget.id) },
@@ -584,6 +665,7 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
   }
 
   const editingWidget = allWidgets.find((widget) => widget.id === editId) ?? null
+  const detailWidget = allWidgets.find((widget) => widget.id === detailId) ?? null
 
   /* The lobby cat: sitting on its own cell's bottom edge (on the card below, if wanted) or on a search box widget. */
   const lobby = allWidgets.find((widget) => widget.type === 'lobbycat' && widget.page === page)
@@ -646,6 +728,7 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
                 onRemove={remove}
                 onDuplicate={duplicate}
                 onMenu={widgetMenu}
+                onDetail={setDetailId}
                 rollingAll={look.rolling}
                 renaming={renaming === widget.id}
                 onRenamed={() => setRenaming(null)}
@@ -682,6 +765,17 @@ export default function DashBoard({ editing, setEditing, page, adding, setAdding
       )}
       <DashMenu menu={menu} onClose={() => setMenu(null)} />
       {editingWidget && <DashWidgetEditor key={editingWidget.id} widget={editingWidget} onClose={() => setEditId(null)} />}
+      {detailWidget && (
+        <WidgetDetail
+          key={detailWidget.id}
+          widget={detailWidget}
+          onClose={() => setDetailId(null)}
+          onEdit={(id) => {
+            setDetailId(null)
+            setEditId(id)
+          }}
+        />
+      )}
     </>
   )
 }

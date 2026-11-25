@@ -550,7 +550,9 @@ export default function FdcPoll({
                       defaultValue:
                         'Website login is currently unavailable, so vote by reacting on Discord.',
                     })
-                : !poll.viewer?.canVote
+                : poll.viewer?.member === false
+                  ? t('cult:join.voting')
+                  : !poll.viewer?.canVote
                   ? t('fdc.cannotVote', {
                       defaultValue: 'This account cannot vote.',
                     })

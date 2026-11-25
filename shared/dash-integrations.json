@@ -7,7 +7,8 @@
       "provides": [
         "media",
         "library",
-        "stats"
+        "stats",
+        "search"
       ],
       "url": {
         "required": true,
@@ -33,7 +34,8 @@
       "provides": [
         "media",
         "library",
-        "stats"
+        "stats",
+        "search"
       ],
       "url": {
         "required": true,
@@ -169,7 +171,8 @@
       "name": "Home Assistant",
       "icon": "home-assistant",
       "provides": [
-        "smarthome"
+        "smarthome",
+        "search"
       ],
       "url": {
         "required": true,
@@ -324,7 +327,8 @@
       "provides": [
         "media",
         "library",
-        "stats"
+        "stats",
+        "search"
       ],
       "url": {
         "required": true,
@@ -349,7 +353,8 @@
       "icon": "plex",
       "provides": [
         "media",
-        "library"
+        "library",
+        "search"
       ],
       "url": {
         "required": true,
@@ -369,7 +374,8 @@
       "icon": "audiobookshelf",
       "provides": [
         "library",
-        "stats"
+        "stats",
+        "search"
       ],
       "url": {
         "required": true,
@@ -389,7 +395,8 @@
       "icon": "immich",
       "provides": [
         "photos",
-        "stats"
+        "stats",
+        "search"
       ],
       "url": {
         "required": true,
@@ -451,7 +458,8 @@
       "name": "Nextcloud",
       "icon": "nextcloud",
       "provides": [
-        "files"
+        "files",
+        "search"
       ],
       "url": {
         "required": true,
@@ -476,7 +484,8 @@
       "icon": "paperless-ngx",
       "provides": [
         "files",
-        "stats"
+        "stats",
+        "search"
       ],
       "url": {
         "required": true,
@@ -624,6 +633,244 @@
         }
       ],
       "docs": "https://docs.speedtest-tracker.dev/"
+    },
+    "emby": {
+      "name": "Emby",
+      "icon": "emby",
+      "provides": [
+        "media",
+        "library",
+        "stats",
+        "search"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://emby.example.com"
+      },
+      "fields": [
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://github.com/MediaBrowser/Emby/wiki/Api-Key-Authentication"
+    },
+    "tautulli": {
+      "name": "Tautulli",
+      "icon": "tautulli",
+      "provides": [
+        "media",
+        "stats"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://tautulli.example.com"
+      },
+      "fields": [
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference"
+    },
+    "lidarr": {
+      "name": "Lidarr",
+      "icon": "lidarr",
+      "provides": [
+        "mediacal",
+        "downloads"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://lidarr.example.com"
+      },
+      "fields": [
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://wiki.servarr.com/lidarr/settings#security"
+    },
+    "readarr": {
+      "name": "Readarr",
+      "icon": "readarr",
+      "provides": [
+        "mediacal",
+        "downloads"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://readarr.example.com"
+      },
+      "fields": [
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://wiki.servarr.com/readarr/settings#security"
+    },
+    "prowlarr": {
+      "name": "Prowlarr",
+      "icon": "prowlarr",
+      "provides": [
+        "stats"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://prowlarr.example.com"
+      },
+      "fields": [
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://wiki.servarr.com/prowlarr/settings#security"
+    },
+    "overseerr": {
+      "name": "Overseerr / Jellyseerr",
+      "icon": "overseerr",
+      "provides": [
+        "stats"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://requests.example.com"
+      },
+      "fields": [
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://docs.overseerr.dev/using-overseerr/settings#api-key"
+    },
+    "transmission": {
+      "name": "Transmission",
+      "icon": "transmission",
+      "provides": [
+        "downloads"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://transmission.example.com"
+      },
+      "fields": [
+        {
+          "key": "username",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "password",
+          "type": "secret",
+          "required": false
+        }
+      ],
+      "docs": "https://github.com/transmission/transmission/blob/main/docs/rpc-spec.md"
+    },
+    "sabnzbd": {
+      "name": "SABnzbd",
+      "icon": "sabnzbd",
+      "provides": [
+        "downloads"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://sabnzbd.example.com"
+      },
+      "fields": [
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://sabnzbd.org/wiki/configuration/4.3/general"
+    },
+    "nzbget": {
+      "name": "NZBGet",
+      "icon": "nzbget",
+      "provides": [
+        "downloads"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://nzbget.example.com"
+      },
+      "fields": [
+        {
+          "key": "username",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "password",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://nzbget.com/documentation/api/"
+    },
+    "technitium": {
+      "name": "Technitium DNS",
+      "icon": "technitium",
+      "provides": [
+        "dns"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "http://dns.example.com:5380"
+      },
+      "fields": [
+        {
+          "key": "token",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://github.com/TechnitiumSoftware/DnsServer/blob/master/APIDOCS.md"
+    },
+    "gatus": {
+      "name": "Gatus",
+      "icon": "gatus",
+      "provides": [
+        "uptime"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://status.example.com"
+      },
+      "fields": [],
+      "docs": "https://github.com/TwiN/gatus#api"
+    },
+    "healthchecks": {
+      "name": "Healthchecks.io",
+      "icon": "healthchecks",
+      "provides": [
+        "uptime"
+      ],
+      "url": {
+        "required": true,
+        "placeholder": "https://healthchecks.io"
+      },
+      "fields": [
+        {
+          "key": "apiKey",
+          "type": "secret",
+          "required": true
+        }
+      ],
+      "docs": "https://healthchecks.io/docs/api/"
     }
   }
 }

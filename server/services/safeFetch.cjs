@@ -1,3 +1,4 @@
+const fs = require("node:fs");
 const dns = require("node:dns/promises");
 const http = require("node:http");
 const https = require("node:https");
@@ -113,7 +114,7 @@ function requestOnce(url, pinned, { method, headers, body, maxBytes, timeout, ac
       url,
       {
         method,
-        headers: { "User-Agent": "HomeSite-Dash/1.0", "Accept-Encoding": "identity", ...headers, ...(body ? { "Content-Length": Buffer.byteLength(body) } : {}) },
+        headers: { "User-Agent": "HomeSite-Dash/1.0", "Accept-Encoding": "identity", ...headers, ...(body ? { "Content-Length": body.file ? body.size : Buffer.byteLength(body) } : {}) },
         // Connect to exactly the address that was checked (TLS still checks the host name).
         lookup: (_host, options, callback) => (options?.all ? callback(null, [{ address: pinned.address, family: pinned.family }]) : callback(null, pinned.address, pinned.family)),
         timeout,
@@ -148,6 +149,13 @@ function requestOnce(url, pinned, { method, headers, body, maxBytes, timeout, ac
     );
     request.on("timeout", () => request.destroy(httpError(504, "It took too long to answer.")));
     request.on("error", (error) => reject(error.status ? error : httpError(502, "It could not be reached.")));
+    // A file on disk (a big upload) is streamed from there, never held in memory.
+    if (body?.file) {
+      const source = fs.createReadStream(body.file);
+      source.on("error", () => request.destroy(httpError(500, "The file couldn't be read.")));
+      source.pipe(request);
+      return;
+    }
     if (body) request.write(body);
     request.end();
   });
@@ -155,7 +163,7 @@ function requestOnce(url, pinned, { method, headers, body, maxBytes, timeout, ac
 
 /**
  * `safeFetch(address, options)` -> { url, status, type, headers, buffer, text() , json() }
- *   method, headers, body (string)   the request
+ *   method, headers, body            the request (a string / Buffer, or { file, size }: a file streamed from disk)
  *   allowPrivate                     LAN / localhost allowed (owner integrations only)
  *   ports                            "feed" | "service"
  *   accept                           a RegExp the content type must match

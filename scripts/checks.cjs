@@ -440,6 +440,9 @@ async function main() {
   await commandCheck("oxlint", "Oxlint", "pnpm", ["exec", "oxlint", "."]);
 
   // .env.example is generated from config/settings.cjs (pnpm env:example).
+  // Unit tests (tests/*.test.mjs): the search bar's tools, the calculator's conversions.
+  await commandCheck("tests", "Unit tests", "node", ["--test", "tests/"]);
+
   await commandCheck("env-example", ".env.example matches config/settings.cjs", "node", ["scripts/env-example.cjs", "--check"]);
 
   await runCheck("syntax", "JavaScript syntax", async () => {

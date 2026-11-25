@@ -1,3 +1,4 @@
+const { memberGate } = require("./membership.cjs");
 const rateLimit = require("express-rate-limit");
 
 /*
@@ -88,6 +89,8 @@ function toState(row) {
 }
 
 function registerLobbyCat(app, { requireStorage, getRequestSession, getDatabase }) {
+  // A member's own lobby cat (level, streaks): server members only. Taps of everyone else count as a guest's.
+  app.use(["/lobby-cat"], memberGate({ except: [/^\/(?:taps|pets|style|wardrobe)$/] }));
   let prepared = null;
 
   function statements() {

@@ -306,10 +306,14 @@ import {
       const sync = {}
       for (const key of PREF_KEYS) if (key in patch) sync[key] = patch[key]
       if ('customCss' in patch || 'customCssEnabled' in patch) {
-        updateDashSettings({
-          ...('customCss' in patch ? { customCss: patch.customCss } : {}),
-          ...('customCssEnabled' in patch ? { customCssEnabled: patch.customCssEnabled } : {}),
-        })
+        // Only mirrored into the dash store (it's an account setting of its own): never a dash change to sync.
+        updateDashSettings(
+          {
+            ...('customCss' in patch ? { customCss: patch.customCss } : {}),
+            ...('customCssEnabled' in patch ? { customCssEnabled: patch.customCssEnabled } : {}),
+          },
+          { quiet: true },
+        )
         if ('customCss' in patch) sync.customCss = patch.customCss
         if ('customCssEnabled' in patch) sync.customCssEnabled = patch.customCssEnabled
       }
@@ -393,10 +397,14 @@ import {
           }
           if (typeof remoteSettings.customCss === 'string' || typeof remoteSettings.customCssEnabled === 'boolean') {
             const dash = getDashSettings()
-            updateDashSettings({
-              customCss: typeof remoteSettings.customCss === 'string' ? remoteSettings.customCss : dash.customCss,
-              customCssEnabled: typeof remoteSettings.customCssEnabled === 'boolean' ? remoteSettings.customCssEnabled : dash.customCssEnabled,
-            })
+            // Quiet: mirroring the account's CSS must not make this browser's dash look newer than other devices'.
+            updateDashSettings(
+              {
+                customCss: typeof remoteSettings.customCss === 'string' ? remoteSettings.customCss : dash.customCss,
+                customCssEnabled: typeof remoteSettings.customCssEnabled === 'boolean' ? remoteSettings.customCssEnabled : dash.customCssEnabled,
+              },
+              { quiet: true },
+            )
           }
 
           const nextTheme = hasRemoteTheme
@@ -454,8 +462,12 @@ import {
       }
     }, [syncSettingsToAccount, flushSettings])
 
+    // A change the server already made (a new avatar): shown at once, no reload.
+    const patchAccount = useCallback((patch) => setAccount((current) => (current ? { ...current, ...patch } : current)), [])
+
     const value = useMemo(() => ({
       account,
+      patchAccount,
       isAccountLoading,
       theme,
       themeChoice,
@@ -468,6 +480,7 @@ import {
       prefs,
       setPrefs,
       account,
+      patchAccount,
       isAccountLoading,
       theme,
       themeChoice,

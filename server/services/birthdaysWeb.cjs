@@ -1,3 +1,4 @@
+const { memberOnly } = require("./membership.cjs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const express = require("express");
@@ -36,6 +37,12 @@ const DRESS_DIR = path.join(__dirname, "db", "birthday-dress");
 const SNOWFLAKE = /^\d{17,20}$/;
 
 function registerBirthdaysWeb(app, { requireStorage, getDatabase, getRequestSession, activity = null, members, getModeration = () => null }) {
+  // Your own birthday, dress codes and reminders: server members only (services/membership.cjs). The list and
+  // today's birthdays stay open and show a stranger what a guest sees (public profiles); dress code pictures load for all.
+  app.use(["/birthdays", "/account/birthday"], (req, res, next) => {
+    if (req.baseUrl === "/birthdays" && req.method === "GET" && /^\/(?:|today|dress-code\/.+)$/.test(req.path)) return next();
+    return memberOnly(req, res, next);
+  });
   const readLimiter = rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: "draft-8", legacyHeaders: false });
   const writeLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 40, standardHeaders: "draft-8", legacyHeaders: false });
   const db = () => {
@@ -118,10 +125,12 @@ function registerBirthdaysWeb(app, { requireStorage, getDatabase, getRequestSess
     requireStorage,
     route(async (req) => {
       const viewer = getRequestSession(req);
+      // People without an account (from Discord) only for members; everyone else sees public profiles, like a guest.
+      const member = viewer ? await members.viewerInServer(viewer) : false;
       const year = new Date().getFullYear();
       const thisYear = birthdays.celebrations(year);
-      const mine = viewer ? new Set(reminders.remindersOf(viewer.discord_user_id)) : new Set();
-      const people = (await visiblePeople(viewer)).map(({ entry, user, discord }) => {
+      const mine = member ? new Set(reminders.remindersOf(viewer.discord_user_id)) : new Set();
+      const people = (await visiblePeople(viewer, { withoutAccount: member })).map(({ entry, user, discord }) => {
         const celebration = thisYear.get(entry.userId);
         return {
           key: user ? `@${user.username}` : `discord:${entry.userId}`,
@@ -138,7 +147,7 @@ function registerBirthdaysWeb(app, { requireStorage, getDatabase, getRequestSess
         };
       });
       people.sort((a, b) => a.month - b.month || a.day - b.day || a.name.localeCompare(b.name));
-      return { people, loggedIn: Boolean(viewer) };
+      return { people, loggedIn: Boolean(viewer), member };
     }),
   );
 

@@ -9,8 +9,8 @@ The apps are the website. `pnpm app:build` runs the normal website build (into
 | HomeSite | `APP_ID` / `APP_NAME` | HomeSite App | every page except /cult: home, /card, /about, /dash, /maps, the hub … | `/` |
 | Cult of black Cats | `CULT_APP_ID` / `CULT_APP_NAME` | CultSite App | /cult and everything under it | `/cult` |
 
-Both apps show the account pages (`/cult/settings`, `/cult/notifications`,
-`/cult/privacy`), because each needs login and push. In the HomeSite app they
+Both apps show the account pages (`/settings`, `/cult/notifications`,
+`/privacy`), because each needs login and push. In the HomeSite app they
 wear HomeSite's look (`CultShell` checks `appBrand`). A link to the other app's
 pages opens the other app if it is installed, otherwise the browser. Inside the
 apps they never show each other's content. The web is unchanged: one site with
@@ -178,7 +178,7 @@ in Android's settings.
    keep the local one) and deploy the site, so links and passkeys also work in
    the Play versions.
 4. The store listing needs:
-   - a privacy policy URL: `/cult/privacy` describes what is stored;
+   - a privacy policy URL: `/privacy` describes what is stored;
    - the data safety form: account data (Discord ID, name, avatar), optional
      email, push tokens, nothing sold, nothing for ads;
    - screenshots;

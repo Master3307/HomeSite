@@ -128,6 +128,11 @@ async function subsonicCall(ctx, method, params) {
   if (body.status !== "ok") throw httpError(400, `${KINDS[ctx.kind]?.name ?? "Subsonic"}: ${body.error?.message ?? "error"}`);
   return body;
 }
+/* Master Search: the words a search action looks for ("" when too short). */
+const searchWords = (query) => {
+  const words = String(query.q ?? "").trim().slice(0, 200);
+  return words.length < 2 ? "" : words;
+};
 const ALBUM_TYPES = { newest: "newest", recent: "recent", frequent: "frequent", random: "random", highest: "highest", starred: "starred" };
 
 const jellyfinHeaders = (ctx) => ({ Authorization: `MediaBrowser Client="HomeSite", Device="Dash", DeviceId="homesite-dash", Version="1.0", Token="${ctx.secrets.apiKey}"`, "X-Emby-Token": ctx.secrets.apiKey });
@@ -217,6 +222,64 @@ function arrCalendar(kind) {
     );
   };
 }
+/* Lidarr (albums) and Readarr (books): API v1, the same calendar idea. */
+function arrV1Calendar(kind) {
+  return async (ctx, query) => {
+    const days = clampInt(query.days, 1, 60, 14);
+    const past = clampInt(query.past, 0, 14, 1);
+    const start = new Date(Date.now() - past * 86_400_000).toISOString();
+    const end = new Date(Date.now() + days * 86_400_000).toISOString();
+    const list = await ctx.request("api/v1/calendar", { headers: { "X-Api-Key": ctx.secrets.apiKey }, query: { start, end, unmonitored: "false", ...(kind === "lidarr" ? { includeArtist: "true" } : { includeAuthor: "true" }) } });
+    const cover = (images) => (images ?? []).find((image) => image.coverType === "cover" || image.coverType === "poster")?.remoteUrl ?? null;
+    return (Array.isArray(list) ? list : []).slice(0, 100).map((item) => ({
+      id: `${kind[0]}${item.id}`,
+      title: item.title ?? "",
+      subtitle: kind === "lidarr" ? (item.artist?.artistName ?? "") : (item.author?.authorName ?? ""),
+      date: item.releaseDate ?? null,
+      hasFile: kind === "lidarr" ? Boolean(item.statistics?.trackFileCount) : Boolean(item.statistics?.bookFileCount),
+      poster: cover(item.images),
+      kind: kind === "lidarr" ? "album" : "book",
+    }));
+  };
+}
+function arrV1Queue(kind) {
+  return async (ctx) => {
+    const data = await ctx.request("api/v1/queue", { headers: { "X-Api-Key": ctx.secrets.apiKey }, query: { pageSize: 20, ...(kind === "lidarr" ? { includeArtist: "true", includeAlbum: "true" } : { includeAuthor: "true", includeBook: "true" }) } });
+    return (data?.records ?? []).map((item) => ({
+      id: String(item.id),
+      name: (kind === "lidarr" ? [item.artist?.artistName, item.album?.title] : [item.author?.authorName, item.book?.title]).filter(Boolean).join(" – ") || item.title,
+      progress: item.size ? 1 - (Number(item.sizeleft) || 0) / item.size : 0,
+      state: item.trackedDownloadState ?? item.status ?? "",
+      eta: item.timeleft ?? null,
+    }));
+  };
+}
+
+/* Transmission RPC: the session id comes with a 409 first and is kept. */
+async function transmission(ctx, method, args = {}) {
+  const auth = ctx.config.username ? basicAuth(ctx) : {};
+  const send = (sid) => ctx.request(ctx.config.path || "transmission/rpc", { method: "POST", json: { method, arguments: args }, headers: { ...auth, ...(sid ? { "X-Transmission-Session-Id": sid } : {}) }, raw: true });
+  let answer = await send(sessionOf(ctx.id));
+  if (answer.status === 409) {
+    const sid = String(answer.headers["x-transmission-session-id"] ?? "");
+    keepSession(ctx.id, sid, 60 * 60_000);
+    answer = await send(sid);
+  }
+  if (answer.status === 401 || answer.status === 403) throw httpError(400, "Transmission didn't accept the login.");
+  if (answer.status >= 400) throw httpError(502, `Transmission answered ${answer.status}.`);
+  const data = answer.json();
+  if (data?.result !== "success") throw httpError(502, `Transmission: ${String(data?.result ?? "no answer").slice(0, 120)}`);
+  return data.arguments ?? {};
+}
+/* NZBGet JSON-RPC (basic auth). */
+async function nzbget(ctx, method, params = []) {
+  const data = await ctx.request("jsonrpc", { method: "POST", json: { method, params }, headers: basicAuth(ctx) });
+  if (data?.error) throw httpError(502, `NZBGet: ${String(data.error.message ?? data.error).slice(0, 120)}`);
+  return data?.result;
+}
+/* "0:12:34" / "12:34" (SABnzbd) -> seconds */
+const clockSeconds = (text) => String(text ?? "").split(":").map(Number).reduce((total, part) => total * 60 + (Number.isFinite(part) ? part : 0), 0);
+
 function arrQueue(kind) {
   return async (ctx) => {
     const data = await ctx.request("api/v3/queue", { headers: { "X-Api-Key": ctx.secrets.apiKey }, query: { pageSize: 20, ...(kind === "sonarr" ? { includeSeries: "true", includeEpisode: "true" } : { includeMovie: "true" }) } });
@@ -346,7 +409,8 @@ async function fileUpload(ctx, folder, name, buffer) {
   if (!file || file.length > 200 || /[\\/\0]/.test(file) || file === "." || file === "..") throw httpError(400, "That file name isn't allowed.");
   const target = ctx.kind === "copyparty" ? `${ctx.url.replace(/\/+$/, "")}${encodePath(dir + file)}` : `${davRoot(ctx)}${encodePath(dir + file)}`;
   const headers = { ...(ctx.kind === "copyparty" ? copypartyHeaders(ctx) : davHeaders(ctx)), "Content-Type": "application/octet-stream" };
-  const answer = await safeFetch(parseTarget(target, { ports: "service" }), { method: "PUT", headers, body: buffer, allowPrivate: ctx.allowPrivate, ports: "service", timeout: 60_000 });
+  // `timeout` is the longest silence, so big files (streamed from disk) have time to go through.
+  const answer = await safeFetch(parseTarget(target, { ports: "service" }), { method: "PUT", headers, body: buffer, allowPrivate: ctx.allowPrivate, ports: "service", timeout: 120_000 });
   if (answer.status === 401 || answer.status === 403) throw httpError(400, "The service didn't allow the upload.");
   if (answer.status >= 400) throw httpError(502, `The upload failed (${answer.status}).`);
   return { ok: true, path: dir + file };
@@ -405,6 +469,17 @@ const ADAPTERS = {
         const artistCount = (artists?.artists?.index ?? []).reduce((sum, index) => sum + (index.artist?.length ?? 0), 0);
         return { songs: num(scan.scanStatus?.count), artists: artists ? artistCount : null, scanning: Boolean(scan.scanStatus?.scanning), lastScan: scan.scanStatus?.lastScan ?? null };
       },
+      // Master Search: albums and songs matching the words (links open the server's own web player).
+      search: async (ctx, query) => {
+        const words = String(query.q ?? "").trim().slice(0, 200);
+        if (words.length < 2) return [];
+        const size = clampInt(query.size, 1, 10, 3);
+        const body = await subsonicCall(ctx, "search3", { query: words, artistCount: 0, albumCount: size, songCount: size });
+        const base = ctx.url.replace(/\/+$/, "");
+        const albums = (body.searchResult3?.album ?? []).map((album) => ({ id: album.id, title: album.name, subtitle: album.artist ?? "", cover: album.coverArt ?? null, type: "album", link: `${base}/app/#/album/${encodeURIComponent(album.id)}/show` }));
+        const songs = (body.searchResult3?.song ?? []).map((song) => ({ id: song.id, title: song.title, subtitle: [song.artist, song.album].filter(Boolean).join(" · "), cover: song.coverArt ?? null, type: "song", link: song.albumId ? `${base}/app/#/album/${encodeURIComponent(song.albumId)}/show` : `${base}/app/` }));
+        return [...songs, ...albums];
+      },
     },
     image: async (ctx, item, size) => {
       const { path, query } = subsonic(ctx, "getCoverArt", { id: item, size });
@@ -449,6 +524,25 @@ const ADAPTERS = {
       stats: async (ctx) => {
         const counts = await ctx.request("Items/Counts", { headers: jellyfinHeaders(ctx) });
         return { movies: num(counts.MovieCount), series: num(counts.SeriesCount), episodes: num(counts.EpisodeCount), albums: num(counts.AlbumCount), songs: num(counts.SongCount), artists: num(counts.ArtistCount) };
+      },
+      // Master Search: films, shows, albums, songs and books with the words in their name.
+      search: async (ctx, query) => {
+        const words = searchWords(query);
+        if (!words) return [];
+        const list = await ctx.request("Items", {
+          headers: jellyfinHeaders(ctx),
+          query: { searchTerm: words, Recursive: "true", IncludeItemTypes: "Movie,Series,MusicAlbum,Audio,Book,AudioBook", Limit: clampInt(query.size, 1, 10, 4), Fields: "ProductionYear", ImageTypeLimit: 1 },
+        });
+        const base = ctx.url.replace(/\/+$/, "");
+        const link = (id) => (ctx.kind === "emby" ? `${base}/web/index.html#!/item?id=${encodeURIComponent(id)}` : `${base}/web/#/details?id=${encodeURIComponent(id)}`);
+        return (list?.Items ?? []).map((item) => ({
+          id: item.Id,
+          title: item.Name ?? "",
+          subtitle: [item.AlbumArtist ?? item.Artists?.[0], item.ProductionYear].filter(Boolean).join(" · "),
+          cover: item.Type === "Audio" && item.AlbumId ? item.AlbumId : item.Id,
+          type: item.Type === "Audio" ? "song" : item.Type === "MusicAlbum" ? "album" : item.Type === "Book" || item.Type === "AudioBook" ? "book" : "video",
+          link: link(item.Id),
+        }));
       },
     },
     image: async (ctx, item, size) => ctx.request(`Items/${encodeURIComponent(item)}/Images/Primary`, { headers: jellyfinHeaders(ctx), query: { maxHeight: size, maxWidth: size, quality: 85 }, raw: true, accept: RASTER }),
@@ -537,6 +631,21 @@ const ADAPTERS = {
       entities: async (ctx) => {
         const list = await ctx.request("api/states", { headers: haHeaders(ctx) });
         return (Array.isArray(list) ? list : []).slice(0, 2000).map((state) => ({ id: state.entity_id, name: state.attributes?.friendly_name ?? state.entity_id, domain: String(state.entity_id).split(".")[0] }));
+      },
+      // Master Search: devices and sensors by name, with their state now.
+      search: async (ctx, query) => {
+        const words = searchWords(query)
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(Boolean);
+        if (!words.length) return [];
+        const list = await ctx.request("api/states", { headers: haHeaders(ctx) });
+        const base = ctx.url.replace(/\/+$/, "");
+        return (Array.isArray(list) ? list : [])
+          .map(haEntity)
+          .filter((entity) => words.every((word) => `${entity.name} ${entity.id}`.toLowerCase().includes(word)))
+          .slice(0, clampInt(query.size, 1, 10, 4))
+          .map((entity) => ({ id: entity.id, title: entity.name, subtitle: `${entity.state}${entity.unit ? ` ${entity.unit}` : ""}`, type: "device", link: `${base}/history?entity_id=${encodeURIComponent(entity.id)}` }));
       },
     },
     mutations: {
@@ -651,6 +760,27 @@ const ADAPTERS = {
         const data = await ctx.request("library/recentlyAdded", { headers: plexHeaders(ctx), query: { "X-Plex-Container-Start": 0, "X-Plex-Container-Size": clampInt(query.size, 1, 40, 12) } });
         return (data?.MediaContainer?.Metadata ?? []).map((item) => ({ id: String(item.ratingKey), title: item.type === "season" ? item.parentTitle : item.title, subtitle: item.type === "album" ? (item.parentTitle ?? "") : item.type === "season" ? (item.title ?? "") : item.year ? String(item.year) : "", year: num(item.year), cover: String(item.ratingKey), type: item.type === "album" ? "album" : "video" }));
       },
+      // Master Search: Plex's own search over every library (links open the item in Plex Web).
+      search: async (ctx, query) => {
+        const words = searchWords(query);
+        if (!words) return [];
+        const [identity, data] = await Promise.all([ctx.request("identity", { headers: plexHeaders(ctx) }).catch(() => null), ctx.request("hubs/search", { headers: plexHeaders(ctx), query: { query: words, limit: clampInt(query.size, 1, 10, 4) } })]);
+        const machine = identity?.MediaContainer?.machineIdentifier;
+        const base = ctx.url.replace(/\/+$/, "");
+        const kinds = { movie: "video", show: "video", episode: "video", artist: "album", album: "album", track: "song" };
+        return (data?.MediaContainer?.Hub ?? [])
+          .filter((hub) => kinds[hub.type])
+          .flatMap((hub) => hub.Metadata ?? [])
+          .slice(0, clampInt(query.size, 1, 10, 4))
+          .map((item) => ({
+            id: String(item.ratingKey),
+            title: item.title ?? "",
+            subtitle: [item.grandparentTitle ?? item.parentTitle, item.year].filter(Boolean).join(" · "),
+            cover: String(item.type === "track" ? (item.parentRatingKey ?? item.ratingKey) : item.ratingKey),
+            type: kinds[item.type],
+            link: machine ? `${base}/web/index.html#!/server/${encodeURIComponent(machine)}/details?key=${encodeURIComponent(`/library/metadata/${item.ratingKey}`)}` : `${base}/web/`,
+          }));
+      },
     },
     image: async (ctx, item, size) => ctx.request(`photo/:/transcode`, { headers: plexHeaders(ctx), query: { width: size, height: size, minSize: 1, upscale: 1, url: `/library/metadata/${item}/thumb` }, raw: true, accept: RASTER }),
   },
@@ -666,6 +796,21 @@ const ADAPTERS = {
         const data = await ctx.request("api/me/listening-stats", { headers: absHeaders(ctx) });
         return { hoursListened: Math.round((Number(data?.totalTime) || 0) / 360) / 10, minutesToday: Math.round((Number(data?.today) || 0) / 60), books: num(Object.keys(data?.items ?? {}).length) };
       },
+      // Master Search: books and podcasts in every library.
+      search: async (ctx, query) => {
+        const words = searchWords(query);
+        if (!words) return [];
+        const size = clampInt(query.size, 1, 10, 4);
+        const libraries = (await ctx.request("api/libraries", { headers: absHeaders(ctx) }))?.libraries ?? [];
+        const found = await Promise.all(libraries.slice(0, 8).map((library) => ctx.request(`api/libraries/${encodeURIComponent(library.id)}/search`, { headers: absHeaders(ctx), query: { q: words, limit: size } }).catch(() => null)));
+        const base = ctx.url.replace(/\/+$/, "");
+        return found
+          .flatMap((data) => [...(data?.book ?? []), ...(data?.podcast ?? [])])
+          .map((entry) => entry.libraryItem)
+          .filter(Boolean)
+          .slice(0, size)
+          .map((item) => ({ id: item.id, title: item.media?.metadata?.title ?? "", subtitle: item.media?.metadata?.authorName ?? item.media?.metadata?.author ?? "", cover: item.id, type: "book", link: `${base}/item/${encodeURIComponent(item.id)}` }));
+      },
     },
     image: async (ctx, item, size) => ctx.request(`api/items/${encodeURIComponent(item)}/cover`, { headers: absHeaders(ctx), query: { width: size, format: "jpeg" }, raw: true, accept: RASTER }),
   },
@@ -674,9 +819,17 @@ const ADAPTERS = {
     test: async (ctx) => (await ctx.request("api/users/me", { headers: immichHeaders(ctx) })).name ?? "Immich",
     actions: {
       photos: async (ctx, query) => {
-        const size = clampInt(query.size, 1, 30, 6);
+        const size = clampInt(query.size, 1, query.album ? 500 : 30, 6);
         let assets;
-        if (query.sort === "recent") {
+        if (query.album) {
+          // One album (the slideshow): its pictures, in the album's order or shuffled.
+          if (!/^[0-9a-f-]{36}$/i.test(String(query.album))) throw httpError(400, "That isn't an album.");
+          const album = await ctx.request(`api/albums/${encodeURIComponent(query.album)}`, { headers: immichHeaders(ctx), query: { withoutAssets: "false" } });
+          assets = (album?.assets ?? []).filter((asset) => asset.type === "IMAGE");
+          if (query.sort === "random") assets = assets.map((asset) => [Math.random(), asset]).sort((a, b) => a[0] - b[0]).map(([, asset]) => asset);
+          else if (query.sort === "recent") assets = [...assets].sort((a, b) => String(b.fileCreatedAt ?? "").localeCompare(String(a.fileCreatedAt ?? "")));
+          assets = assets.slice(0, size);
+        } else if (query.sort === "recent") {
           const data = await ctx.request("api/search/metadata", { method: "POST", headers: immichHeaders(ctx), json: { size, order: "desc", type: "IMAGE" } });
           assets = data?.assets?.items ?? [];
         } else {
@@ -684,6 +837,22 @@ const ADAPTERS = {
         }
         const base = ctx.url.replace(/\/+$/, "");
         return (Array.isArray(assets) ? assets : []).map((asset) => ({ id: asset.id, title: asset.originalFileName ?? "", date: asset.fileCreatedAt ?? asset.localDateTime ?? null, link: `${base}/photos/${asset.id}` }));
+      },
+      // Master Search: pictures for the words (smart search needs Immich's machine learning; without it, file names).
+      search: async (ctx, query) => {
+        const words = String(query.q ?? "").trim().slice(0, 200);
+        if (words.length < 2) return [];
+        const size = clampInt(query.size, 1, 12, 4);
+        const data = await ctx
+          .request("api/search/smart", { method: "POST", headers: immichHeaders(ctx), json: { query: words, size, type: "IMAGE" } })
+          .catch(() => ctx.request("api/search/metadata", { method: "POST", headers: immichHeaders(ctx), json: { originalFileName: words, size, type: "IMAGE" } }));
+        const base = ctx.url.replace(/\/+$/, "");
+        return (data?.assets?.items ?? []).slice(0, size).map((asset) => ({ id: asset.id, title: asset.originalFileName ?? "", date: asset.fileCreatedAt ?? asset.localDateTime ?? null, link: `${base}/photos/${asset.id}` }));
+      },
+      // The albums to pick from (slideshow).
+      albums: async (ctx) => {
+        const data = await ctx.request("api/albums", { headers: immichHeaders(ctx) });
+        return (Array.isArray(data) ? data : []).map((album) => ({ id: album.id, name: album.albumName ?? "", count: num(album.assetCount), cover: album.albumThumbnailAssetId ?? null })).sort((a, b) => a.name.localeCompare(b.name));
       },
       stats: async (ctx) => {
         const data = await ctx.request("api/assets/statistics", { headers: immichHeaders(ctx) });
@@ -707,7 +876,18 @@ const ADAPTERS = {
       const listing = await davList(ctx, "/");
       return `${listing.items.length} items in your files`;
     },
-    actions: { list: (ctx, query) => davList(ctx, cleanPath(query.path, { dir: true })) },
+    actions: {
+      list: (ctx, query) => davList(ctx, cleanPath(query.path, { dir: true })),
+      // Master Search: Nextcloud's own file search (names, and contents with full-text search on).
+      search: async (ctx, query) => {
+        const words = searchWords(query);
+        if (!words) return [];
+        const data = await ctx.request("ocs/v2.php/search/providers/files/search", { headers: { ...davHeaders(ctx), "OCS-APIRequest": "true", Accept: "application/json" }, query: { term: words, limit: clampInt(query.size, 1, 10, 4) } });
+        return (data?.ocs?.data?.entries ?? [])
+          .map((entry) => ({ id: String(entry.attributes?.fileId ?? entry.resourceUrl ?? entry.title), title: entry.title ?? "", subtitle: entry.subline ?? "", type: "file", link: /^https?:\/\//.test(entry.resourceUrl ?? "") ? entry.resourceUrl : `${ctx.url.replace(/\/+$/, "")}${entry.resourceUrl ?? ""}` }))
+          .slice(0, clampInt(query.size, 1, 10, 4));
+      },
+    },
     files: FILES,
   },
 
@@ -730,6 +910,14 @@ const ADAPTERS = {
       stats: async (ctx) => {
         const data = await ctx.request("api/statistics/", { headers: { Authorization: `Token ${ctx.secrets.token}` } });
         return { documents: num(data.documents_total), inbox: num(data.documents_inbox), characters: num(data.character_count) };
+      },
+      // Master Search: Paperless's full-text search (the documents' words, not only their titles).
+      search: async (ctx, query) => {
+        const words = searchWords(query);
+        if (!words) return [];
+        const data = await ctx.request("api/documents/", { headers: { Authorization: `Token ${ctx.secrets.token}`, Accept: "application/json" }, query: { query: words, page_size: clampInt(query.size, 1, 10, 4), fields: "id,title,created" } });
+        const base = ctx.url.replace(/\/+$/, "");
+        return (data?.results ?? []).map((doc) => ({ id: String(doc.id), title: doc.title ?? "", subtitle: doc.created ? String(doc.created).slice(0, 10) : "", type: "document", link: `${base}/documents/${encodeURIComponent(doc.id)}/details` }));
       },
     },
   },
@@ -859,6 +1047,175 @@ const ADAPTERS = {
     },
   },
 
+  lidarr: {
+    test: async (ctx) => `Lidarr ${(await ctx.request("api/v1/system/status", { headers: { "X-Api-Key": ctx.secrets.apiKey } })).version ?? ""}`.trim(),
+    actions: { calendar: arrV1Calendar("lidarr"), queue: arrV1Queue("lidarr") },
+  },
+
+  readarr: {
+    test: async (ctx) => `Readarr ${(await ctx.request("api/v1/system/status", { headers: { "X-Api-Key": ctx.secrets.apiKey } })).version ?? ""}`.trim(),
+    actions: { calendar: arrV1Calendar("readarr"), queue: arrV1Queue("readarr") },
+  },
+
+  prowlarr: {
+    test: async (ctx) => `Prowlarr ${(await ctx.request("api/v1/system/status", { headers: { "X-Api-Key": ctx.secrets.apiKey } })).version ?? ""}`.trim(),
+    actions: {
+      stats: async (ctx) => {
+        const [indexers, health] = await Promise.all([ctx.request("api/v1/indexer", { headers: { "X-Api-Key": ctx.secrets.apiKey } }), ctx.request("api/v1/health", { headers: { "X-Api-Key": ctx.secrets.apiKey } }).catch(() => [])]);
+        const list = Array.isArray(indexers) ? indexers : [];
+        return { indexers: list.length, indexersEnabled: list.filter((indexer) => indexer.enable).length, warnings: Array.isArray(health) ? health.length : null };
+      },
+    },
+  },
+
+  overseerr: {
+    test: async (ctx) => `Overseerr ${(await ctx.request("api/v1/status", { headers: { "X-Api-Key": ctx.secrets.apiKey } })).version ?? ""}`.trim(),
+    actions: {
+      stats: async (ctx) => {
+        const count = await ctx.request("api/v1/request/count", { headers: { "X-Api-Key": ctx.secrets.apiKey } });
+        return { requestsPending: num(count.pending), requestsProcessing: num(count.processing), requestsAvailable: num(count.available), requests: num(count.total) };
+      },
+    },
+  },
+
+  tautulli: {
+    test: async (ctx) => {
+      const data = await ctx.request("api/v2", { query: { apikey: ctx.secrets.apiKey, cmd: "get_server_info" } });
+      if (data?.response?.result !== "success") throw httpError(400, "Tautulli didn't accept the API key.");
+      return `Tautulli · ${data.response.data?.pms_name ?? "Plex"}`;
+    },
+    actions: {
+      nowPlaying: async (ctx) => {
+        const data = await ctx.request("api/v2", { query: { apikey: ctx.secrets.apiKey, cmd: "get_activity" } });
+        return (data?.response?.data?.sessions ?? []).map((item) => ({
+          id: String(item.session_key ?? item.session_id ?? item.rating_key),
+          title: item.title ?? "",
+          artist: item.media_type === "episode" ? (item.grandparent_title ?? "") : (item.grandparent_title || item.original_title || ""),
+          album: item.parent_title ?? "",
+          cover: String(item.media_type === "track" ? item.parent_thumb || item.thumb : item.media_type === "episode" ? item.grandparent_thumb || item.thumb : item.thumb || ""),
+          user: item.friendly_name ?? item.user ?? "",
+          player: [item.product, item.player].filter(Boolean).join(" · "),
+          paused: item.state === "paused",
+          position: num(item.view_offset) !== null ? item.view_offset / 1000 : null,
+          duration: num(item.duration) !== null ? item.duration / 1000 : null,
+          type: item.media_type === "track" ? "music" : "video",
+        }));
+      },
+      stats: async (ctx) => {
+        const data = await ctx.request("api/v2", { query: { apikey: ctx.secrets.apiKey, cmd: "get_activity" } });
+        const info = data?.response?.data ?? {};
+        return { streams: num(info.stream_count), transcodes: num(info.stream_count_transcode) };
+      },
+    },
+    // Covers through Tautulli's own picture proxy (Plex's address stays unknown to the browser).
+    image: async (ctx, item, size) => {
+      if (!/^\/library\/metadata\/\d+\/(thumb|art)(\/\d+)?$/.test(String(item))) throw httpError(400, "That isn't a cover.");
+      return ctx.request("pms_image_proxy", { query: { apikey: ctx.secrets.apiKey, img: item, width: size, height: size, fallback: "poster" }, raw: true, accept: RASTER });
+    },
+  },
+
+  transmission: {
+    test: async (ctx) => `Transmission ${(await transmission(ctx, "session-get", { fields: ["version"] })).version ?? ""}`.trim(),
+    actions: {
+      queue: async (ctx, query) => {
+        const [stats, data] = await Promise.all([transmission(ctx, "session-stats"), transmission(ctx, "torrent-get", { fields: ["hashString", "name", "percentDone", "rateDownload", "rateUpload", "eta", "status", "totalSize"] })]);
+        const active = (data.torrents ?? []).filter((torrent) => query.filter === "all" || torrent.rateDownload > 0 || torrent.rateUpload > 0 || (torrent.percentDone < 1 && torrent.status !== 0));
+        return {
+          down: num(stats.downloadSpeed),
+          up: num(stats.uploadSpeed),
+          items: active
+            .sort((a, b) => b.rateDownload - a.rateDownload)
+            .slice(0, clampInt(query.size, 1, 40, 10))
+            .map((torrent) => ({ id: torrent.hashString, name: torrent.name, progress: num(torrent.percentDone) ?? 0, down: num(torrent.rateDownload), up: num(torrent.rateUpload), eta: torrent.eta >= 0 ? torrent.eta : null, size: num(torrent.totalSize) })),
+        };
+      },
+    },
+  },
+
+  sabnzbd: {
+    test: async (ctx) => `SABnzbd ${(await ctx.request("api", { query: { mode: "version", output: "json", apikey: ctx.secrets.apiKey } })).version ?? ""}`.trim(),
+    actions: {
+      queue: async (ctx, query) => {
+        const data = await ctx.request("api", { query: { mode: "queue", output: "json", apikey: ctx.secrets.apiKey, limit: clampInt(query.size, 1, 40, 10) } });
+        if (data?.error) throw httpError(400, `SABnzbd: ${String(data.error).slice(0, 120)}`);
+        const queue = data?.queue ?? {};
+        return {
+          down: (Number(queue.kbpersec) || 0) * 1024,
+          up: null,
+          items: (queue.slots ?? []).map((slot) => ({ id: slot.nzo_id, name: slot.filename, progress: (Number(slot.percentage) || 0) / 100, eta: clockSeconds(slot.timeleft), state: slot.status })),
+        };
+      },
+    },
+  },
+
+  nzbget: {
+    test: async (ctx) => `NZBGet ${(await nzbget(ctx, "version")) ?? ""}`.trim(),
+    actions: {
+      queue: async (ctx, query) => {
+        const [status, groups] = await Promise.all([nzbget(ctx, "status"), nzbget(ctx, "listgroups", [0])]);
+        const speed = Number(status?.DownloadRate) || 0;
+        return {
+          down: speed,
+          up: null,
+          items: (groups ?? []).slice(0, clampInt(query.size, 1, 40, 10)).map((group) => {
+            const total = Number(group.FileSizeMB) || 0;
+            const left = Number(group.RemainingSizeMB) || 0;
+            return { id: String(group.NZBID), name: group.NZBName, progress: total ? 1 - left / total : 0, state: group.Status, eta: speed > 0 && group.Status === "DOWNLOADING" ? Math.round((left * 1024 * 1024) / speed) : null };
+          }),
+        };
+      },
+    },
+  },
+
+  technitium: {
+    test: async (ctx) => {
+      const data = await ctx.request("api/user/session/get", { query: { token: ctx.secrets.token } });
+      if (data?.status !== "ok") throw httpError(400, "Technitium didn't accept the token.");
+      return `Technitium DNS ${data.info?.version ?? ""}`.trim();
+    },
+    actions: {
+      summary: async (ctx) => {
+        const data = await ctx.request("api/dashboard/stats/get", { query: { token: ctx.secrets.token, type: "LastDay" } });
+        if (data?.status !== "ok") throw httpError(400, "Technitium didn't accept the token.");
+        const stats = data.response?.stats ?? {};
+        const queries = num(stats.totalQueries);
+        const blocked = num(stats.totalBlocked);
+        return { queries, blocked, percent: queries ? (blocked / queries) * 100 : 0, domains: num(stats.blockListZones), clients: num(stats.totalClients), enabled: null };
+      },
+    },
+  },
+
+  gatus: {
+    test: async (ctx) => {
+      const list = await ctx.request("api/v1/endpoints/statuses", { query: { page: 1 } });
+      return `Gatus · ${Array.isArray(list) ? list.length : 0} endpoints`;
+    },
+    actions: {
+      status: async (ctx) => {
+        const list = await ctx.request("api/v1/endpoints/statuses", { query: { page: 1 } });
+        return {
+          title: "",
+          monitors: (Array.isArray(list) ? list : []).slice(0, 60).map((endpoint) => {
+            const results = endpoint.results ?? [];
+            const last = results[results.length - 1];
+            return { id: endpoint.key, name: endpoint.group ? `${endpoint.group} / ${endpoint.name}` : endpoint.name, status: last ? (last.success ? 1 : 0) : null, ping: last ? Math.round((Number(last.duration) || 0) / 1e6) : null, uptime: null, history: results.slice(-30).map((result) => (result.success ? 1 : 0)) };
+          }),
+        };
+      },
+    },
+  },
+
+  healthchecks: {
+    test: async (ctx) => `Healthchecks · ${((await ctx.request("api/v3/checks/", { headers: { "X-Api-Key": ctx.secrets.apiKey } })).checks ?? []).length} checks`,
+    actions: {
+      status: async (ctx) => {
+        const data = await ctx.request("api/v3/checks/", { headers: { "X-Api-Key": ctx.secrets.apiKey } });
+        const STATE = { up: 1, down: 0, grace: 2, paused: 3, new: 2, started: 2 };
+        return { title: "", monitors: (data?.checks ?? []).slice(0, 60).map((check) => ({ id: check.uuid ?? check.unique_key ?? check.name, name: check.name, status: STATE[check.status] ?? null, ping: null, uptime: null, history: [] })) };
+      },
+    },
+  },
+
   custom: {
     test: async (ctx) => {
       await ADAPTERS.custom.actions.get(ctx, { path: "" });
@@ -874,6 +1231,8 @@ const ADAPTERS = {
     },
   },
 };
+// Emby speaks Jellyfin's API (Jellyfin started as its fork), with the same token header.
+ADAPTERS.emby = ADAPTERS.jellyfin;
 
 // Every OpenSubsonic server speaks the same API as Navidrome.
 ADAPTERS.opensubsonic = ADAPTERS.navidrome;
@@ -924,7 +1283,7 @@ function cleanInput(kindId, body, previous = null) {
   return { kind: kindId, name: plainText(body.name, 60) || previous?.name || kind.name, url: url.href.replace(/\/+$/, ""), config, secrets };
 }
 
-function registerDashIntegrations(app, { getRequestSession, getDatabase, requireStorage, activity = null, limiter }) {
+function registerDashIntegrations(app, { getRequestSession, getDatabase, requireStorage, activity = null, limiter, uploads = null }) {
   let ready = false;
   const db = () => {
     const handle = getDatabase();
@@ -1132,23 +1491,35 @@ function registerDashIntegrations(app, { getRequestSession, getDatabase, require
     }
   });
 
-  // An upload into a folder of a files integration (raw body, 50 MB at most).
+  // An upload into a folder of a files integration: up to 50 MB in the request, bigger ones sent in parts first (chunkedUploads.cjs).
   const uploadLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false });
   const rawBody = express.raw({ type: () => true, limit: "50mb" });
+  const bodyUnlessChunked = (req, res, next) => (uploads?.chunked(req) ? next() : rawBody(req, res, next));
+  // In parts: up to 2 GB (the owner: 20 GB); the file only passes through on its way to the service.
+  const chunkedLimit = (session) => (isOwner(session) ? 20 * 1024 ** 3 : 2 * 1024 ** 3);
+  uploads?.purpose("integration-file", async (session, { size }) => {
+    if (size > chunkedLimit(session)) throw httpError(413, `That file is too big (${chunkedLimit(session) / 1024 ** 3} GB at most).`);
+  });
   app.post(
     "/dash/integrations/:id/upload",
     uploadLimiter,
     requireStorage,
-    rawBody,
+    bodyUnlessChunked,
     route(async (req, _res, session) => {
-      const item = one(session, req.params.id);
-      const files = ADAPTERS[item.kind].files;
-      if (!files) throw httpError(404, "This integration can't take uploads.");
-      if (!Buffer.isBuffer(req.body) || !req.body.length) throw httpError(400, "The file is empty.");
-      const result = await files.upload(contextFor(item, { allowPrivate: privateAllowed(session) }), req.query.path, req.query.name, req.body);
-      forget(item.id);
-      log(session, "dash.integration.change", item);
-      return result;
+      const part = uploads?.take(req, session, "integration-file") ?? null;
+      try {
+        const item = one(session, req.params.id);
+        const files = ADAPTERS[item.kind].files;
+        if (!files) throw httpError(404, "This integration can't take uploads.");
+        const body = part ? { file: part.file, size: part.size } : req.body;
+        if (!part && (!Buffer.isBuffer(req.body) || !req.body.length)) throw httpError(400, "The file is empty.");
+        const result = await files.upload(contextFor(item, { allowPrivate: privateAllowed(session) }), req.query.path, req.query.name, body);
+        forget(item.id);
+        log(session, "dash.integration.change", item);
+        return result;
+      } finally {
+        uploads?.release(part);
+      }
     }),
   );
 

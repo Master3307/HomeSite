@@ -25,6 +25,22 @@ const REVERSE = [
   { id: 'bing', name: 'Bing Visual Search', action: () => 'https://www.bing.com/images/search?view=detailv2&iss=sbiupload', field: 'imageBin', kind: 'base64' },
   { id: 'tineye', name: 'TinEye', action: () => 'https://tineye.com/search', field: 'image', kind: 'file' },
 ]
+/* The engine picked in the search bar, if it can take a picture: its own reverse search. */
+const ENGINE_IMAGE = [
+  [/(^|\.)google\./i, 'lens'],
+  [/(^|\.)bing\.com$/i, 'bing'],
+  [/(^|\.)tineye\.com$/i, 'tineye'],
+]
+function imageServiceFor(provider) {
+  let host = ''
+  try {
+    host = new URL(String(provider?.url ?? '').replaceAll('%s', 'x')).hostname
+  } catch {
+    return null
+  }
+  const id = ENGINE_IMAGE.find(([pattern]) => pattern.test(host))?.[1]
+  return id ? REVERSE.find((service) => service.id === id) : null
+}
 
 async function postImage(service, file) {
   const form = document.createElement('form')
@@ -87,7 +103,7 @@ function mainColors(canvas) {
   return picked.map((color) => `#${color.map(hex).join('')}`)
 }
 
-export default function ImageTools({ file, onClose, onQuery }) {
+export default function ImageTools({ file, onClose, onQuery, provider = null }) {
   const { t } = useTranslation('dash')
   const [url, setUrl] = useState(null)
   const [info, setInfo] = useState(null)
@@ -253,8 +269,35 @@ export default function ImageTools({ file, onClose, onQuery }) {
   }
   const isLink = (value) => /^https?:\/\/\S+$/i.test(value)
 
+  const engineService = imageServiceFor(provider)
+  const others = REVERSE.filter((service) => service !== engineService)
   return (
     <div className="dash-image" role="region" aria-label={t('image.title')}>
+      <div className={`dash-image__attach${engineService ? ' is-yes' : ''}`}>
+        <span className="material-symbols-outlined dash-image__attach-icon" aria-hidden="true">
+          {engineService ? 'image_search' : 'hide_image'}
+        </span>
+        <div className="dash-image__attach-text">
+          <strong>{t('tools:image.attachTitle')}</strong>
+          <span>{engineService ? t('tools:image.attachYes', { engine: provider?.name ?? engineService.name }) : t('tools:image.attachNo', { engine: provider?.name ?? '' })}</span>
+          <small>{t('tools:image.neverSent')}</small>
+        </div>
+        <div className="dash-image__attach-actions">
+          {engineService && (
+            <button type="button" className="dash-button dash-button--small" onClick={() => postImage(engineService, file)}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                travel_explore
+              </span>
+              {provider?.name ?? engineService.name}
+            </button>
+          )}
+          {others.map((service) => (
+            <button key={service.id} type="button" className="dash-button dash-button--quiet dash-button--small" onClick={() => postImage(service, file)}>
+              {service.name}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="dash-image__preview">
         {url && <img src={url} alt={t('image.alt')} onClick={pick} title={t('image.pick')} />}
         <button type="button" className="dash-tool dash-image__close" onClick={onClose} aria-label={t('image.close')} title={t('image.close')}>
@@ -268,20 +311,6 @@ export default function ImageTools({ file, onClose, onQuery }) {
           {file.name ? <strong>{file.name}</strong> : <strong>{t('image.pasted')}</strong>}
           {info && ` · ${info.width} × ${info.height}`} · {file.type.replace('image/', '').toUpperCase()} · {Math.max(1, Math.round(file.size / 1024))} kB
         </p>
-
-        <section>
-          <h4>{t('image.reverse')}</h4>
-          <div className="dash-image__row">
-            {REVERSE.map((service) => (
-              <button key={service.id} type="button" className="dash-button dash-button--quiet dash-button--small" onClick={() => postImage(service, file)}>
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  image_search
-                </span>
-                {service.name}
-              </button>
-            ))}
-          </div>
-        </section>
 
         <section>
           <h4>{t('image.codes')}</h4>

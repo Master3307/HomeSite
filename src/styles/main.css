@@ -1155,6 +1155,15 @@ button.loginButton {
     inset 0 1px 0 rgba(255, 255, 255, 0.047);
 }
 
+.accountAvatar--initial {
+  display: grid !important;
+  place-items: center;
+  background: color-mix(in srgb, var(--accent) 70%, var(--bg-secondary));
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+}
 .accountAvatar {
   display: block;
   flex: 0 0 auto;
@@ -1199,6 +1208,17 @@ button.loginButton {
 .accountMenu__toggle:hover,
 .accountMenu__toggle[aria-expanded="true"] {
   background: none;
+}
+
+.accountMenu--avatar .accountMenu__toggle {
+  position: relative;
+  padding: 0;
+  border-radius: 50%;
+}
+.accountMenu--avatar .accountMenu__unread {
+  position: absolute;
+  top: -4px;
+  right: -6px;
 }
 
 .accountMenu__toggle:focus-visible {

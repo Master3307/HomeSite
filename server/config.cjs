@@ -25,7 +25,19 @@ function number(key) {
 
 const enabled = (key) => ON.has(setting(key).toLowerCase());
 
-/** "https://example.com/" -> "https://example.com" */
-const origin = (key) => setting(key).replace(/\/+$/, "");
+/** "https://example.com/" -> "https://example.com", as set (no gateway override). */
+const rawOrigin = (key) => setting(key).replace(/\/+$/, "");
 
-module.exports = { setting, ids, number, enabled, origin };
+/**
+ * A public address. With API_ORIGIN (the gateway, server/gateway.cjs) set,
+ * the account API is that address and the profile API is <it>/profile; the
+ * separate ones stay as aliases (rawOrigin reads them as set).
+ */
+function origin(key) {
+  const api = rawOrigin("API_ORIGIN");
+  if (api && key === "ACCOUNT_API_ORIGIN") return api;
+  if (api && key === "PROFILE_API_ORIGIN") return `${api}/profile`;
+  return rawOrigin(key);
+}
+
+module.exports = { setting, ids, number, enabled, origin, rawOrigin };

@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { dayKey, eventDays, eventEnd, eventStart, useCalendarEvents } from '../../lib/dashCalendar.js'
+import { readWhen } from '../../lib/quick/dates.js'
 import { useAccountSettings } from '../../lib/accountSettings.jsx'
 import { buildSearchUrl, createId, isColor, updateWidgetOptions, useDashSettings, visibleProviders, withScheme } from '../../lib/dashSettings.js'
 import { integrationGet } from '../../lib/dashIntegrations.js'
-import { Empty, Favicon, LoadError, Loading, Num, clockOptions, fetchJson, formatDate, hostOf, isTimeZone, timeParts, useNow, useRemote } from './kit.jsx'
+import { Empty, Favicon, LoadError, Loading, Num, clockOptions, fetchJson, formatDate, hostOf, isTimeZone, timeParts, useNow, useRemote, localeWeekStart } from './kit.jsx'
 
 /*
  * Everyday widgets: clock, world clocks, calendar, countdown, note, to-do,
@@ -164,21 +166,11 @@ function weekNumber(date) {
   return Math.ceil(((day - yearStart) / 86_400_000 + 1) / 7)
 }
 
-function localeWeekStart(language) {
-  try {
-    const info = new Intl.Locale(language)
-    const first = (info.getWeekInfo?.() ?? info.weekInfo)?.firstDay
-    return first === 7 ? 0 : 1
-  } catch {
-    return 1
-  }
-}
-
 function CalendarView({ widget }) {
   const { t, i18n } = useTranslation('dash')
   const now = useNow(60_000)
   const [offset, setOffset] = useState(0)
-  const { weekStart = 'locale', weekNumbers = false, weekends = true } = widget.options
+  const { weekStart = 'locale', weekNumbers = false, weekends = true, events: showEvents = true, upcoming = 3 } = widget.options
   const startDay = weekStart === 'sunday' ? 0 : weekStart === 'monday' ? 1 : localeWeekStart(i18n.language)
   const first = new Date(now.getFullYear(), now.getMonth() + offset, 1)
   const days = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
@@ -188,6 +180,18 @@ function CalendarView({ widget }) {
   while (cells.length % 7) cells.push(null)
   const rows = Array.from({ length: cells.length / 7 }, (_, index) => cells.slice(index * 7, index * 7 + 7))
   const isToday = (day) => offset === 0 && day === now.getDate()
+  // The calendars' events (CalendarApp, lib/dashCalendar.js): dots on their days, the next few below.
+  const windowFrom = useMemo(() => new Date(first.getFullYear(), first.getMonth(), 1), [first.getFullYear(), first.getMonth()]) // eslint-disable-line react-hooks/exhaustive-deps
+  const windowTo = useMemo(() => new Date(first.getFullYear(), first.getMonth() + 2, 1), [first.getFullYear(), first.getMonth()]) // eslint-disable-line react-hooks/exhaustive-deps
+  const { events, calendars } = useCalendarEvents(windowFrom, windowTo, { enabled: showEvents })
+  const colorOf = (event) => calendars.find((calendar) => calendar.id === event.calendarId)?.color
+  const dots = useMemo(() => {
+    const map = new Map()
+    for (const event of events) for (const key of eventDays(event)) map.set(key, [...(map.get(key) ?? []), event])
+    return map
+  }, [events])
+  const dayEvents = (day) => (day && showEvents ? (dots.get(dayKey(new Date(first.getFullYear(), first.getMonth(), day))) ?? []) : [])
+  const next = offset === 0 && upcoming > 0 ? events.filter((event) => eventEnd(event) > now).slice(0, upcoming) : []
   const isWeekend = (column) => {
     const weekday = (startDay + column) % 7
     return weekday === 0 || weekday === 6
@@ -218,13 +222,41 @@ function CalendarView({ widget }) {
               {weekNumber(new Date(first.getFullYear(), first.getMonth(), row.find(Boolean)))}
             </span>
           ),
-          ...row.map((day, column) => (
-            <span key={`${rowIndex}-${column}`} className={[isToday(day) ? 'is-today' : '', weekends && day && isWeekend(column) ? 'is-weekend' : ''].filter(Boolean).join(' ') || undefined} aria-current={isToday(day) ? 'date' : undefined}>
-              {day ?? ''}
-            </span>
-          )),
+          ...row.map((day, column) => {
+            const list = dayEvents(day)
+            return (
+              <span
+                key={`${rowIndex}-${column}`}
+                className={[isToday(day) ? 'is-today' : '', weekends && day && isWeekend(column) ? 'is-weekend' : '', list.length ? 'has-events' : ''].filter(Boolean).join(' ') || undefined}
+                aria-current={isToday(day) ? 'date' : undefined}
+                title={list.length ? list.map((event) => event.title).join('\n') : undefined}
+              >
+                {day ?? ''}
+                {list.length > 0 && (
+                  <i className="dash-w-cal__dots" aria-hidden="true">
+                    {list.slice(0, 3).map((event, index) => (
+                      <b key={index} style={{ '--c': colorOf(event) }} />
+                    ))}
+                  </i>
+                )}
+              </span>
+            )
+          }),
         ])}
       </div>
+      {next.length > 0 && (
+        <ul className="dash-w-cal__next">
+          {next.map((event, index) => (
+            <li key={`${event.id}-${index}`} style={{ '--c': colorOf(event) }}>
+              <span className="dash-w-cal__when">
+                {eventStart(event).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric' })}
+                {!event.allDay && ` ${eventStart(event).toLocaleTimeString(i18n.language, { hour: 'numeric', minute: '2-digit' })}`}
+              </span>
+              <span className="dash-w-cal__what">{event.title || t('widgets.calendar.untitled')}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
@@ -242,7 +274,9 @@ function CountdownView({ widget }) {
   const { t, i18n } = useTranslation('dash')
   const { seconds = false, yearly = false, label = '' } = widget.options
   const now = useNow(seconds ? 1000 : 60_000)
-  const raw = new Date(widget.options.date ?? '')
+  // Typed in words ("christmas", "friday 5pm"): read again now, so it moves on to the next one by itself.
+  const typed = widget.options.when ? readWhen(widget.options.when, { locale: i18n.language, now }) : null
+  const raw = typed?.date ?? new Date(widget.options.date ?? '')
   if (Number.isNaN(raw.getTime())) return <Empty icon="hourglass_top" setup>{t('widgets.countdown.empty')}</Empty>
   const target = yearly ? nextYearly(raw, now) : raw
   const ms = target - now
@@ -314,14 +348,107 @@ function NoteView({ widget }) {
 
 /* ---------- to-do ---------- */
 
+/* One task: tick, edit in place (double click, the pencil, or F2), drag or Alt + ↑ / ↓ to reorder, remove. */
+function TodoItem({ item, index, count, t, onChange, onRemove, onMove, dragging, setDragging, onDropAt }) {
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState(item.text)
+  const finish = (keep) => {
+    const value = text.trim().slice(0, 200)
+    if (keep && value && value !== item.text) onChange({ text: value })
+    if (!keep || !value) setText(item.text)
+    setEditing(false)
+  }
+  return (
+    <li
+      className={`${item.done ? 'is-done' : ''}${dragging === item.id ? ' is-dragging' : ''}`}
+      draggable={!editing}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = 'move'
+        event.dataTransfer.setData('text/plain', item.text)
+        setDragging(item.id)
+      }}
+      onDragEnd={() => setDragging(null)}
+      onDragOver={(event) => {
+        if (!dragging || dragging === item.id) return
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'move'
+      }}
+      onDrop={(event) => {
+        event.preventDefault()
+        onDropAt(index)
+      }}
+      onKeyDown={(event) => {
+        if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+          event.preventDefault()
+          onMove(event.key === 'ArrowUp' ? -1 : 1)
+        } else if (event.key === 'F2' && !editing) {
+          event.preventDefault()
+          setEditing(true)
+        }
+      }}
+    >
+      <span className="material-symbols-outlined dash-w-todo__grip" aria-hidden="true">
+        drag_indicator
+      </span>
+      {editing ? (
+        <input
+          className="dash-w-todo__edit"
+          autoFocus
+          value={text}
+          maxLength={200}
+          aria-label={t('widgets.todo.editLabel')}
+          onFocus={(event) => event.target.select()}
+          onChange={(event) => setText(event.target.value)}
+          onBlur={() => finish(true)}
+          onKeyDown={(event) => {
+            event.stopPropagation()
+            if (event.key === 'Enter') finish(true)
+            if (event.key === 'Escape') finish(false)
+          }}
+        />
+      ) : (
+        <label onDoubleClick={(event) => {
+          event.preventDefault()
+          setEditing(true)
+        }}>
+          <input type="checkbox" checked={Boolean(item.done)} onChange={(event) => onChange({ done: event.target.checked })} />
+          <span>{item.text}</span>
+        </label>
+      )}
+      {!editing && (
+        <span className="dash-w-todo__actions">
+          <button type="button" className="dash-tool" onClick={() => setEditing(true)} aria-label={t('widgets.todo.edit', { text: item.text })} title={`${t('widgets.todo.editShort')} (F2)`}>
+            <span className="material-symbols-outlined">edit</span>
+          </button>
+          <button type="button" className="dash-tool dash-tool--danger" onClick={onRemove} aria-label={t('widgets.todo.remove', { text: item.text })} title={t('settings.delete')}>
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </span>
+      )}
+      <span className="sr-only">{t('widgets.todo.position', { index: index + 1, count })}</span>
+    </li>
+  )
+}
+
 function TodoView({ widget }) {
   const { t } = useTranslation('dash')
   const [draft, setDraft] = useState('')
+  const [dragging, setDragging] = useState(null)
   const items = Array.isArray(widget.options.items) ? widget.options.items.filter((item) => item && typeof item.text === 'string') : []
   const { hideDone = false, strike = true } = widget.options
   const save = (next) => updateWidgetOptions(widget.id, { items: next.slice(0, 100) })
   const shown = hideDone ? items.filter((item) => !item.done) : items
   const done = items.filter((item) => item.done).length
+  // Moving among the shown tasks, placed in the full list (hidden done ones keep their spots).
+  const moveTo = (id, target) => {
+    const from = items.findIndex((entry) => entry.id === id)
+    const anchor = shown[target]
+    if (from === -1 || !anchor || anchor.id === id) return
+    const next = items.filter((entry) => entry.id !== id)
+    const at = next.findIndex((entry) => entry.id === anchor.id)
+    next.splice(from < items.indexOf(anchor) ? at + 1 : at, 0, items[from])
+    save(next)
+  }
   return (
     <div className="dash-w-todo">
       <form
@@ -341,16 +468,23 @@ function TodoView({ widget }) {
       </form>
       {shown.length ? (
         <ul className={`dash-w-todo__list${strike ? ' is-strike' : ''}`}>
-          {shown.map((item) => (
-            <li key={item.id} className={item.done ? 'is-done' : ''}>
-              <label>
-                <input type="checkbox" checked={Boolean(item.done)} onChange={(event) => save(items.map((entry) => (entry.id === item.id ? { ...entry, done: event.target.checked } : entry)))} />
-                <span>{item.text}</span>
-              </label>
-              <button type="button" className="dash-tool dash-tool--danger" onClick={() => save(items.filter((entry) => entry.id !== item.id))} aria-label={t('widgets.todo.remove', { text: item.text })} title={t('settings.delete')}>
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </li>
+          {shown.map((item, index) => (
+            <TodoItem
+              key={item.id}
+              item={item}
+              index={index}
+              count={shown.length}
+              t={t}
+              dragging={dragging}
+              setDragging={setDragging}
+              onChange={(patch) => save(items.map((entry) => (entry.id === item.id ? { ...entry, ...patch } : entry)))}
+              onRemove={() => save(items.filter((entry) => entry.id !== item.id))}
+              onMove={(step) => moveTo(item.id, index + step)}
+              onDropAt={(target) => {
+                if (dragging) moveTo(dragging, target)
+                setDragging(null)
+              }}
+            />
           ))}
         </ul>
       ) : (

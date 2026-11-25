@@ -277,6 +277,18 @@ select.members-input option {
   margin: 0;
   color: var(--m-muted);
 }
+.members-locked .members-button {
+  margin-top: 8px;
+}
+.members-locked p.members-locked__note {
+  margin-top: 4px;
+  font-size: 0.82rem;
+}
+.members-locked--compact {
+  margin: 0 0 24px;
+  max-width: none;
+  padding: 22px;
+}
 .members-locked__login {
   display: grid;
   justify-items: center;

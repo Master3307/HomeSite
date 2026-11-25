@@ -10,18 +10,42 @@
  *   loudSounds false: loud sounds (the calculator's explosion) stay muted; on by default
  *   openApp   true: on Android, pages open in the installed HomeSite / CultSite app (lib/openApp.js); off by default
  *   notify    { moderation | reports: { site, email } } (server/services/moderation.cjs)
+ *   chrome    { themeSwitch, languageSwitch, account: full | avatar }: the site's own buttons (Root.jsx, Login.jsx)
+ *   search    { safesearch: strict | moderate | off, language, newTab, suggest, infobox, thumbnails, hiddenTabs }: Master Search (pages/MasterSearch.jsx)
  *
  * The theme (dark / light) and language have their own keys (accountSettings).
  */
 
 const KEY = 'homesite:prefs'
-export const PREF_KEYS = ['clock', 'timeZone', 'accent', 'motion', 'loudSounds', 'blockInsights', 'openApp', 'notify']
-const DEFAULT_PREFS = { clock: 'auto', timeZone: 'auto', accent: null, motion: 'full', loudSounds: true, blockInsights: false, openApp: false, notify: {} }
+export const PREF_KEYS = ['clock', 'timeZone', 'accent', 'motion', 'loudSounds', 'blockInsights', 'openApp', 'notify', 'chrome', 'search']
+/* Safe search is strict until someone chooses otherwise. */
+export const SEARCH_DEFAULTS = { safesearch: 'strict', language: 'auto', newTab: false, suggest: true, infobox: true, thumbnails: true, hiddenTabs: [] }
+const DEFAULT_PREFS = { clock: 'auto', timeZone: 'auto', accent: null, motion: 'full', loudSounds: true, blockInsights: false, openApp: false, notify: {}, chrome: { themeSwitch: true, languageSwitch: true, account: 'full' }, search: SEARCH_DEFAULTS }
 const MOTIONS = ['full', 'reduce', 'none']
+/* Master Search tabs that can be hidden ("all" always stays). */
+const SEARCH_TABS = ['images', 'videos', 'news', 'maps', 'music', 'science', 'it', 'files', 'social']
+const cleanSearch = (raw) => {
+  const value = raw && typeof raw === 'object' ? raw : {}
+  return {
+    safesearch: ['strict', 'moderate', 'off'].includes(value.safesearch) ? value.safesearch : 'strict',
+    language: /^(auto|all|[a-z]{2}(-[A-Z]{2})?)$/.test(String(value.language ?? '')) ? value.language : 'auto',
+    newTab: value.newTab === true,
+    suggest: value.suggest !== false,
+    infobox: value.infobox !== false,
+    thumbnails: value.thumbnails !== false,
+    hiddenTabs: [...new Set((Array.isArray(value.hiddenTabs) ? value.hiddenTabs : []).filter((id) => SEARCH_TABS.includes(id)))],
+  }
+}
 
 /* Old values and broken ones become defaults ("auto" was "like my device"). */
 function clean(prefs) {
-  return { ...prefs, motion: MOTIONS.includes(prefs.motion) ? prefs.motion : 'full' }
+  const chrome = prefs.chrome && typeof prefs.chrome === 'object' ? prefs.chrome : {}
+  return {
+    ...prefs,
+    motion: MOTIONS.includes(prefs.motion) ? prefs.motion : 'full',
+    chrome: { themeSwitch: chrome.themeSwitch !== false, languageSwitch: chrome.languageSwitch !== false, account: chrome.account === 'avatar' ? 'avatar' : 'full' },
+    search: cleanSearch(prefs.search),
+  }
 }
 
 export function readPrefs() {

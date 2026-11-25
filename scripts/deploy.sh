@@ -38,4 +38,9 @@ echo "Restarting application services..."
   discord-bot.service \
   discord-profile.service
 
+# The API gateway (server/gateway.cjs, API_ORIGIN), where it's set up as a unit.
+if /usr/bin/systemctl cat homesite-gateway.service >/dev/null 2>&1; then
+  /usr/bin/systemctl restart homesite-gateway.service
+fi
+
 echo "HomeSite deployment completed successfully."

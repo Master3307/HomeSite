@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
+import { sendFile } from './chunkedUpload.js'
 import { ACCOUNT_API_URL, accountFetch } from './account.js'
 
 /*
@@ -141,30 +142,12 @@ export function loadLibrary(force = false) {
 }
 const addTracks = (tracks) => set({ library: { ...state.library, tracks: [...tracks, ...state.library.tracks.filter((track) => !tracks.some((added) => added.id === track.id))] } })
 
-/* Uploads one file, with real progress (0–1). */
-export function uploadTrack(file, onProgress = null) {
-  return new Promise((resolve, reject) => {
-    const request = new XMLHttpRequest()
-    request.open('POST', `${ACCOUNT_API_URL}/music/upload?name=${encodeURIComponent(file.name)}`)
-    request.withCredentials = true
-    request.setRequestHeader('X-Requested-With', 'homesite-web')
-    request.setRequestHeader('Content-Type', 'application/octet-stream')
-    request.upload.onprogress = (event) => event.lengthComputable && onProgress?.(event.loaded / event.total)
-    request.onload = () => {
-      let data = {}
-      try {
-        data = JSON.parse(request.responseText)
-      } catch {
-        data = {}
-      }
-      if (request.status >= 400) return reject(Object.assign(new Error(data.error || `HTTP ${request.status}`), { status: request.status }))
-      addTracks([data])
-      loadLibrary(true).catch(() => {})
-      resolve(data)
-    }
-    request.onerror = () => reject(new Error('The upload failed (connection).'))
-    request.send(file)
-  })
+/* Uploads one file, with real progress (0–1); over 50 MB in parts (lib/chunkedUpload.js). */
+export async function uploadTrack(file, onProgress = null) {
+  const data = await sendFile(`/music/upload?name=${encodeURIComponent(file.name)}`, file, { purpose: 'music', onProgress })
+  addTracks([data])
+  loadLibrary(true).catch(() => {})
+  return data
 }
 export async function addLink(url) {
   const track = await call('/music/links', { method: 'POST', body: { url } })

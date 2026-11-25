@@ -1,3 +1,4 @@
+import { sendFile } from './chunkedUpload.js'
 import { useSyncExternalStore } from 'react'
 
 import { ACCOUNT_API_URL, accountFetch } from './account.js'
@@ -114,15 +115,7 @@ export const integrationImage = (id, item, size = 300) => `${ACCOUNT_API_URL}/da
 /** A file of a files integration, downloaded through the account API (its login stays on the server). */
 export const integrationFileUrl = (id, path) => `${ACCOUNT_API_URL}/dash/integrations/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`
 
-/** Uploads a file into a folder of a files integration (50 MB at most). */
-export async function uploadToIntegration(id, folder, file) {
-  if (file.size > 50 * 1024 * 1024) throw new Error('too-big')
-  const response = await accountFetch(`/dash/integrations/${encodeURIComponent(id)}/upload?path=${encodeURIComponent(folder)}&name=${encodeURIComponent(file.name)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/octet-stream' },
-    body: file,
-  })
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw Object.assign(new Error(data.error || `HTTP ${response.status}`), { status: response.status })
-  return data
+/** Uploads a file into a folder of a files integration (over 50 MB in parts, lib/chunkedUpload.js), with progress (0–1). */
+export function uploadToIntegration(id, folder, file, onProgress = null) {
+  return sendFile(`/dash/integrations/${encodeURIComponent(id)}/upload?path=${encodeURIComponent(folder)}&name=${encodeURIComponent(file.name)}`, file, { purpose: 'integration-file', onProgress })
 }

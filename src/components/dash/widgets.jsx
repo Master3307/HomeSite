@@ -1,7 +1,11 @@
-import { useMemo } from 'react'
+import { Suspense, lazy, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { BASIC_VIEWS as B } from './widgetsBasic.jsx'
+import { TopSettingsLink, TopView } from './kit.jsx'
+import { AlbumEditor, PicturesEditor, SLIDESHOW_VIEWS as P } from './widgetsSlideshow.jsx'
+import { CONTACT_VIEWS as K } from './widgetsContacts.jsx'
+import WeatherPanel from './WeatherPanel.jsx'
 import { FEED_VIEWS as F, RELEASE_SOURCES } from './widgetsFeeds.jsx'
 import { INTEGRATION_VIEWS as I } from './widgetsIntegrations.jsx'
 import { LINK_VIEWS as L } from './widgetsLinks.jsx'
@@ -10,6 +14,11 @@ import { SERVICE_VIEWS as V } from './widgetsServices.jsx'
 import { EXTRA_VIEWS as X } from './widgetsExtra.jsx'
 import { MUSIC_VIEWS as MU } from './widgetsMusic.jsx'
 import { siteConfig } from '../../lib/siteConfig.js'
+
+/* Several integrations: each on its own, or together as one list (widgetsIntegrations.jsx useCollected). */
+const COMBINE = { key: 'combine', type: 'select', choices: ['separate', 'together'], default: 'separate', when: (options) => Array.isArray(options.integrations) && options.integrations.length > 1 }
+
+const CalendarApp = lazy(() => import('./CalendarApp.jsx'))
 
 /*
  * Every /dash widget type:
@@ -77,7 +86,15 @@ export const WIDGETS = {
       { key: 'weekStart', type: 'select', choices: ['locale', 'monday', 'sunday'], default: 'locale' },
       { key: 'weekNumbers', type: 'toggle', default: false },
       { key: 'weekends', type: 'toggle', default: true },
+      { key: 'events', type: 'toggle', default: true },
+      { key: 'upcoming', type: 'number', min: 0, max: 10, default: 3 },
     ],
+    // Opened big: the calendar app (own calendars, .ics, subscriptions).
+    Detail: ({ widget }) => (
+      <Suspense fallback={<p className="dash-muted">…</p>}>
+        <CalendarApp widget={widget} />
+      </Suspense>
+    ),
   },
   countdown: {
     icon: 'hourglass_top',
@@ -85,7 +102,7 @@ export const WIDGETS = {
     View: B.CountdownView,
     fields: [
       { key: 'label', type: 'text' },
-      { key: 'date', type: 'datetime' },
+      { key: 'date', type: 'when' },
       { key: 'yearly', type: 'toggle', default: false },
       { key: 'seconds', type: 'toggle', default: false },
     ],
@@ -94,6 +111,8 @@ export const WIDGETS = {
     icon: 'partly_cloudy_day',
     category: 'essentials',
     View: B.WeatherView,
+    // The detail view: the whole forecast (WeatherPanel.jsx).
+    Detail: ({ widget }) => <WeatherPanel lat={widget.options.lat} lon={widget.options.lon} place={widget.options.place} unit={widget.options.unit} wind={widget.options.wind} />,
     fields: [
       { key: 'place', type: 'place' },
       { key: 'unit', type: 'select', choices: ['c', 'f'], default: 'c' },
@@ -135,7 +154,7 @@ export const WIDGETS = {
       { key: 'items', type: 'rows', max: 100, link: true, columns: [{ key: 'title', type: 'text' }, { key: 'url', type: 'url' }, { key: 'icon', type: 'icon' }, { key: 'description', type: 'text' }] },
       { key: 'layout', type: 'select', choices: ['grid', 'tiles', 'list', 'hlist', 'icons'], default: 'grid' },
       { key: 'iconSize', type: 'select', choices: ['small', 'medium', 'large'], default: 'medium' },
-      { key: 'iconSource', type: 'select', choices: ['site', 'duckduckgo', 'none'], default: 'site' },
+      { key: 'iconSource', type: 'select', choices: ['auto', 'duckduckgo', 'google', 'iconhorse', 'site', 'none'], default: 'auto' },
       { key: 'showStatus', type: 'toggle', default: false },
       { key: 'showUrl', type: 'toggle', default: false, when: (options) => options.layout === 'list' || options.layout === 'hlist' },
       NEW_TAB,
@@ -172,7 +191,9 @@ export const WIDGETS = {
     fields: [
       { key: 'feeds', type: 'rows', max: 30, columns: [{ key: 'url', type: 'url' }, { key: 'title', type: 'text' }] },
       { key: 'style', type: 'select', choices: ['list', 'cards', 'magazine', 'compact'], default: 'list' },
-      { key: 'limit', type: 'number', min: 3, max: 60, default: 15 },
+      { key: 'group', type: 'select', choices: ['mixed', 'feed', 'tabs'], default: 'mixed' },
+      { key: 'limit', type: 'number', min: 3, max: 60, default: 15, when: (options) => !['feed', 'tabs'].includes(options.group) },
+      { key: 'perFeed', type: 'number', min: 1, max: 30, default: 5, when: (options) => ['feed', 'tabs'].includes(options.group) },
       { key: 'images', type: 'toggle', default: true },
       { key: 'summary', type: 'toggle', default: false },
       { key: 'source', type: 'toggle', default: true },
@@ -187,10 +208,14 @@ export const WIDGETS = {
     View: F.ReleasesView,
     fields: [
       { key: 'repos', type: 'rows', max: 30, columns: [{ key: 'source', type: 'choice', choices: RELEASE_SOURCES, default: 'github' }, { key: 'repo', type: 'text', placeholder: 'owner/repo' }, { key: 'label', type: 'text' }] },
+      { key: 'display', type: 'select', choices: ['list', 'compact', 'cards'], default: 'list' },
       { key: 'perRepo', type: 'number', min: 1, max: 10, default: 1 },
       { key: 'prereleases', type: 'toggle', default: false },
       { key: 'notes', type: 'toggle', default: false },
-      { key: 'sort', type: 'select', choices: ['date', 'order'], default: 'date' },
+      { key: 'sort', type: 'select', choices: ['date', 'unread', 'order'], default: 'date' },
+      { key: 'unreadOnly', type: 'toggle', default: false },
+      { key: 'readOnOpen', type: 'toggle', default: true },
+      { key: 'newDays', type: 'number', min: 1, max: 60, default: 7 },
       { key: 'dates', type: 'select', choices: ['relative', 'date'], default: 'relative' },
       { key: 'icons', type: 'select', choices: ['auto', 'owner', 'none'], default: 'auto' },
       ...GIT_INTEGRATIONS,
@@ -278,7 +303,7 @@ export const WIDGETS = {
       { key: 'stats', type: 'toggle', default: true },
     ],
   },
-  dns: { icon: 'shield', category: 'integrations', titled: true, needs: 'login', View: I.DnsView, fields: [{ key: 'integrations', type: 'integration', use: 'dns', multi: true }] },
+  dns: { icon: 'shield', category: 'integrations', titled: true, needs: 'login', View: I.DnsView, fields: [{ key: 'integrations', type: 'integration', use: 'dns', multi: true }, COMBINE] },
   smarthome: {
     icon: 'home_iot_device',
     category: 'integrations',
@@ -291,7 +316,7 @@ export const WIDGETS = {
       { key: 'layout', type: 'select', choices: ['tiles', 'list'], default: 'tiles' },
     ],
   },
-  uptime: { icon: 'monitor_heart', category: 'integrations', titled: true, needs: 'login', View: I.UptimeView, fields: [{ key: 'integrations', type: 'integration', use: 'uptime', multi: true }, { key: 'history', type: 'toggle', default: true }, { key: 'downFirst', type: 'toggle', default: true }] },
+  uptime: { icon: 'monitor_heart', category: 'integrations', titled: true, needs: 'login', View: I.UptimeView, fields: [{ key: 'integrations', type: 'integration', use: 'uptime', multi: true }, COMBINE, { key: 'history', type: 'toggle', default: true }, { key: 'downFirst', type: 'toggle', default: true }] },
   mediacal: {
     icon: 'event_upcoming',
     category: 'integrations',
@@ -312,7 +337,7 @@ export const WIDGETS = {
     needs: 'login',
     View: I.DownloadsView,
     fields: [
-      { key: 'integrations', type: 'integration', use: 'downloads', multi: true },
+      { key: 'integrations', type: 'integration', use: 'downloads', multi: true }, COMBINE,
       { key: 'filter', type: 'select', choices: ['active', 'all'], default: 'active' },
       { key: 'size', type: 'number', min: 1, max: 40, default: 10 },
     ],
@@ -357,7 +382,7 @@ export const WIDGETS = {
     needs: 'login',
     View: V.ContainersView,
     fields: [
-      { key: 'integrations', type: 'integration', use: 'containers', multi: true },
+      { key: 'integrations', type: 'integration', use: 'containers', multi: true }, COMBINE,
       { key: 'filter', type: 'select', choices: ['all', 'running'], default: 'all' },
       { key: 'image', type: 'toggle', default: false },
     ],
@@ -369,7 +394,7 @@ export const WIDGETS = {
     needs: 'login',
     View: V.MessagesView,
     fields: [
-      { key: 'integrations', type: 'integration', use: 'messages', multi: true },
+      { key: 'integrations', type: 'integration', use: 'messages', multi: true }, COMBINE,
       { key: 'count', type: 'number', min: 1, max: 50, default: 10 },
       { key: 'since', type: 'select', choices: ['1h', '12h', '24h', '7d'], default: '24h' },
     ],
@@ -418,13 +443,14 @@ export const WIDGETS = {
     category: 'essentials',
     View: X.CalculatorView,
     fields: [
-      { key: 'layout', type: 'select', choices: ['auto', 'tabs', 'split', 'calc'], default: 'auto' },
+      { key: 'layout', type: 'select', choices: ['auto', 'tabs', 'split', 'calc', 'emulator'], default: 'auto' },
+      { key: 'emulatorLook', type: 'select', choices: ['modern', 'classic', 'dark'], default: 'modern', when: (options) => options.layout === 'emulator' },
       { key: 'input', type: 'select', choices: ['plain', 'latex', 'unicode'], default: 'plain' },
       { key: 'angle', type: 'select', choices: ['rad', 'deg'], default: 'rad' },
       { key: 'digits', type: 'number', min: 3, max: 15, default: 10 },
       { key: 'size', type: 'select', choices: ['auto', 'small', 'medium', 'large', 'huge'], default: 'auto' },
       { key: 'preview', type: 'select', choices: ['auto', 'always', 'off'], default: 'auto' },
-      { key: 'keypad', type: 'toggle', default: true },
+      { key: 'keypad', type: 'select', choices: ['math', 'numbers', 'both', 'off'], default: 'math', when: (options) => options.layout !== 'emulator' },
       { key: 'alternatives', type: 'toggle', default: true },
       { key: 'marks', type: 'toggle', default: true },
     ],
@@ -486,6 +512,43 @@ export const WIDGETS = {
   },
 
   /* ---------- advanced ---------- */
+  // The dash's top (greeting, clock, weather, search) moved into the board; once per dash.
+  top: {
+    icon: 'vertical_align_top',
+    category: 'essentials',
+    single: true,
+    detail: false,
+    View: TopView,
+    fields: [{ key: 'topSettings', type: 'custom', Editor: TopSettingsLink }],
+  },
+  contacts: {
+    icon: 'contacts',
+    category: 'essentials',
+    needs: 'login',
+    View: K.ContactsView,
+    // Opened big: list and card side by side, .vcf import / export.
+    Detail: K.ContactsDetail,
+    fields: [{ key: 'favoritesOnly', type: 'toggle', default: false }],
+  },
+  slideshow: {
+    icon: 'slideshow',
+    category: 'essentials',
+    needs: 'login',
+    View: P.SlideshowView,
+    fields: [
+      { key: 'source', type: 'select', choices: ['uploads', 'immich', 'links'], default: 'uploads' },
+      { key: 'pictures', type: 'custom', Editor: PicturesEditor, when: (options) => (options.source ?? 'uploads') === 'uploads' },
+      { key: 'integration', type: 'integration', use: 'photos', when: (options) => options.source === 'immich' },
+      { key: 'album', type: 'custom', Editor: AlbumEditor, when: (options) => options.source === 'immich' },
+      { key: 'links', type: 'rows', max: 60, columns: [{ key: 'url', type: 'url' }, { key: 'caption', type: 'text' }], when: (options) => options.source === 'links' },
+      { key: 'interval', type: 'number', min: 2, max: 3600, default: 8 },
+      { key: 'transition', type: 'select', choices: ['fade', 'slide', 'zoom', 'none'], default: 'fade' },
+      { key: 'order', type: 'select', choices: ['inorder', 'random'], default: 'inorder' },
+      { key: 'fit', type: 'select', choices: ['cover', 'contain'], default: 'cover' },
+      { key: 'captions', type: 'toggle', default: false },
+      { key: 'controls', type: 'toggle', default: true },
+    ],
+  },
   image: {
     icon: 'image',
     category: 'advanced',

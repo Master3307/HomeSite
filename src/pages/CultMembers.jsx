@@ -4,7 +4,8 @@ import { Link } from 'react-router'
 import CultShell from '/src/components/cult/CultShell'
 import PageLoading from '/src/components/PageLoading'
 import { apiUrl, keyPath, loadMembers } from '/src/lib/members'
-import { DISCORD_LOGIN_URL, whenLoggedIn } from '/src/lib/account'
+import { DISCORD_LOGIN_URL, whenMember } from '/src/lib/account'
+import JoinServer from '../components/cult/JoinServer.jsx'
 import { useUrlParam } from '/src/lib/urlState'
 import MemberBadges from '/src/components/cult/MemberBadges'
 
@@ -22,7 +23,7 @@ export default function CultMembers() {
   const filter = ['online', 'staff'].includes(filterParam) ? filterParam : 'all'
 
   useEffect(() => {
-    whenLoggedIn(() => loadMembers())
+    whenMember(() => loadMembers())
       .then((data) => setState({ members: data.members }))
       .catch((error) => setState({ error }))
   }, [])
@@ -69,6 +70,8 @@ export default function CultMembers() {
               Log in with Discord
             </a>
           </div>
+        ) : state.error.status === 403 ? (
+          <JoinServer what="members" />
         ) : (
           <p className="members-error" role="alert">
             {state.error.message}

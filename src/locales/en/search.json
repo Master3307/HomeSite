@@ -32,5 +32,88 @@
     "latexAlias": "You typed {{alias}}: this is the real command",
     "voice": "Speak your search",
     "voiceStop": "Stop listening",
-    "image": "Search with a picture (or paste / drop one)"
+    "image": "Search with a picture (or paste / drop one)",
+    "contacts": "Your contacts",
+    "master": {
+        "placeholder": "Search the web",
+        "search": "Search",
+        "categories": "Kinds of results",
+        "category": {
+            "general": "All",
+            "images": "Images",
+            "videos": "Videos",
+            "news": "News",
+            "maps": "Maps",
+            "music": "Music",
+            "science": "Science",
+            "it": "IT",
+            "files": "Files",
+            "social": "Social"
+        },
+        "time": "Any time",
+        "times": {
+            "any": "Any time",
+            "day": "Past day",
+            "week": "Past week",
+            "month": "Past month",
+            "year": "Past year"
+        },
+        "preferences": "Preferences",
+        "safesearch": "Safe search",
+        "safe": {
+            "strict": "Strict",
+            "moderate": "Moderate",
+            "off": "Off"
+        },
+        "safeShort": "Safe search: {{level}}",
+        "safeHint": {
+            "strict": "Adult content is filtered out.",
+            "moderate": "Explicit pictures and videos are filtered out.",
+            "off": "Nothing is filtered: results can include adult content."
+        },
+        "language": "Results in",
+        "languages": {
+            "auto": "My language",
+            "all": "Every language"
+        },
+        "newTab": "Open results in a new tab",
+        "suggest": "Suggestions while typing",
+        "infoboxPref": "Show a summary box (Wikipedia and others)",
+        "thumbnails": "Pictures next to results",
+        "prefsSaved": "Saved in this browser, and with your account when you're logged in.",
+        "done": "Done",
+        "about_one": "About {{formatted}} result",
+        "about_other": "About {{formatted}} results",
+        "didYouMean": "Did you mean",
+        "nothing": "Nothing found. Try other words, another kind of result or a longer time.",
+        "previous": "Previous",
+        "next": "Next",
+        "page": "Page {{page}}",
+        "pagesLabel": "Pages of results",
+        "related": "Related searches",
+        "onMap": "On the map",
+        "visit": "Go to the page",
+        "fullImage": "Full picture",
+        "close": "Close",
+        "picturesAnyway": "Pictures are always shown here, even with them off for the other results.",
+        "unresponsive": "Didn't answer in time: {{list}}.",
+        "intro": "Searches many engines at once, without ads or tracking, through this site's own SearXNG.",
+        "apiHint": "Also as JSON, for scripts and AI tools:",
+        "powered": "Powered by SearXNG",
+        "api": "JSON API",
+        "privacy": "Privacy",
+        "off": "Search isn't switched on on this site.",
+        "own": {
+            "label": "From your things and this site"
+        },
+        "fallback": {
+            "brave": "SearXNG had nothing this time, so these results come from Brave Search.",
+            "login": "SearXNG had nothing. Logged in, you'd get results from a backup engine.",
+            "used-up": "SearXNG had nothing, and this month's backup searches are used up.",
+            "failed": "SearXNG had nothing, and the backup engine didn't answer either."
+        },
+        "more": "More",
+        "tabsPref": "Tabs",
+        "tabsHint": "The first five shown are tabs, the rest are under More. All always stays."
+    }
 }

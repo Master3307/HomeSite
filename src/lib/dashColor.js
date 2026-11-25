@@ -151,7 +151,8 @@ export function analyzeColor(raw, { label, named = null, colorWords = ['color', 
   }
   // A name needs a hint ("red color", "color red", "red to hex"); codes stand on their own.
   let clean = source.trim()
-  let hinted = Boolean(target)
+  // "255 to hex", "0b1010 to decimal": number bases, not colours (lib/quick, the number converter); "red to hex" is one.
+  let hinted = Boolean(target) && !(['hex', 'int'].includes(target) && /^(?:0[xbo])?[0-9a-f]+$/i.test(clean))
   for (const word of words) {
     const re = new RegExp(`^(?:${word}\\s+(.+)|(.+?)\\s+${word})$`, 'i').exec(clean)
     if (re) {

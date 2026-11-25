@@ -9,7 +9,12 @@ import {
   searchPages,
   searchProfiles,
 } from '../lib/search.js'
+import { useQuick } from './quick/useQuick.js'
+import QuickAnswer from './quick/QuickAnswer.jsx'
 import '../styles/search.css'
+
+/* Tool cards that act on Enter (copy the password, open the link …). */
+const ENTER_CARDS = new Set(['password', 'currency', 'random', 'color', 'link', 'age', 'elapsed', 'clock', 'ip', 'qr', 'count'])
 
 const HIGHLIGHT_NAME = 'search-result'
 
@@ -70,16 +75,23 @@ function Highlighted({ text, tokens }) {
  *              open on an empty bar the person clicked into (not on autofocus,
  *              until it's clicked or typed in), and matching ones join the
  *              suggestions, marked as recent
+ *   `quick`    { disabled: Set, links, newTab } (/dash): the tools (components/quick):
+ *              encodings, hashes, currencies, weather, IP, QR, passwords …,
+ *              as rows (Enter copies) and cards above the calculator
  *   `placeholder`, `children` (rendered under the bar, e.g. engine chips)
+ *
+ * `web.run(query)` may return 'tab' when it opened a new tab: the bar is then cleared.
  */
-export default function Search({ className = '', autoFocus = false, web = null, people = null, placeholder = null, sitePages = true, calc = null, extras = null, history = 'site', voice = false, onImage = null, imageButton = true, children = null }) {
+export default function Search({ className = '', autoFocus = false, web = null, people = null, placeholder = null, sitePages = true, calc = null, extras = null, quick = null, history = 'site', voice = false, onImage = null, imageButton = true, children = null }) {
   const { t, i18n } = useTranslation('search')
+  const { t: tTools } = useTranslation('tools')
   const navigate = useNavigate()
   const listId = useId()
   const rootRef = useRef(null)
   const inputRef = useRef(null)
 
   const [query, setQuery] = useState('')
+  const [dragging, setDragging] = useState(false)
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const [index, setIndex] = useState(null)
@@ -171,7 +183,7 @@ export default function Search({ className = '', autoFocus = false, web = null, 
   const graphRef = useRef(null)
   const [graphFor, setGraphFor] = useState('')
   const [copiedKey, setCopiedKey] = useState('')
-  const calcResult = useMemo(() => {
+  const rawCalc = useMemo(() => {
     if (!calc || !deferredQuery.trim()) return null
     try {
       return calc.analyze(deferredQuery)
@@ -179,6 +191,38 @@ export default function Search({ className = '', autoFocus = false, web = null, 
       return null
     }
   }, [calc, deferredQuery])
+  // The tools (lib/quick): when one answers it better ("255 to hex", "16:9 1440 wide"), the calculator's guess steps back.
+  const isColor = useMemo(() => (calc ? (text) => Boolean(calc.analyze(text)?.color) : null), [calc])
+  const { answers: quickAnswers } = useQuick(deferredQuery, { enabled: Boolean(quick), disabled: quick?.disabled ?? null, links: quick?.links !== false, color: isColor })
+  const calcResult = rawCalc && !quickAnswers.some((answer) => answer.replacesCalc) ? rawCalc : null
+  const enterActions = useRef(new Map())
+  const quickApi = useMemo(
+    () => ({
+      newTab: Boolean(quick?.newTab),
+      copy: (text) => navigator.clipboard?.writeText(String(text ?? '')).catch(() => {}),
+      setQuery: (text) => {
+        setQuery(text)
+        setActiveIndex(0)
+        setOpen(true)
+        inputRef.current?.focus()
+      },
+      open: (url) => {
+        remember(url)
+        if (quick?.newTab) {
+          window.open(url, '_blank', 'noopener,noreferrer')
+          setQuery('')
+          setOpen(false)
+        } else window.location.assign(url)
+      },
+      onEnter: (key, action) => {
+        enterActions.current.set(key, action)
+        return () => {
+          if (enterActions.current.get(key) === action) enterActions.current.delete(key)
+        }
+      },
+    }),
+    [quick?.newTab], // eslint-disable-line react-hooks/exhaustive-deps
+  )
   // Impossible maths (÷ 0): it blows up right away, centred on what broke; the box is cleared once the video plays.
   const boom = () => {
     const input = inputRef.current
@@ -222,9 +266,11 @@ export default function Search({ className = '', autoFocus = false, web = null, 
       })
   }
 
+  // A tool or the calculator answered: the site's pages would only be noise ("10€ to $" matches every "to").
+  const answered = quickAnswers.length > 0 || Boolean(calcResult)
   const pages = useMemo(
-    () => (index && sitePages ? searchPages(index, parsed, i18n.language) : []),
-    [index, sitePages, parsed, i18n.language],
+    () => (index && sitePages && !answered ? searchPages(index, parsed, i18n.language) : []),
+    [index, sitePages, parsed, i18n.language, answered],
   )
 
   // Profile search is async (a real API later), so guard against stale replies.
@@ -246,14 +292,14 @@ export default function Search({ className = '', autoFocus = false, web = null, 
     [hasQuery, people, profileResult, parsed.phrase],
   )
 
-  // Discord lookup (/dash, the owner): debounced, stale replies dropped.
+  // People (/dash: your contacts; the owner also Discord): debounced, stale replies dropped.
   useEffect(() => {
     if (!people || !hasQuery) return
     const controller = new AbortController()
     const timer = setTimeout(() => {
       people(deferredQuery.trim(), controller.signal)
         .then((list) => {
-          if (!controller.signal.aborted) setPeopleResult({ phrase: parsed.phrase, people: list.slice(0, 6), error: null })
+          if (!controller.signal.aborted) setPeopleResult({ phrase: parsed.phrase, people: list.slice(0, 10), error: null })
         })
         .catch((error) => {
           if (!controller.signal.aborted) setPeopleResult({ phrase: parsed.phrase, people: [], error: error.message })
@@ -274,6 +320,10 @@ export default function Search({ className = '', autoFocus = false, web = null, 
       for (const text of recentShown) list.push({ key: `recent:${text}`, kind: 'recent', text })
       return list
     }
+    for (const answer of quickAnswers) {
+      if (answer.card && ENTER_CARDS.has(answer.card.type)) list.push({ key: `quickcard:${answer.key}`, kind: 'quickcard', answer })
+      for (const row of answer.rows) list.push({ key: `quick:${answer.key}:${row.id}`, kind: 'quick', row, answer })
+    }
     if (calcResult) {
       for (const row of calcResult.rows.slice(0, 8)) list.push({ key: `calc:${row.id}`, kind: 'calc', row })
       if (calcResult.graph) list.push({ key: 'calc:graph', kind: 'graph' })
@@ -291,7 +341,7 @@ export default function Search({ className = '', autoFocus = false, web = null, 
     for (const profile of profiles) list.push({ key: profile.id, kind: 'profile', profile })
     for (const person of found.people) list.push({ key: `person:${person.id}`, kind: 'person', person })
     return list
-  }, [latexSuggestions, recentShown, calcResult, extrasTop, extrasAfter, web, query, pages, profiles, found.people])
+  }, [latexSuggestions, recentShown, quickAnswers, calcResult, extrasTop, extrasAfter, web, query, pages, profiles, found.people])
 
   const optionIndex = useMemo(
     () => new Map(options.map((option, position) => [option.key, position])),
@@ -368,7 +418,21 @@ export default function Search({ className = '', autoFocus = false, web = null, 
       return
     }
     // Calculations, graphs and LaTeX aren't searches: they stay out of the history.
-    if (!['calc', 'graph', 'latex'].includes(option.kind) && !(option.kind === 'extra' && option.item?.copy)) remember(query)
+    if (!['calc', 'graph', 'latex', 'quick', 'quickcard'].includes(option.kind) && !(option.kind === 'extra' && option.item?.copy)) remember(query)
+    if (option.kind === 'quick') {
+      if (!option.row.copy) return
+      const shown = document.getElementById(`${listId}-${optionIndex.get(option.key)}`)?.querySelector('.quick__value')?.textContent
+      navigator.clipboard
+        ?.writeText(option.row.id.startsWith('age:') || option.row.id.startsWith('span:') ? (shown ?? option.row.copy) : option.row.copy)
+        .then(() => flash(option.key))
+        .catch(() => {})
+      return
+    }
+    if (option.kind === 'quickcard') {
+      enterActions.current.get(option.answer.key)?.()
+      if (option.answer.card.type !== 'link') flash(option.key)
+      return
+    }
     if (option.kind === 'calc') {
       if (!option.row.copy) return
       navigator.clipboard
@@ -395,7 +459,12 @@ export default function Search({ className = '', autoFocus = false, web = null, 
       return
     }
     if (option.kind === 'web') {
-      web.run(query.trim().replace(/\s*\n\s*/g, ' '))
+      // Opened in a new tab: this tab's bar starts empty again.
+      if (web.run(query.trim().replace(/\s*\n\s*/g, ' ')) === 'tab') {
+        setQuery('')
+        setOpen(false)
+        setActiveIndex(0)
+      }
       return
     }
     if (option.kind === 'person') {
@@ -474,7 +543,6 @@ export default function Search({ className = '', autoFocus = false, web = null, 
   return (
     <div ref={rootRef} className={`site-search ${className}`.trim()}>
       <form
-        className="site-search__form"
         role="search"
         onSubmit={(event) => event.preventDefault()}
         onPaste={(event) => {
@@ -484,10 +552,18 @@ export default function Search({ className = '', autoFocus = false, web = null, 
             onImage(image)
           }
         }}
+        className={`site-search__form${dragging ? ' is-dropping' : ''}`}
         onDragOver={(event) => {
-          if (onImage && [...(event.dataTransfer?.items ?? [])].some((item) => item.type.startsWith('image/'))) event.preventDefault()
+          if (onImage && [...(event.dataTransfer?.items ?? [])].some((item) => item.type.startsWith('image/'))) {
+            event.preventDefault()
+            if (!dragging) setDragging(true)
+          }
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setDragging(false)
         }}
         onDrop={(event) => {
+          setDragging(false)
           const image = onImage && [...(event.dataTransfer?.files ?? [])].find((entry) => entry.type.startsWith('image/'))
           if (image) {
             event.preventDefault()
@@ -496,6 +572,12 @@ export default function Search({ className = '', autoFocus = false, web = null, 
         }}
       >
         <span className="material-symbols-outlined site-search__icon" aria-hidden="true">search</span>
+        {dragging && (
+          <span className="site-search__drop" aria-hidden="true">
+            <span className="material-symbols-outlined">add_photo_alternate</span>
+            {tTools('image.drop')}
+          </span>
+        )}
         <Field
           multiline={multiline}
           ref={inputRef}
@@ -621,6 +703,9 @@ export default function Search({ className = '', autoFocus = false, web = null, 
                 ))}
               </div>
             )}
+            {quickAnswers.map((answer) => (
+              <QuickAnswer key={answer.key} answer={answer} t={tTools} locale={i18n.language} optionProps={optionProps} copiedKey={copiedKey} api={quickApi} enterable={Boolean(answer.card && ENTER_CARDS.has(answer.card.type))} />
+            ))}
             {calcResult && (
               <div role="group" aria-label={t('calc.title')} className="site-search__group site-search__calc">
                 <p className="site-search__group-title" aria-hidden="true">
@@ -774,27 +859,36 @@ export default function Search({ className = '', autoFocus = false, web = null, 
                 ))}
               </div>
             )}
-            {people && hasQuery && (found.people.length > 0 || found.error) && (
-              <div role="group" aria-label={t('discord')} className="site-search__group">
-                <p className="site-search__group-title" aria-hidden="true">
-                  {t('discord')}
-                  <span className="site-search__badge">{t('onlyYou')}</span>
-                </p>
-                {found.error && <p className="site-search__status">{found.error}</p>}
-                {found.people.map((person) => (
-                  <div key={person.id} className="site-search__option site-search__option--profile" {...optionProps({ key: `person:${person.id}`, kind: 'person', person })}>
-                    {person.avatarUrl ? <img className="site-search__face" src={person.avatarUrl} alt="" width="32" height="32" loading="lazy" /> : <span className="material-symbols-outlined site-search__avatar" aria-hidden="true">person</span>}
-                    <div className="site-search__option-main">
-                      <span className="site-search__title">
-                        <Highlighted text={person.name} tokens={parsed.tokens} />
-                        {person.handle && <span className="site-search__handle">@{person.handle}</span>}
-                      </span>
-                    </div>
-                    <code className="site-search__id">{person.id}</code>
+            {/* People: your contacts (group "contacts") and the owner's Discord lookup, each under its own title. */}
+            {people &&
+              hasQuery &&
+              ['contacts', 'discord'].map((group) => {
+                const list = found.people.filter((person) => (person.group ?? 'discord') === group)
+                const error = group === 'discord' ? found.error : null
+                if (!list.length && !error) return null
+                return (
+                  <div key={group} role="group" aria-label={t(group)} className="site-search__group">
+                    <p className="site-search__group-title" aria-hidden="true">
+                      {t(group)}
+                      <span className="site-search__badge">{t('onlyYou')}</span>
+                    </p>
+                    {error && <p className="site-search__status">{error}</p>}
+                    {list.map((person) => (
+                      <div key={`${group}:${person.id}`} className="site-search__option site-search__option--profile" {...optionProps({ key: `person:${group}:${person.id}`, kind: 'person', person })}>
+                        {person.avatarUrl ? <img className="site-search__face" src={person.avatarUrl} alt="" width="32" height="32" loading="lazy" /> : <span className="material-symbols-outlined site-search__avatar" aria-hidden="true">person</span>}
+                        <div className="site-search__option-main">
+                          <span className="site-search__title">
+                            <Highlighted text={person.name} tokens={parsed.tokens} />
+                            {person.handle && <span className="site-search__handle">@{person.handle}</span>}
+                          </span>
+                          {person.detail && <p className="site-search__description">{person.detail}</p>}
+                        </div>
+                        {group === 'discord' && <code className="site-search__id">{person.id}</code>}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                )
+              })}
           </div>
 
           {resultCount > 0 && (

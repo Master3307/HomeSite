@@ -131,7 +131,7 @@ export default function About() {
             {t('about.source')}
           </a>
         )}
-        <Link className="me-button me-button--quiet" to="/cult/privacy">
+        <Link className="me-button me-button--quiet" to="/privacy">
           {t('about.privacy')}
         </Link>
         <Link className="me-button me-button--quiet" to="/license">

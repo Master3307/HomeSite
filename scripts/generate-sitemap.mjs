@@ -16,6 +16,8 @@ const routes = [
   { path: "/maps", priority: 0.7 },
   { path: "/cult", priority: 0.8 },
   { path: "/cult/birthdays", priority: 0.4 },
+  { path: "/privacy", priority: 0.3 },
+  { path: "/search", priority: 0.5 },
 ];
 
 for (const route of routes) {

@@ -24,7 +24,7 @@ const save = () => {
   }
 }
 
-// Same page = same first part of the address (/hub/<tab>, /cult/settings vs /cult/members differ).
+// Same page = same first part of the address (/hub/<tab>, /settings/<tab>; /cult/members vs /cult/birthdays differ).
 const pageOf = (pathname) => (pathname.startsWith('/hub') ? '/hub' : pathname.replace(/\/+$/, '') || '/')
 
 /*

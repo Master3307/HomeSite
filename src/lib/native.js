@@ -36,7 +36,7 @@ export const appBrand = isNativeApp ? (brandMeta?.content === 'cult' ? 'cult' : 
 const appId = (brandMeta?.dataset.id || '').toLowerCase()
 
 // Pages both apps show (logging in, push and the rules about data need them in each).
-const SHARED_PAGES = ['/cult/settings', '/cult/notifications', '/cult/privacy', '/license', '/error']
+const SHARED_PAGES = ['/settings', '/privacy', '/cult/settings', '/cult/notifications', '/cult/privacy', '/license', '/error']
 
 /** Which app a page of the site belongs to: 'home' | 'cult' | 'both'. Keep in step with app/android/app/src/<flavor>/AndroidManifest.xml. */
 export function pageOwner(pathname) {

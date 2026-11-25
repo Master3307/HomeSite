@@ -9,8 +9,9 @@ const trim = (value) => String(value ?? "").replace(/\/+$/, "");
 
 export const siteConfig = Object.freeze({
   siteUrl: trim(config.FRONTEND_ORIGIN) || (typeof window !== "undefined" ? window.location.origin : ""),
-  accountApiOrigin: trim(config.ACCOUNT_API_ORIGIN),
-  profileApiOrigin: trim(config.PROFILE_API_ORIGIN),
+  // One address for the APIs (API_ORIGIN, the gateway) wins; the separate ones stay as aliases.
+  accountApiOrigin: trim(config.API_ORIGIN) || trim(config.ACCOUNT_API_ORIGIN),
+  profileApiOrigin: config.API_ORIGIN ? `${trim(config.API_ORIGIN)}/profile` : trim(config.PROFILE_API_ORIGIN),
   guildId: config.DISCORD_GUILD_ID || "",
   ownerDiscordId: config.DISCORD_USER_ID || "",
   leaderDiscordId: config.COMMUNITY_LEADER_ID || "",
@@ -21,10 +22,12 @@ export const siteConfig = Object.freeze({
   translateUrl: config.TRANSLATE_URL || "",
   searchEngineUrl: config.SEARCH_ENGINE_URL || "",
   searchEngineName: config.SEARCH_ENGINE_NAME || "My search",
+  masterSearch: !/^(off|false|0|no)$/i.test(String(config.MASTER_SEARCH ?? "on")),
   // Android package names of the apps (public on the store anyway): the "open the app" preference uses them.
   appId: config.APP_ID || "",
   cultAppId: config.CULT_APP_ID || "",
   dashFeeds: !/^(off|false|0|no)$/i.test(String(config.DASH_FEEDS ?? "on")),
+  dashLinkPreview: !/^(off|false|0|no)$/i.test(String(config.DASH_LINK_PREVIEW ?? "on")),
   dashMusic: !/^(off|false|0|no)$/i.test(String(config.DASH_MUSIC ?? "on")),
   privacyName: config.PRIVACY_CONTACT_NAME || "",
   privacyEmail: config.PRIVACY_CONTACT_EMAIL || "",

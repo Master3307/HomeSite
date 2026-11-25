@@ -77,34 +77,79 @@ export async function exportBackup(key, code, onProgress = () => {}) {
   return { name, bytes: blob.size, files: job.files ?? 0, timeDifferences: job.differences ?? 0 };
 }
 
+/* A job on the server (checking, applying), polled until it's done: its result. */
+async function followJob(id, onProgress) {
+  let misses = 0;
+  for (;;) {
+    await wait(800);
+    let job;
+    try {
+      job = await json(await get(`/account/admin/backup/import/job/${encodeURIComponent(id)}`));
+      misses = 0;
+    } catch (error) {
+      // A dropped poll (network, a proxy hiccup) isn't the job failing; a few in a row are.
+      if (error.status === 404 || error.status === 403 || ++misses >= 5) throw error;
+      continue;
+    }
+    if (job.error) throw new Error(job.error);
+    if (job.done) return job.result;
+    onProgress({ step: job.step, done: 0, total: 0 });
+  }
+}
+
 /**
  * Uploads a backup in parts (Cloudflare refuses single requests over
- * 100 MB) and gets the import plan; nothing changes yet.
+ * 100 MB; a part that fails is sent again from where the server got to),
+ * then has it checked as a job (Cloudflare also ends requests that take
+ * over 100 seconds). Returns the import plan; nothing changes yet.
  * `onProgress({ step, done, total, bytes })`.
  */
 export async function analyzeBackup(file, key, backupKey = "", onProgress = () => {}) {
   const adminHeaders = { "X-Admin-Key": key, ...(backupKey ? { "X-Backup-Key": backupKey } : {}) };
   const start = await json(await accountFetch("/account/admin/backup/import/upload", { method: "POST", headers: adminHeaders }));
   const size = start.chunkSize || 32 * 1024 * 1024;
-  for (let offset = 0; offset < file.size; offset += size) {
+  let offset = 0;
+  let tries = 0;
+  while (offset < file.size) {
     onProgress({ step: "Uploading", done: offset, total: file.size, bytes: true });
-    await json(
-      await accountFetch(`/account/admin/backup/import/upload/${encodeURIComponent(start.id)}?offset=${offset}`, {
+    let response = null;
+    try {
+      response = await accountFetch(`/account/admin/backup/import/upload/${encodeURIComponent(start.id)}?offset=${offset}`, {
         method: "PUT",
         headers: { ...adminHeaders, "Content-Type": "application/octet-stream" },
         body: file.slice(offset, offset + size),
-      }),
-    );
+      });
+    } catch (error) {
+      if (++tries >= 3) throw error;
+      await wait(1000 * tries);
+      continue;
+    }
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) {
+      offset = data.received;
+      tries = 0;
+      continue;
+    }
+    // The server says how far it got: go on from there (a part arrived although its answer didn't).
+    if (Number.isSafeInteger(data.received) && response.status !== 413 && ++tries < 3) {
+      offset = data.received;
+      await wait(500);
+      continue;
+    }
+    throw Object.assign(new Error(data.error || `Request failed (${response.status}).`), { status: response.status });
   }
   onProgress({ step: "Decrypting and checking", done: 0, total: 0 });
-  return json(
-    await accountFetch("/account/admin/backup/import/analyze", {
+  const { id } = await json(
+    await accountFetch("/account/admin/backup/import/analyze/start", {
       method: "POST",
       headers: { ...adminHeaders, "X-Upload-Id": start.id },
     }),
   );
+  return followJob(id, onProgress);
 }
 
-export async function applyBackup(planId, key, code, choices) {
-  return json(await post("/account/admin/backup/import/apply", { planId, key, code, choices }));
+/** Applies a checked plan as a job (a safety backup comes first): the report. */
+export async function applyBackup(planId, key, code, choices, onProgress = () => {}) {
+  const { id } = await json(await post("/account/admin/backup/import/apply/start", { planId, key, code, choices }));
+  return followJob(id, onProgress);
 }

@@ -55,66 +55,294 @@ function useTimerState(id) {
   const key = `dash:timer:${id}`
   const [state, setState] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem(key)) ?? { startedAt: null, elapsed: 0 }
+      return { startedAt: null, elapsed: 0, length: null, laps: [], ...(JSON.parse(localStorage.getItem(key)) ?? {}) }
     } catch {
-      return { startedAt: null, elapsed: 0 }
+      return { startedAt: null, elapsed: 0, length: null, laps: [] }
     }
   })
-  const save = (next) => {
-    setState(next)
-    try {
-      localStorage.setItem(key, JSON.stringify(next))
-    } catch {
-      // storage blocked: this visit only
-    }
-  }
+  const save = (patch) =>
+    setState((current) => {
+      const next = { ...current, ...(typeof patch === 'function' ? patch(current) : patch) }
+      try {
+        localStorage.setItem(key, JSON.stringify(next))
+      } catch {
+        // storage blocked: this visit only
+      }
+      return next
+    })
   return [state, save]
 }
 
-function TimerView({ widget }) {
-  const { t } = useTranslation('dash')
-  const { mode = 'timer', minutes = 25, sound = true } = widget.options
-  const [state, save] = useTimerState(widget.id)
-  const running = state.startedAt !== null
-  useNow(running ? 250 : 60_000)
-  const elapsed = state.elapsed + (running ? Date.now() - state.startedAt : 0)
-  const length = Math.max(1, Math.min(24 * 60, Number(minutes) || 25)) * 60_000
-  const left = length - elapsed
-  const done = mode === 'timer' && left <= 0
-  const rang = useRef(false)
-  useEffect(() => {
-    if (done && running && !rang.current) {
-      rang.current = true
-      if (sound) chime()
-      save({ startedAt: null, elapsed: length })
-    }
-    if (!done) rang.current = false
-  })
-  const shown = mode === 'timer' ? Math.max(0, left) : elapsed
+/* Typed digits ("130") -> ms, the way a clock app reads them: the last two are seconds, then minutes, then hours. */
+const digitsToMs = (digits) => {
+  const padded = digits.padStart(6, '0').slice(-6)
+  return (Number(padded.slice(0, 2)) * 3600 + Number(padded.slice(2, 4)) * 60 + Number(padded.slice(4, 6))) * 1000
+}
+const msToDigits = (ms) => {
+  const total = Math.round(ms / 1000)
+  const text = `${pad(Math.floor(total / 3600))}${pad(Math.floor((total % 3600) / 60))}${pad(total % 60)}`
+  return text.replace(/^0+/, '')
+}
+/* "5m", "1h30", "90s", "25", "1:30:00": a preset to ms (null if it can't be read). */
+function presetToMs(text) {
+  const clean = String(text ?? '').trim().toLowerCase()
+  if (/^\d+$/.test(clean)) return Number(clean) * 60_000
+  const colon = /^(\d+):(\d{1,2})(?::(\d{1,2}))?$/.exec(clean)
+  if (colon) return colon[3] !== undefined ? (Number(colon[1]) * 3600 + Number(colon[2]) * 60 + Number(colon[3])) * 1000 : (Number(colon[1]) * 60 + Number(colon[2])) * 1000
+  const parts = [...clean.matchAll(/(\d+(?:\.\d+)?)\s*(h|m|s)?/g)]
+  if (!parts.length) return null
+  let total = 0
+  for (const [, value, unit] of parts) total += Number(value) * (unit === 'h' ? 3_600_000 : unit === 's' ? 1000 : 60_000)
+  return total > 0 ? total : null
+}
+const presetLabel = (ms) => {
+  const total = Math.round(ms / 1000)
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const sec = total % 60
+  return [h ? `${h}h` : '', m ? `${m}m` : '', sec ? `${sec}s` : ''].filter(Boolean).join(' ') || '0s'
+}
+const DEFAULT_PRESETS = ['1m', '5m', '10m', '15m', '25m', '1h']
+
+/* A countdown ring around the time. */
+function Ring({ progress, done, children }) {
+  const r = 46
+  const length = 2 * Math.PI * r
   return (
-    <div className={`dash-w-timer${done ? ' is-done' : ''}`}>
-      <p className="dash-w-timer__time">
-        <Num>{clock(shown)}</Num>
-      </p>
-      {mode === 'timer' && (
-        <span className="dash-w-timer__bar" aria-hidden="true">
-          <span style={{ width: `${Math.min(100, (elapsed / length) * 100)}%` }} />
-        </span>
-      )}
-      <div className="dash-row">
-        <button type="button" className="dash-button dash-button--small" onClick={() => save(running ? { startedAt: null, elapsed } : { startedAt: Date.now(), elapsed: done ? 0 : state.elapsed })}>
+    <div className={`dash-timer-ring${done ? ' is-done' : ''}`}>
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle r={r} cx="50" cy="50" className="dash-timer-ring__track" />
+        <circle r={r} cx="50" cy="50" className="dash-timer-ring__fill" strokeDasharray={length} strokeDashoffset={length * (1 - Math.max(0, Math.min(1, progress)))} />
+      </svg>
+      <div className="dash-timer-ring__inner">{children}</div>
+    </div>
+  )
+}
+
+function TimerMode({ widget, state, save }) {
+  const { t } = useTranslation('dash')
+  const { sound = true, minutes = 25 } = widget.options
+  const presets = Array.isArray(widget.options.presets) && widget.options.presets.length ? widget.options.presets : DEFAULT_PRESETS
+  const running = state.startedAt !== null
+  useNow(running ? 200 : 60_000)
+  const length = state.length ?? Math.max(1, Math.min(24 * 60, Number(minutes) || 25)) * 60_000
+  const elapsed = state.elapsed + (running ? Date.now() - state.startedAt : 0)
+  const left = length - elapsed
+  const started = running || state.elapsed > 0
+  const done = started && left <= 0
+  const [digits, setDigits] = useState(() => msToDigits(length))
+  // Time's up: the chime, a few times (until it's stopped).
+  const rings = useRef(0)
+  useEffect(() => {
+    if (!done || !running || !sound) {
+      rings.current = 0
+      return undefined
+    }
+    if (rings.current === 0) {
+      chime()
+      rings.current = 1
+    }
+    const timer = setInterval(() => {
+      if (rings.current >= 4) return clearInterval(timer)
+      chime()
+      rings.current += 1
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [done, running, sound])
+  const start = (ms) => save({ length: ms, elapsed: 0, startedAt: Date.now() })
+  const typed = (digit) => setDigits((current) => (current + digit).replace(/^0+/, '').slice(-6))
+  if (!started) {
+    const value = digits.padStart(6, '0')
+    const ms = digitsToMs(digits)
+    return (
+      <div
+        className="dash-timer-set"
+        tabIndex={0}
+        aria-label={t('widgets.timer.setLabel')}
+        onKeyDown={(event) => {
+          if (/^[0-9]$/.test(event.key)) typed(event.key)
+          else if (event.key === 'Backspace') setDigits((current) => current.slice(0, -1))
+          else if (event.key === 'Enter' && ms) start(ms)
+          else return
+          event.preventDefault()
+        }}
+      >
+        <p className={`dash-timer-set__display${digits ? ' has-value' : ''}`} aria-live="polite">
+          {[
+            [value.slice(0, 2), 'h'],
+            [value.slice(2, 4), 'm'],
+            [value.slice(4, 6), 's'],
+          ].map(([part, unit], index) => (
+            <span key={unit} className={digits.length > (2 - index) * 2 ? 'is-set' : ''}>
+              {part}
+              <small>{unit}</small>
+            </span>
+          ))}
+        </p>
+        <div className="dash-timer-set__keys">
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0'].map((key) => (
+            <button key={key} type="button" onClick={() => (key === '00' ? (typed('0'), typed('0')) : typed(key))}>
+              {key}
+            </button>
+          ))}
+          <button type="button" onClick={() => setDigits((current) => current.slice(0, -1))} aria-label={t('widgets.timer.backspace')}>
+            <span className="material-symbols-outlined">backspace</span>
+          </button>
+        </div>
+        <div className="dash-timer-set__presets">
+          {presets.map((preset) => {
+            const presetMs = presetToMs(preset)
+            if (!presetMs) return null
+            return (
+              <span key={preset} className="dash-timer-preset">
+                <button type="button" className="dash-chip-button" onClick={() => start(presetMs)} title={t('widgets.timer.startPreset', { time: presetLabel(presetMs) })}>
+                  {presetLabel(presetMs)}
+                </button>
+                <button type="button" className="dash-timer-preset__remove" onClick={() => updateWidgetOptions(widget.id, { presets: presets.filter((entry) => entry !== preset) })} aria-label={t('widgets.timer.removePreset', { time: presetLabel(presetMs) })} title={t('widgets.timer.removePreset', { time: presetLabel(presetMs) })}>
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    close
+                  </span>
+                </button>
+              </span>
+            )
+          })}
+          {ms > 0 && !presets.some((preset) => presetToMs(preset) === ms) && presets.length < 12 && (
+            <button type="button" className="dash-chip-button dash-chip-button--add" onClick={() => updateWidgetOptions(widget.id, { presets: [...presets, presetLabel(ms).replace(/ /g, '')] })} title={t('widgets.timer.savePreset')}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                add
+              </span>
+              {presetLabel(ms)}
+            </button>
+          )}
+        </div>
+        <button type="button" className="dash-button dash-timer-set__go" disabled={!ms} onClick={() => start(ms)}>
           <span className="material-symbols-outlined" aria-hidden="true">
-            {running ? 'pause' : 'play_arrow'}
+            play_arrow
           </span>
-          {running ? t('widgets.timer.pause') : t('widgets.timer.start')}
+          {t('widgets.timer.start')}
         </button>
-        <button type="button" className="dash-button dash-button--quiet dash-button--small" onClick={() => save({ startedAt: null, elapsed: 0 })} disabled={!elapsed}>
+      </div>
+    )
+  }
+  return (
+    <div className={`dash-timer-run${done ? ' is-done' : ''}`}>
+      <Ring progress={done ? 1 : elapsed / length} done={done}>
+        <p className="dash-timer-run__time" aria-live="off">
+          {done && '−'}
+          <Num>{clock(done ? -left : Math.ceil(Math.max(0, left) / 1000) * 1000)}</Num>
+        </p>
+        <small>{done ? t('widgets.timer.up') : presetLabel(length)}</small>
+      </Ring>
+      <div className="dash-row dash-timer-run__buttons">
+        {done ? (
+          <button type="button" className="dash-button dash-button--small" onClick={() => save({ startedAt: null, elapsed: 0 })}>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              stop
+            </span>
+            {t('widgets.timer.stop')}
+          </button>
+        ) : (
+          <>
+            <button type="button" className="dash-button dash-button--small" onClick={() => save(running ? { startedAt: null, elapsed } : { startedAt: Date.now() })}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {running ? 'pause' : 'play_arrow'}
+              </span>
+              {running ? t('widgets.timer.pause') : t('widgets.timer.resume')}
+            </button>
+            <button type="button" className="dash-button dash-button--quiet dash-button--small" onClick={() => save({ length: length + 60_000 })} title={t('widgets.timer.addMinute')}>
+              +1:00
+            </button>
+          </>
+        )}
+        <button type="button" className="dash-button dash-button--quiet dash-button--small" onClick={() => save({ startedAt: null, elapsed: 0 })} title={t('widgets.timer.reset')} aria-label={t('widgets.timer.reset')}>
           <span className="material-symbols-outlined" aria-hidden="true">
             restart_alt
           </span>
-          {t('widgets.timer.reset')}
         </button>
       </div>
+    </div>
+  )
+}
+
+const stopwatchText = (ms) => {
+  const total = Math.max(0, ms)
+  const hundredths = Math.floor((total % 1000) / 10)
+  return `${clock(total)}.${pad(hundredths)}`
+}
+
+function StopwatchMode({ state, save }) {
+  const { t } = useTranslation('dash')
+  const running = state.startedAt !== null
+  useNow(running ? 50 : 60_000)
+  const elapsed = state.elapsed + (running ? Date.now() - state.startedAt : 0)
+  const laps = Array.isArray(state.laps) ? state.laps : []
+  const splits = laps.map((at, index) => at - (laps[index - 1] ?? 0))
+  const fastest = splits.length > 1 ? Math.min(...splits) : null
+  const slowest = splits.length > 1 ? Math.max(...splits) : null
+  return (
+    <div className="dash-stopwatch">
+      <p className="dash-stopwatch__time" aria-live="off">
+        {stopwatchText(elapsed)}
+      </p>
+      <div className="dash-row dash-timer-run__buttons">
+        <button type="button" className="dash-button dash-button--small" onClick={() => save(running ? { startedAt: null, elapsed } : { startedAt: Date.now() })}>
+          <span className="material-symbols-outlined" aria-hidden="true">
+            {running ? 'pause' : 'play_arrow'}
+          </span>
+          {running ? t('widgets.timer.pause') : elapsed ? t('widgets.timer.resume') : t('widgets.timer.start')}
+        </button>
+        {running ? (
+          <button type="button" className="dash-button dash-button--quiet dash-button--small" onClick={() => save({ laps: [...laps, elapsed].slice(-99) })}>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              flag
+            </span>
+            {t('widgets.timer.lap')}
+          </button>
+        ) : (
+          <button type="button" className="dash-button dash-button--quiet dash-button--small" disabled={!elapsed} onClick={() => save({ startedAt: null, elapsed: 0, laps: [] })}>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              restart_alt
+            </span>
+            {t('widgets.timer.reset')}
+          </button>
+        )}
+      </div>
+      {laps.length > 0 && (
+        <ol className="dash-stopwatch__laps" reversed>
+          {[...laps]
+            .map((at, index) => ({ at, index, split: splits[index] }))
+            .reverse()
+            .map((lap) => (
+              <li key={lap.index} className={lap.split === fastest ? 'is-fast' : lap.split === slowest ? 'is-slow' : ''}>
+                <span>{t('widgets.timer.lapN', { n: lap.index + 1 })}</span>
+                <span>{stopwatchText(lap.split)}</span>
+                <span>{stopwatchText(lap.at)}</span>
+              </li>
+            ))}
+        </ol>
+      )}
+    </div>
+  )
+}
+
+/* Timer (set it like a clock app: type the time, or a preset) and stopwatch (laps), switchable in the widget. */
+function TimerView({ widget }) {
+  const { t } = useTranslation('dash')
+  const [state, save] = useTimerState(widget.id)
+  const mode = state.mode ?? widget.options.mode ?? 'timer'
+  const idle = state.startedAt === null && !state.elapsed
+  return (
+    <div className="dash-w-timer">
+      {(idle || mode === 'stopwatch') && (
+        <div className="dash-segment dash-segment--small dash-w-timer__modes" role="tablist" aria-label={t('widgets.timer.name')}>
+          {['timer', 'stopwatch'].map((id) => (
+            <button key={id} type="button" role="tab" aria-selected={mode === id} className={mode === id ? 'is-active' : ''} disabled={!idle && mode !== id} onClick={() => save({ mode: id })}>
+              {t(`fields.choices.${id}`)}
+            </button>
+          ))}
+        </div>
+      )}
+      {mode === 'stopwatch' ? <StopwatchMode state={state} save={save} /> : <TimerMode widget={widget} state={state} save={save} />}
     </div>
   )
 }
@@ -259,12 +487,30 @@ async function copyText(text) {
   }
 }
 
+/* The full catalog (symbolCatalog.js): loaded the first time the symbol search opens. */
+let catalogModule = null
+const loadCatalog = () => import('./symbolCatalog.js').then((module) => (catalogModule = module))
+
 function SymbolPanel({ style, onPick, onClose, wordsOf }) {
   const { t } = useTranslation('dash')
   const [query, setQuery] = useState('')
-  const found = findSymbols(query, wordsOf)
+  const [catalog, setCatalog] = useState(catalogModule)
+  useEffect(() => {
+    if (!catalog) loadCatalog().then(setCatalog)
+  }, [catalog])
+  const basics = findSymbols(query, wordsOf)
+  const more = catalog ? catalog.searchCatalog(query) : []
+  // The building blocks win: the catalog's copies of them aren't shown twice.
+  const taken = new Set(basics.map((symbol) => symbol[style]))
+  const extra = more.filter((symbol) => !taken.has(symbol[style]))
+  const first = basics[0] ?? extra[0]
   const searchRef = useRef(null)
   useEffect(() => searchRef.current?.focus({ preventScroll: true }), [])
+  const key = (symbol, name) => (
+    <button key={symbol.id} type="button" className="dash-w-calc__key" onMouseDown={(event) => event.preventDefault()} onClick={() => onPick(symbol)} title={`${name} · ${String(symbol[style]).replace('§', '…')}`}>
+      {symbol.show}
+    </button>
+  )
   return (
     <div className="dash-w-calc__symbols" role="dialog" aria-label={t('widgets.calculator.symbols')}>
       <div className="dash-w-calc__symbols-head">
@@ -280,38 +526,45 @@ function SymbolPanel({ style, onPick, onClose, wordsOf }) {
               event.preventDefault()
               event.stopPropagation()
               onClose()
-            } else if (event.key === 'Enter' && found[0]) {
+            } else if (event.key === 'Enter' && first) {
               event.preventDefault()
-              onPick(found[0])
+              onPick(first)
             }
           }}
           placeholder={t('widgets.calculator.symbolSearch')}
           aria-label={t('widgets.calculator.symbolSearch')}
           spellCheck={false}
         />
+        <small className="dash-muted">{catalog ? basics.length + extra.length : ''}</small>
         <button type="button" className="dash-tool" onClick={onClose} aria-label={t('settings.close')}>
           <span className="material-symbols-outlined" aria-hidden="true">
             close
           </span>
         </button>
       </div>
-      {found.length === 0 && <p className="dash-muted">{t('widgets.calculator.noSymbols')}</p>}
+      {!first && catalog && <p className="dash-muted">{t('widgets.calculator.noSymbols')}</p>}
       {SYMBOL_GROUPS.map((group) => {
-        const list = found.filter((symbol) => symbol.group === group)
+        const list = basics.filter((symbol) => symbol.group === group)
         if (!list.length) return null
         return (
           <section key={group}>
             <h4>{t(`widgets.calculator.groups.${group}`)}</h4>
-            <div className="dash-w-calc__symbol-grid">
-              {list.map((symbol) => (
-                <button key={symbol.id} type="button" className="dash-w-calc__key" onMouseDown={(event) => event.preventDefault()} onClick={() => onPick(symbol)} title={`${wordsOf(symbol.id).split(',').slice(0, 3).join(',')} · ${symbol[style].replace('§', '…')}`}>
-                  {symbol.show}
-                </button>
-              ))}
-            </div>
+            <div className="dash-w-calc__symbol-grid">{list.map((symbol) => key(symbol, wordsOf(symbol.id).split(',').slice(0, 3).join(',')))}</div>
           </section>
         )
       })}
+      {!catalog && <Loading lines={2} />}
+      {catalog &&
+        catalog.CATALOG_GROUPS.map((group) => {
+          const list = extra.filter((symbol) => symbol.group === group)
+          if (!list.length) return null
+          return (
+            <section key={group}>
+              <h4>{t(`widgets.calculator.groups.${group}`)}</h4>
+              <div className="dash-w-calc__symbol-grid">{list.map((symbol) => key(symbol, symbol.names.split(',').slice(0, 2).join(',')))}</div>
+            </section>
+          )
+        })}
     </div>
   )
 }
@@ -350,13 +603,117 @@ function CalcResult({ result, extra, copied, onCopy }) {
   )
 }
 
+/* ---------- the calculator as a real one (layout "emulator") ---------- */
+
+/* key: [label, what it types | action, kind] */
+const EMULATOR_KEYS = [
+  ['sin', 'sin(', 'fn'], ['cos', 'cos(', 'fn'], ['tan', 'tan(', 'fn'], ['ln', 'ln(', 'fn'], ['log', 'log(', 'fn'],
+  ['x²', '²', 'fn'], ['xʸ', '^', 'fn'], ['√', '√(', 'fn'], ['π', 'π', 'fn'], ['e', 'e', 'fn'],
+  ['(', '(', 'fn'], [')', ')', 'fn'], ['%', '%', 'fn'], ['x⁻¹', '^(−1)', 'fn'], ['angle', ':angle', 'fn'],
+  ['7', '7', 'num'], ['8', '8', 'num'], ['9', '9', 'num'], ['⌫', ':back', 'del'], ['AC', ':clear', 'del'],
+  ['4', '4', 'num'], ['5', '5', 'num'], ['6', '6', 'num'], ['×', '×', 'op'], ['÷', '÷', 'op'],
+  ['1', '1', 'num'], ['2', '2', 'num'], ['3', '3', 'num'], ['+', '+', 'op'], ['−', '−', 'op'],
+  ['0', '0', 'num'], ['.', '.', 'num'], ['EXP', '×10^', 'fn'], ['Ans', 'Ans', 'fn'], ['=', ':equals', 'equals'],
+]
+const KEYBOARD = { '*': '×', '/': '÷', '-': '−', x: '×', X: '×', ',': '.' }
+
+function CalcEmulator({ widget, angle, digits }) {
+  const { t, i18n } = useTranslation('dash')
+  const look = ['classic', 'dark'].includes(widget.options.emulatorLook) ? widget.options.emulatorLook : 'modern'
+  const storeKey = `dash:calc-emu:${widget.id}`
+  const [state, setState] = useState(() => {
+    try {
+      return { expr: '', shown: '0', ans: 0, done: false, error: false, ...(JSON.parse(localStorage.getItem(storeKey)) ?? {}) }
+    } catch {
+      return { expr: '', shown: '0', ans: 0, done: false, error: false }
+    }
+  })
+  const save = (next) => {
+    setState(next)
+    try {
+      localStorage.setItem(storeKey, JSON.stringify(next))
+    } catch {
+      // this visit only
+    }
+  }
+  const [mode, setMode] = useState(angle)
+  const evaluate = (expr) => {
+    const open = (expr.match(/\(/g) ?? []).length - (expr.match(/\)/g) ?? []).length
+    const closed = expr + ')'.repeat(Math.max(0, open))
+    const source = closed.replace(/Ans/g, `(${state.ans})`).replace(/×10\^/g, '*10^').replace(/\^\(−1\)/g, '^(-1)')
+    try {
+      const result = analyzeAll(source, { angle: mode, digits, locale: i18n.language })
+      const row = result?.rows?.[0]
+      const value = Number(row?.copy)
+      if (!row || result.illegal || !Number.isFinite(value)) return { expr: closed, shown: 'Error', done: true, error: true, ans: state.ans }
+      return { expr: closed, shown: row.text.replace(/^=\s*/, ''), done: true, error: false, ans: value }
+    } catch {
+      return { expr: closed, shown: 'Error', done: true, error: true, ans: state.ans }
+    }
+  }
+  const press = (input, kind) => {
+    if (input === ':angle') return setMode((current) => (current === 'deg' ? 'rad' : 'deg'))
+    if (input === ':clear') return save({ ...state, expr: '', shown: '0', done: false, error: false })
+    if (input === ':back') return save({ ...state, expr: state.done ? '' : state.expr.replace(/(?:sin\(|cos\(|tan\(|ln\(|log\(|√\(|×10\^|\^\(−1\)|Ans|.)$/u, ''), done: false, error: false })
+    if (input === ':equals') return state.expr ? save(evaluate(state.expr)) : undefined
+    // After a result: an operator goes on with it (Ans), anything else starts over.
+    let expr = state.done ? (kind === 'op' || ['^', '²', '%', '^(−1)'].includes(input) ? 'Ans' : '') : state.expr
+    if (expr.length >= 200) return
+    expr += input
+    save({ ...state, expr, done: false, error: false })
+  }
+  const pressRef = useRef(press)
+  pressRef.current = press
+  const onKeyDown = (event) => {
+    if (event.ctrlKey || event.metaKey || event.altKey) return
+    const key = event.key
+    let input = null
+    let kind = 'num'
+    if (/^[0-9.]$/.test(key)) input = key
+    else if (key in KEYBOARD) [input, kind] = [KEYBOARD[key], /[×÷−]/.test(KEYBOARD[key]) ? 'op' : 'num']
+    else if (key === '+') [input, kind] = ['+', 'op']
+    else if (key === '^') [input, kind] = ['^', 'fn']
+    else if (key === '(' || key === ')' || key === '%') [input, kind] = [key, 'fn']
+    else if (key === 'Enter' || key === '=') input = ':equals'
+    else if (key === 'Backspace') input = ':back'
+    else if (key === 'Escape' || key === 'Delete') input = ':clear'
+    if (!input) return
+    event.preventDefault()
+    pressRef.current(input, kind)
+  }
+  return (
+    <div className={`dash-emu dash-emu--${look}`} tabIndex={0} onKeyDown={onKeyDown} aria-label={t('widgets.calculator.emulator')}>
+      <div className="dash-emu__screen" aria-live="polite">
+        <span className="dash-emu__flags">
+          <span>{mode.toUpperCase()}</span>
+          {state.done && !state.error && <span>=</span>}
+        </span>
+        <span className="dash-emu__expr">{state.expr || ' '}</span>
+        <span className={`dash-emu__result${state.error ? ' is-error' : ''}`}>{state.done ? state.shown : state.expr ? ' ' : '0'}</span>
+      </div>
+      <div className="dash-emu__keys">
+        {EMULATOR_KEYS.map(([label, input, kind]) => (
+          <button key={label} type="button" className={`dash-emu__key dash-emu__key--${kind}`} onMouseDown={(event) => event.preventDefault()} onClick={() => press(input, kind)} aria-label={label === 'angle' ? t('widgets.calculator.angleSwitch', { mode: mode.toUpperCase() }) : label}>
+            {label === 'angle' ? (mode === 'deg' ? 'DEG' : 'RAD') : label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* A classic number pad for the lines view (keypad "numbers" / "both"). */
+const NUMBER_KEYS = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '0', '.', '=', '+']
+
 function CalculatorView({ widget }) {
   const { t, i18n } = useTranslation('dash')
   const options = widget.options
   const angle = options.angle === 'deg' ? 'deg' : 'rad'
   const digits = Math.max(3, Math.min(15, Number(options.digits) || 10))
   const style = INPUT_STYLES.includes(options.input) ? options.input : 'plain'
-  const layout = ['tabs', 'split', 'calc'].includes(options.layout) ? options.layout : 'auto'
+  const layout = ['tabs', 'split', 'calc', 'emulator'].includes(options.layout) ? options.layout : 'auto'
+  // The keypad: maths keys, a number pad, both, or none (older settings: true / false).
+  const keypad = options.keypad === false ? 'off' : ['math', 'numbers', 'both', 'off'].includes(options.keypad) ? options.keypad : 'math'
   const size = ['small', 'medium', 'large', 'huge'].includes(options.size) ? options.size : 'auto'
   const preview = ['always', 'off'].includes(options.preview) ? options.preview : 'auto'
   const [lines, setLines] = useLines(widget)
@@ -422,6 +779,7 @@ function CalculatorView({ widget }) {
     if (options.marks !== false) points.push(...(result.points ?? []))
   })
   const split = layout === 'split' || (layout === 'auto' && tall && graphLines.length > 0)
+  // keeps the hooks above in the same order; the emulator is a view of its own
   const showTabs = !split && layout !== 'calc'
   const showLines = split || layout === 'calc' || tab === 'calc'
   const showGraph = layout !== 'calc' && (split || tab === 'graph')
@@ -474,6 +832,19 @@ function CalculatorView({ widget }) {
     if (tab === 'graph' && !split) setTab('calc')
   }
 
+  // The number pad: characters go in at the cursor, = goes on to a new line (like Enter).
+  const padPress = (key) => {
+    if (key === '=') {
+      const id = lastFocus.current.id && lines.some((line) => line.id === lastFocus.current.id) ? lastFocus.current.id : lines.at(-1).id
+      const index = lines.findIndex((line) => line.id === id)
+      if (results[index]?.illegal) blowUp(id)
+      else addAfter(id)
+      return
+    }
+    const text = { '×': style === 'latex' ? ' \\cdot ' : style === 'unicode' ? ' × ' : ' * ', '÷': style === 'latex' ? ' \\div ' : style === 'unicode' ? ' ÷ ' : ' / ', '−': ' - ', '+': ' + ' }[key] ?? key
+    insert({ plain: text, latex: text, unicode: text })
+  }
+
   const onKeyDown = (event, line, index) => {
     const input = event.currentTarget
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
@@ -510,6 +881,7 @@ function CalculatorView({ widget }) {
 
   const names = [...new Set(results.flatMap((result) => Object.keys(result?.env?.vars ?? {})))]
 
+  if (layout === 'emulator') return <CalcEmulator widget={widget} angle={angle} digits={digits} />
   return (
     <div ref={rootRef} className={`dash-w-calc dash-w-calc--${size}${split ? ' is-split' : ''}`}>
       {showTabs && (
@@ -617,8 +989,18 @@ function CalculatorView({ widget }) {
           )}
         </ol>
       )}
-      {options.keypad !== false && showLines && (
+      {keypad !== 'off' && showLines && (
         <div className="dash-w-calc__keys">
+          {(keypad === 'numbers' || keypad === 'both') && (
+            <div className="dash-w-calc__numpad" role="toolbar" aria-label={t('widgets.calculator.numpad')}>
+              {NUMBER_KEYS.map((key) => (
+                <button key={key} type="button" className={`dash-w-calc__key${/[0-9.]/.test(key) ? ' is-digit' : key === '=' ? ' is-equals' : ' is-op'}`} onMouseDown={(event) => event.preventDefault()} onClick={() => padPress(key)}>
+                  {key}
+                </button>
+              ))}
+            </div>
+          )}
+          {keypad !== 'numbers' && (
           <div className="dash-w-calc__keypad" role="toolbar" aria-label={t('widgets.calculator.keypad')}>
             {KEYPAD.map((id) => {
               const symbol = MATH_SYMBOLS.find((entry) => entry.id === id)
@@ -634,6 +1016,7 @@ function CalculatorView({ widget }) {
               </span>
             </button>
           </div>
+          )}
           <div className="dash-segment dash-w-calc__style" role="radiogroup" aria-label={t('fields.input')}>
             {INPUT_STYLES.map((name) => (
               <button key={name} type="button" role="radio" aria-checked={style === name} className={style === name ? 'is-active' : ''} onMouseDown={(event) => event.preventDefault()} onClick={() => updateWidgetOptions(widget.id, { input: name })} title={t(`widgets.calculator.styleHint.${name}`)}>
