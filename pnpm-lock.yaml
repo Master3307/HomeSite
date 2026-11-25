@@ -260,7 +260,7 @@ importers:
         version: 5.3.0(supports-color@7.2.0)
       express-rate-limit:
         specifier: ^8.7.4
-        version: 8.7.4(express@5.3.0(supports-color@7.2.0))(supports-color@7.2.0)
+        version: 8.7.5(express@5.3.0(supports-color@7.2.0))(supports-color@7.2.0)
       express-session:
         specifier: ^1.19.0
         version: 1.19.0(supports-color@7.2.0)
@@ -1457,8 +1457,8 @@ packages:
     resolution: {integrity: sha512-XYfuKMvj4O35f/pOXLObndIRvyQ+/+6AhODh+OKWj9S9498pHHn/IMszH+gt0fBCRWMNfk1ZSp5x3AifmnI2vg==}
     engines: {node: '>=6'}
 
-  express-rate-limit@8.7.4:
-    resolution: {integrity: sha512-LKBXzX700wz3zAGNNmVnjRI5mEbYkLv7UbMI4+9Xa+JPcg2UZh6AgY/2CZh9RrJjFM5ttC/N1lD+KzyFoZITCw==}
+  express-rate-limit@8.7.5:
+    resolution: {integrity: sha512-wi+v38cx2EqD0JnhE/e74o5tFqKWUOAPFJIgyEiqJ8v2MNpoOAA3kI2hXYOI+YM+HE5yqbdAlVxm2GqOIeYOgA==}
     engines: {node: '>= 16'}
     peerDependencies:
       express: '>= 4.11'
@@ -3586,7 +3586,7 @@ snapshots:
 
   expand-template@2.0.3: {}
 
-  express-rate-limit@8.7.4(express@5.3.0(supports-color@7.2.0))(supports-color@7.2.0):
+  express-rate-limit@8.7.5(express@5.3.0(supports-color@7.2.0))(supports-color@7.2.0):
     dependencies:
       debug: 4.4.3(supports-color@7.2.0)
       express: 5.3.0(supports-color@7.2.0)
