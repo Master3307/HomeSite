@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   checks:
-    name: Node 26 · lint · syntax · build
+    name: Node 22 · lint · syntax · build
     runs-on: ubuntu-latest
 
     steps:
@@ -38,7 +38,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 26
+          node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 

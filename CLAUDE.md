@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Personal website (home.master3307.org) built with Vite + React 19, plus several Node backends in `server/`: the Discord "Cultbot", a Discord OAuth account API, and a Discord profile/presence API. Package manager is **pnpm** (`packageManager` is pinned; CI uses Node 26 and `--frozen-lockfile`).
+Personal website (home.master3307.org) built with Vite + React 19, plus several Node backends in `server/`: the Discord "Cultbot", a Discord OAuth account API, and a Discord profile/presence API. Package manager is **pnpm** (`packageManager` is pinned; CI uses Node 22 (the server's version) and `--frozen-lockfile`).
 
 ## Commands
 

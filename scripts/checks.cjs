@@ -463,7 +463,8 @@ async function main() {
 
   // .env.example is generated from config/settings.cjs (pnpm env:example).
   // Unit tests (tests/*.test.mjs): the search bar's tools, the calculator's conversions.
-  await commandCheck("tests", "Unit tests", "node", ["--test", "tests/"]);
+  // A glob, not the folder: Node 22 (the server) reads a folder argument as one file.
+  await commandCheck("tests", "Unit tests", "node", ["--test", "tests/*.test.mjs"]);
 
   await commandCheck("env-example", ".env.example matches config/settings.cjs", "node", ["scripts/env-example.cjs", "--check"]);
 

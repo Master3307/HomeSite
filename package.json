@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "checks": "node scripts/checks.cjs",
-    "test": "node --test tests/",
+    "test": "node --test \"tests/*.test.mjs\"",
     "dev": "pnpm run search:index && vite",
     "git-sync": "node scripts/sync.cjs",
     "fonts:update": "node scripts/update-fonts.mjs",
