@@ -2,6 +2,7 @@ import http from "node:http";
 import processLog from "./processLog.cjs";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 processLog.capture("deploy");
 
@@ -12,8 +13,9 @@ const endpoint = "/github";
 const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
 const expectedRepository = "Master3307/HomeSite";
 const expectedRef = "refs/heads/master";
-const deployScript = "/opt/homesite-api/scripts/deploy.sh";
-const deployDirectory = "/opt/homesite-api";
+// The checkout this listener runs from (server/services/ → the repository root).
+const deployDirectory = fileURLToPath(new URL("../../", import.meta.url)).replace(/\/$/, "");
+const deployScript = `${deployDirectory}/scripts/deploy.sh`;
 const maxBodyBytes = 1024 * 1024; // 1 MiB
 
 if (!webhookSecret) {

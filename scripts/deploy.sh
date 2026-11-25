@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-REPO_DIR="/opt/homesite-api"
+# The checkout this script lives in (whatever the folder is called).
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BRANCH="master"
-LOCK_FILE="/run/homesite-api-deploy.lock"
+LOCK_FILE="/run/homesite-deploy.lock"
 
 exec 9>"$LOCK_FILE"
 
