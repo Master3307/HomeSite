@@ -20,12 +20,12 @@
         "split": "{{members}} dai membri, {{guests}} dagli ospiti"
     },
     "join": {
-        "voting": "Voting on the Friday Dress Code is for people in our Discord server.",
-        "general": "You're logged in, but not in our Discord server yet. Voting, birthdays, member profiles and the lobby cat's progress are for people in the server.",
+        "voting": "La votazione sul codice di abbigliamento del venerdì è riservata agli utenti del nostro server Discord.",
+        "general": "Hai effettuato l'accesso, ma non sei ancora nel nostro server Discord. Le votazioni, i compleanni, i profili degli utenti e i progressi del gatto della lobby sono riservati a chi fa parte del server.",
         "button": "Unisciti al server Discord",
         "title": "Entra nel server",
-        "members": "The member list is for people in our Discord server. Join it and everyone here shows up.",
-        "note": "It updates by itself a few minutes after you join.",
-        "birthdays": "You see the public birthdays. Join the server to add your own, get reminders and see everyone's."
+        "members": "L'elenco dei membri riguarda gli utenti del nostro server Discord. Entra nel server e vedrai tutti quelli che ne fanno parte.",
+        "note": "Si aggiorna automaticamente pochi minuti dopo l'accesso.",
+        "birthdays": "Qui puoi vedere i compleanni pubblici. Entra nel server per aggiungere il tuo, ricevere promemoria e vedere quelli di tutti gli altri."
     }
 }
